@@ -11,6 +11,11 @@ import Catalogo from './pages/public/Catalogo.jsx'
 import ExcursionDetalle from './pages/public/ExcursionDetalle.jsx'
 import Reservar from './pages/public/Reservar.jsx'
 import MisReservas from './pages/public/MisReservas.jsx'
+import Destinos from './pages/public/Destinos.jsx'
+import DestinoDetalle from './pages/public/DestinoDetalle.jsx'
+import Hoteles from './pages/public/Hoteles.jsx'
+import Marea from './pages/public/Marea.jsx'
+import Nosotros from './pages/public/Nosotros.jsx'
 
 // Páginas admin
 import Login from './pages/admin/Login.jsx'
@@ -27,10 +32,16 @@ const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { path: '/',                      element: <Home /> },
-      { path: '/excursiones',           element: <Catalogo /> },
+      { path: '/paquetes',              element: <Catalogo categoria="paquetes" /> },
+      { path: '/excursiones',           element: <Catalogo categoria="excursiones" /> },
       { path: '/excursiones/:id',       element: <ExcursionDetalle /> },
       { path: '/reservar/:id',          element: <Reservar /> },
       { path: '/mis-reservas',          element: <MisReservas /> },
+      { path: '/destinos',              element: <Destinos /> },
+      { path: '/destinos/:id',          element: <DestinoDetalle /> },
+      { path: '/hoteles',               element: <Hoteles /> },
+      { path: '/marea',                 element: <Marea /> },
+      { path: '/nosotros',              element: <Nosotros /> },
     ],
   },
 
@@ -41,12 +52,12 @@ const router = createBrowserRouter([
   {
     element: <ProtectedRoute><AdminLayout /></ProtectedRoute>,
     children: [
-      { path: '/admin',                 element: <Dashboard /> },
-      { path: '/admin/leads',           element: <Leads /> },
-      { path: '/admin/clientes',        element: <Clientes /> },
-      { path: '/admin/reservas',        element: <Reservas /> },
-      { path: '/admin/excursiones',     element: <Excursiones /> },
-      { path: '/admin/agenda',          element: <Agenda /> },
+      { path: '/admin',               element: <Dashboard /> },
+      { path: '/admin/leads',         element: <Leads /> },
+      { path: '/admin/clientes',      element: <Clientes /> },
+      { path: '/admin/reservas',      element: <Reservas /> },
+      { path: '/admin/excursiones',   element: <Excursiones /> },
+      { path: '/admin/agenda',        element: <Agenda /> },
     ],
   },
 ])

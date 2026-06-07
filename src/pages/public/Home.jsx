@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { excursiones, destinos, formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
+import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
 export default function Home() {
   const { t } = useLang()
+  const { config } = useSiteConfig()
   const destacados = excursiones.filter((e) => e.categoria === 'paquetes').slice(0, 3)
 
   const categoriaLinks = [
@@ -20,7 +22,7 @@ export default function Home() {
       {/* Hero */}
       <section
         className="relative flex items-end justify-start text-white bg-cover bg-center"
-        style={{ minHeight: '88vh', backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&q=80')" }}
+        style={{ minHeight: '88vh', backgroundImage: `url('${config.hero_imagen}')` }}
       >
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(28,18,8,0.85) 0%, rgba(28,18,8,0.3) 50%, transparent 100%)' }} />
         <div className="relative z-10 max-w-7xl mx-auto px-6 pb-16 md:pb-24 w-full">
@@ -28,22 +30,22 @@ export default function Home() {
             Nordeste Brasilero
           </p>
           <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', lineHeight: 1.0, color: '#f9f3e3', maxWidth: '14ch', marginBottom: '1.5rem' }}>
-            {t('hero_title')}
+            {config.hero_titulo}
           </h1>
           <p style={{ fontSize: '1.1rem', color: '#f2e4c0cc', maxWidth: '42ch', marginBottom: '2.5rem', fontWeight: 300 }}>
-            {t('hero_subtitle')}
+            {config.hero_subtitulo}
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
               to="/paquetes"
-              style={{ background: '#b07420', color: '#f9f3e3', fontWeight: 700, padding: '14px 36px', borderRadius: 999, fontSize: '0.95rem', transition: 'background 0.15s', display: 'inline-block', textDecoration: 'none' }}
-              onMouseEnter={e => e.currentTarget.style.background='#8a581e'}
-              onMouseLeave={e => e.currentTarget.style.background='#b07420'}
+              style={{ background: 'var(--cp, #b07420)', color: '#f9f3e3', fontWeight: 700, padding: '14px 36px', borderRadius: 999, fontSize: '0.95rem', transition: 'background 0.15s', display: 'inline-block', textDecoration: 'none' }}
+              onMouseEnter={e => e.currentTarget.style.background='var(--cp-dark, #8a581e)'}
+              onMouseLeave={e => e.currentTarget.style.background='var(--cp, #b07420)'}
             >
-              {t('hero_cta')} →
+              {config.hero_cta} →
             </Link>
             <a
-              href="https://wa.me/5491100000000?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero"
+              href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ border: '1.5px solid #f9f3e3aa', color: '#f9f3e3', fontWeight: 600, padding: '14px 36px', borderRadius: 999, fontSize: '0.95rem', transition: 'all 0.15s', display: 'inline-block', textDecoration: 'none' }}
@@ -168,12 +170,12 @@ export default function Home() {
             Hablá directamente con nuestro equipo por WhatsApp.
           </p>
           <a
-            href="https://wa.me/5491100000000?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero"
+            href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#b07420', color: '#f9f3e3', fontWeight: 700, padding: '16px 40px', borderRadius: 999, fontSize: '1rem', transition: 'background 0.15s', textDecoration: 'none' }}
-            onMouseEnter={e => e.currentTarget.style.background='#8a581e'}
-            onMouseLeave={e => e.currentTarget.style.background='#b07420'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--cp, #b07420)', color: '#f9f3e3', fontWeight: 700, padding: '16px 40px', borderRadius: 999, fontSize: '1rem', transition: 'background 0.15s', textDecoration: 'none' }}
+            onMouseEnter={e => e.currentTarget.style.background='var(--cp-dark, #8a581e)'}
+            onMouseLeave={e => e.currentTarget.style.background='var(--cp, #b07420)'}
           >
             💬 Escribinos por WhatsApp
           </a>

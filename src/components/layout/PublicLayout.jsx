@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useLang } from '../../context/LanguageContext.jsx'
+import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
 
 export default function PublicLayout() {
   const { pathname } = useLocation()
   const { t, lang, changeLang } = useLang()
+  const { config } = useSiteConfig()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navLinks = [
@@ -52,7 +54,7 @@ export default function PublicLayout() {
               ))}
             </select>
 
-            <a href="https://wa.me/5491100000000" target="_blank" rel="noopener noreferrer"
+            <a href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noopener noreferrer"
               className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors"
               style={{ background: '#1C1208', color: '#f9f3e3' }}>
               💬 WhatsApp
@@ -72,7 +74,7 @@ export default function PublicLayout() {
                 {label}
               </Link>
             ))}
-            <a href="https://wa.me/5491100000000" target="_blank" rel="noopener noreferrer"
+            <a href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noopener noreferrer"
               className="block pt-3 text-sm font-medium" style={{ color: '#16a34a' }}>💬 WhatsApp</a>
           </div>
         )}

@@ -1,12 +1,13 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 const navItems = [
-  { path: '/admin',               label: 'Dashboard',    icon: '📊' },
-  { path: '/admin/leads',         label: 'Leads',        icon: '🎯' },
-  { path: '/admin/clientes',      label: 'Clientes',     icon: '👥' },
-  { path: '/admin/reservas',      label: 'Reservas',     icon: '📋' },
-  { path: '/admin/excursiones',   label: 'Excursiones',  icon: '🗺️' },
-  { path: '/admin/agenda',        label: 'Agenda',       icon: '📅' },
+  { path: '/admin',                   label: 'Dashboard',       icon: '📊' },
+  { path: '/admin/leads',             label: 'Leads',           icon: '🎯' },
+  { path: '/admin/clientes',          label: 'Clientes',        icon: '👥' },
+  { path: '/admin/reservas',          label: 'Reservas',        icon: '📋' },
+  { path: '/admin/excursiones',       label: 'Excursiones',     icon: '🗺️' },
+  { path: '/admin/agenda',            label: 'Agenda',          icon: '📅' },
+  { path: '/admin/configuracion',     label: 'Configuración',   icon: '⚙️' },
 ]
 
 export default function AdminLayout() {
@@ -24,7 +25,7 @@ export default function AdminLayout() {
       <aside className="w-56 bg-gray-900 text-white flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-gray-700">
           <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Panel interno</p>
-          <p className="font-bold text-lg">Turismo Patagonia</p>
+          <p className="font-bold text-lg">DREAMSTOUR</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">

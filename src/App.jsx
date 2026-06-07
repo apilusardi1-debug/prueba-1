@@ -25,6 +25,7 @@ import Clientes from './pages/admin/Clientes.jsx'
 import Reservas from './pages/admin/Reservas.jsx'
 import Excursiones from './pages/admin/Excursiones.jsx'
 import Agenda from './pages/admin/Agenda.jsx'
+import SiteConfig from './pages/admin/SiteConfig.jsx'
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -57,7 +58,8 @@ const router = createBrowserRouter([
       { path: '/admin/clientes',      element: <Clientes /> },
       { path: '/admin/reservas',      element: <Reservas /> },
       { path: '/admin/excursiones',   element: <Excursiones /> },
-      { path: '/admin/agenda',        element: <Agenda /> },
+      { path: '/admin/agenda',           element: <Agenda /> },
+      { path: '/admin/configuracion',    element: <SiteConfig /> },
     ],
   },
 ])

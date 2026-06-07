@@ -44,7 +44,7 @@ export default function ExcursionDetalle() {
     setEnviando(true)
     setError(null)
     try {
-      await reservasApi.create({
+      const { error } = await reservasApi.create({
         excursion_id: ex.id,
         fecha: form.fecha,
         cliente_whatsapp: form.telefono.trim(),
@@ -53,9 +53,10 @@ export default function ExcursionDetalle() {
         ubicacion: form.ubicacion.trim() || null,
         estado: 'pendiente',
       })
+      if (error) throw error
       setExito(true)
-    } catch (_) {
-      setError('Ocurrió un error. Intentá de nuevo.')
+    } catch (err) {
+      setError('Error: ' + (err?.message || 'Intentá de nuevo.'))
     }
     setEnviando(false)
   }

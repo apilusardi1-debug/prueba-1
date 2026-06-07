@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { excursionesApi, normalizarExcursion, leadsApi } from '../../lib/supabase.js'
+import { excursionesApi, normalizarExcursion, reservasApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
@@ -44,12 +44,14 @@ export default function ExcursionDetalle() {
     setEnviando(true)
     setError(null)
     try {
-      await leadsApi.create({
-        whatsapp: form.telefono.trim(),
-        excursion_interes: ex.nombre,
-        origen: 'web',
-        estado: 'nuevo',
-        notas: `Fecha: ${form.fecha} | Adultos: ${form.adultos} | Menores: ${form.menores} | Pickup: ${form.ubicacion || '–'}`,
+      await reservasApi.create({
+        excursion_id: ex.id,
+        fecha: form.fecha,
+        cliente_whatsapp: form.telefono.trim(),
+        adultos: form.adultos,
+        menores: form.menores,
+        ubicacion: form.ubicacion.trim() || null,
+        estado: 'pendiente',
       })
       setExito(true)
     } catch (_) {

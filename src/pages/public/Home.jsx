@@ -30,10 +30,10 @@ export default function Home() {
             Nordeste Brasilero
           </p>
           <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', lineHeight: 1.0, color: '#f9f3e3', maxWidth: '14ch', marginBottom: '1.5rem' }}>
-            {config.hero_titulo}
+            {t('hero_title')}
           </h1>
           <p style={{ fontSize: '1.1rem', color: '#f2e4c0cc', maxWidth: '42ch', marginBottom: '2.5rem', fontWeight: 300 }}>
-            {config.hero_subtitulo}
+            {t('hero_subtitle')}
           </p>
           <div className="flex flex-wrap gap-4">
             <Link

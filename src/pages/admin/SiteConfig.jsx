@@ -99,9 +99,10 @@ export default function SiteConfig() {
 
       {/* 1. Hero */}
       <div style={card}>
-        <div style={{ marginBottom: 20 }}>{SECTION.title('🖼️  Banner principal (Hero)')}</div>
-        <Field label="Título" value={form.hero_titulo} onChange={set('hero_titulo')} placeholder={CONFIG_DEFAULTS.hero_titulo} />
-        <Field label="Subtítulo" type="textarea" value={form.hero_subtitulo} onChange={set('hero_subtitulo')} placeholder={CONFIG_DEFAULTS.hero_subtitulo} />
+        <div style={{ marginBottom: 4 }}>{SECTION.title('🖼️  Banner principal (Hero)')}</div>
+        <p style={{ fontSize: '0.78rem', color: '#999', marginBottom: 20 }}>
+          El título y subtítulo del banner se traducen automáticamente según el idioma del visitante. Podés cambiar la foto de fondo y el texto del botón.
+        </p>
         <Field label="Texto del botón" value={form.hero_cta} onChange={set('hero_cta')} placeholder="Ver paquetes" />
         <Field
           label="URL de la imagen de fondo"
@@ -110,12 +111,11 @@ export default function SiteConfig() {
           placeholder="https://images.unsplash.com/..."
           hint="Usá una URL de Unsplash o subí la imagen a un servicio como Cloudinary."
         />
-        {/* Preview miniatura */}
         {form.hero_imagen && (
           <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', height: 120, position: 'relative' }}>
             <img src={form.hero_imagen} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} />
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: 'white', fontWeight: 700, fontSize: '1rem', textAlign: 'center', padding: '0 16px' }}>{form.hero_titulo}</p>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <p style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem', textAlign: 'center', padding: '0 16px' }}>Preview de imagen</p>
             </div>
           </div>
         )}

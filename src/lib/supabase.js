@@ -7,7 +7,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️  Faltan variables de entorno de Supabase. Copiá .env.example a .env y completá los valores.')
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+// Si no hay credenciales, supabase queda en null y cada función retorna error graciosamente
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 // ── Excursiones ────────────────────────────────────────────────────────────────
 export const excursionesApi = {

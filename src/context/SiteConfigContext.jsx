@@ -31,6 +31,7 @@ export function SiteConfigProvider({ children }) {
   // Carga la config desde Supabase al montar
   useEffect(() => {
     async function loadConfig() {
+      if (!supabase) { setLoading(false); return }
       try {
         const { data, error } = await supabase
           .from('site_config')
@@ -42,11 +43,11 @@ export function SiteConfigProvider({ children }) {
           setConfig(prev => ({
             ...prev,
             ...Object.fromEntries(
-              Object.entries(data).filter(([, v]) => v !== null && v !== undefined)
+              Object.entries(data).filter(([key, v]) => key !== 'id' && v !== null && v !== undefined)
             ),
           }))
         }
-      } catch {
+      } catch (_) {
         // Supabase no configurado — se usan los defaults
       } finally {
         setLoading(false)
@@ -58,6 +59,7 @@ export function SiteConfigProvider({ children }) {
   // Guarda un campo (o varios) en Supabase y actualiza el estado local
   async function saveConfig(updates) {
     setConfig(prev => ({ ...prev, ...updates }))
+    if (!supabase) return { ok: false, error: 'Supabase no configurado' }
     try {
       const { error } = await supabase
         .from('site_config')

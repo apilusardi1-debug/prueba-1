@@ -9,6 +9,7 @@ export const translations = {
     nav_hotels:       'Hoteles & Posadas',
     nav_tides:        'Tabla de Marea',
     nav_about:        'Sobre nosotros',
+    nav_transfers:    'Traslados',
     nav_my_bookings:  'Mis reservas',
     nav_whatsapp:     'WhatsApp',
 
@@ -24,6 +25,7 @@ export const translations = {
     cat_hotels:       'Hoteles & Posadas',
     cat_tides:        'Tabla de Marea',
     cat_about:        'Sobre nosotros',
+    cat_transfers:    'Traslados',
 
     // Catálogo
     catalog_title:    'Todos los paquetes',
@@ -112,6 +114,7 @@ export const translations = {
     nav_hotels:       'Hotéis & Pousadas',
     nav_tides:        'Tabela de Maré',
     nav_about:        'Sobre nós',
+    nav_transfers:    'Traslados',
     nav_my_bookings:  'Minhas reservas',
     nav_whatsapp:     'WhatsApp',
 
@@ -125,6 +128,7 @@ export const translations = {
     cat_hotels:       'Hotéis & Pousadas',
     cat_tides:        'Tabela de Maré',
     cat_about:        'Sobre nós',
+    cat_transfers:    'Traslados',
 
     catalog_title:    'Todos os pacotes',
     catalog_subtitle: 'Encontre sua próxima viagem ao Nordeste Brasileiro',
@@ -204,6 +208,7 @@ export const translations = {
     nav_hotels:       'Hotels & Inns',
     nav_tides:        'Tide Table',
     nav_about:        'About us',
+    nav_transfers:    'Transfers',
     nav_my_bookings:  'My bookings',
     nav_whatsapp:     'WhatsApp',
 
@@ -217,6 +222,7 @@ export const translations = {
     cat_hotels:       'Hotels & Inns',
     cat_tides:        'Tide Table',
     cat_about:        'About us',
+    cat_transfers:    'Transfers',
 
     catalog_title:    'All packages',
     catalog_subtitle: 'Find your next trip to Brazil\'s Northeast',

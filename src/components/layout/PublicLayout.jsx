@@ -15,6 +15,7 @@ export default function PublicLayout() {
     { to: '/destinos',    label: t('nav_destinations') },
     { to: '/excursiones', label: t('nav_excursions') },
     { to: '/hoteles',     label: t('nav_hotels') },
+    { to: '/traslados',   label: t('nav_transfers') },
     { to: '/marea',       label: t('nav_tides') },
     { to: '/nosotros',    label: t('nav_about') },
     { to: '/mis-reservas', label: t('nav_my_bookings') },

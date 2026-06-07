@@ -236,6 +236,7 @@ export default function Excursiones() {
                 >
                   <option value="excursiones">Excursiones</option>
                   <option value="paquetes">Paquetes aéreos</option>
+                  <option value="traslados">Traslados</option>
                 </select>
               </div>
 

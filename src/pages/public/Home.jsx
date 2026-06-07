@@ -24,12 +24,11 @@ export default function Home() {
   }, [])
 
   const categoriaLinks = [
-    { icon: '✈️', labelKey: 'cat_packages',     to: '/paquetes' },
-    { icon: '📍', labelKey: 'cat_destinations',  to: '/destinos' },
-    { icon: '🤿', labelKey: 'cat_excursions',    to: '/excursiones' },
-    { icon: '🏨', labelKey: 'cat_hotels',        to: '/hoteles' },
-    { icon: '🌊', labelKey: 'cat_tides',         to: '/marea' },
-    { icon: 'ℹ️', labelKey: 'cat_about',         to: '/nosotros' },
+    { icon: '✈️', labelKey: 'cat_packages',   to: '/paquetes' },
+    { icon: '📍', labelKey: 'cat_destinations', to: '/destinos' },
+    { icon: '🤿', labelKey: 'cat_excursions',  to: '/excursiones' },
+    { icon: '🏨', labelKey: 'cat_hotels',      to: '/hoteles' },
+    { icon: '🚐', labelKey: 'cat_transfers',   to: '/traslados' },
   ]
 
   return (
@@ -76,7 +75,7 @@ export default function Home() {
       {/* Categorías */}
       <section style={{ backgroundColor: '#f9f3e3', borderBottom: '1px solid #e8d09a' }}>
         <div className="max-w-6xl mx-auto px-4 py-10">
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
             {categoriaLinks.map(({ icon, labelKey, to }) => (
               <Link
                 key={to}
@@ -88,6 +87,42 @@ export default function Home() {
               >
                 <span style={{ fontSize: '1.6rem' }}>{icon}</span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1C1208CC', lineHeight: 1.3 }}>{t(labelKey)}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Banners secundarios */}
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            {[
+              {
+                to: '/marea',
+                icon: '🌊',
+                label: 'Tabla de Marea',
+                sub: 'Planificá tus excursiones acuáticas',
+                bg: 'linear-gradient(135deg, #1a4e6e 0%, #1e7a8a 100%)',
+              },
+              {
+                to: '/nosotros',
+                icon: 'ℹ️',
+                label: 'Sobre nosotros',
+                sub: 'Conocé al equipo de Dream Tours',
+                bg: 'linear-gradient(135deg, #3b2a1a 0%, #6b4423 100%)',
+              },
+            ].map(({ to, icon, label, sub, bg }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex items-center gap-4 p-5 rounded-2xl transition-all"
+                style={{ background: bg, textDecoration: 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.9' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+              >
+                <span style={{ fontSize: '2rem' }}>{icon}</span>
+                <div>
+                  <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1rem', color: '#f9f3e3', lineHeight: 1.2 }}>{label}</p>
+                  <p style={{ fontSize: '0.72rem', color: '#f9f3e3aa', marginTop: 3 }}>{sub}</p>
+                </div>
+                <span style={{ marginLeft: 'auto', color: '#f9f3e3aa', fontSize: '1.2rem' }}>→</span>
               </Link>
             ))}
           </div>

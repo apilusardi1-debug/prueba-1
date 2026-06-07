@@ -41,6 +41,7 @@ const router = createBrowserRouter([
       { path: '/destinos',              element: <Destinos /> },
       { path: '/destinos/:id',          element: <DestinoDetalle /> },
       { path: '/hoteles',               element: <Hoteles /> },
+      { path: '/traslados',             element: <Catalogo categoria="traslados" /> },
       { path: '/marea',                 element: <Marea /> },
       { path: '/nosotros',              element: <Nosotros /> },
     ],

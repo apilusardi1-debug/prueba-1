@@ -1,45 +1,105 @@
-import { useState } from 'react'
-import { excursiones as initialExcursiones, formatPrecio } from '../../data/mockData.js'
+import { useState, useEffect } from 'react'
+import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
+import { formatPrecio } from '../../data/mockData.js'
 
-const EMPTY = { nombre: '', destino: '', categoria: '', precio: '', cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: '' }
+const EMPTY = {
+  nombre: '', destino: '', categoria: 'excursiones', precio: '',
+  cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: ''
+}
 
 export default function Excursiones() {
-  const [excursiones, setExcursiones] = useState(initialExcursiones)
+  const [excursiones, setExcursiones] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [guardando, setGuardando] = useState(false)
   const [editando, setEditando] = useState(null) // null | 'nuevo' | id
   const [form, setForm] = useState(EMPTY)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  async function cargar() {
+    setLoading(true)
+    try {
+      const { data, error } = await excursionesApi.getAll()
+      if (!error && data) setExcursiones(data.map(normalizarExcursion))
+    } catch (_) {}
+    setLoading(false)
+  }
 
   function abrirNuevo() {
     setForm(EMPTY)
+    setError(null)
     setEditando('nuevo')
   }
 
   function abrirEditar(ex) {
-    setForm({ ...ex, fechas: ex.fechas.join(', '), precio: String(ex.precio), cupos: String(ex.cupos) })
+    setForm({
+      nombre: ex.nombre || '',
+      destino: ex.destino || '',
+      categoria: ex.categoria || 'excursiones',
+      duracion: ex.duracion || '',
+      dificultad: ex.dificultad || '',
+      precio: String(ex.precio || ''),
+      cupos: String(ex.cupos || ''),
+      imagen: ex.imagen || '',
+      fechas: (ex.fechas || []).join(', '),
+      descripcion: ex.descripcion || '',
+    })
+    setError(null)
     setEditando(ex.id)
   }
 
-  function guardar() {
+  async function guardar() {
+    if (!form.nombre.trim() || !form.destino.trim()) {
+      setError('Nombre y destino son obligatorios.')
+      return
+    }
+    setGuardando(true)
+    setError(null)
+    const cupos = parseInt(form.cupos) || 0
     const datos = {
-      ...form,
+      nombre: form.nombre.trim(),
+      destino: form.destino.trim(),
+      categoria: form.categoria,
+      duracion: form.duracion.trim(),
+      dificultad: form.dificultad.trim(),
+      descripcion: form.descripcion.trim(),
+      imagen: form.imagen.trim(),
       precio: parseInt(form.precio) || 0,
-      cupos: parseInt(form.cupos) || 0,
-      cuposDisponibles: parseInt(form.cupos) || 0,
-      fechas: form.fechas.split(',').map((f) => f.trim()).filter(Boolean),
-      incluye: [],
+      cupos,
+      cupos_disponibles: cupos,
+      fechas: form.fechas.split(',').map(f => f.trim()).filter(Boolean),
+      activa: true,
     }
-    if (editando === 'nuevo') {
-      setExcursiones((prev) => [...prev, { ...datos, id: Date.now().toString() }])
-    } else {
-      setExcursiones((prev) => prev.map((e) => e.id === editando ? { ...e, ...datos } : e))
+
+    try {
+      if (editando === 'nuevo') {
+        const { data, error } = await excursionesApi.create(datos)
+        if (error) throw error
+        if (data) setExcursiones(prev => [...prev, normalizarExcursion(data)])
+      } else {
+        const { data, error } = await excursionesApi.update(editando, datos)
+        if (error) throw error
+        if (data) setExcursiones(prev => prev.map(e => e.id === editando ? normalizarExcursion(data) : e))
+      }
+      setEditando(null)
+    } catch (e) {
+      setError('Error al guardar: ' + (e.message || 'intentá de nuevo'))
     }
-    setEditando(null)
+    setGuardando(false)
   }
 
-  function eliminar(id) {
-    if (confirm('¿Eliminar esta excursión?')) {
-      setExcursiones((prev) => prev.filter((e) => e.id !== id))
-    }
+  async function eliminar(id) {
+    if (!confirm('¿Eliminar esta excursión? Esta acción no se puede deshacer.')) return
+    try {
+      await excursionesApi.delete(id)
+      setExcursiones(prev => prev.filter(e => e.id !== id))
+    } catch (_) {}
   }
+
+  if (loading) return <div className="p-8 text-gray-400">Cargando excursiones...</div>
 
   return (
     <div className="p-8">
@@ -56,6 +116,13 @@ export default function Excursiones() {
         </button>
       </div>
 
+      {excursiones.length === 0 && (
+        <div className="text-center py-20 text-gray-400">
+          <p className="text-4xl mb-3">🌊</p>
+          <p>No hay excursiones. Creá la primera.</p>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {excursiones.map((ex) => (
           <div key={ex.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -63,11 +130,14 @@ export default function Excursiones() {
               <img src={ex.imagen} alt={ex.nombre} className="w-full h-36 object-cover" />
             )}
             <div className="p-4">
-              <p className="text-xs text-brand-600 font-semibold uppercase tracking-wider mb-1">{ex.destino}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs text-brand-600 font-semibold uppercase tracking-wider">{ex.destino}</p>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{ex.categoria}</span>
+              </div>
               <h3 className="font-bold text-gray-900 mb-1">{ex.nombre}</h3>
               <p className="text-xs text-gray-400 mb-3">{ex.duracion} · {ex.dificultad}</p>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-brand-700">{formatPrecio(ex.precio)}</span>
+                <span className="font-bold text-brand-700">{formatPrecio(ex.precio, ex.moneda)}</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ex.cuposDisponibles <= 3 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
                   {ex.cuposDisponibles}/{ex.cupos} cupos
                 </span>
@@ -91,49 +161,65 @@ export default function Excursiones() {
         ))}
       </div>
 
-      {/* Modal de edición */}
+      {/* Modal */}
       {editando !== null && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4" onClick={() => setEditando(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-5">{editando === 'nuevo' ? 'Nueva excursión' : 'Editar excursión'}</h2>
+
+            {error && <p className="text-xs text-red-500 mb-4 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
             <div className="space-y-3 text-sm">
               {[
                 { key: 'nombre', label: 'Nombre *' },
                 { key: 'destino', label: 'Destino *' },
-                { key: 'categoria', label: 'Categoría' },
-                { key: 'duracion', label: 'Duración (ej: 8 horas)' },
-                { key: 'dificultad', label: 'Dificultad' },
-                { key: 'precio', label: 'Precio (ARS)' },
+                { key: 'duracion', label: 'Duración (ej: 6 horas)' },
+                { key: 'dificultad', label: 'Dificultad (ej: Baja, Media, Alta)' },
+                { key: 'precio', label: 'Precio (USD)' },
                 { key: 'cupos', label: 'Cupos totales' },
                 { key: 'imagen', label: 'URL de imagen' },
-                { key: 'fechas', label: 'Fechas (separadas por coma: 2024-08-10, 2024-08-17)' },
+                { key: 'fechas', label: 'Fechas (separadas por coma: 2025-08-10, 2025-08-17)' },
               ].map(({ key, label }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
                   <input
                     type="text"
                     value={form[key]}
-                    onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+                    onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   />
                 </div>
               ))}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Categoría</label>
+                <select
+                  value={form.categoria}
+                  onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <option value="excursiones">Excursiones</option>
+                  <option value="paquetes">Paquetes aéreos</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
                 <textarea
                   rows={3}
                   value={form.descripcion}
-                  onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
+                  onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
                 />
               </div>
             </div>
+
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditando(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button onClick={guardar} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                Guardar
+              <button onClick={guardar} disabled={guardando} className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                {guardando ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
           </div>

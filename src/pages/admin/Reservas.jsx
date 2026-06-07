@@ -79,7 +79,7 @@ export default function Reservas() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
               <tr>
-                <th className="px-5 py-3 text-left">WhatsApp</th>
+                <th className="px-5 py-3 text-left">Cliente</th>
                 <th className="px-5 py-3 text-left">Excursión</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Personas</th>
@@ -95,8 +95,9 @@ export default function Reservas() {
                 return (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3">
+                      <p className="font-medium text-gray-900 text-sm">{r.cliente_nombre || '–'}</p>
                       <a href={`https://wa.me/${r.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer"
-                        className="text-green-600 hover:underline font-medium text-xs">
+                        className="text-green-600 hover:underline text-xs">
                         💬 {r.cliente_whatsapp}
                       </a>
                     </td>

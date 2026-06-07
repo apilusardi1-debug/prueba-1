@@ -5,7 +5,7 @@ import { formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
-const FORM_EMPTY = { fecha: '', telefono: '', adultos: 1, menores: 0, ubicacion: '' }
+const FORM_EMPTY = { fecha: '', nombre: '', telefono: '', adultos: 1, menores: 0, ubicacion: '' }
 
 export default function ExcursionDetalle() {
   const { id } = useParams()
@@ -39,7 +39,8 @@ export default function ExcursionDetalle() {
 
   async function enviarReserva(e) {
     e.preventDefault()
-    if (!form.telefono.trim()) { setError('Ingresá tu número de teléfono.'); return }
+    if (!form.nombre.trim()) { setError('Ingresá tu nombre.'); return }
+    if (!form.telefono.trim()) { setError('Ingresá tu número de WhatsApp.'); return }
     if (!form.fecha) { setError('Seleccioná una fecha de salida.'); return }
     setEnviando(true)
     setError(null)
@@ -47,6 +48,7 @@ export default function ExcursionDetalle() {
       const { error } = await reservasApi.create({
         excursion_id: ex.id,
         fecha: form.fecha,
+        cliente_nombre: form.nombre.trim(),
         cliente_whatsapp: form.telefono.trim(),
         adultos: form.adultos,
         menores: form.menores,
@@ -213,6 +215,22 @@ export default function ExcursionDetalle() {
                       </div>
                     </div>
                   )}
+
+                  {/* Nombre */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Nombre completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={form.nombre}
+                      onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Ej: María García"
+                      style={{ width: '100%', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', background: 'white', color: '#1C1208', outline: 'none', boxSizing: 'border-box' }}
+                      onFocus={e => e.target.style.borderColor='#b07420'}
+                      onBlur={e => e.target.style.borderColor='#e8d09a'}
+                    />
+                  </div>
 
                   {/* Teléfono */}
                   <div>

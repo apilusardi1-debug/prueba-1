@@ -27,7 +27,7 @@ export default function PublicLayout() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Link to="/" className="shrink-0">
             <img
-              src="/logo.png"
+              src="/logo.png.jpeg"
               alt="Dream Tours"
               style={{ height: 56, width: 'auto', objectFit: 'contain', display: 'block' }}
               onError={(e) => {
@@ -98,7 +98,7 @@ export default function PublicLayout() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-8">
           <div>
             <img
-              src="/logo.png"
+              src="/logo.png.jpeg"
               alt="Dream Tours"
               style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 6 }}
               onError={(e) => { e.target.style.display = 'none' }}

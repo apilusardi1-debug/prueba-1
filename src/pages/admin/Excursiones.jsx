@@ -214,7 +214,7 @@ export default function Excursiones() {
                 { key: 'destino', label: 'Destino *' },
                 { key: 'duracion', label: 'Duración (ej: 6 horas)' },
                 { key: 'dificultad', label: 'Dificultad (ej: Baja, Media, Alta)' },
-                { key: 'precio', label: 'Precio (USD)' },
+                { key: 'precio', label: 'Precio (R$)' },
                 { key: 'cupos', label: 'Cupos totales' },
                 { key: 'fechas', label: 'Fechas (separadas por coma: 2025-08-10, 2025-08-17)' },
                 { key: 'incluye', label: 'Incluye (separado por coma: Vuelo ida y vuelta, Hotel, Desayuno)' },

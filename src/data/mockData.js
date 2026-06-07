@@ -343,7 +343,7 @@ export const estadosReserva = {
   cancelada:   { label: 'Cancelada',   color: 'bg-red-100 text-red-700' },
 }
 
-export const formatPrecio = (n, moneda = 'USD') => {
-  if (moneda === 'USD') return `USD ${new Intl.NumberFormat('es-AR').format(n)}`
+export const formatPrecio = (n, moneda = 'BRL') => {
+  if (moneda === 'BRL' || moneda === 'USD') return `R$ ${new Intl.NumberFormat('pt-BR').format(n)}`
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
 }

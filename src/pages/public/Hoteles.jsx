@@ -51,7 +51,7 @@ export default function Hoteles() {
                   <div>
                     <p style={{ fontSize: '0.68rem', color: '#1C120888', marginBottom: 2 }}>Desde</p>
                     <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.1rem', color: '#b07420' }}>
-                      USD {h.precio}<span style={{ fontSize: '0.72rem', fontWeight: 400, color: '#1C120888' }}>/noche</span>
+                      R$ {h.precio}<span style={{ fontSize: '0.72rem', fontWeight: 400, color: '#1C120888' }}>/noche</span>
                     </p>
                   </div>
                   <a

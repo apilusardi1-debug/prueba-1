@@ -1,14 +1,23 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
+import { excursionesApi, normalizarExcursion, leadsApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
+import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+
+const FORM_EMPTY = { fecha: '', telefono: '', adultos: 1, menores: 0, ubicacion: '' }
 
 export default function ExcursionDetalle() {
   const { id } = useParams()
   const { t } = useLang()
+  const { config } = useSiteConfig()
   const [ex, setEx] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(FORM_EMPTY)
+  const [enviando, setEnviando] = useState(false)
+  const [exito, setExito] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -21,6 +30,34 @@ export default function ExcursionDetalle() {
     cargar()
   }, [id])
 
+  function abrirModal() {
+    setForm({ ...FORM_EMPTY, fecha: ex?.fechas?.[0] || '' })
+    setExito(false)
+    setError(null)
+    setModal(true)
+  }
+
+  async function enviarReserva(e) {
+    e.preventDefault()
+    if (!form.telefono.trim()) { setError('Ingresá tu número de teléfono.'); return }
+    if (!form.fecha) { setError('Seleccioná una fecha de salida.'); return }
+    setEnviando(true)
+    setError(null)
+    try {
+      await leadsApi.create({
+        whatsapp: form.telefono.trim(),
+        excursion_interes: ex.nombre,
+        origen: 'web',
+        estado: 'nuevo',
+        notas: `Fecha: ${form.fecha} | Adultos: ${form.adultos} | Menores: ${form.menores} | Pickup: ${form.ubicacion || '–'}`,
+      })
+      setExito(true)
+    } catch (_) {
+      setError('Ocurrió un error. Intentá de nuevo.')
+    }
+    setEnviando(false)
+  }
+
   if (loading) return (
     <div style={{ backgroundColor: '#f9f3e3', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#b07420', fontWeight: 600 }}>Cargando...</p>
@@ -30,14 +67,14 @@ export default function ExcursionDetalle() {
   if (!ex) return (
     <div style={{ textAlign: 'center', padding: '96px 16px', color: '#1C120899' }}>
       <p style={{ fontSize: '3rem', marginBottom: 12 }}>🗺️</p>
-      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Paquete no encontrado</p>
-      <Link to="/paquetes" style={{ marginTop: 16, display: 'inline-block', color: '#b07420', textDecoration: 'none', fontWeight: 600 }}>
-        {t('detail_back')}
+      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Excursión no encontrada</p>
+      <Link to="/excursiones" style={{ marginTop: 16, display: 'inline-block', color: '#b07420', textDecoration: 'none', fontWeight: 600 }}>
+        ← Volver
       </Link>
     </div>
   )
 
-  const backTo = ex.categoria === 'paquetes' ? '/paquetes' : '/excursiones'
+  const backTo = ex.categoria === 'paquetes' ? '/paquetes' : ex.categoria === 'traslados' ? '/traslados' : '/excursiones'
 
   return (
     <div style={{ backgroundColor: '#f9f3e3', minHeight: '100vh' }}>
@@ -102,16 +139,149 @@ export default function ExcursionDetalle() {
                 <p style={{ fontSize: '0.7rem', color: '#1C120888', marginBottom: 4 }}>{t('detail_per_person')}</p>
                 <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '2rem', color: '#b07420', lineHeight: 1 }}>{formatPrecio(ex.precio, 'USD')}</p>
               </div>
-              <Link to={`/reservar/${ex.id}`}
-                style={{ background: '#1C1208', color: '#f9f3e3', fontWeight: 700, padding: '14px 32px', borderRadius: 14, textDecoration: 'none', fontSize: '0.95rem', transition: 'background 0.15s' }}
+              <button
+                onClick={abrirModal}
+                style={{ background: '#1C1208', color: '#f9f3e3', fontWeight: 700, padding: '14px 32px', borderRadius: 14, border: 'none', fontSize: '0.95rem', cursor: 'pointer', transition: 'background 0.15s' }}
                 onMouseEnter={e => e.currentTarget.style.background='#b07420'}
-                onMouseLeave={e => e.currentTarget.style.background='#1C1208'}>
+                onMouseLeave={e => e.currentTarget.style.background='#1C1208'}
+              >
                 {t('detail_book')}
-              </Link>
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de reserva */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(28,18,8,0.6)' }} onClick={() => setModal(false)}>
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#f9f3e3' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ background: '#1C1208', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontSize: '0.65rem', color: '#d9a83a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 4 }}>{ex.destino}</p>
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.15rem', color: '#f9f3e3', lineHeight: 1.2 }}>{ex.nombre}</h2>
+              </div>
+              <button onClick={() => setModal(false)} style={{ color: '#f9f3e3aa', fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ padding: '24px', maxHeight: '75vh', overflowY: 'auto' }}>
+              {exito ? (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <p style={{ fontSize: '3rem', marginBottom: 12 }}>🎉</p>
+                  <h3 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.3rem', color: '#1C1208', marginBottom: 8 }}>¡Solicitud enviada!</h3>
+                  <p style={{ color: '#1C1208AA', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
+                    Nuestro equipo te va a contactar por WhatsApp a la brevedad para confirmar tu reserva.
+                  </p>
+                  <a
+                    href={`https://wa.me/${config.whatsapp}?text=Hola!%20Acabo%20de%20solicitar%20reserva%20para%20${encodeURIComponent(ex.nombre)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#25d366', color: 'white', fontWeight: 700, padding: '12px 28px', borderRadius: 12, textDecoration: 'none', fontSize: '0.9rem' }}
+                  >
+                    💬 Confirmar por WhatsApp
+                  </a>
+                </div>
+              ) : (
+                <form onSubmit={enviarReserva} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {error && <p style={{ background: '#fde8e8', color: '#c0392b', fontSize: '0.82rem', padding: '10px 14px', borderRadius: 10 }}>{error}</p>}
+
+                  {/* Fecha */}
+                  {ex.fechas?.length > 0 && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Fecha de salida
+                      </label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {ex.fechas.map(f => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, fecha: f }))}
+                            style={{
+                              padding: '8px 16px', borderRadius: 10, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s',
+                              background: form.fecha === f ? '#1C1208' : 'white',
+                              color: form.fecha === f ? '#f9f3e3' : '#8a581e',
+                              border: `1.5px solid ${form.fecha === f ? '#1C1208' : '#d9a83a'}`,
+                            }}
+                          >
+                            {new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teléfono */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Número de WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.telefono}
+                      onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                      placeholder="Ej: 1145678901"
+                      style={{ width: '100%', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', background: 'white', color: '#1C1208', outline: 'none', boxSizing: 'border-box' }}
+                      onFocus={e => e.target.style.borderColor='#b07420'}
+                      onBlur={e => e.target.style.borderColor='#e8d09a'}
+                    />
+                  </div>
+
+                  {/* Personas */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Cantidad de personas
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      {[
+                        { key: 'adultos', label: 'Adultos', icon: '👤' },
+                        { key: 'menores', label: 'Menores', icon: '👶' },
+                      ].map(({ key, label, icon }) => (
+                        <div key={key} style={{ background: 'white', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.82rem', color: '#1C1208AA', fontWeight: 600 }}>{icon} {label}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <button type="button" onClick={() => setForm(p => ({ ...p, [key]: Math.max(key === 'adultos' ? 1 : 0, p[key] - 1) }))}
+                              style={{ width: 28, height: 28, borderRadius: 999, border: '1.5px solid #e8d09a', background: 'white', color: '#1C1208', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                            <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1C1208', minWidth: 16, textAlign: 'center' }}>{form[key]}</span>
+                            <button type="button" onClick={() => setForm(p => ({ ...p, [key]: p[key] + 1 }))}
+                              style={{ width: 28, height: 28, borderRadius: 999, border: '1.5px solid #e8d09a', background: 'white', color: '#1C1208', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ubicación */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      ¿Dónde te pasamos a buscar?
+                    </label>
+                    <input
+                      type="text"
+                      value={form.ubicacion}
+                      onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))}
+                      placeholder="Ej: Hotel Viva, Av. Beira Mar 1200"
+                      style={{ width: '100%', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', background: 'white', color: '#1C1208', outline: 'none', boxSizing: 'border-box' }}
+                      onFocus={e => e.target.style.borderColor='#b07420'}
+                      onBlur={e => e.target.style.borderColor='#e8d09a'}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={enviando}
+                    style={{ width: '100%', background: '#1C1208', color: '#f9f3e3', fontWeight: 700, padding: '14px', borderRadius: 12, border: 'none', fontSize: '0.95rem', cursor: 'pointer', marginTop: 4, opacity: enviando ? 0.6 : 1, transition: 'background 0.15s' }}
+                    onMouseEnter={e => { if (!enviando) e.currentTarget.style.background='#b07420' }}
+                    onMouseLeave={e => { if (!enviando) e.currentTarget.style.background='#1C1208' }}
+                  >
+                    {enviando ? 'Enviando...' : 'Solicitar reserva 🎉'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

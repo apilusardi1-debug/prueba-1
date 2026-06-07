@@ -46,6 +46,17 @@ export const leadsApi = {
   updateEstado: (id, estado, notas) => supabase?.from('leads').update({ estado, notas }).eq('id', id).select().single(),
 }
 
+// ── Storage ────────────────────────────────────────────────────────────────────
+export async function subirImagen(archivo) {
+  if (!supabase) return { url: null, error: 'Sin conexión' }
+  const ext = archivo.name.split('.').pop()
+  const path = `excursiones/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('imagenes').upload(path, archivo)
+  if (error) return { url: null, error: error.message }
+  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}
+
 // ── Clientes ───────────────────────────────────────────────────────────────────
 export const clientesApi = {
   getAll: () => supabase?.from('clientes').select('*').order('nombre'),

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
+import { useState, useEffect, useRef } from 'react'
+import { excursionesApi, normalizarExcursion, subirImagen } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 
 const EMPTY = {
@@ -11,9 +11,11 @@ export default function Excursiones() {
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
+  const [subiendoImg, setSubiendoImg] = useState(false)
   const [editando, setEditando] = useState(null) // null | 'nuevo' | id
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState(null)
+  const fileRef = useRef()
 
   useEffect(() => {
     cargar()
@@ -49,6 +51,16 @@ export default function Excursiones() {
     })
     setError(null)
     setEditando(ex.id)
+  }
+
+  async function handleImagen(e) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    setSubiendoImg(true)
+    const { url, error } = await subirImagen(archivo)
+    if (error) setError('Error al subir imagen: ' + error)
+    else setForm(p => ({ ...p, imagen: url }))
+    setSubiendoImg(false)
   }
 
   async function guardar() {
@@ -170,6 +182,31 @@ export default function Excursiones() {
             {error && <p className="text-xs text-red-500 mb-4 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
             <div className="space-y-3 text-sm">
+              {/* Imagen */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Imagen</label>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleImagen} className="hidden" />
+                {form.imagen ? (
+                  <div className="relative">
+                    <img src={form.imagen} alt="preview" className="w-full h-32 object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => { setForm(p => ({ ...p, imagen: '' })); if (fileRef.current) fileRef.current.value = '' }}
+                      className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg"
+                    >✕ Quitar</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={subiendoImg}
+                    className="w-full border-2 border-dashed border-gray-200 rounded-lg py-6 text-gray-400 text-sm hover:border-brand-400 hover:text-brand-500 transition-colors disabled:opacity-50"
+                  >
+                    {subiendoImg ? '⏳ Subiendo...' : '📷 Subir imagen desde tu dispositivo'}
+                  </button>
+                )}
+              </div>
+
               {[
                 { key: 'nombre', label: 'Nombre *' },
                 { key: 'destino', label: 'Destino *' },
@@ -177,7 +214,6 @@ export default function Excursiones() {
                 { key: 'dificultad', label: 'Dificultad (ej: Baja, Media, Alta)' },
                 { key: 'precio', label: 'Precio (USD)' },
                 { key: 'cupos', label: 'Cupos totales' },
-                { key: 'imagen', label: 'URL de imagen' },
                 { key: 'fechas', label: 'Fechas (separadas por coma: 2025-08-10, 2025-08-17)' },
               ].map(({ key, label }) => (
                 <div key={key}>

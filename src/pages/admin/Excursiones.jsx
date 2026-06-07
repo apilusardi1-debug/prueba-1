@@ -4,7 +4,7 @@ import { formatPrecio } from '../../data/mockData.js'
 
 const EMPTY = {
   nombre: '', destino: '', categoria: 'excursiones', precio: '',
-  cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: ''
+  cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: '', incluye: ''
 }
 
 export default function Excursiones() {
@@ -47,6 +47,7 @@ export default function Excursiones() {
       cupos: String(ex.cupos || ''),
       imagen: ex.imagen || '',
       fechas: (ex.fechas || []).join(', '),
+      incluye: (ex.incluye || []).join(', '),
       descripcion: ex.descripcion || '',
     })
     setError(null)
@@ -83,6 +84,7 @@ export default function Excursiones() {
       cupos,
       cupos_disponibles: cupos,
       fechas: form.fechas.split(',').map(f => f.trim()).filter(Boolean),
+      incluye: form.incluye.split(',').map(f => f.trim()).filter(Boolean),
       activa: true,
     }
 
@@ -215,6 +217,7 @@ export default function Excursiones() {
                 { key: 'precio', label: 'Precio (USD)' },
                 { key: 'cupos', label: 'Cupos totales' },
                 { key: 'fechas', label: 'Fechas (separadas por coma: 2025-08-10, 2025-08-17)' },
+                { key: 'incluye', label: 'Incluye (separado por coma: Vuelo ida y vuelta, Hotel, Desayuno)' },
               ].map(({ key, label }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>

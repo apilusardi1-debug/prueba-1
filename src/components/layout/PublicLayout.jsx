@@ -9,117 +9,88 @@ export default function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navLinks = [
-    { to: '/paquetes',   label: t('nav_packages') },
-    { to: '/destinos',   label: t('nav_destinations') },
+    { to: '/paquetes',    label: t('nav_packages') },
+    { to: '/destinos',    label: t('nav_destinations') },
     { to: '/excursiones', label: t('nav_excursions') },
-    { to: '/hoteles',    label: t('nav_hotels') },
-    { to: '/marea',      label: t('nav_tides') },
-    { to: '/nosotros',   label: t('nav_about') },
+    { to: '/hoteles',     label: t('nav_hotels') },
+    { to: '/marea',       label: t('nav_tides') },
+    { to: '/nosotros',    label: t('nav_about') },
     { to: '/mis-reservas', label: t('nav_my_bookings') },
   ]
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f9f3e3' }}>
       {/* Navbar */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link to="/" className="text-xl font-black text-brand-700 tracking-tight shrink-0">
-            ✈️ DREAMSTOUR
+      <header className="sticky top-0 z-50 border-b border-amber-200" style={{ backgroundColor: '#f9f3e3' }}>
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <Link to="/" className="shrink-0">
+            <p style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: '1.4rem', lineHeight: 1, color: '#1C1208', letterSpacing: '-0.02em' }}>
+              DREAMS<span style={{ color: '#b07420' }}>TOUR</span>
+            </p>
+            <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#b07420', fontWeight: 500, textTransform: 'uppercase', marginTop: 2 }}>
+              Nordeste Brasilero
+            </p>
           </Link>
 
-          {/* Nav desktop */}
-          <nav className="hidden lg:flex items-center gap-5 text-sm font-medium">
+          <nav className="hidden lg:flex items-center gap-5" style={{ fontSize: '0.82rem', fontWeight: 500 }}>
             {navLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`hover:text-brand-600 transition-colors whitespace-nowrap ${pathname.startsWith(to) ? 'text-brand-600' : 'text-gray-600'}`}
+              <Link key={to} to={to}
+                style={{ color: pathname.startsWith(to) ? '#b07420' : '#1C1208CC', transition: 'color 0.15s', whiteSpace: 'nowrap' }}
+                onMouseEnter={e => e.target.style.color='#b07420'}
+                onMouseLeave={e => e.target.style.color = pathname.startsWith(to) ? '#b07420' : '#1C1208CC'}
               >
                 {label}
               </Link>
             ))}
           </nav>
 
-          {/* Derecha: idioma + WhatsApp */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Selector de idioma */}
-            <div className="relative">
-              <select
-                value={lang}
-                onChange={(e) => changeLang(e.target.value)}
-                className="appearance-none bg-gray-50 border border-gray-200 text-sm rounded-lg px-3 py-1.5 pr-7 focus:outline-none focus:ring-2 focus:ring-brand-400 cursor-pointer"
-              >
-                {languages.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.flag} {l.label}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▾</span>
-            </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <select value={lang} onChange={(e) => changeLang(e.target.value)}
+              style={{ background: 'transparent', border: '1px solid #d9a83a', borderRadius: 999, padding: '6px 12px', fontSize: '0.8rem', color: '#1C1208', cursor: 'pointer' }}>
+              {languages.map((l) => (
+                <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+              ))}
+            </select>
 
-            <a
-              href="https://wa.me/5491100000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:inline-flex bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-            >
-              💬 {t('nav_whatsapp')}
+            <a href="https://wa.me/5491100000000" target="_blank" rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors"
+              style={{ background: '#1C1208', color: '#f9f3e3' }}>
+              💬 WhatsApp
             </a>
 
-            {/* Hamburger mobile */}
-            <button
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
+            <button className="lg:hidden p-2" style={{ color: '#1C120880' }} onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? '✕' : '☰'}
             </button>
           </div>
         </div>
 
-        {/* Menú mobile */}
         {menuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-100 px-4 py-3 space-y-2">
+          <div className="lg:hidden border-t px-6 py-4 space-y-1" style={{ backgroundColor: '#f9f3e3', borderColor: '#e8d09a' }}>
             {navLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setMenuOpen(false)}
-                className="block py-2 text-sm text-gray-700 hover:text-brand-600 border-b border-gray-50"
-              >
+              <Link key={to} to={to} onClick={() => setMenuOpen(false)}
+                className="block py-2.5 text-sm border-b" style={{ color: '#1C1208CC', borderColor: '#f2e4c0' }}>
                 {label}
               </Link>
             ))}
-            <a
-              href="https://wa.me/5491100000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block py-2 text-sm text-green-600 font-medium"
-            >
-              💬 WhatsApp
-            </a>
+            <a href="https://wa.me/5491100000000" target="_blank" rel="noopener noreferrer"
+              className="block pt-3 text-sm font-medium" style={{ color: '#16a34a' }}>💬 WhatsApp</a>
           </div>
         )}
       </header>
 
-      {/* Contenido */}
-      <main className="flex-1">
-        <Outlet />
-      </main>
+      <main className="flex-1"><Outlet /></main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 text-sm py-10 mt-16">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-6">
+      <footer style={{ backgroundColor: '#1C1208', color: '#f2e4c0' }} className="py-12">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-8">
           <div>
-            <p className="text-white font-black text-lg mb-1">✈️ DREAMSTOUR</p>
-            <p>{t('footer_tagline')}</p>
+            <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.5rem', color: '#f9f3e3' }}>DREAMSTOUR</p>
+            <p className="text-sm mt-1" style={{ color: '#e8d09a' }}>{t('footer_tagline')}</p>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <div className="flex flex-wrap gap-x-8 gap-y-2">
             {navLinks.slice(0, 6).map(({ to, label }) => (
-              <Link key={to} to={to} className="hover:text-white transition-colors">{label}</Link>
+              <Link key={to} to={to} className="text-sm transition-colors" style={{ color: '#e8d09a' }}>{label}</Link>
             ))}
-            <Link to="/login" className="hover:text-white transition-colors">{t('footer_team')}</Link>
+            <Link to="/login" className="text-sm" style={{ color: '#e8d09a' }}>{t('footer_team')}</Link>
           </div>
         </div>
       </footer>

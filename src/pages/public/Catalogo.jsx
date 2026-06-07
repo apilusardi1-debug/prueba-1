@@ -46,7 +46,7 @@ export default function Catalogo({ categoria }) {
             {categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Excursiones' : 'Catálogo'}
           </p>
           <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2rem,4vw,3rem)', color: '#1C1208', lineHeight: 1.1, marginBottom: 8 }}>
-            {t('catalog_title')}
+            {categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Excursiones' : t('catalog_title')}
           </h1>
           <p style={{ color: '#1C1208AA', fontSize: '1rem' }}>{t('catalog_subtitle')}</p>
         </div>

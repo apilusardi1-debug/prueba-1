@@ -1,12 +1,27 @@
 import { Link } from 'react-router-dom'
-import { excursiones, destinos, formatPrecio } from '../../data/mockData.js'
+import { useState, useEffect } from 'react'
+import { destinos, formatPrecio } from '../../data/mockData.js'
+import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
 export default function Home() {
   const { t } = useLang()
   const { config } = useSiteConfig()
-  const destacados = excursiones.filter((e) => e.categoria === 'paquetes').slice(0, 3)
+  const [destacados, setDestacados] = useState([])
+
+  useEffect(() => {
+    async function cargar() {
+      try {
+        const { data } = await excursionesApi.getAll()
+        if (data) {
+          const paquetes = data.map(normalizarExcursion).filter(e => e.categoria === 'paquetes').slice(0, 3)
+          setDestacados(paquetes)
+        }
+      } catch (_) {}
+    }
+    cargar()
+  }, [])
 
   const categoriaLinks = [
     { icon: '✈️', labelKey: 'cat_packages',     to: '/paquetes' },

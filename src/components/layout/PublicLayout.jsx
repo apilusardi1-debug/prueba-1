@@ -4,114 +4,180 @@ import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
 
+const C = {
+  amarillo: '#f6c31b',
+  crema:    '#fff9e5',
+  teal:     '#18c5e6',
+  oscuro:   '#1c1208',
+}
+
+const NAV_MAIN = [
+  { to: '/paquetes',    label: 'PAQUETES AÉREOS' },
+  { to: '/excursiones', label: 'EXCURSIONES' },
+  { to: '/hoteles',     label: 'HOTELES & POSADAS' },
+  { to: '/traslados',   label: 'TRASLADOS' },
+]
+
 export default function PublicLayout() {
   const { pathname } = useLocation()
   const { t, lang, changeLang } = useLang()
   const { config } = useSiteConfig()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const navLinks = [
-    { to: '/paquetes',    label: t('nav_packages') },
+  const allLinks = [
+    ...NAV_MAIN,
     { to: '/destinos',    label: t('nav_destinations') },
-    { to: '/excursiones', label: t('nav_excursions') },
-    { to: '/hoteles',     label: t('nav_hotels') },
-    { to: '/traslados',   label: t('nav_transfers') },
     { to: '/marea',       label: t('nav_tides') },
     { to: '/nosotros',    label: t('nav_about') },
     { to: '/mis-reservas', label: t('nav_my_bookings') },
   ]
 
+  const pillStyle = (active) => ({
+    border: `1.5px solid ${C.amarillo}`,
+    color: active ? C.oscuro : C.amarillo,
+    background: active ? C.amarillo : 'transparent',
+    fontWeight: 700,
+    padding: '6px 16px',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    letterSpacing: '0.06em',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.15s',
+  })
+
+  const rightBtnStyle = {
+    background: C.amarillo,
+    color: C.oscuro,
+    fontWeight: 700,
+    padding: '7px 16px',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    letterSpacing: '0.06em',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    border: 'none',
+    cursor: 'pointer',
+  }
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f9f3e3' }}>
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-amber-200" style={{ backgroundColor: '#f9f3e3' }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="shrink-0">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: C.crema }}>
+
+      {/* ── Header ───────────────────────────────────────────────── */}
+      <header style={{ backgroundColor: C.crema, borderBottom: `1px solid rgba(246,195,27,0.3)`, position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+
+          {/* Hamburger */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Menú"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}
+          >
+            {menuOpen ? (
+              <span style={{ fontSize: '1.2rem', color: C.teal, lineHeight: 1 }}>✕</span>
+            ) : (
+              <>
+                <span style={{ display: 'block', width: 22, height: 2.5, background: C.teal, borderRadius: 2 }} />
+                <span style={{ display: 'block', width: 22, height: 2.5, background: C.teal, borderRadius: 2 }} />
+                <span style={{ display: 'block', width: 22, height: 2.5, background: C.teal, borderRadius: 2 }} />
+              </>
+            )}
+          </button>
+
+          {/* Logo */}
+          <Link to="/" style={{ flexShrink: 0, textDecoration: 'none' }}>
             <img
-              src="/logo.png.jpeg"
+              src="https://media.canva.com/v2/image-resize/format:PNG/height:133/quality:100/uri:ifs%3A%2F%2FM%2F5d20c91a-75a5-4e35-83d7-cf63cc5d962e/watermark:F/width:200?csig=AAAAAAAAAAAAAAAAAAAAAAz0Pc6CmnLRCkmUqhgjQFjNYR-bwXLLZt1XYD_B6-Oj&exp=1780900932&osig=AAAAAAAAAAAAAAAAAAAAAPG6RDyIwdZt4Z645t3j3fZEgfJyUGqkvUgjtlKOsCmH&signer=media-rpc&x-canva-quality=thumbnail"
               alt="Dream Tours"
-              style={{ height: 56, width: 'auto', objectFit: 'contain', display: 'block' }}
-              onError={(e) => {
-                // Si el logo no existe, muestra el texto como fallback
-                e.target.style.display = 'none'
-                e.target.nextSibling.style.display = 'block'
-              }}
+              style={{ height: 48, width: 'auto', objectFit: 'contain', display: 'block' }}
+              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }}
             />
             <div style={{ display: 'none' }}>
-              <p style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: '1.4rem', lineHeight: 1, color: '#1C1208', letterSpacing: '-0.02em' }}>
-                DREAM<span style={{ color: '#b07420' }}>TOURS</span>
-              </p>
-              <p style={{ fontSize: '0.6rem', letterSpacing: '0.2em', color: '#b07420', fontWeight: 500, textTransform: 'uppercase', marginTop: 2 }}>
-                Creadores de Sueños
-              </p>
+              <span style={{ fontFamily: '"Pacifico", cursive', fontSize: '1.3rem', color: C.oscuro }}>
+                Dream<span style={{ color: C.teal }}>Tours</span>
+              </span>
             </div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-5" style={{ fontSize: '0.82rem', fontWeight: 500 }}>
-            {navLinks.map(({ to, label }) => (
-              <Link key={to} to={to}
-                style={{ color: pathname.startsWith(to) ? '#b07420' : '#1C1208CC', transition: 'color 0.15s', whiteSpace: 'nowrap' }}
-                onMouseEnter={e => e.target.style.color='#b07420'}
-                onMouseLeave={e => e.target.style.color = pathname.startsWith(to) ? '#b07420' : '#1C1208CC'}
-              >
-                {label}
-              </Link>
-            ))}
+          {/* Nav pills — center (desktop) */}
+          <nav style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}
+            className="hidden-mobile">
+            <style>{`@media(max-width:900px){.hidden-mobile{display:none!important}}`}</style>
+            {NAV_MAIN.map(({ to, label }) => {
+              const active = pathname === to || pathname.startsWith(to + '/')
+              return (
+                <Link key={to} to={to}
+                  style={pillStyle(active)}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.amarillo; e.currentTarget.style.color = C.oscuro }}
+                  onMouseLeave={e => { e.currentTarget.style.background = active ? C.amarillo : 'transparent'; e.currentTarget.style.color = active ? C.oscuro : C.amarillo }}
+                >
+                  {label}
+                </Link>
+              )
+            })}
           </nav>
 
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Right side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
+            {/* Idioma */}
             <select value={lang} onChange={(e) => changeLang(e.target.value)}
-              style={{ background: 'transparent', border: '1px solid #d9a83a', borderRadius: 999, padding: '6px 12px', fontSize: '0.8rem', color: '#1C1208', cursor: 'pointer' }}>
+              style={{ ...rightBtnStyle, appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231c1208'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
               {languages.map((l) => (
                 <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
               ))}
             </select>
 
-            <a href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors"
-              style={{ background: '#1C1208', color: '#f9f3e3' }}>
-              💬 WhatsApp
+            {/* Contactanos */}
+            <a
+              href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
+              target="_blank" rel="noopener noreferrer"
+              style={rightBtnStyle}
+            >
+              CONTACTANOS
             </a>
 
-            <button className="lg:hidden p-2" style={{ color: '#1C120880' }} onClick={() => setMenuOpen(!menuOpen)}>
-              {menuOpen ? '✕' : '☰'}
-            </button>
+            {/* Mis reservas */}
+            <Link to="/mis-reservas" style={rightBtnStyle}>
+              MIS RESERVAS
+            </Link>
           </div>
         </div>
 
+        {/* Menú mobile */}
         {menuOpen && (
-          <div className="lg:hidden border-t px-6 py-4 space-y-1" style={{ backgroundColor: '#f9f3e3', borderColor: '#e8d09a' }}>
-            {navLinks.map(({ to, label }) => (
-              <Link key={to} to={to} onClick={() => setMenuOpen(false)}
-                className="block py-2.5 text-sm border-b" style={{ color: '#1C1208CC', borderColor: '#f2e4c0' }}>
+          <div style={{ backgroundColor: C.crema, borderTop: `1px solid rgba(246,195,27,0.3)`, padding: '12px 20px 20px' }}>
+            {allLinks.map(({ to, label }) => (
+              <Link key={to} to={to}
+                onClick={() => setMenuOpen(false)}
+                style={{ display: 'block', padding: '10px 0', fontSize: '0.9rem', fontWeight: 600, color: C.oscuro, textDecoration: 'none', borderBottom: `1px solid rgba(246,195,27,0.2)` }}
+              >
                 {label}
               </Link>
             ))}
-            <a href={`https://wa.me/${config.whatsapp}`} target="_blank" rel="noopener noreferrer"
-              className="block pt-3 text-sm font-medium" style={{ color: '#16a34a' }}>💬 WhatsApp</a>
           </div>
         )}
       </header>
 
       <main className="flex-1"><Outlet /></main>
 
-      <footer style={{ backgroundColor: '#1C1208', color: '#f2e4c0' }} className="py-12">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-8">
+      {/* ── Footer ───────────────────────────────────────────────── */}
+      <footer style={{ backgroundColor: C.oscuro, color: '#fff9e5' }} className="py-12">
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 32 }}>
           <div>
             <img
               src="/logo.png.jpeg"
               alt="Dream Tours"
-              style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 6 }}
+              style={{ height: 48, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 8 }}
               onError={(e) => { e.target.style.display = 'none' }}
             />
-            <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.2rem', color: '#f9f3e3' }}>DREAM TOURS</p>
-            <p className="text-sm mt-1" style={{ color: '#e8d09a' }}>{t('footer_tagline')}</p>
+            <p style={{ fontFamily: '"Pacifico", cursive', fontSize: '1.1rem', color: C.amarillo }}>Dream Tours</p>
+            <p style={{ fontSize: '0.8rem', color: 'rgba(255,249,229,0.6)', marginTop: 4 }}>{t('footer_tagline')}</p>
           </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-2">
-            {navLinks.slice(0, 6).map(({ to, label }) => (
-              <Link key={to} to={to} className="text-sm transition-colors" style={{ color: '#e8d09a' }}>{label}</Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 32px', alignContent: 'flex-start' }}>
+            {allLinks.slice(0, 7).map(({ to, label }) => (
+              <Link key={to} to={to} style={{ fontSize: '0.82rem', color: 'rgba(255,249,229,0.65)', textDecoration: 'none' }}>{label}</Link>
             ))}
-            <Link to="/login" className="text-sm" style={{ color: '#e8d09a' }}>{t('footer_team')}</Link>
+            <Link to="/login" style={{ fontSize: '0.82rem', color: 'rgba(255,249,229,0.65)', textDecoration: 'none' }}>{t('footer_team')}</Link>
           </div>
         </div>
       </footer>

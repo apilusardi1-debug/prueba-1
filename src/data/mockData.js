@@ -121,7 +121,7 @@ export const destinos = [
     nombre: 'Porto de Galinhas',
     estado: 'Pernambuco',
     descripcion: 'Famosa por sus piscinas naturales y aguas cristalinas. Una de las mejores playas de Brasil.',
-    imagen: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
+    imagen: 'https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F17bf2ec6-85e6-42b3-9868-aa26d39e3995/watermark:F/width:160?csig=AAAAAAAAAAAAAAAAAAAAAC0M04MD07yskDb6O3hJYeSAWbBBtq-OYNr2VGZJPigY&exp=1780901575&osig=AAAAAAAAAAAAAAAAAAAAAC6H5WczoX_hB1Ji2wuKdsKbJi15wD-gg4vIfR2TGKmd&signer=media-rpc&x-canva-quality=thumbnail',
     icono: '🐠',
   },
   {
@@ -129,7 +129,7 @@ export const destinos = [
     nombre: 'Maragogi',
     estado: 'Alagoas',
     descripcion: 'El "Caribe Brasilero". Arrecifes de coral y piscinas naturales de aguas turquesas.',
-    imagen: 'https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=800&q=80',
+    imagen: 'https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F13c289fd-b3e7-4cc1-b12a-16d996073cb5/watermark:F/width:112?csig=AAAAAAAAAAAAAAAAAAAAAOvC1Gph_pd-onPjxBHEJEPRWkhOBLhiGjJOMYUHzvf4&exp=1780902405&osig=AAAAAAAAAAAAAAAAAAAAAP_tQ6DudtR7SHqGiLGtlcef2iyi39HPRf5Gz4FbCrcb&signer=media-rpc&x-canva-quality=thumbnail',
     icono: '🪸',
   },
   {
@@ -137,7 +137,7 @@ export const destinos = [
     nombre: 'Maceió',
     estado: 'Alagoas',
     descripcion: 'Capital de Alagoas. Playas urbanas, cocoteros y las famosas piscinas naturales de Pajuçara.',
-    imagen: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
+    imagen: 'https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F1d203885-94c3-4a00-80c3-325f92a19ac2/watermark:F/width:112?csig=AAAAAAAAAAAAAAAAAAAAAE_RABl6VAVVQaCt0Ujbmr7-R-rfg9cRlc2-ex9UbkAT&exp=1780898898&osig=AAAAAAAAAAAAAAAAAAAAAM08URVfNcMWo16hUCxzB-doOxIzjBU4ZCkvj61CFvPC&signer=media-rpc&x-canva-quality=thumbnail',
     icono: '🌴',
   },
   {
@@ -145,7 +145,7 @@ export const destinos = [
     nombre: 'Pipa',
     estado: 'Rio Grande do Norte',
     descripcion: 'Pueblo bohemio con acantilados, delfines y el mejor surf del nordeste.',
-    imagen: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80',
+    imagen: 'https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F4c300692-2124-4f18-80c6-af2153cd4cc6/watermark:F/width:133?csig=AAAAAAAAAAAAAAAAAAAAAI64cmRNbF0IDpQgE_2xqrS1Ib3REQmIfMFJkZZEU8yK&exp=1780901689&osig=AAAAAAAAAAAAAAAAAAAAAP2JTUKTMzMyW3ihJbKbS8ZsXxZ5yk97alcseUHGJ-3c&signer=media-rpc&x-canva-quality=thumbnail',
     icono: '🏄',
   },
   {
@@ -161,7 +161,7 @@ export const destinos = [
     nombre: 'Fernando de Noronha',
     estado: 'Pernambuco',
     descripcion: 'Archipiélago protegido. El mejor buceo y snorkel de Brasil, con delfines y tortugas.',
-    imagen: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&q=80',
+    imagen: 'https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F263945f6-0a8e-4a86-9c97-cd652c62df92/watermark:F/width:133?csig=AAAAAAAAAAAAAAAAAAAAABiDzjt7gj_rhNdbXqfr0XUIY2OLxzR08ZzKljEUJPTS&exp=1780899906&osig=AAAAAAAAAAAAAAAAAAAAALrMmnrFikMZ_zIRtZOqFgW_KiYYDF4iDVlc0LZIh_jL&signer=media-rpc&x-canva-quality=thumbnail',
     icono: '🐢',
   },
 ]

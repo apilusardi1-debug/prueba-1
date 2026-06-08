@@ -1,236 +1,305 @@
 import { Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { destinos, formatPrecio } from '../../data/mockData.js'
-import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
+import { useState } from 'react'
+import { destinos } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+
+const C = {
+  amarillo: '#f6c31b',
+  crema:    '#fff9e5',
+  teal:     '#18c5e6',
+  oscuro:   '#1c1208',
+}
+
+const RESENAS = [
+  {
+    nombre: 'Elisa L',
+    texto: 'Los argentinos más geniales de Pernambuco. Fue increíble vivir momentos maravillosos en Praia dos Carneiros y Maragogi con esta fantástica agencia. Me trataron de maravilla y me brindaron experiencias increíbles en playas espectaculares. ¡Los recomiendo ampliamente, especialmente a quienes vienen de Latinoamérica!',
+    url: 'https://www.tripadvisor.com.br/ShowUserReviews-g303461-d33088974-r1046970088-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
+    img: 'https://www.tripadvisor.com.br/profile/photo?d=MAHL4GFaOuE',
+  },
+  {
+    nombre: 'Fabian G',
+    texto: '¡Amabilidad, excelencia! Recomiendo ampliamente la agencia Dream Tours; se encargaron de todo, desde el más mínimo detalle. Ha sido un placer trabajar con ellos durante años. Victoria, fue un placer contar contigo en esta ocasión ...',
+    url: 'https://www.tripadvisor.com.br/ShowUserReviews-g303461-d33088974-r1046970088-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
+    img: 'https://www.tripadvisor.com.br/profile/photo?d=MAHL4J9c6So',
+  },
+  {
+    nombre: 'Julieta C',
+    texto: 'Excelente, muchísimas gracias por todo.',
+    url: 'https://www.tripadvisor.com.br/ShowUserReviews-g303461-d33088974-r1050566558-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
+    img: 'https://www.tripadvisor.com.br/profile/photo?d=MAHL4O4ffzg',
+  },
+]
+
+const FAQS = [
+  {
+    q: '¿Cuál es la mejor época para visitar el Nordeste?',
+    a: 'Setiembre a marzo son los meses ideales: poco viento, aguas cristalinas y mareas perfectas para las piscinas naturales. Evitá junio y julio, que es la temporada de lluvias en Pernambuco y Alagoas.',
+  },
+  {
+    q: '¿Cómo funcionan las piscinas naturales?',
+    a: 'Las piscinas se forman solo con marea baja (menos de 0.7 metros). Nuestros guías conocen los horarios exactos de cada día para que no te pierdas el momento ideal.',
+  },
+  {
+    q: '¿Qué moneda usan? ¿Puedo pagar con tarjeta?',
+    a: 'La moneda es el Real brasileño (R$). En la mayoría de los hoteles y restaurantes aceptan tarjeta internacional. Te recomendamos llevar algo de efectivo para playas y mercados.',
+  },
+  {
+    q: '¿Necesito vacunas para entrar a Brasil?',
+    a: 'No es obligatorio. Se recomienda tener la vacuna de fiebre amarilla al día, especialmente si viajás a zonas rurales. Para los destinos de playa del Nordeste no es requerida.',
+  },
+]
+
+// Stable video thumbnail URLs (no expiry) — replace with actual MP4 when available
+const VIDEO_MAREA = ''
+const HERO_BG_FALLBACK = 'https://video-public.canva.com/VADxvm60wag/p/ee228ff928.jpg'
+const MAREA_BG = 'https://video-public.canva.com/VAGKrQoOV8E/p/f72303e7c2.jpg'
+
+const secTitle = {
+  fontFamily: '"DM Sans", system-ui, sans-serif',
+  fontWeight: 800,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: C.teal,
+  fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)',
+  lineHeight: 1.1,
+}
 
 export default function Home() {
   const { t } = useLang()
   const { config } = useSiteConfig()
-  const [destacados, setDestacados] = useState([])
-
-  useEffect(() => {
-    async function cargar() {
-      try {
-        const { data } = await excursionesApi.getAll()
-        if (data) {
-          const paquetes = data.map(normalizarExcursion).filter(e => e.categoria === 'paquetes').slice(0, 3)
-          setDestacados(paquetes)
-        }
-      } catch (_) {}
-    }
-    cargar()
-  }, [])
-
-  const categoriaLinks = [
-    { icon: '✈️', labelKey: 'cat_packages',   to: '/paquetes' },
-    { icon: '📍', labelKey: 'cat_destinations', to: '/destinos' },
-    { icon: '🤿', labelKey: 'cat_excursions',  to: '/excursiones' },
-    { icon: '🏨', labelKey: 'cat_hotels',      to: '/hoteles' },
-    { icon: '🚐', labelKey: 'cat_transfers',   to: '/traslados' },
-  ]
+  const [faqAbierto, setFaqAbierto] = useState(null)
 
   return (
-    <div>
-      {/* Hero */}
-      <section
-        className="relative flex items-end justify-start text-white bg-cover bg-center"
-        style={{ minHeight: '88vh', backgroundImage: `url('${config.hero_imagen}')` }}
-      >
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(28,18,8,0.85) 0%, rgba(28,18,8,0.3) 50%, transparent 100%)' }} />
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pb-16 md:pb-24 w-full">
-          <p style={{ fontFamily: '"DM Sans", sans-serif', letterSpacing: '0.25em', fontSize: '0.7rem', color: '#d9a83a', fontWeight: 600, textTransform: 'uppercase', marginBottom: '1rem' }}>
-            Nordeste Brasilero
-          </p>
-          <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2.8rem, 7vw, 5.5rem)', lineHeight: 1.0, color: '#f9f3e3', maxWidth: '14ch', marginBottom: '1.5rem' }}>
+    <div style={{ background: C.crema }}>
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section style={{
+        minHeight: '90vh',
+        backgroundImage: `url('${config.hero_imagen || HERO_BG_FALLBACK}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex',
+        alignItems: 'flex-end',
+        position: 'relative',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.82) 0%, rgba(28,18,8,0.15) 50%, transparent 100%)' }} />
+        <div style={{ position: 'relative', zIndex: 1, padding: '0 32px 64px', maxWidth: 700 }}>
+          <h1 style={{
+            fontFamily: '"Pacifico", cursive',
+            fontSize: 'clamp(2.8rem, 7vw, 5.2rem)',
+            color: C.amarillo,
+            lineHeight: 1.08,
+            marginBottom: 14,
+          }}>
             {t('hero_title')}
           </h1>
-          <p style={{ fontSize: '1.1rem', color: '#f2e4c0cc', maxWidth: '42ch', marginBottom: '2.5rem', fontWeight: 300 }}>
+          <p style={{
+            fontFamily: '"DM Sans", sans-serif',
+            fontSize: '0.78rem',
+            color: 'rgba(255,255,255,0.85)',
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            marginBottom: 30,
+            lineHeight: 1.6,
+            fontWeight: 600,
+          }}>
             {t('hero_subtitle')}
           </p>
-          <div className="flex flex-wrap gap-4">
-            <Link
-              to="/paquetes"
-              style={{ background: 'var(--cp, #b07420)', color: '#f9f3e3', fontWeight: 700, padding: '14px 36px', borderRadius: 999, fontSize: '0.95rem', transition: 'background 0.15s', display: 'inline-block', textDecoration: 'none' }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--cp-dark, #8a581e)'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--cp, #b07420)'}
-            >
-              {config.hero_cta} →
+          <Link to="/paquetes" style={{
+            background: C.teal,
+            color: 'white',
+            fontFamily: '"DM Sans", sans-serif',
+            fontWeight: 700,
+            padding: '13px 36px',
+            borderRadius: 8,
+            fontSize: '0.85rem',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}>
+            VER TODO
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Destinos ─────────────────────────────────────────────── */}
+      <section style={{ background: C.crema, padding: '44px 28px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 20 }}>
+            <h2 style={secTitle}>DESTINOS</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+            <style>{`@media(max-width:700px){.dest-grid{grid-template-columns:repeat(2,1fr)!important}}`}</style>
+            {destinos.slice(0, 5).map((d) => (
+              <Link key={d.id} to={`/destinos/${d.id}`}
+                className="dest-grid"
+                style={{ borderRadius: 18, aspectRatio: '3/4', display: 'block', textDecoration: 'none', position: 'relative', overflow: 'hidden' }}
+              >
+                <img src={d.imagen} alt={d.nombre}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s' }}
+                  onMouseEnter={e => e.target.style.transform = 'scale(1.07)'}
+                  onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+                />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.7) 0%, transparent 55%)' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 12px' }}>
+                  <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 700, fontSize: '0.8rem', color: 'white', lineHeight: 1.3 }}>
+                    {d.nombre} →
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <Link to="/destinos" style={{
+              border: `2px solid ${C.amarillo}`,
+              color: C.oscuro,
+              fontFamily: '"DM Sans", sans-serif',
+              fontWeight: 700,
+              padding: '9px 32px',
+              borderRadius: 999,
+              fontSize: '0.82rem',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+              display: 'inline-block',
+            }}>
+              Ver todos →
             </Link>
-            <a
-              href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ border: '1.5px solid #f9f3e3aa', color: '#f9f3e3', fontWeight: 600, padding: '14px 36px', borderRadius: 999, fontSize: '0.95rem', transition: 'all 0.15s', display: 'inline-block', textDecoration: 'none' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(249,243,227,0.15)' }}
-              onMouseLeave={e => { e.currentTarget.style.background='transparent' }}
-            >
-              💬 WhatsApp
-            </a>
           </div>
         </div>
       </section>
 
-      {/* Categorías */}
-      <section style={{ backgroundColor: '#f9f3e3', borderBottom: '1px solid #e8d09a' }}>
-        <div className="max-w-6xl mx-auto px-4 py-10">
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-            {categoriaLinks.map(({ icon, labelKey, to }) => (
-              <Link
-                key={to}
-                to={to}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all"
-                style={{ background: 'white', border: '1px solid #e8d09a', textDecoration: 'none' }}
-                onMouseEnter={e => { e.currentTarget.style.background='#f2e4c0'; e.currentTarget.style.borderColor='#d9a83a' }}
-                onMouseLeave={e => { e.currentTarget.style.background='white'; e.currentTarget.style.borderColor='#e8d09a' }}
-              >
-                <span style={{ fontSize: '1.6rem' }}>{icon}</span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1C1208CC', lineHeight: 1.3 }}>{t(labelKey)}</span>
-              </Link>
-            ))}
-          </div>
+      {/* ── Quiénes somos ────────────────────────────────────────── */}
+      <section style={{ background: '#0d2e2e', display: 'grid', gridTemplateColumns: '55% 45%' }}>
+        <style>{`@media(max-width:640px){.qs-grid{grid-template-columns:1fr!important}}`}</style>
+        <div className="qs-grid" style={{ minHeight: 400, position: 'relative', overflow: 'hidden' }}>
+          <img
+            src="https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F232c4b5c-4fca-4a30-9cfc-1016ab79fc1c/watermark:F/width:112?csig=AAAAAAAAAAAAAAAAAAAAALCpk0iGiVIlcLRR8TzR-yJ0xkVTg6AjvvqxpsM2ADHq&exp=1780899269&osig=AAAAAAAAAAAAAAAAAAAAAKKGeyv_i_Uo2tCKorYYSX1RjYTGgtnytEFPARUrepui&signer=media-rpc&x-canva-quality=thumbnail"
+            alt="Equipo Dream Tours"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 400, display: 'block' }}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, #0d2e2e 100%)' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 36px 40px 28px' }}>
+          <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.2em', color: C.amarillo, textTransform: 'uppercase', marginBottom: 14 }}>
+            QUIÉNES SOMOS?
+          </p>
+          <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.88rem', color: 'rgba(255,249,229,0.78)', lineHeight: 1.85, marginBottom: 22 }}>
+            Somos Flor y Marcos, hermanos argentinos que con nuestra experiencia en el nordeste de Brasil, creamos Dream Tours, una agencia familiar dedicada a ofrecerte la mejor experiencia. No solo planeamos tu viaje, sino que también te recibimos en el destino para que disfrutes cada momento.
+          </p>
+          <Link to="/nosotros" style={{ color: C.amarillo, fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none', fontFamily: '"DM Sans", sans-serif' }}>
+            Conocé nuestra historia →
+          </Link>
+        </div>
+      </section>
 
-          {/* Banners secundarios */}
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            {[
-              {
-                to: '/marea',
-                icon: '🌊',
-                label: 'Tabla de Marea',
-                sub: 'Planificá tus excursiones acuáticas',
-                bg: 'linear-gradient(135deg, #1a4e6e 0%, #1e7a8a 100%)',
-              },
-              {
-                to: '/nosotros',
-                icon: 'ℹ️',
-                label: 'Sobre nosotros',
-                sub: 'Conocé al equipo de Dream Tours',
-                bg: 'linear-gradient(135deg, #3b2a1a 0%, #6b4423 100%)',
-              },
-            ].map(({ to, icon, label, sub, bg }) => (
-              <Link
-                key={to}
-                to={to}
-                className="flex items-center gap-4 p-5 rounded-2xl transition-all"
-                style={{ background: bg, textDecoration: 'none' }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '0.9' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-              >
-                <span style={{ fontSize: '2rem' }}>{icon}</span>
-                <div>
-                  <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1rem', color: '#f9f3e3', lineHeight: 1.2 }}>{label}</p>
-                  <p style={{ fontSize: '0.72rem', color: '#f9f3e3aa', marginTop: 3 }}>{sub}</p>
-                </div>
-                <span style={{ marginLeft: 'auto', color: '#f9f3e3aa', fontSize: '1.2rem' }}>→</span>
-              </Link>
+      {/* ── Dudas frecuentes ─────────────────────────────────────── */}
+      <section style={{ background: C.crema, padding: '48px 28px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <h2 style={{ ...secTitle, marginBottom: 28 }}>DUDAS FRECUENTES</h2>
+          <div style={{ borderTop: `2px solid ${C.amarillo}` }}>
+            {FAQS.map((faq, i) => (
+              <div key={i} style={{ borderBottom: `1px solid rgba(246,195,27,0.35)` }}>
+                <button
+                  onClick={() => setFaqAbierto(faqAbierto === i ? null : i)}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: 16 }}
+                >
+                  <span style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 600, fontSize: '0.95rem', color: C.oscuro }}>{faq.q}</span>
+                  <span style={{
+                    fontSize: '1.4rem', color: C.teal, fontWeight: 300, flexShrink: 0, lineHeight: 1,
+                    transform: faqAbierto === i ? 'rotate(45deg)' : 'none',
+                    transition: 'transform 0.2s',
+                  }}>+</span>
+                </button>
+                {faqAbierto === i && (
+                  <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.9rem', color: '#5a4530', lineHeight: 1.75, paddingBottom: 16 }}>
+                    {faq.a}
+                  </p>
+                )}
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Destinos */}
-      <section style={{ backgroundColor: '#f9f3e3' }} className="py-16">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Explore</p>
-              <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(1.8rem,3.5vw,2.5rem)', color: '#1C1208', lineHeight: 1.1 }}>{t('nav_destinations')}</h2>
-            </div>
-            <Link to="/destinos" style={{ fontSize: '0.82rem', color: '#b07420', fontWeight: 600, textDecoration: 'none' }}>Ver todos →</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {destinos.map((d) => (
-              <Link
-                key={d.id}
-                to={`/destinos/${d.id}`}
-                className="group relative overflow-hidden rounded-2xl"
-                style={{ aspectRatio: '3/4', display: 'block', textDecoration: 'none' }}
-              >
-                <img src={d.imagen} alt={d.nombre} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(28,18,8,0.8) 0%, transparent 55%)' }} />
-                <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                  <p style={{ fontSize: '1.3rem', lineHeight: 1 }}>{d.icono}</p>
-                  <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2, marginTop: 4 }}>{d.nombre}</p>
-                  <p style={{ fontSize: '0.68rem', color: '#e8d09acc', marginTop: 2 }}>{d.estado}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Paquetes destacados */}
-      <section style={{ backgroundColor: '#f2e4c0' }} className="py-16">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Destacados</p>
-              <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(1.8rem,3.5vw,2.5rem)', color: '#1C1208', lineHeight: 1.1 }}>{t('nav_packages')}</h2>
-            </div>
-            <Link to="/paquetes" style={{ fontSize: '0.82rem', color: '#b07420', fontWeight: 600, textDecoration: 'none' }}>Ver todos →</Link>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {destacados.map((ex) => (
-              <Link
-                key={ex.id}
-                to={`/excursiones/${ex.id}`}
-                className="group overflow-hidden transition-all"
-                style={{ background: '#f9f3e3', borderRadius: 20, border: '1px solid #e8d09a', textDecoration: 'none', display: 'block' }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow='0 8px 30px rgba(28,18,8,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow='none'}
-              >
-                <div className="relative overflow-hidden" style={{ height: 220 }}>
-                  <img
-                    src={ex.imagen}
-                    alt={ex.nombre}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {ex.cuposDisponibles <= 3 && (
-                    <span style={{ position: 'absolute', top: 12, right: 12, background: '#c0392b', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 999 }}>
-                      ¡Últimos {ex.cuposDisponibles}!
-                    </span>
-                  )}
-                  <div style={{ position: 'absolute', top: 12, left: 12, background: '#1C1208CC', color: '#f2e4c0', fontSize: '0.68rem', fontWeight: 600, padding: '4px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    {ex.destino}
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1.1rem', color: '#1C1208', marginBottom: 6 }}>{ex.nombre}</h3>
-                  <p style={{ fontSize: '0.82rem', color: '#1C1208AA', marginBottom: 16, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ex.descripcion}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e8d09a', paddingTop: 12 }}>
-                    <span style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.2rem', color: '#b07420' }}>{formatPrecio(ex.precio, ex.moneda)}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#1C1208AA' }}>⏱ {ex.duracion}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA dark */}
-      <section style={{ backgroundColor: '#1C1208', color: '#f9f3e3' }} className="py-20">
-        <div className="max-w-2xl mx-auto text-center px-4">
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.25em', color: '#d9a83a', textTransform: 'uppercase', marginBottom: 16 }}>Viajá con nosotros</p>
-          <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(1.8rem,4vw,2.8rem)', color: '#f9f3e3', lineHeight: 1.15, marginBottom: 16 }}>
-            ¿Querés armar tu viaje a medida?
+      {/* ── Reseñas ──────────────────────────────────────────────── */}
+      <section style={{ background: C.amarillo, padding: '44px 28px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <h2 style={{ ...secTitle, color: C.oscuro, marginBottom: 24, lineHeight: 1.2 }}>
+            LO QUE DICEN<br />NUESTROS CLIENTES
           </h2>
-          <p style={{ color: '#e8d09a99', fontSize: '1rem', marginBottom: 36, fontWeight: 300 }}>
-            Hablá directamente con nuestro equipo por WhatsApp.
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {RESENAS.map((r) => (
+              <a key={r.nombre} href={r.url} target="_blank" rel="noopener noreferrer"
+                style={{ background: 'white', borderRadius: 14, padding: '18px 16px', textDecoration: 'none', display: 'block' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0, fontFamily: '"DM Sans", sans-serif' }}>
+                    {r.nombre[0]}
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 700, fontSize: '0.78rem', color: C.oscuro, textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>{r.nombre}</p>
+                    <p style={{ color: C.amarillo, fontSize: '0.72rem', marginTop: 3, letterSpacing: 2 }}>★★★★★</p>
+                  </div>
+                </div>
+                <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.82rem', color: '#5a4530', lineHeight: 1.65, fontStyle: 'italic' }}>"{r.texto}"</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tabla de Marea + CTA ─────────────────────────────────── */}
+      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 260 }}>
+        <style>{`@media(max-width:640px){.marea-split{grid-template-columns:1fr!important}}`}</style>
+
+        {/* Lado Marea */}
+        <div className="marea-split" style={{ position: 'relative', minHeight: 260, overflow: 'hidden', background: '#0d3042', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {VIDEO_MAREA ? (
+            <video src={VIDEO_MAREA} autoPlay loop muted playsInline
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <img src={MAREA_BG} alt="Tabla de Marea"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(13,48,66,0.4)' }} />
+          <Link to="/marea" style={{
+            position: 'relative', zIndex: 1,
+            border: '2px solid white', color: 'white',
+            fontFamily: '"DM Sans", sans-serif', fontWeight: 700,
+            padding: '12px 28px', borderRadius: 6,
+            fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
+          }}>
+            TABLA DE MAREA →
+          </Link>
+        </div>
+
+        {/* Lado CTA */}
+        <div style={{ background: C.crema, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '36px 28px', textAlign: 'center', gap: 10 }}>
+          <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 800, fontSize: 'clamp(1rem,2vw,1.4rem)', color: C.oscuro, lineHeight: 1.25, letterSpacing: '0.01em' }}>
+            ¿Querés armar tu viaje a medida?
+          </p>
+          <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.88rem', color: '#5a4530', fontWeight: 400 }}>
+            Hablá directamente con nuestro equipo
           </p>
           <a
             href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--cp, #b07420)', color: '#f9f3e3', fontWeight: 700, padding: '16px 40px', borderRadius: 999, fontSize: '1rem', transition: 'background 0.15s', textDecoration: 'none' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--cp-dark, #8a581e)'}
-            onMouseLeave={e => e.currentTarget.style.background='var(--cp, #b07420)'}
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              background: C.teal, color: 'white',
+              fontFamily: '"DM Sans", sans-serif', fontWeight: 700,
+              padding: '12px 28px', borderRadius: 999,
+              fontSize: '0.88rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+              textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
           >
-            💬 Escribinos por WhatsApp
+            COMUNICARME 🟢
           </a>
         </div>
       </section>
+
     </div>
   )
 }

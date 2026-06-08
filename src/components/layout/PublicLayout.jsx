@@ -87,20 +87,20 @@ export default function PublicLayout() {
           {/* Logo */}
           <Link to="/" style={{ flexShrink: 0, textDecoration: 'none' }}>
             <img
-              src="https://media.canva.com/v2/image-resize/format:PNG/height:133/quality:100/uri:ifs%3A%2F%2FM%2F5d20c91a-75a5-4e35-83d7-cf63cc5d962e/watermark:F/width:200?csig=AAAAAAAAAAAAAAAAAAAAAAz0Pc6CmnLRCkmUqhgjQFjNYR-bwXLLZt1XYD_B6-Oj&exp=1780900932&osig=AAAAAAAAAAAAAAAAAAAAAPG6RDyIwdZt4Z645t3j3fZEgfJyUGqkvUgjtlKOsCmH&signer=media-rpc&x-canva-quality=thumbnail"
+              src="/logo.png.jpeg"
               alt="Dream Tours"
               style={{ height: 48, width: 'auto', objectFit: 'contain', display: 'block' }}
               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }}
             />
             <div style={{ display: 'none' }}>
-              <span style={{ fontFamily: '"Pacifico", cursive', fontSize: '1.3rem', color: C.oscuro }}>
+              <span style={{ fontFamily: "'Just Another Hand', cursive", fontSize: '1.6rem', color: C.oscuro }}>
                 Dream<span style={{ color: C.teal }}>Tours</span>
               </span>
             </div>
           </Link>
 
           {/* Nav pills — center (desktop) */}
-          <nav style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}
+          <nav style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}
             className="hidden-mobile">
             <style>{`@media(max-width:900px){.hidden-mobile{display:none!important}}`}</style>
             {NAV_MAIN.map(({ to, label }) => {
@@ -170,7 +170,7 @@ export default function PublicLayout() {
               style={{ height: 48, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 8 }}
               onError={(e) => { e.target.style.display = 'none' }}
             />
-            <p style={{ fontFamily: '"Pacifico", cursive', fontSize: '1.1rem', color: C.amarillo }}>Dream Tours</p>
+            <p style={{ fontFamily: "'Just Another Hand', cursive", fontSize: '1.4rem', color: C.amarillo }}>Dream Tours</p>
             <p style={{ fontSize: '0.8rem', color: 'rgba(255,249,229,0.6)', marginTop: 4 }}>{t('footer_tagline')}</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 32px', alignContent: 'flex-start' }}>

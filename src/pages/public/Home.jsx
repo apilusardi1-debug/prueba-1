@@ -51,14 +51,16 @@ const FAQS = [
   },
 ]
 
-// Stable video thumbnail URLs (no expiry) — replace with actual MP4 when available
-const VIDEO_MAREA = ''
-const HERO_BG_FALLBACK = 'https://video-public.canva.com/VADxvm60wag/p/ee228ff928.jpg'
-const MAREA_BG = 'https://video-public.canva.com/VAGKrQoOV8E/p/f72303e7c2.jpg'
+const HERO_VIDEO = '/hero.mp4'
+const MAREA_VIDEO = '/marea.mp4'
+const EQUIPO_IMG = '/equipo.jpg'
+
+const HV = "'Helvetica Neue', Helvetica, Arial, sans-serif"
+const JAH = "'Just Another Hand', cursive"
 
 const secTitle = {
-  fontFamily: '"DM Sans", system-ui, sans-serif',
-  fontWeight: 800,
+  fontFamily: HV,
+  fontWeight: 700,
   letterSpacing: '0.14em',
   textTransform: 'uppercase',
   color: C.teal,
@@ -75,28 +77,25 @@ export default function Home() {
     <div style={{ background: C.crema }}>
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section style={{
-        minHeight: '90vh',
-        backgroundImage: `url('${config.hero_imagen || HERO_BG_FALLBACK}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        display: 'flex',
-        alignItems: 'flex-end',
-        position: 'relative',
-      }}>
+      <section style={{ minHeight: '90vh', display: 'flex', alignItems: 'flex-end', position: 'relative', overflow: 'hidden' }}>
+        <video
+          src={config.hero_video || HERO_VIDEO}
+          autoPlay loop muted playsInline
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.82) 0%, rgba(28,18,8,0.15) 50%, transparent 100%)' }} />
         <div style={{ position: 'relative', zIndex: 1, padding: '0 32px 64px', maxWidth: 700 }}>
           <h1 style={{
-            fontFamily: '"Pacifico", cursive',
-            fontSize: 'clamp(2.8rem, 7vw, 5.2rem)',
+            fontFamily: JAH,
+            fontSize: 'clamp(3.8rem, 10vw, 7rem)',
             color: C.amarillo,
-            lineHeight: 1.08,
+            lineHeight: 1.05,
             marginBottom: 14,
           }}>
             {t('hero_title')}
           </h1>
           <p style={{
-            fontFamily: '"DM Sans", sans-serif',
+            fontFamily: HV,
             fontSize: '0.78rem',
             color: 'rgba(255,255,255,0.85)',
             letterSpacing: '0.22em',
@@ -110,7 +109,7 @@ export default function Home() {
           <Link to="/paquetes" style={{
             background: C.teal,
             color: 'white',
-            fontFamily: '"DM Sans", sans-serif',
+            fontFamily: HV,
             fontWeight: 700,
             padding: '13px 36px',
             borderRadius: 8,
@@ -145,7 +144,7 @@ export default function Home() {
                 />
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.7) 0%, transparent 55%)' }} />
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 12px' }}>
-                  <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 700, fontSize: '0.8rem', color: 'white', lineHeight: 1.3 }}>
+                  <p style={{ fontFamily: HV, fontWeight: 700, fontSize: '0.8rem', color: 'white', lineHeight: 1.3 }}>
                     {d.nombre} →
                   </p>
                 </div>
@@ -156,7 +155,7 @@ export default function Home() {
             <Link to="/destinos" style={{
               border: `2px solid ${C.amarillo}`,
               color: C.oscuro,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: HV,
               fontWeight: 700,
               padding: '9px 32px',
               borderRadius: 999,
@@ -176,20 +175,20 @@ export default function Home() {
         <style>{`@media(max-width:640px){.qs-grid{grid-template-columns:1fr!important}}`}</style>
         <div className="qs-grid" style={{ minHeight: 400, position: 'relative', overflow: 'hidden' }}>
           <img
-            src="https://media.canva.com/v2/image-resize/format:PNG/height:200/quality:100/uri:ifs%3A%2F%2FM%2F232c4b5c-4fca-4a30-9cfc-1016ab79fc1c/watermark:F/width:112?csig=AAAAAAAAAAAAAAAAAAAAALCpk0iGiVIlcLRR8TzR-yJ0xkVTg6AjvvqxpsM2ADHq&exp=1780899269&osig=AAAAAAAAAAAAAAAAAAAAAKKGeyv_i_Uo2tCKorYYSX1RjYTGgtnytEFPARUrepui&signer=media-rpc&x-canva-quality=thumbnail"
+            src={EQUIPO_IMG}
             alt="Equipo Dream Tours"
             style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 400, display: 'block' }}
           />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 60%, #0d2e2e 100%)' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 36px 40px 28px' }}>
-          <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.2em', color: C.amarillo, textTransform: 'uppercase', marginBottom: 14 }}>
+          <p style={{ fontFamily: HV, fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.2em', color: C.amarillo, textTransform: 'uppercase', marginBottom: 14 }}>
             QUIÉNES SOMOS?
           </p>
-          <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.88rem', color: 'rgba(255,249,229,0.78)', lineHeight: 1.85, marginBottom: 22 }}>
+          <p style={{ fontFamily: HV, fontSize: '0.88rem', color: 'rgba(255,249,229,0.78)', lineHeight: 1.85, marginBottom: 22 }}>
             Somos Flor y Marcos, hermanos argentinos que con nuestra experiencia en el nordeste de Brasil, creamos Dream Tours, una agencia familiar dedicada a ofrecerte la mejor experiencia. No solo planeamos tu viaje, sino que también te recibimos en el destino para que disfrutes cada momento.
           </p>
-          <Link to="/nosotros" style={{ color: C.amarillo, fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none', fontFamily: '"DM Sans", sans-serif' }}>
+          <Link to="/nosotros" style={{ color: C.amarillo, fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none', fontFamily: HV }}>
             Conocé nuestra historia →
           </Link>
         </div>
@@ -206,7 +205,7 @@ export default function Home() {
                   onClick={() => setFaqAbierto(faqAbierto === i ? null : i)}
                   style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: 16 }}
                 >
-                  <span style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 600, fontSize: '0.95rem', color: C.oscuro }}>{faq.q}</span>
+                  <span style={{ fontFamily: HV, fontWeight: 600, fontSize: '0.95rem', color: C.oscuro }}>{faq.q}</span>
                   <span style={{
                     fontSize: '1.4rem', color: C.teal, fontWeight: 300, flexShrink: 0, lineHeight: 1,
                     transform: faqAbierto === i ? 'rotate(45deg)' : 'none',
@@ -214,7 +213,7 @@ export default function Home() {
                   }}>+</span>
                 </button>
                 {faqAbierto === i && (
-                  <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.9rem', color: '#5a4530', lineHeight: 1.75, paddingBottom: 16 }}>
+                  <p style={{ fontFamily: HV, fontSize: '0.9rem', color: '#5a4530', lineHeight: 1.75, paddingBottom: 16 }}>
                     {faq.a}
                   </p>
                 )}
@@ -236,15 +235,15 @@ export default function Home() {
                 style={{ background: 'white', borderRadius: 14, padding: '18px 16px', textDecoration: 'none', display: 'block' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0, fontFamily: '"DM Sans", sans-serif' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0, fontFamily: HV }}>
                     {r.nombre[0]}
                   </div>
                   <div>
-                    <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 700, fontSize: '0.78rem', color: C.oscuro, textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>{r.nombre}</p>
+                    <p style={{ fontFamily: HV, fontWeight: 700, fontSize: '0.78rem', color: C.oscuro, textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1 }}>{r.nombre}</p>
                     <p style={{ color: C.amarillo, fontSize: '0.72rem', marginTop: 3, letterSpacing: 2 }}>★★★★★</p>
                   </div>
                 </div>
-                <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.82rem', color: '#5a4530', lineHeight: 1.65, fontStyle: 'italic' }}>"{r.texto}"</p>
+                <p style={{ fontFamily: HV, fontSize: '0.82rem', color: '#5a4530', lineHeight: 1.65, fontStyle: 'italic' }}>"{r.texto}"</p>
               </a>
             ))}
           </div>
@@ -257,18 +256,13 @@ export default function Home() {
 
         {/* Lado Marea */}
         <div className="marea-split" style={{ position: 'relative', minHeight: 260, overflow: 'hidden', background: '#0d3042', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {VIDEO_MAREA ? (
-            <video src={VIDEO_MAREA} autoPlay loop muted playsInline
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <img src={MAREA_BG} alt="Tabla de Marea"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
+          <video src={MAREA_VIDEO} autoPlay loop muted playsInline
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(13,48,66,0.4)' }} />
           <Link to="/marea" style={{
             position: 'relative', zIndex: 1,
             border: '2px solid white', color: 'white',
-            fontFamily: '"DM Sans", sans-serif', fontWeight: 700,
+            fontFamily: HV, fontWeight: 700,
             padding: '12px 28px', borderRadius: 6,
             fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
           }}>
@@ -277,25 +271,31 @@ export default function Home() {
         </div>
 
         {/* Lado CTA */}
-        <div style={{ background: C.crema, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '36px 28px', textAlign: 'center', gap: 10 }}>
-          <p style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 800, fontSize: 'clamp(1rem,2vw,1.4rem)', color: C.oscuro, lineHeight: 1.25, letterSpacing: '0.01em' }}>
+        <div style={{ background: C.crema, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '36px 28px', textAlign: 'center', gap: 12 }}>
+          <p style={{ fontFamily: HV, fontWeight: 800, fontSize: 'clamp(1rem,2vw,1.35rem)', color: C.oscuro, lineHeight: 1.25 }}>
             ¿Querés armar tu viaje a medida?
           </p>
-          <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: '0.88rem', color: '#5a4530', fontWeight: 400 }}>
+          <p style={{ fontFamily: HV, fontSize: '0.88rem', color: '#5a4530', fontWeight: 400 }}>
             Hablá directamente con nuestro equipo
           </p>
           <a
             href={`https://wa.me/${config.whatsapp}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
             target="_blank" rel="noopener noreferrer"
             style={{
-              background: C.teal, color: 'white',
-              fontFamily: '"DM Sans", sans-serif', fontWeight: 700,
-              padding: '12px 28px', borderRadius: 999,
-              fontSize: '0.88rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: C.amarillo,
+              color: C.oscuro,
+              fontFamily: HV,
+              fontWeight: 800,
+              padding: '13px 32px',
+              borderRadius: 999,
+              fontSize: '0.82rem',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              display: 'inline-block',
             }}
           >
-            COMUNICARME 🟢
+            COMUNICARME →
           </a>
         </div>
       </section>

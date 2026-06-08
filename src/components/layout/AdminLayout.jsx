@@ -7,6 +7,7 @@ const navItems = [
   { path: '/admin/reservas',          label: 'Reservas',        icon: '📋' },
   { path: '/admin/excursiones',       label: 'Excursiones',     icon: '🗺️' },
   { path: '/admin/agenda',            label: 'Agenda',          icon: '📅' },
+  { path: '/admin/equipo',            label: 'Equipo',          icon: '👤' },
   { path: '/admin/configuracion',     label: 'Configuración',   icon: '⚙️' },
 ]
 

@@ -57,6 +57,30 @@ export async function subirImagen(archivo) {
   return { url: data.publicUrl, error: null }
 }
 
+// ── Choferes ───────────────────────────────────────────────────────────────────
+export const choferesApi = {
+  getAll: () => supabase?.from('choferes').select('*').order('nombre'),
+  create: (data) => supabase?.from('choferes').insert(data).select().single(),
+  update: (id, data) => supabase?.from('choferes').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('choferes').delete().eq('id', id),
+}
+
+// ── Guías ──────────────────────────────────────────────────────────────────────
+export const guiasApi = {
+  getAll: () => supabase?.from('guias').select('*').order('nombre'),
+  create: (data) => supabase?.from('guias').insert(data).select().single(),
+  update: (id, data) => supabase?.from('guias').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('guias').delete().eq('id', id),
+}
+
+// ── Vendedores ─────────────────────────────────────────────────────────────────
+export const vendedoresApi = {
+  getAll: () => supabase?.from('vendedores').select('*').order('nombre'),
+  create: (data) => supabase?.from('vendedores').insert(data).select().single(),
+  update: (id, data) => supabase?.from('vendedores').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('vendedores').delete().eq('id', id),
+}
+
 // ── Clientes ───────────────────────────────────────────────────────────────────
 export const clientesApi = {
   getAll: () => supabase?.from('clientes').select('*').order('nombre'),

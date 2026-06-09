@@ -10,11 +10,18 @@ const estadosLead = {
   perdido:    { label: 'Perdido',    color: 'bg-red-100 text-red-700' },
 }
 
+const MAKE_WEBHOOK = 'https://hook.eu1.make.com/elh45qvyqefs87sfctg2w0ltm61okrdt'
+
+const FORM_VACIO = { nombre: '', whatsapp: '', excursion: '', fecha: '', hospedaje: 'no' }
+
 export default function Leads() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [vista, setVista] = useState('kanban')
   const [seleccionado, setSeleccionado] = useState(null)
+  const [mostrarFormLead, setMostrarFormLead] = useState(false)
+  const [formLead, setFormLead] = useState(FORM_VACIO)
+  const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -32,6 +39,33 @@ export default function Leads() {
     await leadsApi.updateEstado(id, nuevoEstado, null)
   }
 
+  async function registrarLeadWhatsApp() {
+    if (!formLead.nombre.trim() || !formLead.whatsapp.trim()) return
+    setEnviando(true)
+    try {
+      await fetch(MAKE_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: formLead.nombre,
+          whatsapp: formLead.whatsapp,
+          excursion: formLead.excursion,
+          fecha: formLead.fecha,
+          hospedaje: formLead.hospedaje,
+        }),
+      })
+      setMostrarFormLead(false)
+      setFormLead(FORM_VACIO)
+      setTimeout(async () => {
+        const { data } = await leadsApi.getAll()
+        if (data) setLeads(data)
+      }, 2000)
+    } catch (_) {
+      alert('Error al enviar. Revisá la conexión.')
+    }
+    setEnviando(false)
+  }
+
   async function guardarNota(id, notas) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, notas } : l))
     await leadsApi.updateEstado(id, leads.find(l => l.id === id)?.estado, notas)
@@ -47,6 +81,12 @@ export default function Leads() {
           <p className="text-gray-400 text-sm">{leads.length} leads en total</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setMostrarFormLead(true)}
+            className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+          >
+            📲 Lead de WhatsApp
+          </button>
           {['kanban','tabla'].map(v => (
             <button key={v} onClick={() => setVista(v)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${vista === v ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
@@ -141,6 +181,55 @@ export default function Leads() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {mostrarFormLead && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setMostrarFormLead(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-lg">📲 Registrar lead de WhatsApp</h2>
+              <button onClick={() => setMostrarFormLead(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Nombre *</label>
+                <input type="text" value={formLead.nombre} onChange={e => setFormLead({...formLead, nombre: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  placeholder="Ej: María González" autoFocus />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">WhatsApp *</label>
+                <input type="text" value={formLead.whatsapp} onChange={e => setFormLead({...formLead, whatsapp: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  placeholder="Ej: 5491112345678" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Excursión de interés</label>
+                <input type="text" value={formLead.excursion} onChange={e => setFormLead({...formLead, excursion: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  placeholder="Ej: Cataratas" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Fecha de interés</label>
+                <input type="date" value={formLead.fecha} onChange={e => setFormLead({...formLead, fecha: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">¿Necesita hospedaje?</label>
+                <select value={formLead.hospedaje} onChange={e => setFormLead({...formLead, hospedaje: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                  <option value="no">No</option>
+                  <option value="si">Sí</option>
+                  <option value="consultar">A consultar</option>
+                </select>
+              </div>
+            </div>
+            <button onClick={registrarLeadWhatsApp} disabled={enviando}
+              className="mt-5 w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+              {enviando ? 'Enviando...' : '📲 Registrar lead'}
+            </button>
+          </div>
         </div>
       )}
 

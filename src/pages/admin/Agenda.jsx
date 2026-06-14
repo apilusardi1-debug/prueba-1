@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { excursiones, reservas, formatPrecio } from '../../data/mockData.js'
 import { choferesApi } from '../../lib/supabase.js'
+import { sendWhatsApp } from '../../lib/ultramsg.js'
 
 function SeccionChoferes() {
   const [choferes, setChoferes] = useState([])
@@ -23,18 +24,17 @@ function SeccionChoferes() {
     reservasConfirmadas.some((r) => asignaciones[r.id] === c.id)
   )
 
-  const cerrarOperacion = () => {
+  const cerrarOperacion = async () => {
     if (choferesAsignados.length === 0) return alert('Primero asigná al menos un chofer.')
-    choferesAsignados.forEach((chofer, i) => {
+    for (const chofer of choferesAsignados) {
       const susReservas = reservasConfirmadas.filter((r) => asignaciones[r.id] === chofer.id)
       const lineas = susReservas.map((r) =>
         `• *${r.clienteNombre}*\n  👥 ${r.personas} persona${r.personas > 1 ? 's' : ''}\n  📞 ${r.clienteWhatsapp}\n  🗺 ${r.excursionNombre}\n  📅 ${new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}`
       ).join('\n\n')
       const mensaje = `Hola ${chofer.nombre} 👋\n\nTe enviamos los pasajeros asignados para mañana:\n\n${lineas}\n\n¡Muchas gracias!`
-      setTimeout(() => {
-        window.open(`https://wa.me/${chofer.whatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank')
-      }, i * 600)
-    })
+      await sendWhatsApp(chofer.whatsapp, mensaje)
+    }
+    alert(`✅ Mensajes enviados a ${choferesAsignados.length} chofer${choferesAsignados.length !== 1 ? 'es' : ''}.`)
   }
 
   const totalAsignadas = reservasConfirmadas.filter((r) => asignaciones[r.id]).length

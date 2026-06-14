@@ -54,7 +54,7 @@ export default function PublicLayout() {
             <span className="material-symbols-outlined" style={{ color: iconColor }}>menu</span>
           </button>
           <Link to="/" aria-label="Inicio" className="flex-shrink-0">
-            <img src="/logo.png.jpeg" alt="DreamTours" className="h-11 w-auto object-contain"
+            <img src="/logo.png" alt="DreamTours" className="h-11 w-auto object-contain"
               style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
               onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
             <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
@@ -108,7 +108,7 @@ export default function PublicLayout() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
           <div className="relative w-72 bg-white shadow-2xl flex flex-col h-full">
             <div className="flex items-center justify-between px-6 py-5 border-b border-surface-variant">
-              <img src="/logo.png.jpeg" alt="DreamTours" className="h-10 w-auto object-contain"
+              <img src="/logo.png" alt="DreamTours" className="h-10 w-auto object-contain"
                 onError={e => { e.target.style.display = 'none' }} />
               <button onClick={() => setDrawerOpen(false)} className="p-1">
                 <span className="material-symbols-outlined text-on-surface-variant">close</span>
@@ -143,7 +143,7 @@ export default function PublicLayout() {
       <footer className="bg-deep-ocean w-full py-16 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <div className="col-span-1 flex flex-col items-center md:items-start mb-8 md:mb-0">
-            <img src="/logo.png.jpeg" alt="DreamTours" className="h-11 w-auto mb-4 object-contain"
+            <img src="/logo.png" alt="DreamTours" className="h-11 w-auto mb-4 object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
               onError={e => { e.target.style.display = 'none' }} />
             <p className="font-body-md text-body-md text-sand-beige/80">Tu agencia argentina en el Nordeste de Brasil.</p>

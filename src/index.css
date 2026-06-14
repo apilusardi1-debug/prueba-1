@@ -1,16 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Just+Another+Hand&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    background-color: #fff9e5;
-    color: #1C1208;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #191c1d;
+    font-family: 'Montserrat', system-ui, sans-serif;
   }
-  h1, h2, h3 {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  }
+}
+
+.glass-overlay {
+  background: linear-gradient(to bottom, rgba(0, 33, 71, 0.2), rgba(0, 33, 71, 0.85));
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }

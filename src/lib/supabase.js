@@ -89,3 +89,23 @@ export const clientesApi = {
   upsert: (data) => supabase?.from('clientes').upsert(data, { onConflict: 'whatsapp' }).select().single(),
   updateNotas: (id, notas) => supabase?.from('clientes').update({ notas }).eq('id', id).select().single(),
 }
+
+// ── Conversaciones ─────────────────────────────────────────────────────────────
+export const conversacionesApi = {
+  getAll: () => supabase?.from('conversaciones').select('*').order('ultimo_mensaje_at', { ascending: false }),
+  marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
+}
+
+// ── Mensajes ───────────────────────────────────────────────────────────────────
+export const mensajesApi = {
+  getByConversacion: (id) => supabase?.from('mensajes').select('*').eq('conversacion_id', id).order('created_at'),
+}
+
+// ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────
+export async function enviarWhatsApp({ phone, message, nombre, conversacionId }) {
+  if (!supabase) return { error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+    body: { phone, message, nombre, conversacion_id: conversacionId },
+  })
+  return { data, error }
+}

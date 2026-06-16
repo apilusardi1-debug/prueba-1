@@ -1,0 +1,297 @@
+import { useState, useEffect, useRef } from 'react'
+import { supabase, conversacionesApi, mensajesApi, enviarWhatsApp } from '../../../lib/supabase.js'
+
+function formatTiempo(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const mins = Math.floor((Date.now() - d) / 60000)
+  if (mins < 1) return 'ahora'
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h`
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+}
+
+function formatHora(ts) {
+  if (!ts) return ''
+  return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function Avatar({ nombre, size = 'md' }) {
+  const sizeClass = size === 'sm' ? 'w-8 h-8 text-sm' : 'w-10 h-10 text-base'
+  return (
+    <div className={`${sizeClass} rounded-full bg-green-100 flex items-center justify-center font-bold text-green-700 shrink-0`}>
+      {(nombre || '?')[0].toUpperCase()}
+    </div>
+  )
+}
+
+export default function WhatsAppCRM() {
+  const [conversaciones, setConversaciones] = useState([])
+  const [seleccionada, setSeleccionada] = useState(null)
+  const [mensajes, setMensajes] = useState([])
+  const [texto, setTexto] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [loading, setLoading] = useState(true)
+  const chatBottomRef = useRef(null)
+  const inputRef = useRef(null)
+
+  // Cargar conversaciones + suscripción realtime
+  useEffect(() => {
+    conversacionesApi.getAll().then(({ data }) => {
+      if (data) setConversaciones(data)
+      setLoading(false)
+    })
+
+    if (!supabase) return
+    const channel = supabase
+      .channel('crm-conversaciones')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setConversaciones(prev => [payload.new, ...prev])
+        } else if (payload.eventType === 'UPDATE') {
+          setConversaciones(prev =>
+            [...prev.map(c => c.id === payload.new.id ? payload.new : c)]
+              .sort((a, b) => new Date(b.ultimo_mensaje_at) - new Date(a.ultimo_mensaje_at))
+          )
+        }
+      })
+      .subscribe()
+
+    return () => channel.unsubscribe()
+  }, [])
+
+  // Cargar mensajes + suscripción realtime al cambiar conversación
+  useEffect(() => {
+    if (!seleccionada) return
+    setMensajes([])
+
+    mensajesApi.getByConversacion(seleccionada.id).then(({ data }) => {
+      if (data) setMensajes(data)
+    })
+
+    conversacionesApi.marcarLeida(seleccionada.id)
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, no_leidos: 0 } : c))
+
+    if (!supabase) return
+    const channel = supabase
+      .channel(`crm-mensajes-${seleccionada.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'mensajes',
+        filter: `conversacion_id=eq.${seleccionada.id}`,
+      }, (payload) => {
+        setMensajes(prev => {
+          // Reemplazar mensaje optimista si existe con el mismo texto
+          const sinTemp = prev.filter(m =>
+            !(m.id?.toString().startsWith('temp-') && m.texto === payload.new.texto && m.direccion === payload.new.direccion)
+          )
+          return [...sinTemp, payload.new]
+        })
+      })
+      .subscribe()
+
+    return () => channel.unsubscribe()
+  }, [seleccionada?.id])
+
+  // Scroll al último mensaje
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [mensajes])
+
+  async function seleccionarConversacion(conv) {
+    setSeleccionada(conv)
+    setTimeout(() => inputRef.current?.focus(), 100)
+  }
+
+  async function enviar() {
+    const textoEnviar = texto.trim()
+    if (!textoEnviar || !seleccionada || enviando) return
+
+    setTexto('')
+    setEnviando(true)
+
+    // Optimistic update
+    const tempId = `temp-${Date.now()}`
+    const tempMsg = {
+      id: tempId,
+      conversacion_id: seleccionada.id,
+      whatsapp: seleccionada.whatsapp,
+      texto: textoEnviar,
+      direccion: 'saliente',
+      created_at: new Date().toISOString(),
+    }
+    setMensajes(prev => [...prev, tempMsg])
+
+    const { error } = await enviarWhatsApp({
+      phone: seleccionada.whatsapp,
+      message: textoEnviar,
+      nombre: seleccionada.contacto_nombre,
+      conversacionId: seleccionada.id,
+    })
+
+    if (error) {
+      setMensajes(prev => prev.filter(m => m.id !== tempId))
+      setTexto(textoEnviar)
+      alert('Error al enviar el mensaje. Revisá la conexión con UltraMsg.')
+    }
+
+    setEnviando(false)
+  }
+
+  const convsFiltradas = conversaciones.filter(c =>
+    c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    c.whatsapp?.includes(busqueda)
+  )
+
+  return (
+    <div className="flex h-full bg-white">
+      {/* Panel izquierdo — lista de conversaciones */}
+      <div className="w-80 border-r border-gray-200 flex flex-col shrink-0">
+        <div className="px-4 py-4 border-b border-gray-100">
+          <h1 className="font-bold text-gray-900 text-lg mb-3">💬 WhatsApp</h1>
+          <input
+            type="text"
+            placeholder="Buscar contacto o número..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            className="w-full bg-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading && (
+            <p className="text-sm text-gray-400 text-center py-10">Cargando...</p>
+          )}
+
+          {!loading && convsFiltradas.length === 0 && (
+            <div className="text-center py-12 text-gray-400 px-4">
+              <p className="text-3xl mb-2">💬</p>
+              <p className="text-sm">
+                {busqueda ? 'Sin resultados' : 'Aún no hay conversaciones. Aparecerán cuando llegue un mensaje de WhatsApp.'}
+              </p>
+            </div>
+          )}
+
+          {convsFiltradas.map(conv => (
+            <button
+              key={conv.id}
+              onClick={() => seleccionarConversacion(conv)}
+              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                seleccionada?.id === conv.id ? 'bg-green-50 border-l-2 border-l-green-500' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar nombre={conv.contacto_nombre} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{conv.contacto_nombre}</p>
+                    <p className="text-xs text-gray-400 shrink-0">{formatTiempo(conv.ultimo_mensaje_at)}</p>
+                  </div>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{conv.ultimo_mensaje || '–'}</p>
+                </div>
+                {conv.no_leidos > 0 && (
+                  <span className="bg-green-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center font-medium shrink-0">
+                    {conv.no_leidos}
+                  </span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Panel derecho — chat */}
+      {seleccionada ? (
+        <div className="flex-1 flex flex-col" style={{ backgroundImage: 'radial-gradient(circle, #e5ddd5 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundColor: '#f0ebe3' }}>
+          {/* Header del chat */}
+          <div className="bg-white border-b border-gray-200 px-5 py-3 flex items-center gap-3 shadow-sm">
+            <Avatar nombre={seleccionada.contacto_nombre} />
+            <div>
+              <p className="font-semibold text-gray-900">{seleccionada.contacto_nombre}</p>
+              <p className="text-xs text-gray-400">+{seleccionada.whatsapp}</p>
+            </div>
+            <div className="ml-auto">
+              <a
+                href={`https://wa.me/${seleccionada.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-green-600 hover:text-green-700 font-medium"
+              >
+                Abrir en WhatsApp ↗
+              </a>
+            </div>
+          </div>
+
+          {/* Mensajes */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+            {mensajes.length === 0 && (
+              <p className="text-center text-sm text-gray-400 py-8">No hay mensajes aún</p>
+            )}
+            {mensajes.map(msg => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-2xl shadow-sm text-sm ${
+                  msg.direccion === 'saliente'
+                    ? 'bg-[#dcf8c6] text-gray-900 rounded-br-sm'
+                    : 'bg-white text-gray-900 rounded-bl-sm'
+                } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
+                  <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
+                  <p className="text-xs text-gray-400 mt-1 text-right">
+                    {formatHora(msg.created_at)}
+                    {msg.direccion === 'saliente' && (
+                      <span className="ml-1">{msg.id?.toString().startsWith('temp-') ? '🕐' : '✓✓'}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Input de envío */}
+          <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-end gap-3">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={texto}
+              onChange={e => {
+                setTexto(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  enviar()
+                }
+              }}
+              placeholder="Escribí un mensaje... (Enter para enviar, Shift+Enter para nueva línea)"
+              className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
+              style={{ minHeight: '42px' }}
+            />
+            <button
+              onClick={enviar}
+              disabled={enviando || !texto.trim()}
+              className="bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0"
+            >
+              {enviando ? '...' : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#f0ebe3' }}>
+          <div className="text-center text-gray-500">
+            <p className="text-6xl mb-4">💬</p>
+            <p className="font-semibold text-lg text-gray-700">WhatsApp CRM</p>
+            <p className="text-sm mt-1 text-gray-400">Seleccioná una conversación para ver los mensajes</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

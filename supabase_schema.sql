@@ -94,3 +94,40 @@ create index on reservas(cliente_whatsapp);
 create index on reservas(fecha);
 create index on leads(estado);
 create index on leads(created_at desc);
+
+-- ── Conversaciones WhatsApp (CRM) ──────────────────────────────
+create table conversaciones (
+  id                  uuid primary key default gen_random_uuid(),
+  contacto_nombre     text not null,
+  whatsapp            text not null unique,
+  ultimo_mensaje      text,
+  ultimo_mensaje_at   timestamptz default now(),
+  no_leidos           int default 0,
+  created_at          timestamptz default now()
+);
+
+-- ── Mensajes WhatsApp ───────────────────────────────────────────
+create table mensajes (
+  id                  uuid primary key default gen_random_uuid(),
+  conversacion_id     uuid references conversaciones(id) on delete cascade,
+  whatsapp            text not null,
+  texto               text not null,
+  direccion           text not null check (direccion in ('entrante', 'saliente')),
+  created_at          timestamptz default now()
+);
+
+-- RLS conversaciones y mensajes (solo admins)
+alter table conversaciones enable row level security;
+create policy "conv_all_auth" on conversaciones for all using (auth.role() = 'authenticated');
+-- Service role (Edge Functions) puede saltear RLS automáticamente
+
+alter table mensajes enable row level security;
+create policy "msg_all_auth" on mensajes for all using (auth.role() = 'authenticated');
+
+-- Índices
+create index on conversaciones(ultimo_mensaje_at desc);
+create index on mensajes(conversacion_id, created_at);
+
+-- Habilitar Realtime en estas tablas (ejecutar en Supabase Dashboard > Database > Replication)
+-- alter publication supabase_realtime add table conversaciones;
+-- alter publication supabase_realtime add table mensajes;

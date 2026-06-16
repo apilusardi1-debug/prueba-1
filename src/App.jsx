@@ -27,6 +27,7 @@ import Excursiones from './pages/admin/Excursiones.jsx'
 import Agenda from './pages/admin/Agenda.jsx'
 import SiteConfig from './pages/admin/SiteConfig.jsx'
 import Equipo from './pages/admin/Equipo.jsx'
+import WhatsAppCRM from './pages/admin/crm/WhatsApp.jsx'
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
       { path: '/admin/agenda',            element: <Agenda /> },
       { path: '/admin/equipo',           element: <Equipo /> },
       { path: '/admin/configuracion',    element: <SiteConfig /> },
+      { path: '/admin/crm/whatsapp',    element: <WhatsAppCRM /> },
     ],
   },
 ])

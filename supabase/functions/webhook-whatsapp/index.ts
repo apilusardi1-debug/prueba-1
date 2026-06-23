@@ -3,32 +3,56 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 serve(async (req) => {
   try {
-    const body = await req.json()
+    const rawBody = await req.text()
 
-    // Solo procesar mensajes entrantes
-    if (body.event !== 'messages.upsert') {
+    // WuzAPI envía form-encoded: instanceName=xxx&jsonData=xxx&userID=xxx
+    const params = new URLSearchParams(rawBody)
+    const jsonDataStr = params.get('jsonData')
+    if (!jsonDataStr) return new Response('ok', { status: 200 })
+
+    const payload = JSON.parse(jsonDataStr)
+
+    if (payload.type !== 'Message') return new Response('ok', { status: 200 })
+
+    const event = payload.event
+    if (!event) return new Response('ok', { status: 200 })
+
+    const info = event.Info
+    if (!info) return new Response('ok', { status: 200 })
+
+    if (info.IsFromMe) return new Response('ok', { status: 200 })
+    if (info.IsGroup) return new Response('ok', { status: 200 })
+
+    const chatJid = info.Chat || ''
+    if (chatJid.includes('@g.us') || chatJid.includes('@broadcast')) {
       return new Response('ok', { status: 200 })
     }
 
-    const msg = body.data
-    if (!msg || msg.key?.fromMe) {
-      return new Response('ok', { status: 200 })
+    // SenderAlt tiene el número real incluso para contactos @lid
+    let phone = ''
+    if (info.SenderAlt) {
+      phone = info.SenderAlt.split(':')[0].split('@')[0]
+    } else {
+      phone = chatJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@lid', '').split(':')[0]
     }
 
-    const phone = (msg.key?.remoteJid || '')
-      .replace('@s.whatsapp.net', '')
-      .replace('@c.us', '')
-    const nombre = msg.pushName || 'Sin nombre'
-    const mensaje = msg.message?.conversation || msg.message?.extendedTextMessage?.text || ''
+    if (!phone) return new Response('ok', { status: 200 })
 
-    if (!phone || !mensaje) return new Response('ok', { status: 200 })
+    const nombre = info.PushName || 'Sin nombre'
+    const msg = event.Message
+    const mensaje =
+      msg?.conversation ||
+      msg?.extendedTextMessage?.text ||
+      msg?.imageMessage?.caption ||
+      '[Mensaje multimedia]'
+
+    if (!mensaje) return new Response('ok', { status: 200 })
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Crear lead si no existe
     const { data: leadExistente } = await supabase
       .from('leads').select('id').eq('whatsapp', phone).maybeSingle()
 
@@ -42,11 +66,11 @@ serve(async (req) => {
       })
     }
 
-    // Buscar o crear conversacion
     const { data: convExistente } = await supabase
       .from('conversaciones').select('id, no_leidos').eq('whatsapp', phone).maybeSingle()
 
-    let convId: string
+    let convId: string | undefined
+
     if (convExistente) {
       await supabase.from('conversaciones').update({
         contacto_nombre: nombre,
@@ -56,7 +80,7 @@ serve(async (req) => {
       }).eq('id', convExistente.id)
       convId = convExistente.id
     } else {
-      const { data: nueva } = await supabase
+      const { data: nueva, error: insertErr } = await supabase
         .from('conversaciones')
         .insert({
           whatsapp: phone,
@@ -65,9 +89,19 @@ serve(async (req) => {
           ultimo_mensaje_at: new Date().toISOString(),
           no_leidos: 1,
         })
-        .select('id').single()
-      convId = nueva!.id
+        .select('id')
+        .single()
+
+      if (insertErr) {
+        const { data: fallback } = await supabase
+          .from('conversaciones').select('id').eq('whatsapp', phone).single()
+        convId = fallback?.id
+      } else {
+        convId = nueva?.id
+      }
     }
+
+    if (!convId) return new Response('ok', { status: 200 })
 
     await supabase.from('mensajes').insert({
       conversacion_id: convId,
@@ -78,6 +112,7 @@ serve(async (req) => {
 
     return new Response('ok', { status: 200 })
   } catch (err) {
+    console.error('webhook-whatsapp error:', err)
     return new Response(JSON.stringify({ error: err.message }), { status: 500 })
   }
 })

@@ -1,37 +1,45 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const EVOLUTION_URL = Deno.env.get('EVOLUTION_API_URL')
-const EVOLUTION_KEY = Deno.env.get('EVOLUTION_API_KEY')
-const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE')
+const WUZAPI_URL = Deno.env.get('WUZAPI_URL')
+const WUZAPI_TOKEN = Deno.env.get('WUZAPI_TOKEN')
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
     const { phone, message, nombre, conversacion_id } = await req.json()
     const phoneClean = phone.replace(/\D/g, '')
 
-    const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
+    console.log(`Enviando a ${phoneClean} via WuzAPI`)
+
+    const res = await fetch(`${WUZAPI_URL}/chat/send/text?token=${WUZAPI_TOKEN}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': EVOLUTION_KEY!,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        number: phoneClean,
-        options: { delay: 1200 },
-        textMessage: { text: message },
+        Phone: phoneClean,
+        Body: message,
       }),
     })
-    const data = await res.json()
+
+    const responseText = await res.text()
+    console.log(`WuzAPI response ${res.status}:`, responseText)
+
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: `WuzAPI error ${res.status}`, detail: responseText }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
+
+    let data: unknown
+    try { data = JSON.parse(responseText) } catch { data = { raw: responseText } }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -81,6 +89,7 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', ...CORS },
     })
   } catch (err) {
+    console.error('send-whatsapp error:', err)
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...CORS },

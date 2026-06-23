@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase, conversacionesApi, mensajesApi, enviarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
 
 function formatTiempo(ts) {
   if (!ts) return ''
@@ -15,6 +15,16 @@ function formatTiempo(ts) {
 function formatHora(ts) {
   if (!ts) return ''
   return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatPhone(phone) {
+  if (!phone) return ''
+  const d = phone.replace(/\D/g, '')
+  // Argentina: 54 9 XXX XXXXXXX
+  if (d.startsWith('54') && d.length >= 12) {
+    return `+54 9 ${d.slice(3, 6)} ${d.slice(6, 10)}-${d.slice(10)}`
+  }
+  return `+${d}`
 }
 
 function Avatar({ nombre, size = 'md' }) {
@@ -34,6 +44,7 @@ export default function WhatsAppCRM() {
   const [enviando, setEnviando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
+  const [sincronizando, setSincronizando] = useState(false)
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -106,6 +117,20 @@ export default function WhatsAppCRM() {
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
+  async function sincronizar() {
+    setSincronizando(true)
+    const { data, error } = await sincronizarWhatsApp()
+    setSincronizando(false)
+    if (error) {
+      alert('Error al sincronizar: ' + error.message)
+      return
+    }
+    alert(`Sincronización completa: ${data?.syncedConversaciones ?? 0} conversaciones nuevas importadas.`)
+    conversacionesApi.getAll().then(({ data }) => {
+      if (data) setConversaciones(data)
+    })
+  }
+
   async function enviar() {
     const textoEnviar = texto.trim()
     if (!textoEnviar || !seleccionada || enviando) return
@@ -135,7 +160,7 @@ export default function WhatsAppCRM() {
     if (error) {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
-      alert('Error al enviar el mensaje. Revisá la conexión con UltraMsg.')
+      alert('Error al enviar el mensaje: ' + (error?.message || 'Sin respuesta del servidor. Revisá que Evolution API esté activa.'))
     }
 
     setEnviando(false)
@@ -151,7 +176,16 @@ export default function WhatsAppCRM() {
       {/* Panel izquierdo — lista de conversaciones */}
       <div className="w-80 border-r border-gray-200 flex flex-col shrink-0">
         <div className="px-4 py-4 border-b border-gray-100">
-          <h1 className="font-bold text-gray-900 text-lg mb-3">💬 WhatsApp</h1>
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="font-bold text-gray-900 text-lg">💬 WhatsApp</h1>
+            <button
+              onClick={sincronizar}
+              disabled={sincronizando}
+              className="text-xs bg-green-50 hover:bg-green-100 text-green-700 font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {sincronizando ? 'Sincronizando...' : '↻ Sincronizar'}
+            </button>
+          </div>
           <input
             type="text"
             placeholder="Buscar contacto o número..."
@@ -211,7 +245,7 @@ export default function WhatsAppCRM() {
             <Avatar nombre={seleccionada.contacto_nombre} />
             <div>
               <p className="font-semibold text-gray-900">{seleccionada.contacto_nombre}</p>
-              <p className="text-xs text-gray-400">+{seleccionada.whatsapp}</p>
+              <p className="text-xs text-gray-400">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
             <div className="ml-auto">
               <a

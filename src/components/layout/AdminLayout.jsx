@@ -340,7 +340,7 @@ function LayoutContent() {
   const { isExpanded, isHovered } = useSidebar()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 admin-ui">
       <Sidebar />
       <Backdrop />
       <div className={`transition-all duration-300 ease-in-out ${

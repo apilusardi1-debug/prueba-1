@@ -43,6 +43,7 @@ export const reservasApi = {
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export const leadsApi = {
   getAll: () => supabase?.from('leads').select('*').order('created_at', { ascending: false }),
+  getByWhatsapp: (whatsapp) => supabase?.from('leads').select('id').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   updateEstado: (id, estado, notas) => supabase?.from('leads').update({ estado, notas }).eq('id', id).select().single(),
 }
@@ -85,15 +86,52 @@ export const vendedoresApi = {
 // ── Clientes ───────────────────────────────────────────────────────────────────
 export const clientesApi = {
   getAll: () => supabase?.from('clientes').select('*').order('nombre'),
+  getById: (id) => supabase?.from('clientes').select('*').eq('id', id).single(),
   getByWhatsapp: (whatsapp) => supabase?.from('clientes').select('*').eq('whatsapp', whatsapp).single(),
   upsert: (data) => supabase?.from('clientes').upsert(data, { onConflict: 'whatsapp' }).select().single(),
+  create: (data) => supabase?.from('clientes').insert(data).select().single(),
+  update: (id, data) => supabase?.from('clientes').update(data).eq('id', id).select().single(),
   updateNotas: (id, notas) => supabase?.from('clientes').update({ notas }).eq('id', id).select().single(),
+}
+
+// ── Reservas por cliente ────────────────────────────────────────────────────────
+export const reservasClienteApi = {
+  getByCliente: (clienteId, whatsapp) =>
+    supabase?.from('reservas')
+      .select('*, excursiones(nombre, destino)')
+      .or(`cliente_id.eq.${clienteId},cliente_whatsapp.eq.${whatsapp}`)
+      .order('fecha', { ascending: false }),
+}
+
+// ── Pagos ──────────────────────────────────────────────────────────────────────
+export const pagosApi = {
+  getByCliente: (clienteId) =>
+    supabase?.from('pagos').select('*, reservas(fecha, excursion_id, excursiones(nombre))').eq('cliente_id', clienteId).order('created_at', { ascending: false }),
+  getByReserva: (reservaId) =>
+    supabase?.from('pagos').select('*').eq('reserva_id', reservaId).order('created_at'),
+  create: (data) => supabase?.from('pagos').insert(data).select().single(),
+}
+
+// ── Actividad clientes ─────────────────────────────────────────────────────────
+export const actividadApi = {
+  getByCliente: (clienteId) =>
+    supabase?.from('actividad_clientes').select('*').eq('cliente_id', clienteId).order('created_at', { ascending: false }),
+  registrar: (data) => supabase?.from('actividad_clientes').insert(data).select().single(),
+}
+
+// ── Notas clientes ─────────────────────────────────────────────────────────────
+export const notasClienteApi = {
+  getByCliente: (clienteId) =>
+    supabase?.from('notas_clientes').select('*').eq('cliente_id', clienteId).order('created_at', { ascending: false }),
+  create: (data) => supabase?.from('notas_clientes').insert(data).select().single(),
+  delete: (id) => supabase?.from('notas_clientes').delete().eq('id', id),
 }
 
 // ── Conversaciones ─────────────────────────────────────────────────────────────
 export const conversacionesApi = {
   getAll: () => supabase?.from('conversaciones').select('*').order('ultimo_mensaje_at', { ascending: false }),
   marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
+  updateEtiqueta: (id, etiqueta) => supabase?.from('conversaciones').update({ etiqueta }).eq('id', id),
 }
 
 // ── Mensajes ───────────────────────────────────────────────────────────────────

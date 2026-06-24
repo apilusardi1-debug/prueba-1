@@ -1,29 +1,68 @@
-import { useState } from 'react'
-import { clientes as initialClientes } from '../../data/mockData.js'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  clientesApi, reservasClienteApi, pagosApi,
+  actividadApi, notasClienteApi,
+} from '../../lib/supabase.js'
 
-const estadoColor = {
-  activo:   'bg-green-100 text-green-700',
-  vip:      'bg-purple-100 text-purple-700',
-  inactivo: 'bg-gray-100 text-gray-500',
+/* ─── helpers ─── */
+function iniciales(nombre = '') {
+  return nombre.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
+}
+function fmtFecha(f) {
+  if (!f) return '—'
+  return new Date(f).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+function fmtMonto(n, moneda = 'USD') {
+  if (n == null) return '—'
+  return `${moneda} ${Number(n).toLocaleString('es-AR')}`
 }
 
-export default function Clientes() {
-  const [clientes, setClientes] = useState(initialClientes)
-  const [busqueda, setBusqueda] = useState('')
-  const [seleccionado, setSeleccionado] = useState(null)
+/* ─── colores estado reserva ─── */
+const ESTADO_RESERVA = {
+  pendiente:   'bg-yellow-50 text-yellow-700 border-yellow-200',
+  confirmada:  'bg-blue-50 text-blue-700 border-blue-200',
+  completada:  'bg-green-50 text-green-700 border-green-200',
+  cancelada:   'bg-red-50 text-red-700 border-red-200',
+}
 
-  const filtrados = clientes.filter((c) =>
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.email.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.whatsapp.includes(busqueda)
+/* ─── iconos de actividad ─── */
+const ACTIVIDAD_ICON = {
+  lead_recibido:        { icon: '🎯', color: 'bg-blue-50 text-blue-600' },
+  lead_convertido:      { icon: '✅', color: 'bg-green-50 text-green-600' },
+  reserva_creada:       { icon: '📋', color: 'bg-indigo-50 text-indigo-600' },
+  reserva_confirmada:   { icon: '✔️', color: 'bg-blue-50 text-blue-600' },
+  pago_registrado:      { icon: '💳', color: 'bg-amber-50 text-amber-600' },
+  excursion_completada: { icon: '🗺️', color: 'bg-green-50 text-green-600' },
+  mensaje_enviado:      { icon: '💬', color: 'bg-teal-50 text-teal-600' },
+  nota_agregada:        { icon: '📝', color: 'bg-gray-50 text-gray-600' },
+  reserva_cancelada:    { icon: '❌', color: 'bg-red-50 text-red-600' },
+}
+
+/* ════════════════════════════════════════════════
+   LISTA DE CLIENTES
+   ════════════════════════════════════════════════ */
+export default function Clientes() {
+  const [clientes, setClientes] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [busqueda, setBusqueda] = useState('')
+  const [perfil, setPerfil] = useState(null)
+
+  useEffect(() => {
+    clientesApi.getAll().then(({ data }) => {
+      setClientes(data || [])
+      setCargando(false)
+    })
+  }, [])
+
+  const filtrados = clientes.filter(c =>
+    [c.nombre, c.email, c.whatsapp, c.pais, c.ciudad]
+      .filter(Boolean).some(v => v.toLowerCase().includes(busqueda.toLowerCase()))
   )
 
-  function guardarNota(id, nota) {
-    setClientes((prev) => prev.map((c) => c.id === id ? { ...c, notas: nota } : c))
-  }
-
   return (
-    <div className="p-8">
+    <div className="p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
@@ -35,122 +74,417 @@ export default function Clientes() {
       <div className="mb-5">
         <input
           type="text"
-          placeholder="Buscar por nombre, email o WhatsApp..."
+          placeholder="Buscar por nombre, email, WhatsApp o país..."
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={e => setBusqueda(e.target.value)}
           className="w-full max-w-md border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
       </div>
 
       {/* Tabla */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="px-5 py-3 text-left">Nombre</th>
-              <th className="px-5 py-3 text-left">WhatsApp</th>
-              <th className="px-5 py-3 text-left">Origen</th>
-              <th className="px-5 py-3 text-left">Reservas</th>
-              <th className="px-5 py-3 text-left">Estado</th>
-              <th className="px-5 py-3 text-left">Última actividad</th>
-              <th className="px-5 py-3 text-left"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filtrados.map((cliente) => (
-              <tr key={cliente.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3">
-                  <p className="font-medium text-gray-900">{cliente.nombre}</p>
-                  <p className="text-xs text-gray-400">{cliente.email}</p>
-                </td>
-                <td className="px-5 py-3 text-gray-600">{cliente.whatsapp}</td>
-                <td className="px-5 py-3 text-gray-500">{cliente.origen}</td>
-                <td className="px-5 py-3">
-                  <span className="font-semibold text-brand-700">{cliente.reservas}</span>
-                </td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${estadoColor[cliente.estado]}`}>
-                    {cliente.estado}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-gray-400 text-xs">
-                  {new Date(cliente.ultimaActividad).toLocaleDateString('es-AR')}
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`https://wa.me/${cliente.whatsapp}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-500 hover:text-green-600"
-                    >
-                      💬
-                    </a>
-                    <button
-                      onClick={() => setSeleccionado(cliente)}
-                      className="text-brand-500 hover:text-brand-700 text-xs font-medium"
-                    >
-                      Ver
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filtrados.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <p className="text-3xl mb-2">👥</p>
-            <p>No hay clientes que coincidan.</p>
+        {cargando ? (
+          <div className="text-center py-16 text-gray-400 text-sm">Cargando...</div>
+        ) : filtrados.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-4xl mb-2">👥</p>
+            <p className="text-sm">No hay clientes que coincidan.</p>
           </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="px-5 py-3 text-left">Cliente</th>
+                <th className="px-5 py-3 text-left">WhatsApp</th>
+                <th className="px-5 py-3 text-left">País</th>
+                <th className="px-5 py-3 text-left">Reservas</th>
+                <th className="px-5 py-3 text-left">Total gastado</th>
+                <th className="px-5 py-3 text-left"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtrados.map(c => (
+                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600 text-xs font-bold flex-shrink-0">
+                        {iniciales(c.nombre)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{c.nombre}</p>
+                        {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-gray-500 text-xs font-mono">{c.whatsapp}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs">{c.pais || '—'}{c.ciudad ? `, ${c.ciudad}` : ''}</td>
+                  <td className="px-5 py-3">
+                    <span className="font-semibold text-gray-800">{c.cantidad_reservas || 0}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="font-semibold text-brand-600">
+                      {c.total_gastado > 0 ? fmtMonto(c.total_gastado) : '—'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <button
+                      onClick={() => setPerfil(c)}
+                      className="text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors"
+                    >
+                      Ver perfil →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* Panel lateral */}
-      {seleccionado && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => setSeleccionado(null)}>
-          <div className="bg-white w-96 h-full shadow-xl p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg">{seleccionado.nombre}</h2>
-              <button onClick={() => setSeleccionado(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-            </div>
+      {/* Perfil */}
+      {perfil && (
+        <PerfilCliente
+          cliente={perfil}
+          onCerrar={() => setPerfil(null)}
+          onUpdate={c => {
+            setClientes(prev => prev.map(x => x.id === c.id ? c : x))
+            setPerfil(c)
+          }}
+        />
+      )}
+    </div>
+  )
+}
 
-            <div className="space-y-3 text-sm mb-5">
-              <div className="flex justify-between"><span className="text-gray-400">Email</span><span>{seleccionado.email || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">WhatsApp</span><span>{seleccionado.whatsapp}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Origen</span><span>{seleccionado.origen}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Reservas</span><span className="font-semibold text-brand-700">{seleccionado.reservas}</span></div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Estado</span>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${estadoColor[seleccionado.estado]}`}>
-                  {seleccionado.estado}
-                </span>
+/* ════════════════════════════════════════════════
+   PERFIL COMPLETO DEL CLIENTE
+   ════════════════════════════════════════════════ */
+function PerfilCliente({ cliente, onCerrar, onUpdate }) {
+  const navigate = useNavigate()
+  const [tab, setTab] = useState('reservas')
+  const [reservas, setReservas] = useState([])
+  const [pagos, setPagos] = useState([])
+  const [actividad, setActividad] = useState([])
+  const [notas, setNotas] = useState([])
+  const [nuevaNota, setNuevaNota] = useState('')
+  const [cargando, setCargando] = useState(true)
+  const [editando, setEditando] = useState(false)
+  const [form, setForm] = useState({
+    nombre: cliente.nombre || '',
+    email: cliente.email || '',
+    pais: cliente.pais || '',
+    ciudad: cliente.ciudad || '',
+    whatsapp: cliente.whatsapp || '',
+    notas: cliente.notas || '',
+  })
+
+  useEffect(() => {
+    setCargando(true)
+    Promise.all([
+      reservasClienteApi.getByCliente(cliente.id, cliente.whatsapp),
+      pagosApi.getByCliente(cliente.id),
+      actividadApi.getByCliente(cliente.id),
+      notasClienteApi.getByCliente(cliente.id),
+    ]).then(([r, p, a, n]) => {
+      setReservas(r?.data || [])
+      setPagos(p?.data || [])
+      setActividad(a?.data || [])
+      setNotas(n?.data || [])
+      setCargando(false)
+    })
+  }, [cliente.id])
+
+  async function guardarPerfil() {
+    const { data } = await clientesApi.update(cliente.id, form)
+    if (data) { onUpdate(data); setEditando(false) }
+  }
+
+  async function agregarNota() {
+    if (!nuevaNota.trim()) return
+    const { data } = await notasClienteApi.create({ cliente_id: cliente.id, contenido: nuevaNota, autor: 'Admin' })
+    if (data) { setNotas(prev => [data, ...prev]); setNuevaNota('') }
+  }
+
+  async function borrarNota(id) {
+    await notasClienteApi.delete(id)
+    setNotas(prev => prev.filter(n => n.id !== id))
+  }
+
+  const totalPagado = pagos.filter(p => p.estado === 'confirmado').reduce((s, p) => s + Number(p.monto), 0)
+  const excursionesCompletadas = reservas.filter(r => r.estado === 'completada').length
+
+  const TABS = [
+    { id: 'reservas',  label: 'Reservas',  count: reservas.length },
+    { id: 'pagos',     label: 'Pagos',     count: pagos.length },
+    { id: 'actividad', label: 'Actividad', count: actividad.length },
+    { id: 'notas',     label: 'Notas',     count: notas.length },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-stretch" onClick={onCerrar}>
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <div
+        className="relative ml-auto w-full max-w-2xl bg-white h-full flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+
+        {/* ── Header ── */}
+        <div className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-lg font-bold flex-shrink-0">
+                {iniciales(cliente.nombre)}
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900 text-lg leading-tight">{cliente.nombre}</h2>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  {[cliente.pais, cliente.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
+                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  {cliente.whatsapp && (
+                    <button
+                      onClick={() => { onCerrar(); navigate(`/admin/crm/whatsapp?phone=${cliente.whatsapp}`) }}
+                      className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                    >
+                      💬 {cliente.whatsapp}
+                    </button>
+                  )}
+                  {cliente.email && <span className="text-xs text-gray-400">{cliente.email}</span>}
+                </div>
               </div>
             </div>
-
-            <div className="mb-5">
-              <p className="text-sm font-medium text-gray-700 mb-1">Notas del cliente</p>
-              <textarea
-                rows={5}
-                defaultValue={seleccionado.notas}
-                onBlur={(e) => guardarNota(seleccionado.id, e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
-                placeholder="Preferencias, historial, observaciones..."
-              />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setEditando(!editando)}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                {editando ? 'Cancelar' : '✏️ Editar'}
+              </button>
+              <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg transition-colors">×</button>
             </div>
-
-            <a
-              href={`https://wa.me/${seleccionado.whatsapp}?text=Hola%20${encodeURIComponent(seleccionado.nombre)}!%20Te%20escribimos%20de%20Turismo%20Patagonia`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
-            >
-              💬 Contactar por WhatsApp
-            </a>
           </div>
+
+          {/* Editar datos */}
+          {editando && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[
+                { key: 'nombre', label: 'Nombre', col: 2 },
+                { key: 'email', label: 'Email', col: 2 },
+                { key: 'whatsapp', label: 'WhatsApp' },
+                { key: 'pais', label: 'País' },
+                { key: 'ciudad', label: 'Ciudad' },
+              ].map(({ key, label, col }) => (
+                <div key={key} className={col === 2 ? 'col-span-2' : ''}>
+                  <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                  <input
+                    value={form[key]}
+                    onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                </div>
+              ))}
+              <div className="col-span-2">
+                <button
+                  onClick={guardarPerfil}
+                  className="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm py-2 rounded-xl transition-colors"
+                >
+                  Guardar cambios
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stats */}
+          {!editando && (
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {[
+                { label: 'Reservas', value: reservas.length, color: 'text-brand-600' },
+                { label: 'Completadas', value: excursionesCompletadas, color: 'text-green-600' },
+                { label: 'Total pagado', value: totalPagado > 0 ? fmtMonto(totalPagado) : '—', color: 'text-amber-600' },
+              ].map(s => (
+                <div key={s.label} className="bg-gray-50 rounded-xl px-4 py-3 text-center">
+                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* ── Tabs ── */}
+        <div className="flex border-b border-gray-100 flex-shrink-0 px-6">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                tab === t.id
+                  ? 'border-brand-500 text-brand-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {t.label}
+              {t.count > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Contenido ── */}
+        <div className="flex-1 overflow-y-auto">
+          {cargando ? (
+            <div className="text-center py-12 text-gray-400 text-sm">Cargando...</div>
+          ) : (
+            <>
+              {/* RESERVAS */}
+              {tab === 'reservas' && (
+                <div className="divide-y divide-gray-50">
+                  {reservas.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <p className="text-3xl mb-2">📋</p>
+                      <p className="text-sm">Sin reservas registradas</p>
+                    </div>
+                  ) : reservas.map(r => (
+                    <div key={r.id} className="px-6 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 text-sm">
+                            {r.excursiones?.nombre || 'Excursión'}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            📅 {fmtFecha(r.fecha)} · 👥 {r.personas} {r.personas === 1 ? 'persona' : 'personas'}
+                          </p>
+                          {r.hospedaje && <p className="text-xs text-gray-400 mt-0.5">🏨 {r.hospedaje}</p>}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full border capitalize ${ESTADO_RESERVA[r.estado] || 'bg-gray-50 text-gray-500 border-gray-100'}`}>
+                            {r.estado}
+                          </span>
+                          <p className="text-sm font-bold text-gray-800 mt-1">
+                            {r.total ? fmtMonto(r.total, r.moneda) : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* PAGOS */}
+              {tab === 'pagos' && (
+                <div className="divide-y divide-gray-50">
+                  {pagos.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <p className="text-3xl mb-2">💳</p>
+                      <p className="text-sm">Sin pagos registrados</p>
+                    </div>
+                  ) : pagos.map(p => (
+                    <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{fmtMonto(p.monto, p.moneda)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {p.metodo} · {fmtFecha(p.fecha_pago || p.created_at)}
+                        </p>
+                        {p.notas && <p className="text-xs text-gray-400 mt-0.5">{p.notas}</p>}
+                      </div>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        p.estado === 'confirmado' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                      }`}>
+                        {p.estado}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ACTIVIDAD */}
+              {tab === 'actividad' && (
+                <div className="px-6 py-4">
+                  {actividad.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <p className="text-3xl mb-2">📜</p>
+                      <p className="text-sm">Sin actividad registrada aún</p>
+                    </div>
+                  ) : (
+                    <div className="relative pl-6">
+                      <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-100" />
+                      <div className="space-y-4">
+                        {actividad.map(a => {
+                          const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: '•', color: 'bg-gray-50 text-gray-500' }
+                          return (
+                            <div key={a.id} className="flex gap-3">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 -ml-3.5 z-10 ${cfg.color}`}>
+                                {cfg.icon}
+                              </div>
+                              <div className="flex-1 pb-4">
+                                <p className="text-sm font-medium text-gray-800">{a.titulo}</p>
+                                {a.descripcion && <p className="text-xs text-gray-400 mt-0.5">{a.descripcion}</p>}
+                                <p className="text-xs text-gray-300 mt-1">{fmtFecha(a.created_at)}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* NOTAS */}
+              {tab === 'notas' && (
+                <div className="px-6 py-4">
+                  {/* Nueva nota */}
+                  <div className="mb-5">
+                    <textarea
+                      rows={3}
+                      value={nuevaNota}
+                      onChange={e => setNuevaNota(e.target.value)}
+                      placeholder="Agregar nota interna..."
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                    />
+                    <button
+                      onClick={agregarNota}
+                      disabled={!nuevaNota.trim()}
+                      className="mt-2 text-sm font-semibold px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white rounded-xl transition-colors"
+                    >
+                      + Agregar nota
+                    </button>
+                  </div>
+
+                  {/* Lista de notas */}
+                  {notas.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">Sin notas todavía</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {notas.map(n => (
+                        <div key={n.id} className="bg-gray-50 rounded-xl p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm text-gray-700 flex-1">{n.contenido}</p>
+                            <button
+                              onClick={() => borrarNota(n.id)}
+                              className="text-gray-300 hover:text-red-400 text-sm flex-shrink-0 transition-colors"
+                            >✕</button>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {n.autor && <span className="font-medium">{n.autor} · </span>}
+                            {fmtFecha(n.created_at)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

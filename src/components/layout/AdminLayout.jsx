@@ -2,6 +2,16 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 
+function useDarkMode() {
+  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+  useEffect(() => {
+    const html = document.documentElement
+    if (dark) { html.classList.add('dark'); localStorage.setItem('theme', 'dark') }
+    else { html.classList.remove('dark'); localStorage.setItem('theme', 'light') }
+  }, [dark])
+  return [dark, setDark]
+}
+
 /* ─── Iconos SVG ────────────────────────────────────────────────── */
 const Icon = {
   Dashboard: () => (
@@ -157,7 +167,7 @@ function Sidebar() {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen z-50 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out
+      className={`fixed top-0 left-0 h-screen z-50 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 flex flex-col transition-all duration-300 ease-in-out
         ${isExpanded || isHovered ? 'w-[290px]' : 'w-[90px]'}
         ${isMobileOpen ? 'translate-x-0 w-[290px]' : '-translate-x-full'}
         lg:translate-x-0`}
@@ -165,11 +175,11 @@ function Sidebar() {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo */}
-      <div className={`flex items-center py-6 px-5 border-b border-gray-100 ${!visible ? 'justify-center' : ''}`}>
+      <div className={`flex items-center py-6 px-5 border-b border-gray-100 dark:border-zinc-800 ${!visible ? 'justify-center' : ''}`}>
         {visible ? (
           <div>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Panel interno</p>
-            <p className="text-lg font-bold text-gray-900">DREAMSTOUR</p>
+            <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">Panel interno</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-zinc-100">DREAMSTOUR</p>
           </div>
         ) : (
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
@@ -181,7 +191,7 @@ function Sidebar() {
       {/* Nav */}
       <div className="flex-1 overflow-y-auto no-scrollbar py-5 px-4">
         {visible && (
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Menú</p>
+          <p className="text-[11px] font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider mb-3 px-1">Menú</p>
         )}
         {!visible && <div className="flex justify-center mb-3"><Icon.Dots /></div>}
 
@@ -216,7 +226,7 @@ function Sidebar() {
                       className="overflow-hidden transition-all duration-300 ease-in-out"
                       style={{ height: isOpen ? `${subHeights[i] || 0}px` : '0px' }}
                     >
-                      <ul className="mt-1 ml-3 space-y-1 border-l border-gray-100 pl-3">
+                      <ul className="mt-1 ml-3 space-y-1 border-l border-gray-100 dark:border-zinc-800 pl-3">
                         {item.sub.map(s => (
                           <li key={s.path}>
                             <Link
@@ -258,7 +268,7 @@ function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-100 px-4 py-4 space-y-1">
+      <div className="border-t border-gray-100 dark:border-zinc-800 px-4 py-4 space-y-1">
         <Link
           to="/"
           className={`menu-item menu-item-inactive ${!visible ? 'justify-center' : ''}`}
@@ -279,8 +289,8 @@ function Sidebar() {
 }
 
 /* ─── Header ────────────────────────────────────────────────────── */
-function Header() {
-  const { isExpanded, isHovered, toggleSidebar, toggleMobileSidebar } = useSidebar()
+function Header({ dark, setDark }) {
+  const { toggleSidebar, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
 
   function handleToggle() {
@@ -302,19 +312,39 @@ function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200 flex items-center px-4 py-3 gap-4 lg:px-6">
+    <header className="sticky top-0 z-40 w-full bg-white dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 flex items-center px-4 py-3 gap-4 lg:px-6 transition-colors">
       <button
         onClick={handleToggle}
-        className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex-shrink-0"
+        className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors flex-shrink-0"
       >
         <span className="size-5"><Icon.Menu /></span>
       </button>
 
-      <h1 className="text-base font-semibold text-gray-800">{getTitle()}</h1>
+      <h1 className="text-base font-semibold text-gray-800 dark:text-zinc-100">{getTitle()}</h1>
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        {/* Toggle dark mode */}
+        <button
+          onClick={() => setDark(!dark)}
+          title={dark ? 'Modo claro' : 'Modo oscuro'}
+          className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+        >
+          {dark ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
+
         <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
           <span className="text-white text-xs font-semibold">A</span>
         </div>
@@ -338,15 +368,16 @@ function Backdrop() {
 /* ─── Layout principal ──────────────────────────────────────────── */
 function LayoutContent() {
   const { isExpanded, isHovered } = useSidebar()
+  const [dark, setDark] = useDarkMode()
 
   return (
-    <div className="min-h-screen bg-gray-50 admin-ui">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 admin-ui transition-colors">
       <Sidebar />
       <Backdrop />
       <div className={`transition-all duration-300 ease-in-out ${
         isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
       }`}>
-        <Header />
+        <Header dark={dark} setDark={setDark} />
         <main className="p-4 md:p-6 max-w-screen-2xl mx-auto">
           <Outlet />
         </main>

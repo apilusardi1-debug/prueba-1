@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { leadsApi, excursionesApi } from '../../lib/supabase.js'
 import Badge from '../../components/ui/Badge.jsx'
 
@@ -13,6 +14,7 @@ const estadosLead = {
 const FORM_VACIO = { nombre: '', whatsapp: '', excursion_id: '', notas: '' }
 
 export default function Leads() {
+  const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -126,11 +128,11 @@ export default function Leads() {
                         </span>
                       </div>
                       {lead.whatsapp && (
-                        <a href={`https://wa.me/${lead.whatsapp}`} target="_blank" rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
+                        <button
+                          onClick={e => { e.stopPropagation(); navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`) }}
                           className="mt-2 flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium">
                           💬 WhatsApp
-                        </a>
+                        </button>
                       )}
                     </div>
                   ))}
@@ -171,7 +173,7 @@ export default function Leads() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        {lead.whatsapp && <a href={`https://wa.me/${lead.whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-green-500">💬</a>}
+                        {lead.whatsapp && <button onClick={() => navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`)} className="text-green-500">💬</button>}
                         <button onClick={() => setSeleccionado(lead)} className="text-xs font-medium text-gray-600 hover:text-gray-900">Ver</button>
                       </div>
                     </td>
@@ -258,11 +260,11 @@ export default function Leads() {
                 placeholder="Agregar notas..." />
             </div>
             {seleccionado.whatsapp && (
-              <a href={`https://wa.me/${seleccionado.whatsapp}?text=Hola%20${encodeURIComponent(seleccionado.nombre)}!%20Te%20contactamos%20de%20Dream%20Tours`}
-                target="_blank" rel="noopener noreferrer"
+              <button
+                onClick={() => { setSeleccionado(null); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
                 className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
-                💬 Contactar por WhatsApp
-              </a>
+                💬 Abrir conversación en WhatsApp
+              </button>
             )}
           </div>
         </div>

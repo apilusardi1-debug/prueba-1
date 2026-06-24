@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase, conversacionesApi, mensajesApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { useSearchParams } from 'react-router-dom'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+
+const ETIQUETAS = {
+  lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   creaLead: true  },
+  interesado:  { label: 'Interesado',  color: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400',  creaLead: false },
+  cliente:     { label: 'Cliente',     color: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  creaLead: false },
+  no_interesa: { label: 'No interesa', color: 'bg-red-100 text-red-700',      dot: 'bg-red-400',    creaLead: false },
+}
 
 function formatTiempo(ts) {
   if (!ts) return ''
@@ -45,8 +53,12 @@ export default function WhatsAppCRM() {
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
+  const [etiquetando, setEtiquetando] = useState(false)
+  const [menuEtiqueta, setMenuEtiqueta] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
+  const menuEtiquetaRef = useRef(null)
 
   // Cargar conversaciones + suscripción realtime
   useEffect(() => {
@@ -72,6 +84,17 @@ export default function WhatsAppCRM() {
 
     return () => channel.unsubscribe()
   }, [])
+
+  // Auto-seleccionar conversación si viene ?phone= desde Leads
+  useEffect(() => {
+    const phone = searchParams.get('phone')
+    if (!phone || !conversaciones.length) return
+    const match = conversaciones.find(c => c.whatsapp?.replace(/\D/g, '') === phone.replace(/\D/g, ''))
+    if (match) {
+      setSeleccionada(match)
+      setSearchParams({}, { replace: true })
+    }
+  }, [conversaciones, searchParams])
 
   // Cargar mensajes + suscripción realtime al cambiar conversación
   useEffect(() => {
@@ -112,9 +135,51 @@ export default function WhatsAppCRM() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
 
+  // Cerrar menú de etiqueta al hacer click afuera
+  useEffect(() => {
+    function handler(e) {
+      if (menuEtiquetaRef.current && !menuEtiquetaRef.current.contains(e.target)) {
+        setMenuEtiqueta(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   async function seleccionarConversacion(conv) {
     setSeleccionada(conv)
+    setMenuEtiqueta(false)
     setTimeout(() => inputRef.current?.focus(), 100)
+  }
+
+  async function asignarEtiqueta(etiquetaId) {
+    if (!seleccionada || etiquetando) return
+    setMenuEtiqueta(false)
+    setEtiquetando(true)
+
+    const nueva = seleccionada.etiqueta === etiquetaId ? null : etiquetaId
+
+    await conversacionesApi.updateEtiqueta(seleccionada.id, nueva)
+    const convActualizada = { ...seleccionada, etiqueta: nueva }
+    setSeleccionada(convActualizada)
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? convActualizada : c))
+
+    // Si la etiqueta crea lead automáticamente
+    if (nueva && ETIQUETAS[nueva]?.creaLead) {
+      const { data: existente } = await leadsApi.getAll()
+      const yaExiste = existente?.some(l => l.whatsapp === seleccionada.whatsapp)
+      if (!yaExiste) {
+        await leadsApi.create({
+          nombre: seleccionada.contacto_nombre,
+          whatsapp: seleccionada.whatsapp,
+          origen: 'WhatsApp',
+          estado: 'nuevo',
+          notas: '',
+        })
+      }
+    }
+
+    setEtiquetando(false)
   }
 
   async function sincronizar() {
@@ -224,7 +289,14 @@ export default function WhatsAppCRM() {
                     <p className="font-semibold text-sm text-gray-900 truncate">{conv.contacto_nombre}</p>
                     <p className="text-xs text-gray-400 shrink-0">{formatTiempo(conv.ultimo_mensaje_at)}</p>
                   </div>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{conv.ultimo_mensaje || '–'}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-xs text-gray-400 truncate flex-1">{conv.ultimo_mensaje || '–'}</p>
+                    {conv.etiqueta && ETIQUETAS[conv.etiqueta] && (
+                      <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ETIQUETAS[conv.etiqueta].color}`}>
+                        {ETIQUETAS[conv.etiqueta].label}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {conv.no_leidos > 0 && (
                   <span className="bg-green-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center font-medium shrink-0">
@@ -247,7 +319,51 @@ export default function WhatsAppCRM() {
               <p className="font-semibold text-gray-900">{seleccionada.contacto_nombre}</p>
               <p className="text-xs text-gray-400">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              {/* Selector de etiqueta */}
+              <div className="relative" ref={menuEtiquetaRef}>
+                <button
+                  onClick={() => setMenuEtiqueta(v => !v)}
+                  disabled={etiquetando}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                    seleccionada.etiqueta && ETIQUETAS[seleccionada.etiqueta]
+                      ? `${ETIQUETAS[seleccionada.etiqueta].color} border-transparent`
+                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {seleccionada.etiqueta && ETIQUETAS[seleccionada.etiqueta]
+                    ? `${ETIQUETAS[seleccionada.etiqueta].label} ▾`
+                    : '＋ Etiquetar'}
+                </button>
+                {menuEtiqueta && (
+                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 min-w-[140px]">
+                    {Object.entries(ETIQUETAS).map(([id, info]) => (
+                      <button
+                        key={id}
+                        onClick={() => asignarEtiqueta(id)}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2 ${
+                          seleccionada.etiqueta === id ? 'font-semibold' : ''
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${info.dot}`} />
+                        {info.label}
+                        {seleccionada.etiqueta === id && <span className="ml-auto text-gray-400">✓</span>}
+                      </button>
+                    ))}
+                    {seleccionada.etiqueta && (
+                      <>
+                        <div className="border-t border-gray-100 my-1" />
+                        <button
+                          onClick={() => asignarEtiqueta(seleccionada.etiqueta)}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:bg-gray-50"
+                        >
+                          Quitar etiqueta
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               <a
                 href={`https://wa.me/${seleccionada.whatsapp}`}
                 target="_blank"

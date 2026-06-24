@@ -27,7 +27,8 @@ function primerMesConDatos() {
 export default function Agenda() {
   const todasLasSalidas = buildSalidas()
   const [mes, setMes] = useState(primerMesConDatos)
-  const [expandidos, setExpandidos] = useState({})
+  const [diasAbiertos, setDiasAbiertos] = useState({})   // fechaStr → bool
+  const [paseosAbiertos, setPaseosAbiertos] = useState({}) // fechaStr_excursionId → bool
   const [choferes, setChoferes] = useState([])
   const [asignaciones, setAsignaciones] = useState({})
 
@@ -60,8 +61,12 @@ export default function Agenda() {
   const esHoy = (d) =>
     d && hoy.getFullYear() === anio && hoy.getMonth() === numMes && hoy.getDate() === d
 
+  function toggleDia(fechaStr) {
+    setDiasAbiertos((prev) => ({ ...prev, [fechaStr]: !prev[fechaStr] }))
+  }
+
   function togglePaseo(key) {
-    setExpandidos((prev) => ({ ...prev, [key]: !prev[key] }))
+    setPaseosAbiertos((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   function asignar(reservaId, choferId) {
@@ -80,7 +85,7 @@ export default function Agenda() {
       {/* Calendario */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
 
-        {/* Navegación de mes */}
+        {/* Navegación mes */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <button
             onClick={() => setMes(new Date(anio, numMes - 1, 1))}
@@ -106,131 +111,146 @@ export default function Agenda() {
           ))}
         </div>
 
-        {/* Celdas del calendario */}
+        {/* Celdas */}
         <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
           {celdas.map((dia, idx) => {
-            if (!dia) return <div key={idx} className="min-h-[130px] bg-gray-50/40" />
+            if (!dia) return <div key={idx} className="min-h-[90px] bg-gray-50/40" />
 
             const fechaStr = `${anio}-${String(numMes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
             const salidas = salidasPorFecha[fechaStr] || []
+            const diaAbierto = !!diasAbiertos[fechaStr]
+            const totalReservas = salidas.reduce((a, s) => a + s.reservas.length, 0)
+            const tieneSalidas = salidas.length > 0
 
             return (
-              <div key={idx} className={`min-h-[130px] p-2 ${esHoy(dia) ? 'bg-blue-50/40' : ''}`}>
-                {/* Número del día */}
-                <div
-                  className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-2 ${
-                    esHoy(dia)
-                      ? 'bg-[#002147] text-white'
-                      : 'text-gray-400'
-                  }`}
+              <div key={idx} className={`${esHoy(dia) ? 'bg-blue-50/30' : ''}`}>
+
+                {/* ── NIVEL 1: click en el día ── */}
+                <button
+                  onClick={() => tieneSalidas && toggleDia(fechaStr)}
+                  className={`w-full p-2 text-left transition-colors ${tieneSalidas ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'}`}
                 >
-                  {dia}
-                </div>
+                  <div className="flex items-start justify-between gap-1">
+                    {/* Número del día */}
+                    <div
+                      className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full flex-shrink-0 ${
+                        esHoy(dia) ? 'bg-[#002147] text-white' : 'text-gray-500'
+                      }`}
+                    >
+                      {dia}
+                    </div>
 
-                {/* Paseos */}
-                <div className="space-y-1">
-                  {salidas.map((s) => {
-                    const key = `${fechaStr}_${s.excursion.id}`
-                    const abierto = !!expandidos[key]
-                    const tieneReservas = s.reservas.length > 0
-                    const pax = s.reservas.reduce((a, r) => a + r.personas, 0)
-                    const todosConChofer = tieneReservas && s.reservas.every((r) => asignaciones[r.id])
-
-                    return (
-                      <div key={key}>
-                        {/* Chip del paseo */}
-                        <button
-                          onClick={() => togglePaseo(key)}
-                          className={`w-full text-left rounded-lg px-2 py-1.5 transition-colors border-2 ${
-                            todosConChofer
-                              ? 'bg-[#002147] text-white border-green-400'
-                              : tieneReservas
-                              ? 'bg-[#002147] text-white border-transparent hover:bg-[#003366]'
-                              : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-medium leading-tight truncate">
-                              {s.excursion.nombre}
-                            </span>
-                            <span className="text-xs flex-shrink-0 opacity-70">
-                              {abierto ? '▴' : '▾'}
-                            </span>
-                          </div>
-                          {tieneReservas && (
-                            <p className="text-xs opacity-60 mt-0.5">
-                              {s.reservas.length} reserva{s.reservas.length !== 1 ? 's' : ''} · {pax} pax
-                            </p>
-                          )}
-                        </button>
-
-                        {/* Panel deslizable de clientes */}
-                        <div
-                          className="overflow-hidden transition-all duration-300 ease-in-out"
-                          style={{ maxHeight: abierto ? '600px' : '0px', opacity: abierto ? 1 : 0 }}
-                        >
-                          <div className="mt-1.5 border border-gray-100 rounded-xl bg-white shadow-sm overflow-hidden">
-                            {s.reservas.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic p-3">Sin reservas confirmadas</p>
-                            ) : (
-                              <>
-                                {/* Filas de clientes */}
-                                {s.reservas.map((r, ri) => {
-                                  const choferAsignado = choferes.find((c) => c.id === asignaciones[r.id])
-                                  return (
-                                    <div
-                                      key={r.id}
-                                      className={`flex items-center gap-2 px-3 py-2.5 ${ri > 0 ? 'border-t border-gray-50' : ''}`}
-                                    >
-                                      {/* Info cliente */}
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-800 truncate">{r.clienteNombre}</p>
-                                        <p className="text-xs text-gray-400">
-                                          👥 {r.personas} pax · {formatPrecio(r.total)}
-                                        </p>
-                                      </div>
-
-                                      {/* Dropdown chofer */}
-                                      <select
-                                        value={asignaciones[r.id] || ''}
-                                        onChange={(e) => asignar(r.id, e.target.value)}
-                                        className={`flex-shrink-0 text-xs rounded-lg px-2 py-1.5 focus:outline-none border transition-colors ${
-                                          choferAsignado
-                                            ? 'border-green-300 bg-green-50 text-green-700 font-medium'
-                                            : 'border-gray-200 text-gray-500 bg-gray-50'
-                                        }`}
-                                      >
-                                        <option value="">🚗 Chofer...</option>
-                                        {choferes.map((c) => (
-                                          <option key={c.id} value={c.id}>{c.nombre}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  )
-                                })}
-
-                                {/* Botón cerrar operación */}
-                                <PaseoBotonCerrar
-                                  reservas={s.reservas}
-                                  asignaciones={asignaciones}
-                                  choferes={choferes}
-                                  excursionNombre={s.excursion.nombre}
-                                  fecha={fechaStr}
-                                />
-                              </>
-                            )}
-                          </div>
-                        </div>
+                    {/* Indicadores */}
+                    {tieneSalidas && (
+                      <div className="flex flex-col items-end gap-0.5 mt-0.5">
+                        <span className="text-xs text-gray-400">{salidas.length} paseo{salidas.length !== 1 ? 's' : ''}</span>
+                        {totalReservas > 0 && (
+                          <span className="text-xs font-semibold text-[#002147]">{totalReservas} reserva{totalReservas !== 1 ? 's' : ''}</span>
+                        )}
+                        <span className="text-xs">{diaAbierto ? '▴' : '▾'}</span>
                       </div>
-                    )
-                  })}
+                    )}
+                  </div>
+                </button>
+
+                {/* ── NIVEL 1 expandido: lista de paseos del día ── */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: diaAbierto ? '1000px' : '0px', opacity: diaAbierto ? 1 : 0 }}
+                >
+                  <div className="border-t border-gray-100 divide-y divide-gray-50">
+                    {salidas.map((s) => {
+                      const paseoKey = `${fechaStr}_${s.excursion.id}`
+                      const paseoAbierto = !!paseosAbiertos[paseoKey]
+                      const tieneReservas = s.reservas.length > 0
+                      const todosConChofer = tieneReservas && s.reservas.every((r) => asignaciones[r.id])
+
+                      return (
+                        <div key={paseoKey}>
+
+                          {/* ── NIVEL 2: click en el paseo ── */}
+                          <button
+                            onClick={() => tieneReservas && togglePaseo(paseoKey)}
+                            className={`w-full text-left px-3 py-2.5 transition-colors flex items-center justify-between gap-2 ${
+                              tieneReservas ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                  todosConChofer ? 'bg-green-400' : tieneReservas ? 'bg-[#002147]' : 'bg-gray-300'
+                                }`}
+                              />
+                              <span className="text-xs font-medium text-gray-800 truncate">
+                                {s.excursion.nombre}
+                              </span>
+                            </div>
+                            {tieneReservas && (
+                              <span className="text-xs flex-shrink-0 text-gray-400">
+                                {s.reservas.length} pax {paseoAbierto ? '▴' : '▾'}
+                              </span>
+                            )}
+                          </button>
+
+                          {/* ── NIVEL 2 expandido: clientes del paseo ── */}
+                          <div
+                            className="overflow-hidden transition-all duration-300 ease-in-out"
+                            style={{ maxHeight: paseoAbierto ? '600px' : '0px', opacity: paseoAbierto ? 1 : 0 }}
+                          >
+                            <div className="mx-2 mb-2 border border-gray-100 rounded-xl bg-white shadow-sm overflow-hidden">
+                              {s.reservas.map((r, ri) => {
+                                const choferAsignado = choferes.find((c) => c.id === asignaciones[r.id])
+                                return (
+                                  <div
+                                    key={r.id}
+                                    className={`flex items-center gap-2 px-3 py-2.5 ${ri > 0 ? 'border-t border-gray-50' : ''}`}
+                                  >
+                                    {/* Info cliente */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold text-gray-800 truncate">{r.clienteNombre}</p>
+                                      <p className="text-xs text-gray-400">👥 {r.personas} pax · {formatPrecio(r.total)}</p>
+                                    </div>
+                                    {/* Dropdown chofer */}
+                                    <select
+                                      value={asignaciones[r.id] || ''}
+                                      onChange={(e) => asignar(r.id, e.target.value)}
+                                      className={`flex-shrink-0 text-xs rounded-lg px-2 py-1.5 border focus:outline-none transition-colors ${
+                                        choferAsignado
+                                          ? 'border-green-300 bg-green-50 text-green-700 font-medium'
+                                          : 'border-gray-200 text-gray-500 bg-gray-50'
+                                      }`}
+                                    >
+                                      <option value="">🚗 Chofer...</option>
+                                      {choferes.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )
+                              })}
+
+                              {/* Botón cerrar operación */}
+                              <PaseoBotonCerrar
+                                reservas={s.reservas}
+                                asignaciones={asignaciones}
+                                choferes={choferes}
+                                excursionNombre={s.excursion.nombre}
+                                fecha={fechaStr}
+                              />
+                            </div>
+                          </div>
+
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
+
               </div>
             )
           })}
         </div>
       </div>
-
     </div>
   )
 }
@@ -242,7 +262,6 @@ function PaseoBotonCerrar({ reservas, asignaciones, choferes, excursionNombre, f
   async function cerrar() {
     if (!reservasConChofer.length) return
 
-    // Agrupar por chofer
     const porChofer = {}
     for (const r of reservasConChofer) {
       const cid = asignaciones[r.id]
@@ -257,17 +276,13 @@ function PaseoBotonCerrar({ reservas, asignaciones, choferes, excursionNombre, f
     for (const [choferId, sus] of Object.entries(porChofer)) {
       const chofer = choferes.find((c) => c.id === choferId)
       if (!chofer) continue
-      const lineas = sus
-        .map((r) => `• *${r.clienteNombre}* — 👥 ${r.personas} pax`)
-        .join('\n')
-      const msg = `Hola ${chofer.nombre} 👋\n\nTe enviamos los pasajeros asignados para el *${fechaFmt}*:\n\n🗺 *${excursionNombre}*\n${lineas}\n\n¡Muchas gracias!`
+      const lineas = sus.map((r) => `• *${r.clienteNombre}* — 👥 ${r.personas} pax`).join('\n')
+      const msg = `Hola ${chofer.nombre} 👋\n\nTe enviamos los pasajeros del *${fechaFmt}*:\n\n🗺 *${excursionNombre}*\n${lineas}\n\n¡Muchas gracias!`
       await sendWhatsApp(chofer.whatsapp, msg)
     }
 
-    alert(`✅ Mensaje${Object.keys(porChofer).length > 1 ? 's' : ''} enviado${Object.keys(porChofer).length > 1 ? 's' : ''} correctamente.`)
+    alert(`✅ Mensaje enviado correctamente.`)
   }
-
-  if (!reservas.length) return null
 
   return (
     <div className="border-t border-gray-100 px-3 py-2 flex items-center justify-between gap-2">

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>DreamTours — System Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #030712;
+    --surface: #0a0f1e;
+    --border: #1a2035;
+    --border-glow: #2a3560;
+    --text: #e2e8f0;
+    --muted: #3d4f6e;
+    --accent: #4f6ef7;
+    --accent-glow: rgba(79,110,247,0.15);
+    --green: #10d97e;
+    --green-glow: rgba(16,217,126,0.12);
+    --amber: #f5a623;
+    --amber-glow: rgba(245,166,35,0.12);
+    --purple: #9b6af7;
+    --purple-glow: rgba(155,106,247,0.12);
+    --red: #f74f4f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 48px 32px 64px;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(79,110,247,0.08) 0%, transparent 60%),
+      linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .header-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(79,110,247,0.3);
+    padding: 4px 14px;
+    border-radius: 99px;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #f8fafc;
+    margin-bottom: 8px;
+  }
+  .header-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Infrastructure grid ── */
+  .infra-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 56px;
+  }
+
+  .infra-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .infra-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .infra-card.blue::before   { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .infra-card.green::before  { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .infra-card.amber::before  { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+  .infra-card.purple::before { background: linear-gradient(90deg, transparent, var(--purple), transparent); }
+
+  .infra-card:hover { border-color: var(--border-glow); }
+
+  .infra-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+  .infra-icon.blue   { background: var(--accent-glow);  border: 1px solid rgba(79,110,247,0.3); }
+  .infra-icon.green  { background: var(--green-glow);   border: 1px solid rgba(16,217,126,0.3); }
+  .infra-icon.amber  { background: var(--amber-glow);   border: 1px solid rgba(245,166,35,0.3); }
+  .infra-icon.purple { background: var(--purple-glow);  border: 1px solid rgba(155,106,247,0.3); }
+
+  .infra-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+  }
+  .infra-url {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+  }
+
+  .item-list { display: flex; flex-direction: column; gap: 6px; }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #94a3b8;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+  }
+  .item-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-blue   { background: var(--accent); }
+  .dot-green  { background: var(--green); }
+  .dot-amber  { background: var(--amber); }
+  .dot-purple { background: var(--purple); }
+  .dot-gray   { background: var(--muted); }
+
+  .item-cat {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 12px;
+    margin-bottom: 4px;
+  }
+
+  /* ── Architecture 3-col ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+
+  .arch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+  }
+  .arch-card.blue::before   { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .arch-card.green::before  { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .arch-card.amber::before  { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+
+  .arch-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .arch-title.blue   { color: var(--accent); }
+  .arch-title.green  { color: var(--green); }
+  .arch-title.amber  { color: var(--amber); }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 6px;
+    margin: 2px 2px 2px 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: #94a3b8;
+  }
+  .tag.blue   { border-color: rgba(79,110,247,0.4);  color: #818cf8; background: var(--accent-glow); }
+  .tag.green  { border-color: rgba(16,217,126,0.4);  color: #34d399; background: var(--green-glow); }
+  .tag.amber  { border-color: rgba(245,166,35,0.4);  color: #fbbf24; background: var(--amber-glow); }
+  .tag.purple { border-color: rgba(155,106,247,0.4); color: #c084fc; background: var(--purple-glow); }
+
+  .sub-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin: 14px 0 6px;
+  }
+
+  /* ── Flows ── */
+  .flows { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+  }
+  .flow-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+  .flow-node.blue   { border-color: rgba(79,110,247,0.5);  color: #818cf8; }
+  .flow-node.green  { border-color: rgba(16,217,126,0.5);  color: #34d399; }
+  .flow-node.amber  { border-color: rgba(245,166,35,0.5);  color: #fbbf24; }
+  .flow-node.purple { border-color: rgba(155,106,247,0.5); color: #c084fc; }
+  .flow-arrow {
+    color: var(--muted);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 56px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-tag">system architecture</div>
+  <h1>DreamTours</h1>
+  <div class="header-sub">infrastructure map · june 2026</div>
+</div>
+
+<!-- Infraestructura por servicio -->
+<div class="section-title" style="max-width:1200px;margin:0 auto 20px;">01 — dónde vive cada cosa</div>
+
+<div class="infra-grid">
+
+  <!-- Vercel -->
+  <div class="infra-card blue">
+    <div class="infra-icon blue">▲</div>
+    <div class="infra-name">Vercel</div>
+    <div class="infra-url">turismoapp-eight.vercel.app</div>
+    <div class="item-list">
+      <div class="item-cat">frontend</div>
+      <div class="item"><span class="item-dot dot-blue"></span>App React + Vite</div>
+      <div class="item"><span class="item-dot dot-blue"></span>Sitio público</div>
+      <div class="item"><span class="item-dot dot-blue"></span>Panel admin</div>
+      <div class="item"><span class="item-dot dot-blue"></span>Assets estáticos (CSS, JS)</div>
+      <div class="item-cat">deploy</div>
+      <div class="item"><span class="item-dot dot-gray"></span>CI/CD manual (vercel --prod)</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Branch: main</div>
+      <div class="item"><span class="item-dot dot-gray"></span>CDN global automático</div>
+    </div>
+  </div>
+
+  <!-- Supabase -->
+  <div class="infra-card green">
+    <div class="infra-icon green">⚡</div>
+    <div class="infra-name">Supabase</div>
+    <div class="infra-url">przvftnhwwistmcbkeon.supabase.co</div>
+    <div class="item-list">
+      <div class="item-cat">base de datos</div>
+      <div class="item"><span class="item-dot dot-green"></span>conversaciones</div>
+      <div class="item"><span class="item-dot dot-green"></span>mensajes</div>
+      <div class="item"><span class="item-dot dot-green"></span>leads</div>
+      <div class="item"><span class="item-dot dot-green"></span>clientes</div>
+      <div class="item"><span class="item-dot dot-green"></span>choferes · guias · vendedores</div>
+      <div class="item-cat">edge functions</div>
+      <div class="item"><span class="item-dot dot-green"></span>webhook-whatsapp</div>
+      <div class="item"><span class="item-dot dot-green"></span>send-whatsapp</div>
+      <div class="item"><span class="item-dot dot-green"></span>sync-whatsapp</div>
+      <div class="item-cat">servicios</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Realtime (websocket)</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Auth</div>
+    </div>
+  </div>
+
+  <!-- Hostinger VPS -->
+  <div class="infra-card amber">
+    <div class="infra-icon amber">🖥</div>
+    <div class="infra-name">Hostinger VPS</div>
+    <div class="infra-url">76.13.224.231 · puerto 8080</div>
+    <div class="item-list">
+      <div class="item-cat">wuzapi</div>
+      <div class="item"><span class="item-dot dot-amber"></span>Docker container</div>
+      <div class="item"><span class="item-dot dot-amber"></span>Go / whatsmeow</div>
+      <div class="item"><span class="item-dot dot-amber"></span>WhatsApp Business vinculado</div>
+      <div class="item-cat">endpoints activos</div>
+      <div class="item"><span class="item-dot dot-gray"></span>POST /chat/send/text</div>
+      <div class="item"><span class="item-dot dot-gray"></span>GET /contacts/</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Webhook → Supabase</div>
+      <div class="item-cat">config</div>
+      <div class="item"><span class="item-dot dot-gray"></span>/opt/wuzapi/docker-compose.yml</div>
+    </div>
+  </div>
+
+  <!-- GitHub -->
+  <div class="infra-card purple">
+    <div class="infra-icon purple">⌥</div>
+    <div class="infra-name">GitHub</div>
+    <div class="infra-url">apilusardi1-debug/prueba-1</div>
+    <div class="item-list">
+      <div class="item-cat">repositorio</div>
+      <div class="item"><span class="item-dot dot-purple"></span>Branch main → producción</div>
+      <div class="item"><span class="item-dot dot-purple"></span>Branch tailadmin (mergeado)</div>
+      <div class="item-cat">stack guardado</div>
+      <div class="item"><span class="item-dot dot-gray"></span>React + Vite + Tailwind</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Supabase client</div>
+      <div class="item"><span class="item-dot dot-gray"></span>mockData.js (reservas)</div>
+      <div class="item-cat">pendiente</div>
+      <div class="item"><span class="item-dot dot-gray"></span>Migrar datos a Supabase DB</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Arquitectura de la app -->
+<div class="section-title" style="max-width:1200px;margin:0 auto 20px;">02 — arquitectura de la aplicación</div>
+
+<div class="arch-grid">
+
+  <!-- Frontend -->
+  <div class="arch-card blue">
+    <div class="arch-title blue">Frontend · React</div>
+
+    <div class="sub-label">Sitio público</div>
+    <span class="tag">Landing</span>
+    <span class="tag">Excursiones</span>
+    <span class="tag">Formulario reserva</span>
+
+    <div class="sub-label">Admin — Sidebar</div>
+    <span class="tag blue">Dashboard</span>
+    <span class="tag blue">Leads (Kanban)</span>
+    <span class="tag blue">Clientes</span>
+    <span class="tag blue">WhatsApp CRM</span>
+    <span class="tag blue">Reservas</span>
+    <span class="tag blue">Excursiones</span>
+    <span class="tag blue">Agenda</span>
+    <span class="tag blue">Equipo</span>
+    <span class="tag blue">Configuración</span>
+
+    <div class="sub-label">UI / Diseño</div>
+    <span class="tag">TailwindCSS</span>
+    <span class="tag">Outfit font</span>
+    <span class="tag">Estilo TailAdmin</span>
+    <span class="tag">Sidebar colapsable</span>
+  </div>
+
+  <!-- Backend -->
+  <div class="arch-card green">
+    <div class="arch-title green">Backend · Supabase</div>
+
+    <div class="sub-label">Datos en DB</div>
+    <span class="tag green">conversaciones</span>
+    <span class="tag green">mensajes</span>
+    <span class="tag green">leads</span>
+    <span class="tag green">clientes</span>
+    <span class="tag green">choferes</span>
+    <span class="tag green">guias</span>
+    <span class="tag green">vendedores</span>
+
+    <div class="sub-label">Datos en mockData (pendiente migrar)</div>
+    <span class="tag">excursiones</span>
+    <span class="tag">reservas</span>
+    <span class="tag">fechas / cupos</span>
+
+    <div class="sub-label">Realtime activo en</div>
+    <span class="tag green">WhatsApp CRM</span>
+    <span class="tag green">Notif. mensajes</span>
+  </div>
+
+  <!-- WhatsApp / VPS -->
+  <div class="arch-card amber">
+    <div class="arch-title amber">WhatsApp · WuzAPI</div>
+
+    <div class="sub-label">Recibe mensajes</div>
+    <span class="tag amber">WuzAPI webhook →</span>
+    <span class="tag amber">Edge Function</span>
+    <span class="tag amber">Guarda en DB</span>
+    <span class="tag amber">Realtime al CRM</span>
+
+    <div class="sub-label">Envía mensajes</div>
+    <span class="tag amber">Admin escribe →</span>
+    <span class="tag amber">Edge Function →</span>
+    <span class="tag amber">POST /send/text</span>
+    <span class="tag amber">→ Cliente</span>
+
+    <div class="sub-label">Operación de Agenda</div>
+    <span class="tag amber">Asigna chofer →</span>
+    <span class="tag amber">Cerrar operación →</span>
+    <span class="tag amber">Mensaje al chofer</span>
+
+    <div class="sub-label">Por qué WuzAPI y no otros</div>
+    <span class="tag">Go/whatsmeow actualizado</span>
+    <span class="tag">Evolution API quedó obsoleto en 2026</span>
+  </div>
+
+</div>
+
+<!-- Flujos -->
+<div class="section-title" style="max-width:1200px;margin:0 auto 20px;">03 — flujos de datos</div>
+
+<div class="flows">
+
+  <div class="flow-card">
+    <div class="flow-name">mensaje entrante · cliente → admin</div>
+    <div class="flow-row">
+      <div class="flow-node purple">📱 Cliente</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">WhatsApp Business</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">WuzAPI · VPS</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">webhook-whatsapp</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">Supabase DB</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">Realtime</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">💬 CRM Admin</div>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <div class="flow-name">mensaje saliente · admin → cliente</div>
+    <div class="flow-row">
+      <div class="flow-node blue">Admin escribe</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">send-whatsapp</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">POST /chat/send/text</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">WuzAPI · VPS</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">WhatsApp Business</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">📱 Cliente</div>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <div class="flow-name">agenda · cerrar operación</div>
+    <div class="flow-row">
+      <div class="flow-node blue">Click día → paseos</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">Click paseo → modal</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">Carga choferes DB</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">Asigna chofer</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">🚀 Cerrar operación</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node amber">Msg → Chofer</div>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <div class="flow-name">leads · ir a conversación</div>
+    <div class="flow-row">
+      <div class="flow-node blue">Lead en Kanban</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">Click 💬 WhatsApp</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">navigate(?phone=)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">WhatsApp CRM</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green">Match por número</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node blue">Abre conversación</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">dreamtours · built with claude code · june 2026</div>
+
+</body>
+</html>

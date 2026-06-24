@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>DreamTours — Esquema Historial de Clientes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #030712;
+    --surface: #080e1c;
+    --surface2: #0d1526;
+    --border: #151f35;
+    --border2: #1e2d4a;
+    --text: #e2e8f0;
+    --muted: #3d5170;
+    --muted2: #5a7299;
+    --blue: #4f6ef7;
+    --blue-soft: rgba(79,110,247,0.12);
+    --green: #10d97e;
+    --green-soft: rgba(16,217,126,0.1);
+    --amber: #f5a623;
+    --amber-soft: rgba(245,166,35,0.1);
+    --purple: #9b6af7;
+    --purple-soft: rgba(155,106,247,0.1);
+    --red: #f7564f;
+    --red-soft: rgba(247,86,79,0.1);
+    --cyan: #22d3ee;
+    --cyan-soft: rgba(34,211,238,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    padding: 48px 28px 80px;
+    background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(79,110,247,0.07) 0%, transparent 70%);
+  }
+  code { font-family: 'Space Mono', monospace; font-size: 0.85em; }
+
+  /* ─── Header ─── */
+  .header { text-align:center; margin-bottom: 52px; }
+  .header-pill {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--blue); border: 1px solid rgba(79,110,247,0.35);
+    padding: 4px 16px; border-radius: 99px; margin-bottom: 18px;
+  }
+  h1 { font-size: 28px; font-weight: 600; color: #f1f5f9; margin-bottom: 6px; }
+  .header-sub { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted2); letter-spacing: 1px; }
+
+  /* ─── Section ─── */
+  .section { max-width: 1200px; margin: 0 auto 52px; }
+  .section-label {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* ─── ER Diagram ─── */
+  .er-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .er-col { padding: 28px 20px; border-right: 1px solid var(--border); }
+  .er-col:last-child { border-right: none; }
+  .er-col-title {
+    font-family: 'Space Mono', monospace; font-size: 9px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted2); margin-bottom: 16px;
+  }
+  .er-table {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .er-table-head {
+    padding: 8px 12px;
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .er-table-head .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .er-table-body { padding: 8px 12px; }
+  .er-field {
+    display: flex; align-items: center; gap-8px;
+    font-size: 11px; color: var(--muted2);
+    padding: 2.5px 0;
+    gap: 6px;
+  }
+  .er-field code { color: #94a3b8; font-size: 11px; }
+  .er-field .ftype { color: var(--muted); font-size: 10px; }
+  .er-field .fpk { color: var(--amber); font-size: 9px; font-family:'Space Mono',monospace; }
+  .er-field .ffk { color: var(--blue); font-size: 9px; font-family:'Space Mono',monospace; }
+  .er-field .fnew { color: var(--green); font-size: 9px; font-family:'Space Mono',monospace; }
+  .er-sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+
+  /* center column connector */
+  .er-center { position:relative; }
+
+  /* ─── Tables Grid ─── */
+  .tables-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .tcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .tcard::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  }
+  .tcard.blue::before   { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+  .tcard.green::before  { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .tcard.amber::before  { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+  .tcard.purple::before { background: linear-gradient(90deg, transparent, var(--purple), transparent); }
+  .tcard.red::before    { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+  .tcard.cyan::before   { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+
+  .tcard-head {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tcard-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 14px; flex-shrink:0;
+  }
+  .tcard-icon.blue   { background: var(--blue-soft);   border: 1px solid rgba(79,110,247,0.25); }
+  .tcard-icon.green  { background: var(--green-soft);  border: 1px solid rgba(16,217,126,0.25); }
+  .tcard-icon.amber  { background: var(--amber-soft);  border: 1px solid rgba(245,166,35,0.25); }
+  .tcard-icon.purple { background: var(--purple-soft); border: 1px solid rgba(155,106,247,0.25); }
+  .tcard-icon.red    { background: var(--red-soft);    border: 1px solid rgba(247,86,79,0.25); }
+  .tcard-icon.cyan   { background: var(--cyan-soft);   border: 1px solid rgba(34,211,238,0.25); }
+
+  .tcard-name { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+  .tcard-desc { font-size: 11px; color: var(--muted2); margin-top: 1px; }
+  .tcard-badge {
+    margin-left: auto;
+    font-family:'Space Mono',monospace; font-size: 9px;
+    padding: 2px 8px; border-radius: 99px;
+    border: 1px solid var(--border2); color: var(--muted2);
+  }
+  .tcard-badge.new { border-color: rgba(16,217,126,0.4); color: var(--green); }
+
+  .tcard-body { padding: 12px 18px 16px; }
+  .field-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 11.5px;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { color: #94a3b8; font-family:'Space Mono',monospace; font-size: 11px; min-width: 140px; flex-shrink: 0; }
+  .field-type { color: var(--muted2); font-size: 10px; font-family:'Space Mono',monospace; flex-shrink: 0; min-width: 55px; }
+  .field-note { color: var(--muted); font-size: 10px; flex:1; }
+  .badge-pk   { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:1px 5px; border-radius:4px; background:rgba(245,166,35,0.15); color:var(--amber); margin-right:4px; }
+  .badge-fk   { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:1px 5px; border-radius:4px; background:rgba(79,110,247,0.15); color:var(--blue); margin-right:4px; }
+  .badge-new  { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:1px 5px; border-radius:4px; background:rgba(16,217,126,0.15); color:var(--green); margin-right:4px; }
+  .badge-mod  { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:1px 5px; border-radius:4px; background:rgba(155,106,247,0.15); color:var(--purple); margin-right:4px; }
+
+  /* ─── Flow ─── */
+  .flow-timeline { position:relative; padding-left: 32px; }
+  .flow-timeline::before {
+    content:''; position:absolute; left:10px; top:0; bottom:0;
+    width:1px; background: linear-gradient(to bottom, var(--blue), var(--purple), var(--green));
+  }
+  .flow-step { position:relative; margin-bottom: 20px; }
+  .flow-step::before {
+    content:''; position:absolute; left:-26px; top:14px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg); z-index:1;
+  }
+  .flow-step.blue::before   { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
+  .flow-step.green::before  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .flow-step.amber::before  { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .flow-step.purple::before { background: var(--purple); box-shadow: 0 0 8px var(--purple); }
+  .flow-step.cyan::before   { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+  }
+  .flow-card-title {
+    grid-column: 1/-1;
+    font-size: 13px; font-weight: 600; color: #f1f5f9;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .flow-card-title .num {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    color: var(--muted2); background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 5px;
+    padding: 1px 7px;
+  }
+  .flow-detail { font-size: 11px; color: var(--muted2); line-height: 1.6; }
+  .flow-detail strong { color: #94a3b8; font-weight: 500; }
+  .flow-db {
+    grid-column: 1/-1;
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .flow-tag {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    padding: 2px 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border2);
+    color: var(--muted2);
+  }
+  .flow-tag.write { border-color: rgba(16,217,126,0.4); color: var(--green); }
+  .flow-tag.read  { border-color: rgba(79,110,247,0.4); color: var(--blue); }
+  .flow-tag.event { border-color: rgba(245,166,35,0.4); color: var(--amber); }
+
+  /* ─── SQL ─── */
+  .sql-block {
+    background: #050a14;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    overflow-x: auto;
+  }
+  pre {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #94a3b8;
+    white-space: pre;
+  }
+  .kw { color: #818cf8; }   /* keywords */
+  .tb { color: #34d399; }   /* table names */
+  .col-name { color: #e2e8f0; }
+  .type { color: #fbbf24; }
+  .comment { color: #374151; }
+
+  /* ─── Legend ─── */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+  }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color: var(--muted2); }
+
+  .footer { text-align:center; margin-top:56px; font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-pill">database design</div>
+  <h1>Historial de Clientes</h1>
+  <div class="header-sub">esquema de base de datos · flujo completo · dreamtours 2026</div>
+</div>
+
+<!-- SECCIÓN 1: RELACIONES -->
+<div class="section">
+  <div class="section-label">01 — mapa de relaciones</div>
+
+  <div class="er-wrap">
+    <!-- Col izq: tablas existentes -->
+    <div class="er-col">
+      <div class="er-col-title">tablas actuales</div>
+
+      <div class="er-table">
+        <div class="er-table-head" style="background:rgba(79,110,247,0.08);">
+          <span class="dot" style="background:var(--blue)"></span>
+          <span style="color:#818cf8">leads</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><code>nombre</code></div>
+          <div class="er-field"><code>whatsapp</code></div>
+          <div class="er-field"><code>excursion_interes</code></div>
+          <div class="er-field"><code>estado</code></div>
+          <div class="er-field"><code>origen</code></div>
+          <div class="er-field"><code>notas</code></div>
+        </div>
+      </div>
+
+      <div class="er-table">
+        <div class="er-table-head" style="background:rgba(79,110,247,0.08);">
+          <span class="dot" style="background:var(--blue)"></span>
+          <span style="color:#818cf8">clientes</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><code>nombre</code></div>
+          <div class="er-field"><code>whatsapp</code></div>
+          <div class="er-field"><code>notas</code></div>
+          <div class="er-field" style="color:var(--green)"><span class="fnew">+</span> <code>email</code></div>
+          <div class="er-field" style="color:var(--green)"><span class="fnew">+</span> <code>pais · ciudad</code></div>
+          <div class="er-field" style="color:var(--green)"><span class="fnew">+</span> <code>lead_id</code> <span class="ffk">FK</span></div>
+        </div>
+      </div>
+
+      <div class="er-table">
+        <div class="er-table-head" style="background:rgba(79,110,247,0.08);">
+          <span class="dot" style="background:var(--blue)"></span>
+          <span style="color:#818cf8">conversaciones</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><code>whatsapp</code></div>
+          <div class="er-field"><code>nombre · etiqueta</code></div>
+          <div class="er-field"><code>no_leidos</code></div>
+          <div class="er-field" style="color:var(--green)"><span class="fnew">+</span> <code>cliente_id</code> <span class="ffk">FK</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Col centro: tablas núcleo -->
+    <div class="er-col er-center" style="background:rgba(255,255,255,0.01)">
+      <div class="er-col-title">núcleo del historial</div>
+
+      <div class="er-table" style="border-color:rgba(16,217,126,0.3)">
+        <div class="er-table-head" style="background:rgba(16,217,126,0.08);">
+          <span class="dot" style="background:var(--green)"></span>
+          <span style="color:#34d399">reservas</span>
+          <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--green)">MIGRAR</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><span class="ffk">FK</span> <code>cliente_id</code> → clientes</div>
+          <div class="er-field"><span class="ffk">FK</span> <code>excursion_id</code> → excursiones</div>
+          <div class="er-field"><code>fecha · personas · total</code></div>
+          <div class="er-field"><code>moneda · hospedaje</code></div>
+          <div class="er-field"><code>estado</code> <span style="color:var(--muted);font-size:10px">pendiente/confirmada/completada/cancelada</span></div>
+          <div class="er-field"><span class="ffk">FK</span> <code>chofer_id · guia_id · vendedor_id</code></div>
+        </div>
+      </div>
+
+      <div class="er-table" style="border-color:rgba(245,166,35,0.3); margin-top:10px">
+        <div class="er-table-head" style="background:rgba(245,166,35,0.08);">
+          <span class="dot" style="background:var(--amber)"></span>
+          <span style="color:#fbbf24">pagos</span>
+          <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--amber)">NUEVA</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><span class="ffk">FK</span> <code>reserva_id</code> → reservas</div>
+          <div class="er-field"><span class="ffk">FK</span> <code>cliente_id</code> → clientes</div>
+          <div class="er-field"><code>monto · moneda</code></div>
+          <div class="er-field"><code>metodo</code> <span style="color:var(--muted);font-size:10px">efectivo/transferencia/tarjeta</span></div>
+          <div class="er-field"><code>estado</code> <span style="color:var(--muted);font-size:10px">pendiente/confirmado</span></div>
+          <div class="er-field"><code>fecha_pago · comprobante_url</code></div>
+        </div>
+      </div>
+
+      <div class="er-table" style="border-color:rgba(155,106,247,0.3); margin-top:10px">
+        <div class="er-table-head" style="background:rgba(155,106,247,0.08);">
+          <span class="dot" style="background:var(--purple)"></span>
+          <span style="color:#c084fc">actividad_clientes</span>
+          <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--purple)">NUEVA</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><span class="ffk">FK</span> <code>cliente_id</code> → clientes</div>
+          <div class="er-field"><code>tipo</code> <span style="color:var(--muted);font-size:10px">lead/reserva/pago/excursion/msg/nota</span></div>
+          <div class="er-field"><code>titulo · descripcion</code></div>
+          <div class="er-field"><code>metadata</code> <span style="color:var(--muted);font-size:10px">JSONB flexible</span></div>
+          <div class="er-field"><code>created_at</code></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Col der: tablas soporte -->
+    <div class="er-col">
+      <div class="er-col-title">tablas de soporte</div>
+
+      <div class="er-table">
+        <div class="er-table-head" style="background:rgba(79,110,247,0.08);">
+          <span class="dot" style="background:var(--blue)"></span>
+          <span style="color:#818cf8">excursiones</span>
+          <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--green)">MIGRAR</span>
+        </div>
+        <div class="er-table-body">
+          <div class="er-field"><span class="fpk">PK</span> <code>id</code></div>
+          <div class="er-field"><code>nombre · destino</code></div>
+          <div class="er-field"><code>precio_usd · precio_brl</code></div>
+          <div class="er-field"><code>cupos_max · duracion_dias</code></div>
+          <div class="er-field"><code>activa</code></div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="er-table">
+          <div class="er-table-head"><span class="dot" style="background:var(--muted)"></span><span style="color:var(--muted2)">choferes</span></div>
+          <div class="er-table-body">
+            <div class="er-field"><code>id · nombre · whatsapp · activo</code></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="er-table">
+          <div class="er-table-head"><span class="dot" style="background:var(--muted)"></span><span style="color:var(--muted2)">guias</span></div>
+          <div class="er-table-body">
+            <div class="er-field"><code>id · nombre · whatsapp · activo</code></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="er-table">
+          <div class="er-table-head"><span class="dot" style="background:var(--muted)"></span><span style="color:var(--muted2)">vendedores</span></div>
+          <div class="er-table-body">
+            <div class="er-field"><code>id · nombre · whatsapp · activo</code></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="er-table">
+          <div class="er-table-head"><span class="dot" style="background:var(--muted)"></span><span style="color:var(--muted2)">mensajes</span></div>
+          <div class="er-table-body">
+            <div class="er-field"><code>conversacion_id · texto · tipo · created_at</code></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SECCIÓN 2: TABLAS DETALLADAS -->
+<div class="section">
+  <div class="section-label">02 — tablas nuevas en detalle</div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="badge-pk">PK</span> clave primaria</div>
+    <div class="legend-item"><span class="badge-fk">FK</span> clave foránea</div>
+    <div class="legend-item"><span class="badge-new">NEW</span> tabla nueva</div>
+    <div class="legend-item"><span class="badge-mod">MOD</span> campo nuevo en tabla existente</div>
+  </div>
+
+  <div class="tables-grid">
+
+    <!-- reservas -->
+    <div class="tcard green">
+      <div class="tcard-head">
+        <div class="tcard-icon green">📋</div>
+        <div>
+          <div class="tcard-name">reservas</div>
+          <div class="tcard-desc">Una reserva por cliente × excursión</div>
+        </div>
+        <span class="tcard-badge new">migrar</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">generado automático</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>cliente_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ clientes.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>excursion_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ excursiones.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">fecha</span>
+          <span class="field-type">date</span>
+          <span class="field-note">fecha de la salida</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">personas</span>
+          <span class="field-type">int</span>
+          <span class="field-note">cantidad de pasajeros</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">precio_unitario</span>
+          <span class="field-type">numeric</span>
+          <span class="field-note">precio por persona</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">total</span>
+          <span class="field-type">numeric</span>
+          <span class="field-note">personas × precio</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">moneda</span>
+          <span class="field-type">text</span>
+          <span class="field-note">USD / BRL / ARS</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">estado</span>
+          <span class="field-type">text</span>
+          <span class="field-note">pendiente · confirmada · completada · cancelada</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">hospedaje</span>
+          <span class="field-type">text</span>
+          <span class="field-note">hotel / pousada</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>chofer_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ choferes.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>guia_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ guias.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>vendedor_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ vendedores.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">notas</span>
+          <span class="field-type">text</span>
+          <span class="field-note">comentarios internos</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">created_at</span>
+          <span class="field-type">timestamp</span>
+          <span class="field-note">auto</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- pagos -->
+    <div class="tcard amber">
+      <div class="tcard-head">
+        <div class="tcard-icon amber">💳</div>
+        <div>
+          <div class="tcard-name">pagos</div>
+          <div class="tcard-desc">Registros de pago por reserva</div>
+        </div>
+        <span class="tcard-badge new">nueva</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">generado automático</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>reserva_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ reservas.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>cliente_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ clientes.id (denormalizado)</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">monto</span>
+          <span class="field-type">numeric</span>
+          <span class="field-note">puede ser pago parcial</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">moneda</span>
+          <span class="field-type">text</span>
+          <span class="field-note">USD / BRL / ARS</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">metodo</span>
+          <span class="field-type">text</span>
+          <span class="field-note">efectivo · transferencia · tarjeta · mercadopago · crypto</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">estado</span>
+          <span class="field-type">text</span>
+          <span class="field-note">pendiente · confirmado</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">fecha_pago</span>
+          <span class="field-type">date</span>
+          <span class="field-note">cuándo se recibió</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">comprobante_url</span>
+          <span class="field-type">text</span>
+          <span class="field-note">link a Supabase Storage</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">notas</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ej: "seña 50%"</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">created_at</span>
+          <span class="field-type">timestamp</span>
+          <span class="field-note">auto</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- actividad_clientes -->
+    <div class="tcard purple">
+      <div class="tcard-head">
+        <div class="tcard-icon purple">📜</div>
+        <div>
+          <div class="tcard-name">actividad_clientes</div>
+          <div class="tcard-desc">Timeline de todo lo que hizo el cliente</div>
+        </div>
+        <span class="tcard-badge new">nueva</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">generado automático</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>cliente_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ clientes.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">tipo</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ver enum abajo</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">titulo</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ej: "Reservó Porto de Galinhas"</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">descripcion</span>
+          <span class="field-type">text</span>
+          <span class="field-note">detalle legible</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">metadata</span>
+          <span class="field-type">jsonb</span>
+          <span class="field-note">datos flexibles: monto, excursion, fecha…</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">created_at</span>
+          <span class="field-type">timestamp</span>
+          <span class="field-note">orden del timeline</span>
+        </div>
+        <hr class="er-sep" style="margin:10px 0; border-color:var(--border)">
+        <div style="font-size:10px;color:var(--muted2);font-family:'Space Mono',monospace;margin-bottom:6px;">ENUM tipo</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--blue-soft);border:1px solid rgba(79,110,247,0.3);color:#818cf8;font-family:'Space Mono',monospace">lead_recibido</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--blue-soft);border:1px solid rgba(79,110,247,0.3);color:#818cf8;font-family:'Space Mono',monospace">lead_convertido</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--green-soft);border:1px solid rgba(16,217,126,0.3);color:#34d399;font-family:'Space Mono',monospace">reserva_creada</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--green-soft);border:1px solid rgba(16,217,126,0.3);color:#34d399;font-family:'Space Mono',monospace">reserva_confirmada</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--amber-soft);border:1px solid rgba(245,166,35,0.3);color:#fbbf24;font-family:'Space Mono',monospace">pago_registrado</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--purple-soft);border:1px solid rgba(155,106,247,0.3);color:#c084fc;font-family:'Space Mono',monospace">excursion_completada</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.3);color:var(--cyan);font-family:'Space Mono',monospace">mensaje_enviado</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.04);border:1px solid var(--border2);color:var(--muted2);font-family:'Space Mono',monospace">nota_agregada</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:var(--red-soft);border:1px solid rgba(247,86,79,0.3);color:var(--red);font-family:'Space Mono',monospace">reserva_cancelada</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- clientes modificado -->
+    <div class="tcard blue">
+      <div class="tcard-head">
+        <div class="tcard-icon blue">👤</div>
+        <div>
+          <div class="tcard-name">clientes</div>
+          <div class="tcard-desc">Tabla existente — campos nuevos</div>
+        </div>
+        <span class="tcard-badge">modificar</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">ya existe</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">nombre</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ya existe</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">whatsapp</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ya existe (UNIQUE)</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">notas</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ya existe</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>email</span>
+          <span class="field-type">text</span>
+          <span class="field-note">nuevo</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>pais</span>
+          <span class="field-type">text</span>
+          <span class="field-note">nuevo</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>ciudad</span>
+          <span class="field-type">text</span>
+          <span class="field-note">nuevo</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>lead_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">FK → leads (trazabilidad)</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>total_gastado</span>
+          <span class="field-type">numeric</span>
+          <span class="field-note">suma de pagos confirmados</span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>cantidad_reservas</span>
+          <span class="field-type">int</span>
+          <span class="field-note">contador</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- excursiones a migrar -->
+    <div class="tcard cyan">
+      <div class="tcard-head">
+        <div class="tcard-icon cyan">🗺</div>
+        <div>
+          <div class="tcard-name">excursiones</div>
+          <div class="tcard-desc">Migrar de mockData.js a Supabase</div>
+        </div>
+        <span class="tcard-badge new">migrar</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">ya existe en Supabase</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">nombre</span>
+          <span class="field-type">text</span>
+          <span class="field-note"></span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">destino</span>
+          <span class="field-type">text</span>
+          <span class="field-note">ej: Porto de Galinhas</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">precio_usd · precio_brl</span>
+          <span class="field-type">numeric</span>
+          <span class="field-note"></span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">cupos_max</span>
+          <span class="field-type">int</span>
+          <span class="field-note">capacidad total</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">duracion_dias</span>
+          <span class="field-type">int</span>
+          <span class="field-note"></span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">activa</span>
+          <span class="field-type">boolean</span>
+          <span class="field-note"></span>
+        </div>
+        <div class="field-row" style="background:rgba(16,217,126,0.04)">
+          <span class="field-name"><span class="badge-new">+</span>fechas</span>
+          <span class="field-type">date[]</span>
+          <span class="field-note">array de fechas programadas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- notas_clientes -->
+    <div class="tcard red">
+      <div class="tcard-head">
+        <div class="tcard-icon red">📝</div>
+        <div>
+          <div class="tcard-name">notas_clientes</div>
+          <div class="tcard-desc">Notas internas del equipo</div>
+        </div>
+        <span class="tcard-badge new">nueva</span>
+      </div>
+      <div class="tcard-body">
+        <div class="field-row">
+          <span class="field-name"><span class="badge-pk">PK</span>id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note"></span>
+        </div>
+        <div class="field-row">
+          <span class="field-name"><span class="badge-fk">FK</span>cliente_id</span>
+          <span class="field-type">uuid</span>
+          <span class="field-note">→ clientes.id</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">contenido</span>
+          <span class="field-type">text</span>
+          <span class="field-note">texto libre</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">autor</span>
+          <span class="field-type">text</span>
+          <span class="field-note">quién la escribió</span>
+        </div>
+        <div class="field-row">
+          <span class="field-name">created_at</span>
+          <span class="field-type">timestamp</span>
+          <span class="field-note">auto</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECCIÓN 3: FLUJO COMPLETO -->
+<div class="section">
+  <div class="section-label">03 — flujo completo de vida del cliente</div>
+
+  <div class="flow-timeline">
+
+    <div class="flow-step blue">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">01</span> Lead entra por WhatsApp o formulario</div>
+        <div class="flow-detail"><strong>Origen:</strong> WhatsApp (webhook WuzAPI) o formulario público del sitio</div>
+        <div class="flow-detail"><strong>Se crea:</strong> registro en <code>leads</code> con nombre, whatsapp, excursión de interés</div>
+        <div class="flow-detail"><strong>Actividad:</strong> se registra <code>lead_recibido</code> en <code>actividad_clientes</code> una vez que exista el cliente</div>
+        <div class="flow-db">
+          <span class="flow-tag write">INSERT leads</span>
+          <span class="flow-tag write">INSERT conversaciones</span>
+          <span class="flow-tag event">Realtime → CRM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step blue">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">02</span> Conversación y seguimiento</div>
+        <div class="flow-detail"><strong>El equipo</strong> responde por el CRM interno</div>
+        <div class="flow-detail"><strong>El lead</strong> avanza por el Kanban: nuevo → contactado → reservado</div>
+        <div class="flow-detail"><strong>Todo el historial</strong> de mensajes queda en <code>mensajes</code></div>
+        <div class="flow-db">
+          <span class="flow-tag read">SELECT conversaciones</span>
+          <span class="flow-tag write">INSERT mensajes</span>
+          <span class="flow-tag write">UPDATE leads.estado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step green">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">03</span> Lead se convierte en Cliente</div>
+        <div class="flow-detail"><strong>Acción:</strong> el agente hace "Convertir lead" desde el CRM o Leads</div>
+        <div class="flow-detail"><strong>Se crea</strong> registro en <code>clientes</code> con lead_id referenciando al origen</div>
+        <div class="flow-detail"><strong>La conversación</strong> se vincula con cliente_id</div>
+        <div class="flow-db">
+          <span class="flow-tag write">INSERT clientes</span>
+          <span class="flow-tag write">UPDATE leads.estado = 'reservado'</span>
+          <span class="flow-tag write">UPDATE conversaciones.cliente_id</span>
+          <span class="flow-tag write">INSERT actividad: lead_convertido</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step green">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">04</span> Se crea la Reserva</div>
+        <div class="flow-detail"><strong>El agente</strong> crea la reserva: cliente + excursión + fecha + personas + precio</div>
+        <div class="flow-detail"><strong>Estado inicial:</strong> <code>pendiente</code> hasta que el cliente confirme</div>
+        <div class="flow-detail"><strong>Se vincula</strong> el vendedor que la tomó</div>
+        <div class="flow-db">
+          <span class="flow-tag write">INSERT reservas</span>
+          <span class="flow-tag write">INSERT actividad: reserva_creada</span>
+          <span class="flow-tag write">UPDATE clientes.cantidad_reservas +1</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step amber">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">05</span> Se registran los Pagos</div>
+        <div class="flow-detail"><strong>Puede haber varios pagos</strong> por reserva (seña + saldo)</div>
+        <div class="flow-detail"><strong>Métodos:</strong> efectivo, transferencia, tarjeta, MercadoPago, crypto</div>
+        <div class="flow-detail"><strong>Estado reserva</strong> cambia a <code>confirmada</code> cuando se recibe el pago total</div>
+        <div class="flow-db">
+          <span class="flow-tag write">INSERT pagos</span>
+          <span class="flow-tag write">INSERT actividad: pago_registrado</span>
+          <span class="flow-tag write">UPDATE reservas.estado = 'confirmada'</span>
+          <span class="flow-tag write">UPDATE clientes.total_gastado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step purple">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">06</span> Operación del día — Agenda</div>
+        <div class="flow-detail"><strong>El día de la excursión:</strong> el admin abre el calendario → click en el día → click en paseo → modal</div>
+        <div class="flow-detail"><strong>Asigna chofer</strong> a cada pasajero, "Cerrar operación" envía WhatsApp al chofer</div>
+        <div class="flow-detail"><strong>Al completarse:</strong> el estado de reserva pasa a <code>completada</code></div>
+        <div class="flow-db">
+          <span class="flow-tag read">SELECT reservas por fecha</span>
+          <span class="flow-tag write">UPDATE reservas.chofer_id</span>
+          <span class="flow-tag write">UPDATE reservas.estado = 'completada'</span>
+          <span class="flow-tag write">INSERT actividad: excursion_completada</span>
+          <span class="flow-tag event">WhatsApp → Chofer</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-step cyan">
+      <div class="flow-card">
+        <div class="flow-card-title"><span class="num">07</span> Historial completo del Cliente</div>
+        <div class="flow-detail"><strong>En el perfil del cliente</strong> se puede ver todo ordenado por fecha:</div>
+        <div class="flow-detail"><strong>Timeline:</strong> cuándo llegó como lead → cuándo reservó → cuántos pagó → qué excursiones hizo</div>
+        <div class="flow-detail"><strong>Métricas:</strong> total gastado, cantidad de excursiones, última actividad</div>
+        <div class="flow-db">
+          <span class="flow-tag read">SELECT actividad_clientes WHERE cliente_id</span>
+          <span class="flow-tag read">SELECT reservas WHERE cliente_id</span>
+          <span class="flow-tag read">SELECT pagos WHERE cliente_id</span>
+          <span class="flow-tag read">SELECT mensajes via conversaciones</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECCIÓN 4: SQL -->
+<div class="section">
+  <div class="section-label">04 — sql para crear las tablas</div>
+
+  <div class="sql-block">
+<pre><span class="comment">-- ─────────────────────────────────────────────────────────────</span>
+<span class="comment">-- DREAMTOURS · HISTORIAL DE CLIENTES · Supabase SQL</span>
+<span class="comment">-- ─────────────────────────────────────────────────────────────</span>
+
+<span class="comment">-- 1. Campos nuevos en clientes</span>
+<span class="kw">ALTER TABLE</span> <span class="tb">clientes</span>
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">email</span>              <span class="type">text</span>,
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">pais</span>               <span class="type">text</span>,
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">ciudad</span>             <span class="type">text</span>,
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">lead_id</span>            <span class="type">uuid references leads(id)</span>,
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">total_gastado</span>      <span class="type">numeric default 0</span>,
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">cantidad_reservas</span>  <span class="type">int default 0</span>;
+
+<span class="comment">-- 2. Link conversaciones con clientes</span>
+<span class="kw">ALTER TABLE</span> <span class="tb">conversaciones</span>
+  <span class="kw">ADD COLUMN IF NOT EXISTS</span> <span class="col-name">cliente_id</span> <span class="type">uuid references clientes(id)</span>;
+
+<span class="comment">-- 3. Reservas (relacionales, migrar desde mockData)</span>
+<span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tb">reservas</span> (
+  <span class="col-name">id</span>               <span class="type">uuid primary key default gen_random_uuid()</span>,
+  <span class="col-name">cliente_id</span>       <span class="type">uuid references clientes(id) on delete set null</span>,
+  <span class="col-name">excursion_id</span>     <span class="type">uuid references excursiones(id) on delete set null</span>,
+  <span class="col-name">fecha</span>            <span class="type">date not null</span>,
+  <span class="col-name">personas</span>         <span class="type">int not null default 1</span>,
+  <span class="col-name">precio_unitario</span>  <span class="type">numeric not null</span>,
+  <span class="col-name">total</span>            <span class="type">numeric not null</span>,
+  <span class="col-name">moneda</span>           <span class="type">text not null default 'USD'</span>,
+  <span class="col-name">estado</span>           <span class="type">text not null default 'pendiente'</span>,
+  <span class="col-name">hospedaje</span>        <span class="type">text</span>,
+  <span class="col-name">chofer_id</span>        <span class="type">uuid references choferes(id)</span>,
+  <span class="col-name">guia_id</span>          <span class="type">uuid references guias(id)</span>,
+  <span class="col-name">vendedor_id</span>      <span class="type">uuid references vendedores(id)</span>,
+  <span class="col-name">notas</span>            <span class="type">text</span>,
+  <span class="col-name">created_at</span>       <span class="type">timestamp with time zone default now()</span>,
+  <span class="col-name">updated_at</span>       <span class="type">timestamp with time zone default now()</span>
+);
+
+<span class="comment">-- 4. Pagos</span>
+<span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tb">pagos</span> (
+  <span class="col-name">id</span>               <span class="type">uuid primary key default gen_random_uuid()</span>,
+  <span class="col-name">reserva_id</span>       <span class="type">uuid references reservas(id) on delete cascade</span>,
+  <span class="col-name">cliente_id</span>       <span class="type">uuid references clientes(id) on delete set null</span>,
+  <span class="col-name">monto</span>            <span class="type">numeric not null</span>,
+  <span class="col-name">moneda</span>           <span class="type">text not null default 'USD'</span>,
+  <span class="col-name">metodo</span>           <span class="type">text not null</span>,
+  <span class="col-name">estado</span>           <span class="type">text not null default 'pendiente'</span>,
+  <span class="col-name">fecha_pago</span>       <span class="type">date</span>,
+  <span class="col-name">comprobante_url</span>  <span class="type">text</span>,
+  <span class="col-name">notas</span>            <span class="type">text</span>,
+  <span class="col-name">created_at</span>       <span class="type">timestamp with time zone default now()</span>
+);
+
+<span class="comment">-- 5. Timeline de actividad por cliente</span>
+<span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tb">actividad_clientes</span> (
+  <span class="col-name">id</span>          <span class="type">uuid primary key default gen_random_uuid()</span>,
+  <span class="col-name">cliente_id</span>  <span class="type">uuid references clientes(id) on delete cascade</span>,
+  <span class="col-name">tipo</span>        <span class="type">text not null</span>,
+  <span class="col-name">titulo</span>      <span class="type">text not null</span>,
+  <span class="col-name">descripcion</span> <span class="type">text</span>,
+  <span class="col-name">metadata</span>    <span class="type">jsonb default '{}'</span>,
+  <span class="col-name">created_at</span>  <span class="type">timestamp with time zone default now()</span>
+);
+
+<span class="comment">-- 6. Notas internas por cliente</span>
+<span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tb">notas_clientes</span> (
+  <span class="col-name">id</span>          <span class="type">uuid primary key default gen_random_uuid()</span>,
+  <span class="col-name">cliente_id</span>  <span class="type">uuid references clientes(id) on delete cascade</span>,
+  <span class="col-name">contenido</span>   <span class="type">text not null</span>,
+  <span class="col-name">autor</span>       <span class="type">text</span>,
+  <span class="col-name">created_at</span>  <span class="type">timestamp with time zone default now()</span>
+);
+
+<span class="comment">-- Índices para búsquedas frecuentes</span>
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> <span class="col-name">idx_reservas_cliente</span>    <span class="kw">ON</span> <span class="tb">reservas</span> (cliente_id);
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> <span class="col-name">idx_reservas_fecha</span>      <span class="kw">ON</span> <span class="tb">reservas</span> (fecha);
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> <span class="col-name">idx_pagos_reserva</span>       <span class="kw">ON</span> <span class="tb">pagos</span> (reserva_id);
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> <span class="col-name">idx_pagos_cliente</span>       <span class="kw">ON</span> <span class="tb">pagos</span> (cliente_id);
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> <span class="col-name">idx_actividad_cliente</span>   <span class="kw">ON</span> <span class="tb">actividad_clientes</span> (cliente_id, created_at desc);
+</pre>
+  </div>
+</div>
+
+<div class="footer">dreamtours · database design · june 2026</div>
+
+</body>
+</html>

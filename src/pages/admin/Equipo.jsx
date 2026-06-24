@@ -9,6 +9,8 @@ const TABS = [
 
 const EMPTY = { nombre: '', whatsapp: '' }
 
+const LABELS = { choferes: 'chofer', guias: 'guía', vendedores: 'vendedor' }
+
 export default function Equipo() {
   const [tabActiva, setTabActiva] = useState('choferes')
   const [datos, setDatos] = useState({ choferes: [], guias: [], vendedores: [] })
@@ -87,12 +89,21 @@ export default function Equipo() {
           <h1 className="text-2xl font-bold text-gray-900">Equipo</h1>
           <p className="text-gray-400 text-sm">Gestioná choferes, guías y vendedores</p>
         </div>
-        <button
-          onClick={abrirNuevo}
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          + Agregar {tab.label.slice(0, -1).toLowerCase()}
-        </button>
+        <div className="flex gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setTabActiva(t.id); abrirNuevo() }}
+              className={`text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border ${
+                tabActiva === t.id
+                  ? 'bg-brand-500 hover:bg-brand-600 text-white border-transparent'
+                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
+              }`}
+            >
+              + Agregar {LABELS[t.id]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Pestañas */}
@@ -187,7 +198,7 @@ export default function Equipo() {
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-lg">
-                {editando ? `Editar ${tab.label.slice(0, -1).toLowerCase()}` : `Nuevo ${tab.label.slice(0, -1).toLowerCase()}`}
+                {editando ? `Editar ${LABELS[tabActiva]}` : `Nuevo ${LABELS[tabActiva]}`}
               </h2>
               <button onClick={() => setMostrarForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
@@ -220,7 +231,7 @@ export default function Equipo() {
               disabled={guardando}
               className="mt-5 w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
             >
-              {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : `Agregar ${tab.label.slice(0, -1).toLowerCase()}`}
+              {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : `Agregar ${LABELS[tabActiva]}`}
             </button>
           </div>
         </div>

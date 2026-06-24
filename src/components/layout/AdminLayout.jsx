@@ -1,130 +1,364 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 
-const navItems = [
-  { path: '/admin',             label: 'Dashboard',     icon: '📊' },
-  { path: '/admin/reservas',    label: 'Reservas',      icon: '📋' },
-  { path: '/admin/excursiones', label: 'Excursiones',   icon: '🗺️' },
-  { path: '/admin/agenda',      label: 'Agenda',        icon: '📅' },
-  { path: '/admin/equipo',      label: 'Equipo',        icon: '👤' },
-  { path: '/admin/configuracion', label: 'Configuración', icon: '⚙️' },
+/* ─── Iconos SVG ────────────────────────────────────────────────── */
+const Icon = {
+  Dashboard: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  ),
+  CRM: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Leads: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+    </svg>
+  ),
+  Clientes: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  WhatsApp: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
+  Reservas: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  ),
+  Excursiones: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+    </svg>
+  ),
+  Agenda: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  ),
+  Equipo: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  ),
+  Config: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+  Chevron: ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  ),
+  Menu: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  ),
+  Close: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  ),
+  Globe: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+  ),
+  Logout: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+  Dots: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+      <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+    </svg>
+  ),
+}
+
+/* ─── Navegación ────────────────────────────────────────────────── */
+const NAV = [
+  { path: '/admin', label: 'Dashboard', icon: Icon.Dashboard, exact: true },
+  {
+    label: 'CRM', icon: Icon.CRM,
+    sub: [
+      { path: '/admin/leads',        label: 'Leads',     icon: Icon.Leads },
+      { path: '/admin/clientes',     label: 'Clientes',  icon: Icon.Clientes },
+      { path: '/admin/crm/whatsapp', label: 'WhatsApp',  icon: Icon.WhatsApp },
+    ],
+  },
+  { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
+  { path: '/admin/excursiones', label: 'Excursiones', icon: Icon.Excursiones },
+  { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
+  { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
+  { path: '/admin/configuracion', label: 'Configuración', icon: Icon.Config },
 ]
 
-const crmItems = [
-  { path: '/admin/leads',           label: 'Leads',     icon: '🎯' },
-  { path: '/admin/clientes',        label: 'Clientes',  icon: '👥' },
-  { path: '/admin/crm/whatsapp',    label: 'WhatsApp',  icon: '💬' },
-]
-
-export default function AdminLayout() {
+/* ─── Sidebar ───────────────────────────────────────────────────── */
+function Sidebar() {
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar()
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const enCRM = crmItems.some(i => pathname.startsWith(i.path))
-  const [crmAbierto, setCrmAbierto] = useState(enCRM || true)
+  const subMenuRefs = useRef({})
+  const [subHeights, setSubHeights] = useState({})
+  const [openSub, setOpenSub] = useState(null)
+  const visible = isExpanded || isHovered || isMobileOpen
 
-  function handleLogout() {
+  function isActive(path, exact) {
+    return exact ? pathname === path : pathname === path || pathname.startsWith(path + '/')
+  }
+
+  // Abrir automáticamente el sub que contiene la ruta activa
+  useEffect(() => {
+    NAV.forEach((item, i) => {
+      if (item.sub?.some(s => pathname.startsWith(s.path))) {
+        setOpenSub(i)
+      }
+    })
+  }, [pathname])
+
+  // Medir altura de submenús para animación
+  useEffect(() => {
+    if (openSub !== null && subMenuRefs.current[openSub]) {
+      setSubHeights(p => ({
+        ...p,
+        [openSub]: subMenuRefs.current[openSub].scrollHeight,
+      }))
+    }
+  }, [openSub])
+
+  function toggleSub(i) {
+    setOpenSub(prev => (prev === i ? null : i))
+    if (subMenuRefs.current[i]) {
+      setSubHeights(p => ({ ...p, [i]: subMenuRefs.current[i].scrollHeight }))
+    }
+  }
+
+  function logout() {
     localStorage.removeItem('admin_session')
     navigate('/login')
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-56 bg-gray-900 text-white flex flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-gray-700">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Panel interno</p>
-          <p className="font-bold text-lg">DREAMSTOUR</p>
-        </div>
-
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {/* Dashboard */}
-          <Link
-            to="/admin"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname === '/admin'
-                ? 'bg-brand-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-            }`}
-          >
-            <span>📊</span> Dashboard
-          </Link>
-
-          {/* CRM Group */}
+    <aside
+      className={`fixed top-0 left-0 h-screen z-50 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out
+        ${isExpanded || isHovered ? 'w-[290px]' : 'w-[90px]'}
+        ${isMobileOpen ? 'translate-x-0 w-[290px]' : '-translate-x-full'}
+        lg:translate-x-0`}
+      onMouseEnter={() => !isExpanded && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Logo */}
+      <div className={`flex items-center py-6 px-5 border-b border-gray-100 ${!visible ? 'justify-center' : ''}`}>
+        {visible ? (
           <div>
-            <button
-              onClick={() => setCrmAbierto(v => !v)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                enCRM ? 'bg-brand-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <span>🤝</span>
-              <span className="flex-1 text-left">CRM</span>
-              <span className="text-xs">{crmAbierto ? '▾' : '▸'}</span>
-            </button>
-
-            {crmAbierto && (
-              <div className="ml-3 mt-1 space-y-1">
-                {crmItems.map(({ path, label, icon }) => {
-                  const active = pathname === path || pathname.startsWith(path + '/')
-                  return (
-                    <Link
-                      key={path}
-                      to={path}
-                      className={`flex items-center gap-3 pl-4 pr-3 py-2 rounded-lg text-sm transition-colors ${
-                        active
-                          ? 'bg-gray-700 text-white'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                      }`}
-                    >
-                      <span>{icon}</span>
-                      {label}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Panel interno</p>
+            <p className="text-lg font-bold text-gray-900">DREAMSTOUR</p>
           </div>
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+            <span className="text-white font-bold text-sm">D</span>
+          </div>
+        )}
+      </div>
 
-          {/* Resto de items */}
-          {navItems.slice(1).map(({ path, label, icon }) => {
-            const active = pathname === path
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto no-scrollbar py-5 px-4">
+        {visible && (
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Menú</p>
+        )}
+        {!visible && <div className="flex justify-center mb-3"><Icon.Dots /></div>}
+
+        <ul className="space-y-1">
+          {NAV.map((item, i) => {
+            if (item.sub) {
+              const parentActive = item.sub.some(s => pathname.startsWith(s.path))
+              const isOpen = openSub === i
+
+              return (
+                <li key={i}>
+                  <button
+                    onClick={() => toggleSub(i)}
+                    className={`menu-item group w-full ${!visible ? 'justify-center' : ''} ${
+                      parentActive ? 'menu-item-active' : 'menu-item-inactive'
+                    }`}
+                  >
+                    <span className={`size-6 flex-shrink-0 ${parentActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                      <item.icon />
+                    </span>
+                    {visible && (
+                      <>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        <Icon.Chevron className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-500' : 'text-gray-400'}`} />
+                      </>
+                    )}
+                  </button>
+
+                  {visible && (
+                    <div
+                      ref={el => { subMenuRefs.current[i] = el }}
+                      className="overflow-hidden transition-all duration-300 ease-in-out"
+                      style={{ height: isOpen ? `${subHeights[i] || 0}px` : '0px' }}
+                    >
+                      <ul className="mt-1 ml-3 space-y-1 border-l border-gray-100 pl-3">
+                        {item.sub.map(s => (
+                          <li key={s.path}>
+                            <Link
+                              to={s.path}
+                              className={`menu-dropdown-item ${
+                                isActive(s.path) ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'
+                              }`}
+                            >
+                              <span className="size-4 flex-shrink-0"><s.icon /></span>
+                              {s.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </li>
+              )
+            }
+
+            const active = isActive(item.path, item.exact)
             return (
-              <Link
-                key={path}
-                to={path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <span>{icon}</span>
-                {label}
-              </Link>
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`menu-item group ${!visible ? 'justify-center' : ''} ${
+                    active ? 'menu-item-active' : 'menu-item-inactive'
+                  }`}
+                >
+                  <span className={`size-6 flex-shrink-0 ${active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                    <item.icon />
+                  </span>
+                  {visible && <span>{item.label}</span>}
+                </Link>
+              </li>
             )
           })}
-        </nav>
+        </ul>
+      </div>
 
-        <div className="px-3 py-4 border-t border-gray-700">
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            🌐 Ver sitio público
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors mt-1"
-          >
-            🚪 Cerrar sesión
-          </button>
+      {/* Footer */}
+      <div className="border-t border-gray-100 px-4 py-4 space-y-1">
+        <Link
+          to="/"
+          className={`menu-item menu-item-inactive ${!visible ? 'justify-center' : ''}`}
+        >
+          <span className="size-6 flex-shrink-0 menu-item-icon-inactive"><Icon.Globe /></span>
+          {visible && <span>Ver sitio público</span>}
+        </Link>
+        <button
+          onClick={logout}
+          className={`menu-item menu-item-inactive w-full ${!visible ? 'justify-center' : ''}`}
+        >
+          <span className="size-6 flex-shrink-0 menu-item-icon-inactive"><Icon.Logout /></span>
+          {visible && <span>Cerrar sesión</span>}
+        </button>
+      </div>
+    </aside>
+  )
+}
+
+/* ─── Header ────────────────────────────────────────────────────── */
+function Header() {
+  const { isExpanded, isHovered, toggleSidebar, toggleMobileSidebar } = useSidebar()
+  const { pathname } = useLocation()
+
+  function handleToggle() {
+    if (window.innerWidth >= 1024) toggleSidebar()
+    else toggleMobileSidebar()
+  }
+
+  function getTitle() {
+    if (pathname === '/admin') return 'Dashboard'
+    if (pathname.startsWith('/admin/leads')) return 'Leads'
+    if (pathname.startsWith('/admin/clientes')) return 'Clientes'
+    if (pathname.startsWith('/admin/crm/whatsapp')) return 'WhatsApp'
+    if (pathname.startsWith('/admin/reservas')) return 'Reservas'
+    if (pathname.startsWith('/admin/excursiones')) return 'Excursiones'
+    if (pathname.startsWith('/admin/agenda')) return 'Agenda'
+    if (pathname.startsWith('/admin/equipo')) return 'Equipo'
+    if (pathname.startsWith('/admin/configuracion')) return 'Configuración'
+    return 'Panel'
+  }
+
+  return (
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200 flex items-center px-4 py-3 gap-4 lg:px-6">
+      <button
+        onClick={handleToggle}
+        className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex-shrink-0"
+      >
+        <span className="size-5"><Icon.Menu /></span>
+      </button>
+
+      <h1 className="text-base font-semibold text-gray-800">{getTitle()}</h1>
+
+      <div className="flex-1" />
+
+      <div className="flex items-center gap-1">
+        <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
+          <span className="text-white text-xs font-semibold">A</span>
         </div>
-      </aside>
+      </div>
+    </header>
+  )
+}
 
-      {/* Contenido */}
-      <div className="flex-1 overflow-auto">
-        <Outlet />
+/* ─── Backdrop mobile ───────────────────────────────────────────── */
+function Backdrop() {
+  const { isMobileOpen, toggleMobileSidebar } = useSidebar()
+  if (!isMobileOpen) return null
+  return (
+    <div
+      className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+      onClick={toggleMobileSidebar}
+    />
+  )
+}
+
+/* ─── Layout principal ──────────────────────────────────────────── */
+function LayoutContent() {
+  const { isExpanded, isHovered } = useSidebar()
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      <Backdrop />
+      <div className={`transition-all duration-300 ease-in-out ${
+        isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
+      }`}>
+        <Header />
+        <main className="p-4 md:p-6 max-w-screen-2xl mx-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
+  )
+}
+
+export default function AdminLayout() {
+  return (
+    <SidebarProvider>
+      <LayoutContent />
+    </SidebarProvider>
   )
 }

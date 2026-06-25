@@ -531,17 +531,22 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
     if (!listoParaCerrar) return
     const fechaFmt = formatFechaLarga(fecha)
     const horario = getHorario(excursion)
-
     const hora = new Date().getHours()
     const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
+    const errores = []
+
+    async function enviar(destino, phone, msg) {
+      const res = await sendWhatsApp(phone, msg)
+      console.log(`[WhatsApp → ${destino}] phone: ${phone}`, res)
+      if (!res.ok) errores.push(`${destino}: ${res.error || 'error desconocido'}`)
+    }
 
     // Mensaje al GUÍA
     const lineasGuia = pasajeros.map((r) => {
       const choferR = choferes.find((c) => c.id === asignaciones[r.id])
       return `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 📞 +${r.clienteWhatsapp} · 🚗 ${choferR ? choferR.nombre : 'Sin chofer'}`
     }).join('\n')
-    await sendWhatsApp(
-      guiaAsignado.whatsapp,
+    await enviar(`Guía (${guiaAsignado.nombre})`, guiaAsignado.whatsapp,
       `Hola ${guiaAsignado.nombre} 👋\n\n🗺 *${excursion.nombre}*\n📅 ${fechaFmt}\n🕐 Salida: ${horario.partida} — Regreso: ${horario.regreso}\n\n*Pasajeros de la operación:*\n${lineasGuia}\n\n¡Muchas gracias!`
     )
 
@@ -556,8 +561,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       const chofer = choferes.find((c) => c.id === cid)
       if (!chofer) continue
       const lineas = sus.map((r) => `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 🏨 ${r.hospedaje || 'Sin hospedaje'}`).join('\n')
-      await sendWhatsApp(
-        chofer.whatsapp,
+      await enviar(`Chofer (${chofer.nombre})`, chofer.whatsapp,
         `Hola ${chofer.nombre} 👋\n\n🗺 *${excursion.nombre}*\n📅 ${fechaFmt}\n🕐 Salida: ${horario.partida}\n\n*Tus pasajeros:*\n${lineas}\n\n🧭 Guía: *${guiaAsignado.nombre}*\n\n¡Gracias!`
       )
     }
@@ -565,13 +569,16 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
     // Mensaje a cada CLIENTE
     for (const r of pasajeros) {
       const choferR = choferes.find((c) => c.id === asignaciones[r.id])
-      await sendWhatsApp(
-        r.clienteWhatsapp,
+      await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp,
         `${saludo}, soy *${guiaAsignado.nombre}* 👋\n\nEl chofer asignado para realizar su traslado es *${choferR ? choferR.nombre : 'por confirmar'}*, él lo estará buscando por la puerta de su hospedaje a las *${horario.partida}* del día de mañana para dirigirnos hacia *${excursion.nombre}*.\n\nYo los estaré esperando ahí para ingresar todos juntos.\n\nAnte cualquier duda o consulta podés escribirme directamente al 📱 *+${guiaAsignado.whatsapp}*`
       )
     }
 
-    alert('✅ Mensajes enviados al guía, choferes y clientes.')
+    if (errores.length === 0) {
+      alert('✅ Mensajes enviados correctamente al guía, choferes y clientes.')
+    } else {
+      alert(`⚠️ Algunos mensajes fallaron:\n\n${errores.join('\n')}\n\nRevisá la consola del navegador para más detalles.`)
+    }
   }
 
   return (

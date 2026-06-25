@@ -2,15 +2,31 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export async function sendWhatsApp(phone, message) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({ phone, message }),
-  })
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ phone, message }),
+    })
 
-  const data = await res.json()
-  return { ok: data.sent === 'true', error: data.error || null }
+    const text = await res.text()
+    console.log(`[sendWhatsApp] status: ${res.status}`, text)
+
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}: ${text}` }
+    }
+
+    let data = {}
+    try { data = JSON.parse(text) } catch { data = { raw: text } }
+
+    // WuzAPI devuelve { sent: "true" } cuando el mensaje se envió
+    const ok = data.sent === 'true' || data.sent === true
+    return { ok, error: ok ? null : (data.error || data.raw || 'No confirmado por WuzAPI') }
+  } catch (err) {
+    console.error('[sendWhatsApp] error de red:', err)
+    return { ok: false, error: err.message }
+  }
 }

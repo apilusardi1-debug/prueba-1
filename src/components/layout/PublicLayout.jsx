@@ -5,7 +5,7 @@ import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
 
 const NAV_LINKS = [
-  { to: '/paquetes',    label: 'Paquetes AÃÂ©reos',  icon: 'flight' },
+  { to: '/paquetes',    label: 'Paquetes Aéreos',  icon: 'flight' },
   { to: '/excursiones', label: 'Excursiones',       icon: 'explore' },
   { to: '/hoteles',     label: 'Hoteles & Posadas', icon: 'hotel' },
   { to: '/traslados',   label: 'Traslados',         icon: 'directions_car' },
@@ -159,13 +159,13 @@ export default function PublicLayout() {
           <div className="flex flex-col gap-3">
             <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Explorar</h4>
             <Link to="/destinos"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Destinos</Link>
-            <Link to="/paquetes"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Paquetes AÃÂ©reos</Link>
+            <Link to="/paquetes"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Paquetes Aéreos</Link>
             <Link to="/excursiones" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Excursiones</Link>
             <Link to="/marea"       className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Tabla de Marea</Link>
           </div>
           <div className="flex flex-col gap-3">
             <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Nosotros</h4>
-            <Link to="/nosotros"     className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">QuiÃÂ©nes Somos</Link>
+            <Link to="/nosotros"     className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Quiénes Somos</Link>
             <Link to="/hoteles"      className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Hoteles & Posadas</Link>
             <Link to="/traslados"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Traslados</Link>
             <Link to="/mis-reservas" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Mis Reservas</Link>

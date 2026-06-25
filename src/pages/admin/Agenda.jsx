@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { excursiones, reservas, formatPrecio } from '../../data/mockData.js'
-import { choferesApi, guiasApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi } from '../../lib/supabase.js'
 import { sendWhatsApp } from '../../lib/ultramsg.js'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+function formatPrecio(n) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
+}
 
 function formatFechaLarga(fechaStr) {
   return new Date(fechaStr + 'T12:00:00').toLocaleDateString('es-AR', {
@@ -18,26 +21,42 @@ function formatFechaCorta(fechaStr) {
   })
 }
 
-function buildSalidas() {
-  return excursiones.flatMap((ex) =>
-    ex.fechas.map((f) => ({
-      fecha: f,
-      excursion: ex,
-      reservas: reservas.filter(
-        (r) => r.fecha === f && r.excursionId === ex.id && r.estado !== 'cancelada'
-      ),
-    }))
-  )
+function normalizarReserva(r) {
+  return {
+    id: r.id,
+    excursionId: r.excursion_id,
+    excursionNombre: r.excursiones?.nombre || '—',
+    excursionCategoria: r.excursiones?.categoria || '',
+    excursionCupos: r.excursiones?.cupos || 0,
+    clienteNombre: r.cliente_nombre,
+    clienteWhatsapp: r.cliente_whatsapp,
+    hospedaje: r.hospedaje,
+    personas: r.personas || 1,
+    estado: r.estado || 'pendiente',
+    fecha: r.fecha,
+    total: r.total || 0,
+  }
 }
 
-function primerMesConDatos() {
-  return new Date()
+function buildSalidas(reservasNorm) {
+  const map = {}
+  for (const r of reservasNorm) {
+    if (r.estado === 'cancelada') continue
+    const key = `${r.excursionId}-${r.fecha}`
+    if (!map[key]) {
+      map[key] = {
+        fecha: r.fecha,
+        excursion: { id: r.excursionId, nombre: r.excursionNombre, cupos: r.excursionCupos, categoria: r.excursionCategoria },
+        reservas: [],
+      }
+    }
+    map[key].reservas.push(r)
+  }
+  return Object.values(map)
 }
 
-function getExcursionTipo(excursionId) {
-  const ex = excursiones.find((e) => e.id === excursionId)
-  if (!ex) return '—'
-  return ex.categoria === 'paquetes' ? 'Paquete' : 'Excursión'
+function getExcursionTipo(reserva) {
+  return reserva.excursionCategoria === 'paquetes' ? 'Paquete' : 'Excursión'
 }
 
 const TABS = [
@@ -54,13 +73,17 @@ const STATUS_CONFIG = {
 }
 
 const HORARIOS_EXCURSION = {
-  '1': { partida: '7:00 AM', regreso: '6:00 PM' },
-  '2': { partida: '6:30 AM', regreso: '5:30 PM' },
-  '3': { partida: '8:00 AM', regreso: '7:00 PM' },
-  '4': { partida: '7:30 AM', regreso: '8:00 PM' },
-  '5': { partida: '6:00 AM', regreso: '5:00 PM' },
-  '6': { partida: '8:30 AM', regreso: '4:00 PM' },
-  '7': { partida: '7:00 AM', regreso: '3:00 PM' },
+  'maragogi':   { partida: '7:00 AM', regreso: '6:00 PM' },
+  'carneiros':  { partida: '6:30 AM', regreso: '5:30 PM' },
+  'default':    { partida: '8:00 AM', regreso: '6:00 PM' },
+}
+
+function getHorario(excursion) {
+  if (!excursion) return HORARIOS_EXCURSION.default
+  const nombre = (excursion.nombre || '').toLowerCase()
+  if (nombre.includes('maragogi')) return HORARIOS_EXCURSION.maragogi
+  if (nombre.includes('carneiros')) return HORARIOS_EXCURSION.carneiros
+  return HORARIOS_EXCURSION.default
 }
 
 const AVATAR_COLORS = ['bg-blue-500','bg-purple-500','bg-emerald-500','bg-orange-400','bg-pink-500','bg-teal-500','bg-indigo-500','bg-rose-500']
@@ -94,29 +117,33 @@ export default function Agenda() {
   const [vista, setVista] = useState('tabla')
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
+  const [reservasNorm, setReservasNorm] = useState([])
+  const [cargando, setCargando] = useState(true)
   const [asignaciones, setAsignaciones] = useState({})
   const [guiaAsignaciones, setGuiaAsignaciones] = useState({})
   const [modal, setModal] = useState(null)
 
   useEffect(() => {
-    choferesApi.getAll().then(({ data, error }) => {
-      if (!error) setChoferes((data || []).filter((c) => c.activo))
-    })
-    guiasApi.getAll().then(({ data, error }) => {
-      if (!error) setGuias(data || [])
+    Promise.all([
+      choferesApi.getAll(),
+      guiasApi.getAll(),
+      reservasApi.getAll(),
+    ]).then(([ch, gu, res]) => {
+      if (!ch.error) setChoferes((ch.data || []).filter((c) => c.activo))
+      if (!gu.error) setGuias(gu.data || [])
+      if (!res.error) setReservasNorm((res.data || []).map(normalizarReserva))
+      setCargando(false)
     })
   }, [])
 
   return (
     <div className="p-8">
-      {/* Encabezado */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Agenda</h1>
           <p className="text-gray-400 dark:text-zinc-500 text-sm mt-0.5">Reservas y salidas · Dreams Tours</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Toggle vista */}
           <div className="flex items-center bg-gray-100 dark:bg-zinc-900 rounded-xl p-1 gap-1 border border-transparent dark:border-zinc-800">
             <button
               onClick={() => setVista('tabla')}
@@ -141,26 +168,19 @@ export default function Agenda() {
           </div>
 
           {vista === 'tabla' && (
-            <>
-              <button className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                Personalizar columnas
-              </button>
-              <button className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm">
-                <span className="text-base leading-none">+</span>
-                Nueva Reserva
-              </button>
-            </>
+            <button className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm">
+              <span className="text-base leading-none">+</span>
+              Nueva Reserva
+            </button>
           )}
         </div>
       </div>
 
       {vista === 'tabla' ? (
-        <VistaTabla />
+        <VistaTabla reservasNorm={reservasNorm} cargando={cargando} />
       ) : (
         <VistaCalendario
+          reservasNorm={reservasNorm}
           choferes={choferes}
           guias={guias}
           asignaciones={asignaciones}
@@ -178,17 +198,17 @@ export default function Agenda() {
 /* ══════════════════════════════════════════════════════════════════
    VISTA TABLA
 ══════════════════════════════════════════════════════════════════ */
-function VistaTabla() {
+function VistaTabla({ reservasNorm, cargando }) {
   const [tabActiva, setTabActiva] = useState('todas')
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [accionesAbierta, setAccionesAbierta] = useState(null)
 
-  const filas = tabActiva === 'todas' ? reservas : reservas.filter((r) => r.estado === tabActiva)
+  const filas = tabActiva === 'todas' ? reservasNorm : reservasNorm.filter((r) => r.estado === tabActiva)
   const conteos = {
-    todas:      reservas.length,
-    pendiente:  reservas.filter((r) => r.estado === 'pendiente').length,
-    confirmada: reservas.filter((r) => r.estado === 'confirmada').length,
-    cancelada:  reservas.filter((r) => r.estado === 'cancelada').length,
+    todas:      reservasNorm.length,
+    pendiente:  reservasNorm.filter((r) => r.estado === 'pendiente').length,
+    confirmada: reservasNorm.filter((r) => r.estado === 'confirmada').length,
+    cancelada:  reservasNorm.filter((r) => r.estado === 'cancelada').length,
   }
 
   function toggleSeleccion(id) {
@@ -201,7 +221,6 @@ function VistaTabla() {
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-      {/* Tabs */}
       <div className="flex items-center gap-1 px-4 pt-4 border-b border-gray-100 dark:border-zinc-800">
         {TABS.map((tab) => (
           <button
@@ -225,7 +244,6 @@ function VistaTabla() {
         ))}
       </div>
 
-      {/* Tabla */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -242,7 +260,14 @@ function VistaTabla() {
             </tr>
           </thead>
           <tbody>
-            {filas.map((reserva, idx) => {
+            {cargando ? (
+              <tr><td colSpan={9} className="py-16 text-center text-gray-400 dark:text-zinc-600 text-sm">Cargando reservas...</td></tr>
+            ) : filas.length === 0 ? (
+              <tr><td colSpan={9} className="py-16 text-center text-gray-400 dark:text-zinc-600">
+                <p className="text-3xl mb-2">📋</p>
+                <p className="text-sm">No hay reservas en esta categoría</p>
+              </td></tr>
+            ) : filas.map((reserva, idx) => {
               const status = STATUS_CONFIG[reserva.estado] || STATUS_CONFIG.pendiente
               const sel = seleccionados.has(reserva.id)
               return (
@@ -260,7 +285,7 @@ function VistaTabla() {
                     <p className="font-semibold text-gray-900 dark:text-zinc-100 leading-snug">{reserva.excursionNombre}</p>
                     <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{reserva.clienteNombre}</p>
                   </td>
-                  <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400">{getExcursionTipo(reserva.excursionId)}</td>
+                  <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400">{getExcursionTipo(reserva)}</td>
                   <td className="py-3.5 px-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.bg} ${status.text} ${status.darkBg} ${status.darkText}`}>
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${status.dot}`} />
@@ -289,12 +314,6 @@ function VistaTabla() {
                 </tr>
               )
             })}
-            {filas.length === 0 && (
-              <tr><td colSpan={9} className="py-16 text-center text-gray-400 dark:text-zinc-600">
-                <p className="text-3xl mb-2">📋</p>
-                <p className="text-sm">No hay reservas en esta categoría</p>
-              </td></tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -312,12 +331,12 @@ function VistaTabla() {
 /* ══════════════════════════════════════════════════════════════════
    VISTA CALENDARIO
 ══════════════════════════════════════════════════════════════════ */
-function VistaCalendario({ choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal }) {
-  const todasLasSalidas = buildSalidas()
+function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal }) {
+  const todasLasSalidas = buildSalidas(reservasNorm)
   const hoy = new Date()
   const todayStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
 
-  const [mes, setMes] = useState(primerMesConDatos)
+  const [mes, setMes] = useState(() => new Date())
   const [diaSeleccionado, setDiaSeleccionado] = useState(todayStr)
 
   const anio = mes.getFullYear()
@@ -350,8 +369,8 @@ function VistaCalendario({ choferes, guias, asignaciones, guiaAsignaciones, onAs
 
   const tituloMes = mes.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
   const salidaHoy = salidasPorFecha[diaSeleccionado] || []
-  const [sy, sm, sd] = diaSeleccionado.split('-').map(Number)
-  const fechaLegible = new Date(sy, sm - 1, sd).toLocaleDateString('es-AR', {
+  const [sy, sm] = diaSeleccionado.split('-').map(Number)
+  const fechaLegible = new Date(sy, sm - 1, Number(diaSeleccionado.split('-')[2])).toLocaleDateString('es-AR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
@@ -374,7 +393,7 @@ function VistaCalendario({ choferes, guias, asignaciones, guiaAsignaciones, onAs
           ))}
         </div>
 
-        <div className="px-3 pb-4 space-y-0">
+        <div className="px-3 pb-4">
           {semanas.map((semana, si) => (
             <div key={si} className="grid grid-cols-7">
               {semana.map(({ dia, mesOffset }, di) => {
@@ -429,10 +448,10 @@ function VistaCalendario({ choferes, guias, asignaciones, guiaAsignaciones, onAs
         ) : (
           <div className="space-y-4">
             {salidaHoy.map((salida) => {
-              const horario = HORARIOS_EXCURSION[salida.excursion.id] || { partida: '8:00 AM', regreso: '6:00 PM' }
+              const horario = getHorario(salida.excursion)
               const paxTotal = salida.reservas.reduce((a, r) => a + r.personas, 0)
               return (
-                <div key={salida.excursion.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20 overflow-hidden">
+                <div key={`${salida.excursion.id}-${salida.fecha}`} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20 overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-gray-900 dark:text-zinc-100 text-sm">{salida.excursion.nombre}</h4>
@@ -511,12 +530,12 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   async function cerrarOperacion() {
     if (!listoParaCerrar) return
     const fechaFmt = formatFechaLarga(fecha)
-    const horario = HORARIOS_EXCURSION[excursion.id] || { partida: '8:00 AM', regreso: '6:00 PM' }
+    const horario = getHorario(excursion)
 
     const hora = new Date().getHours()
     const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
-    // Mensaje al GUÍA — operación completa con nombre, pax, teléfono y chofer por pasajero
+    // Mensaje al GUÍA
     const lineasGuia = pasajeros.map((r) => {
       const choferR = choferes.find((c) => c.id === asignaciones[r.id])
       return `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 📞 +${r.clienteWhatsapp} · 🚗 ${choferR ? choferR.nombre : 'Sin chofer'}`
@@ -526,7 +545,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       `Hola ${guiaAsignado.nombre} 👋\n\n🗺 *${excursion.nombre}*\n📅 ${fechaFmt}\n🕐 Salida: ${horario.partida} — Regreso: ${horario.regreso}\n\n*Pasajeros de la operación:*\n${lineasGuia}\n\n¡Muchas gracias!`
     )
 
-    // Mensaje a cada CHOFER — sus pasajeros con hospedaje
+    // Mensaje a cada CHOFER
     const porChofer = {}
     for (const r of conChofer) {
       const cid = asignaciones[r.id]
@@ -543,7 +562,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       )
     }
 
-    // Mensaje a cada CLIENTE — confirmación personalizada del guía
+    // Mensaje a cada CLIENTE
     for (const r of pasajeros) {
       const choferR = choferes.find((c) => c.id === asignaciones[r.id])
       await sendWhatsApp(
@@ -563,15 +582,17 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
           <div>
             <h2 className="font-bold text-gray-900 dark:text-zinc-100 text-base leading-snug">{excursion.nombre}</h2>
             <p className="text-sm text-gray-400 dark:text-zinc-500 mt-0.5 capitalize">{formatFechaLarga(fecha)}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm font-semibold text-[#002147] dark:text-zinc-300">{paxReservados}/{excursion.cupos} personas</span>
-              <div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5 w-24">
-                <div className={`h-1.5 rounded-full transition-all ${
-                  paxReservados / excursion.cupos >= 0.8 ? 'bg-red-400' :
-                  paxReservados / excursion.cupos >= 0.5 ? 'bg-yellow-400' : 'bg-green-400'
-                }`} style={{ width: `${Math.min(100, (paxReservados / excursion.cupos) * 100)}%` }} />
+            {excursion.cupos > 0 && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-sm font-semibold text-[#002147] dark:text-zinc-300">{paxReservados}/{excursion.cupos} personas</span>
+                <div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5 w-24">
+                  <div className={`h-1.5 rounded-full transition-all ${
+                    paxReservados / excursion.cupos >= 0.8 ? 'bg-red-400' :
+                    paxReservados / excursion.cupos >= 0.5 ? 'bg-yellow-400' : 'bg-green-400'
+                  }`} style={{ width: `${Math.min(100, (paxReservados / excursion.cupos) * 100)}%` }} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg flex-shrink-0 transition-colors">×</button>
         </div>

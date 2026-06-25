@@ -33,7 +33,7 @@ export const excursionesApi = {
 
 // ── Reservas ───────────────────────────────────────────────────────────────────
 export const reservasApi = {
-  getAll: () => supabase?.from('reservas').select('*, excursiones(nombre), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').order('fecha'),
+  getAll: () => supabase?.from('reservas').select('*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').order('fecha'),
   getByWhatsapp: (whatsapp) => supabase?.from('reservas').select('*, excursiones(nombre, imagen)').eq('cliente_whatsapp', whatsapp),
   create: (data) => supabase?.from('reservas').insert(data).select().single(),
   updateEstado: (id, estado) => supabase?.from('reservas').update({ estado }).eq('id', id).select().single(),

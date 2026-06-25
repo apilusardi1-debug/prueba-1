@@ -31,10 +31,7 @@ function buildSalidas() {
 }
 
 function primerMesConDatos() {
-  const fechas = excursiones.flatMap((e) => e.fechas).sort()
-  if (!fechas.length) return new Date()
-  const [y, m] = fechas[0].split('-').map(Number)
-  return new Date(y, m - 1, 1)
+  return new Date()
 }
 
 function getExcursionTipo(excursionId) {

@@ -548,7 +548,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       const choferR = choferes.find((c) => c.id === asignaciones[r.id])
       await sendWhatsApp(
         r.clienteWhatsapp,
-        `${saludo}, soy *${guiaAsignado.nombre}* 👋\n\nEl chofer asignado para realizar su traslado es *${choferR ? choferR.nombre : 'por confirmar'}*, él lo estará buscando por la puerta de su hospedaje a las *${horario.partida}* del día de mañana para dirigirnos hacia *${excursion.nombre}*.\n\nYo los estaré esperando ahí para ingresar todos juntos.\n\nAnte cualquier duda o consulta estoy a disposición 🙌`
+        `${saludo}, soy *${guiaAsignado.nombre}* 👋\n\nEl chofer asignado para realizar su traslado es *${choferR ? choferR.nombre : 'por confirmar'}*, él lo estará buscando por la puerta de su hospedaje a las *${horario.partida}* del día de mañana para dirigirnos hacia *${excursion.nombre}*.\n\nYo los estaré esperando ahí para ingresar todos juntos.\n\nAnte cualquier duda o consulta podés escribirme directamente al 📱 *+${guiaAsignado.whatsapp}*`
       )
     }
 

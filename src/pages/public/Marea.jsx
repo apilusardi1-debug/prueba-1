@@ -60,11 +60,6 @@ export default function Marea() {
           Elegí el día perfecto<br/>para las piscinas naturales
         </h1>
 
-        {/* Subcopy */}
-        <p style={{ fontFamily:"'Helvetica Neue',Helvetica,Arial,sans-serif", fontSize:'15px', lineHeight:1.7, color:'rgba(255,255,255,0.65)', maxWidth:'520px', marginBottom:'40px' }}>
-          Las piscinas naturales se forman únicamente con <strong style={{ color:C.white, fontWeight:600 }}>marea baja</strong> — por debajo de 0,7 metros. Consultá los horarios de cada destino y planificá tu excursión con anticipación.
-        </p>
-
         {/* Tabs */}
         <div style={{ display:'flex', gap:'8px', marginBottom:'32px', flexWrap:'wrap' }}>
           {DESTINOS.map(d => {

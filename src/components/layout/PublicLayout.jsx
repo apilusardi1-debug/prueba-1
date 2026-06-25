@@ -71,7 +71,7 @@ export default function PublicLayout() {
               >
                 <span>{languages.find(l => l.code === lang)?.flag}</span>
                 <span className="hidden sm:inline">{languages.find(l => l.code === lang)?.label}</span>
-                <span style={{ fontSize: '10px', lineHeight: 1 }}>Ã¢ÂÂ¾</span>
+                <span style={{ fontSize: "10px", lineHeight: 1, marginLeft: "2px", opacity: 0.8 }}>▾</span>
               </button>
               {langDropdownOpen && (
                 <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-surface-variant/30 overflow-hidden z-50 min-w-[140px]">

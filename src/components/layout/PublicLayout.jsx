@@ -50,15 +50,15 @@ export default function PublicLayout() {
       {/* Header */}
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 backdrop-blur-md ${scrolled ? 'bg-white/95 shadow-md' : 'bg-transparent'}`}>
         <div className="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-5 max-w-container-max mx-auto">
-          <div className="flex items-center gap-1">
-            <Link to="/" aria-label="Inicio" className="p-1 flex items-center justify-center">
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <Link to="/" aria-label="Inicio" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
                 <path d="M9 21V12h6v9"/>
               </svg>
             </Link>
-            <button onClick={() => setDrawerOpen(true)} aria-label="Menú" className="p-1">
-              <span className="material-symbols-outlined" style={{ color: iconColor }}>menu</span>
+            <button onClick={() => setDrawerOpen(true)} aria-label="Menú" style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
+              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
             </button>
           </div>
           <Link to="/" aria-label="Inicio" className="flex-shrink-0">

@@ -57,3 +57,15 @@
 .text-shadow-sm {
   text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
+
+/* ── Destinos carousel ──────────────────────────────── */
+@keyframes scroll-destinos {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.destinos-track {
+  animation: scroll-destinos 22s linear infinite;
+}
+.destinos-track:hover {
+  animation-play-state: paused;
+}

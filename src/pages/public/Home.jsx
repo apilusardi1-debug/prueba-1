@@ -138,28 +138,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── DESTINOS FAVORITOS ───────────────────────────────── */}
-      <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <div className="mb-8">
+      {/* ── DESTINOS FAVORITOS ────────────────────────────────────────── */}
+      <section className="py-16 overflow-hidden">
+        <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-headline-lg text-headline-lg text-deep-ocean mb-2">Destinos Favoritos</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">Los lugares más elegidos por nuestros viajeros</p>
         </div>
-        <div className="flex flex-nowrap overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 md:grid md:grid-cols-4 md:gap-gutter md:overflow-visible">
-          {DESTINOS_HOME.map(d => (
-            <Link key={d.id} to={`/destinos/${d.id}`}
-              className="group relative rounded-xl overflow-hidden aspect-[3/4] cursor-pointer min-w-[85%] md:min-w-0 snap-center flex-shrink-0 block">
-              <img src={d.imagen} alt={d.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/90 via-deep-ocean/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-6 w-full">
-                <h3 className="font-headline-md text-headline-md text-white mb-1">{d.nombre}</h3>
-                <p className="font-label-sm text-label-sm text-sand-beige flex items-center gap-1 group-hover:underline">
-                  Explorar destino <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </p>
-              </div>
-            </Link>
-          ))}
+        {/* Carousel infinito con fade en bordes */}
+        <div style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)' }}>
+          <div className="destinos-track" style={{ display: 'flex', gap: '16px', width: 'max-content', padding: '8px 0 16px' }}>
+            {[...DESTINOS_HOME, ...DESTINOS_HOME].map((d, i) => (
+              <Link key={i} to={`/destinos/${d.id}`}
+                className="group relative rounded-xl overflow-hidden cursor-pointer flex-shrink-0 block"
+                style={{ width: 'clamp(240px, 22vw, 340px)', aspectRatio: '3/4' }}>
+                <img src={d.imagen} alt={d.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/90 via-deep-ocean/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-6 w-full">
+                  <h3 className="font-headline-md text-headline-md text-white mb-1">{d.nombre}</h3>
+                  <p className="font-label-sm text-label-sm text-sand-beige flex items-center gap-1 group-hover:underline">
+                    Explorar destino <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-        <div className="mt-8 text-center md:hidden">
+        <div className="mt-8 text-center px-margin-mobile">
           <Link to="/destinos" className="inline-flex items-center gap-2 font-label-lg text-label-lg text-deep-ocean bg-surface-container py-3 px-6 rounded-full group">
             Ver todos los destinos
             <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">arrow_forward</span>

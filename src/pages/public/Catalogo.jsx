@@ -59,7 +59,7 @@ export default function Catalogo({ categoria }) {
     <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: '80px' }}>
 
       {/* ── Header ──────────────────────────────── */}
-      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: '48px 24px 36px' }}>
+      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: '80px 24px 36px' }}>
         <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
           <p style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.teal, marginBottom: '12px' }}>
             DreamTours · Nordeste Brasilero
@@ -142,7 +142,10 @@ export default function Catalogo({ categoria }) {
 
                 {/* Image */}
                 <div style={{ position: 'relative', height: '220px', overflow: 'hidden', flexShrink: 0 }}>
-                  <img src={ex.imagen} alt={ex.nombre}
+                  <img
+                    src={ex.imagen || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
+                    alt={ex.nombre}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' }}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', transform: hovered === ex.id ? 'scale(1.04)' : 'scale(1)', transition: 'transform 0.6s ease' }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,33,71,0.35) 100%)' }} />
 

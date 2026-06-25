@@ -526,19 +526,22 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   const conChofer = pasajeros.filter((r) => asignaciones[r.id])
   const guiaAsignado = guias.find((g) => g.id === guiaAsignaciones[opKey])
   const listoParaCerrar = guiaAsignaciones[opKey] && conChofer.length > 0
+  const [enviando, setEnviando] = useState(false)
+  const [resultados, setResultados] = useState(null)
 
   async function cerrarOperacion() {
     if (!listoParaCerrar) return
+    setEnviando(true)
+    setResultados(null)
     const fechaFmt = formatFechaLarga(fecha)
     const horario = getHorario(excursion)
     const hora = new Date().getHours()
     const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
-    const errores = []
+    const logs = []
 
     async function enviar(destino, phone, msg) {
       const res = await sendWhatsApp(phone, msg)
-      console.log(`[WhatsApp → ${destino}] phone: ${phone}`, res)
-      if (!res.ok) errores.push(`${destino}: ${res.error || 'error desconocido'}`)
+      logs.push({ destino, phone, ok: res.ok, error: res.error })
     }
 
     // Mensaje al GUÍA
@@ -574,11 +577,8 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       )
     }
 
-    if (errores.length === 0) {
-      alert('✅ Mensajes enviados correctamente al guía, choferes y clientes.')
-    } else {
-      alert(`⚠️ Algunos mensajes fallaron:\n\n${errores.join('\n')}\n\nRevisá la consola del navegador para más detalles.`)
-    }
+    setEnviando(false)
+    setResultados(logs)
   }
 
   return (
@@ -670,17 +670,33 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
           )}
         </div>
 
+        {resultados && (
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 max-h-48 overflow-y-auto">
+            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resultado del envío</p>
+            {resultados.map((r, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <span>{r.ok ? '✅' : '❌'}</span>
+                <div>
+                  <span className="font-medium text-gray-800 dark:text-zinc-200">{r.destino}</span>
+                  <span className="text-gray-400 dark:text-zinc-500 ml-1">({r.phone})</span>
+                  {!r.ok && <p className="text-red-500 dark:text-red-400 mt-0.5 break-all">{r.error}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {pasajeros.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between gap-3">
             <div className="text-sm text-gray-400 dark:text-zinc-500 space-y-0.5">
               <p>{conChofer.length}/{pasajeros.length} con chofer asignado</p>
               {!guiaAsignado && <p className="text-yellow-500 dark:text-yellow-400 text-xs">⚠ Falta asignar guía</p>}
             </div>
-            <button onClick={cerrarOperacion} disabled={!listoParaCerrar}
+            <button onClick={cerrarOperacion} disabled={!listoParaCerrar || enviando}
               className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors ${
-                listoParaCerrar ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
+                listoParaCerrar && !enviando ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
               }`}>
-              🚀 Cerrar operación
+              {enviando ? '⏳ Enviando...' : '🚀 Cerrar operación'}
             </button>
           </div>
         )}

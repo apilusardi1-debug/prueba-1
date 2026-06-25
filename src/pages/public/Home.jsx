@@ -79,11 +79,42 @@ export default function Home() {
           <div className="absolute inset-0 glass-overlay" />
         </div>
         <div className="relative z-10 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto text-white">
-          <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg mb-4 text-shadow-sm leading-tight">
-            Tu viaje al<br />Nordeste Brasilero
+          {/* Label superior */}
+          <p style={{
+            fontFamily: "'Helvetica Neue', Arial, sans-serif",
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.26em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.72)',
+            marginBottom: '16px'
+          }}>
+            Creadores de Sueños
+          </p>
+          {/* Titular principal */}
+          <h1 style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontWeight: 500,
+            fontSize: 'clamp(3.2rem, 7.5vw, 6.2rem)',
+            lineHeight: 0.98,
+            letterSpacing: '-0.02em',
+            color: '#ffffff',
+            marginBottom: '20px'
+          }}>
+            Tu viaje al{' '}
+            <span style={{ fontStyle: 'italic' }}>Nordeste</span>{' '}
+            Brasilero
           </h1>
-          <p className="font-body-lg text-body-lg mb-8 max-w-lg opacity-90">
-            Descubrí paraísos tropicales, playas de arena blanca y aguas cristalinas en un viaje inolvidable.
+          {/* Subcopy */}
+          <p style={{
+            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+            fontSize: '16px',
+            lineHeight: 1.7,
+            color: 'rgba(255,255,255,0.78)',
+            marginBottom: '32px',
+            maxWidth: '480px'
+          }}>
+            Descubrí las piscinas naturales mas lindas de Brasil.
           </p>
           <Link to="/paquetes"
             className="bg-tropical-sun text-deep-ocean font-label-lg text-label-lg px-8 py-4 rounded hover:opacity-90 transition-all duration-300 shadow-lg inline-block">

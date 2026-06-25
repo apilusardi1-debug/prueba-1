@@ -61,15 +61,6 @@ export default function Catalogo({ categoria }) {
       {/* ── Header ──────────────────────────────── */}
       <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: '80px 24px 36px' }}>
         <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
-          {/* Back button */}
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '24px', color: C.navy, fontSize: '13px', fontFamily: "'Helvetica Neue', sans-serif", textDecoration: 'none', fontWeight: 600, background: C.navyLight, border: `1px solid ${C.border}`, borderRadius: '999px', padding: '7px 16px 7px 12px', transition: 'background 0.2s, box-shadow 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,33,71,0.13)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,33,71,0.1)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.navyLight; e.currentTarget.style.boxShadow = 'none' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Volver al inicio
-          </Link>
           <p style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.teal, marginBottom: '12px' }}>
             DreamTours · Nordeste Brasilero
           </p>

@@ -1,107 +1,146 @@
 import { useState } from 'react'
-import { useLang } from '../../context/LanguageContext.jsx'
 
-const destinos = ['Porto de Galinhas', 'Maragogi', 'Maceió', 'Pipa', 'Natal', 'Fernando de Noronha']
+const DESTINOS = ['Porto de Galinhas', 'Maragogi', 'Maceió']
+const DIAS_CORTOS_LABEL = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
 
 function generarMarea(destino) {
   const hoy = new Date()
   const dias = []
-  for (let i = 0; i < 7; i++) {
+  const seed = destino.length * 7
+  for (let i = 0; i < 8; i++) {
     const fecha = new Date(hoy)
     fecha.setDate(hoy.getDate() + i)
-    const base = (i * 47 + destino.length * 13) % 60
+    const minBase = (seed + i * 48) % 60
+    const hrBaja = 9 + (i % 4)
+    const hrAlta = hrBaja + 6
+    const minBaja = (minBase + i * 2) % 60
+    const minAlta = (minBase + 18 + i * 2) % 60
+    const alturaBaja = parseFloat((0.3 + i * 0.09 + Math.sin(i + seed * 0.1) * 0.06).toFixed(1))
+    const alturaAlta = parseFloat((1.8 + Math.sin(i * 0.8 + seed * 0.05) * 0.3).toFixed(1))
     dias.push({
-      fecha,
-      mareas: [
-        { hora: `${String(4 + (base % 3)).padStart(2,'0')}:${String(base % 60).padStart(2,'0')}`, tipo: 'alta', altura: (1.2 + Math.sin(i) * 0.4).toFixed(2) },
-        { hora: `${String(10 + (base % 2)).padStart(2,'0')}:${String((base + 30) % 60).padStart(2,'0')}`, tipo: 'baja', altura: (0.3 + Math.sin(i + 1) * 0.2).toFixed(2) },
-        { hora: `${String(16 + (base % 3)).padStart(2,'0')}:${String((base + 15) % 60).padStart(2,'0')}`, tipo: 'alta', altura: (1.1 + Math.sin(i + 2) * 0.5).toFixed(2) },
-        { hora: `${String(22 + (base % 2)).padStart(2,'0')}:${String((base + 45) % 60).padStart(2,'0')}`, tipo: 'baja', altura: (0.2 + Math.sin(i + 3) * 0.15).toFixed(2) },
-      ],
+      fecha, diaN: fecha.getDate(),
+      diaLabel: DIAS_CORTOS_LABEL[fecha.getDay()],
+      bajahora: `${String(hrBaja).padStart(2,'0')}:${String(minBaja).padStart(2,'0')}`,
+      bajaAltura: alturaBaja,
+      altaHora: `${String(hrAlta > 23 ? hrAlta - 24 : hrAlta).padStart(2,'0')}:${String(minAlta).padStart(2,'0')}`,
+      altaAltura: alturaAlta,
     })
   }
   return dias
 }
 
+function getEstado(a) {
+  if (a <= 0.79) return { label: 'IDEAL',      bg: '#00b4c8', color: '#001a1f' }
+  if (a <= 1.0)  return { label: 'ACEPTABLE',  bg: '#c49b2f', color: '#1a1000' }
+  return               { label: 'NO IDEAL',    bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
+}
+
+const C = {
+  bg: '#0b1e2d', teal: '#00b4c8', white: '#ffffff',
+  muted: 'rgba(255,255,255,0.5)', rowBorder: 'rgba(255,255,255,0.07)',
+  cardBorder: 'rgba(255,255,255,0.08)',
+}
+
 export default function Marea() {
-  const { t } = useLang()
-  const [destinoSel, setDestinoSel] = useState(destinos[0])
+  const [destinoSel, setDestinoSel] = useState(DESTINOS[0])
   const mareas = generarMarea(destinoSel)
+  const proximaIdeal = mareas.find(d => d.bajaAltura <= 0.7) || mareas[0]
 
   return (
-    <div style={{ backgroundColor: '#f9f3e3', minHeight: '100vh' }}>
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="mb-10">
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Condiciones</p>
-          <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2rem,4vw,3rem)', color: '#1C1208', lineHeight: 1.1, marginBottom: 8 }}>
-            {t('tides_title')}
-          </h1>
-          <p style={{ color: '#1C1208AA', fontSize: '1rem' }}>{t('tides_subtitle')}</p>
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: '80px' }}>
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '64px 24px 0' }}>
+
+        {/* Label */}
+        <p style={{ fontFamily:"'Helvetica Neue',Arial,sans-serif", fontSize:'11px', fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:C.teal, marginBottom:'20px' }}>
+          Tabla de Marea · Nordeste
+        </p>
+
+        {/* H1 */}
+        <h1 style={{ fontFamily:"'Playfair Display',Georgia,serif", fontWeight:700, fontSize:'clamp(2.6rem,6vw,4.2rem)', lineHeight:1.05, letterSpacing:'-0.02em', color:C.white, marginBottom:'20px', maxWidth:'680px' }}>
+          Elegí el día perfecto<br/>para las piscinas naturales
+        </h1>
+
+        {/* Subcopy */}
+        <p style={{ fontFamily:"'Helvetica Neue',Helvetica,Arial,sans-serif", fontSize:'15px', lineHeight:1.7, color:'rgba(255,255,255,0.65)', maxWidth:'520px', marginBottom:'40px' }}>
+          Las piscinas naturales se forman únicamente con <strong style={{ color:C.white, fontWeight:600 }}>marea baja</strong> — por debajo de 0,7 metros. Consultá los horarios de cada destino y planificá tu excursión con anticipación.
+        </p>
+
+        {/* Tabs */}
+        <div style={{ display:'flex', gap:'8px', marginBottom:'32px', flexWrap:'wrap' }}>
+          {DESTINOS.map(d => {
+            const active = destinoSel === d
+            return (
+              <button key={d} onClick={() => setDestinoSel(d)} style={{
+                padding:'10px 22px', borderRadius:'6px', fontSize:'12px', fontWeight:700, letterSpacing:'0.08em',
+                textTransform:'uppercase', cursor:'pointer',
+                border: active ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
+                background: active ? C.teal : 'transparent',
+                color: active ? '#001a1f' : 'rgba(255,255,255,0.7)',
+                transition:'all 0.18s',
+              }}>{d}</button>
+            )
+          })}
         </div>
 
-        {/* Selector */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {destinos.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDestinoSel(d)}
-              style={{
-                padding: '8px 18px', borderRadius: 999, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                background: destinoSel === d ? '#1C1208' : 'white',
-                color: destinoSel === d ? '#f9f3e3' : '#1C1208AA',
-                outline: '1.5px solid ' + (destinoSel === d ? '#1C1208' : '#e8d09a')
-              }}
-            >
-              {d}
-            </button>
-          ))}
+        {/* Card próxima ventana ideal */}
+        <div style={{ background:'rgba(0,180,200,0.07)', border:'1px solid rgba(0,180,200,0.2)', borderRadius:'14px', padding:'24px 28px', marginBottom:'12px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
+          <div>
+            <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:C.teal, marginBottom:'10px' }}>
+              Próxima ventana ideal · {destinoSel}
+            </p>
+            <p style={{ fontFamily:"'Playfair Display',Georgia,serif", fontSize:'clamp(1.8rem,4vw,2.6rem)', fontWeight:500, color:C.white, lineHeight:1 }}>
+              {proximaIdeal.diaLabel.charAt(0)+proximaIdeal.diaLabel.slice(1).toLowerCase()} {proximaIdeal.diaN} · {proximaIdeal.bajahora} h
+            </p>
+          </div>
+          <div style={{ display:'flex', gap:'40px' }}>
+            <div style={{ textAlign:'right' }}>
+              <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Altura Mín.</p>
+              <p style={{ fontFamily:"'Playfair Display',serif", fontSize:'2rem', fontWeight:600, color:C.teal, lineHeight:1 }}>
+                {String(proximaIdeal.bajaAltura).replace('.',',')} m
+              </p>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Duración</p>
+              <p style={{ fontFamily:"'Playfair Display',serif", fontSize:'2rem', fontWeight:600, color:C.white, lineHeight:1 }}>~3h</p>
+            </div>
+          </div>
         </div>
 
         {/* Tabla */}
-        <div className="space-y-3">
-          {mareas.map(({ fecha, mareas: eventos }) => {
-            const esHoy = fecha.toDateString() === new Date().toDateString()
+        <div style={{ borderRadius:'14px', overflow:'hidden', border:`1px solid ${C.cardBorder}` }}>
+          {/* Header */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'14px 24px', borderBottom:`1px solid ${C.rowBorder}` }}>
+            {['DÍA','MAREA BAJA','MAREA ALTA','ESTADO'].map((h,i) => (
+              <p key={h} style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:C.muted, textAlign:i===3?'right':'left' }}>{h}</p>
+            ))}
+          </div>
+
+          {/* Filas */}
+          {mareas.map((d, idx) => {
+            const estado = getEstado(d.bajaAltura)
             return (
-              <div
-                key={fecha.toISOString()}
-                style={{
-                  background: esHoy ? 'white' : 'white',
-                  borderRadius: 16,
-                  border: esHoy ? '2px solid #d9a83a' : '1px solid #e8d09a',
-                  overflow: 'hidden',
-                  boxShadow: esHoy ? '0 4px 16px rgba(176,116,32,0.12)' : 'none'
-                }}
-              >
-                <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, background: esHoy ? '#fdf8ee' : '#f9f3e3', borderBottom: '1px solid #e8d09a' }}>
-                  <p style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C1208', fontSize: '0.95rem', textTransform: 'capitalize' }}>
-                    {fecha.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </p>
-                  {esHoy && (
-                    <span style={{ fontSize: '0.65rem', background: '#b07420', color: '#f9f3e3', padding: '3px 10px', borderRadius: 999, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                      Hoy
-                    </span>
-                  )}
+              <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'20px 24px', alignItems:'center', borderBottom: idx<mareas.length-1 ? `1px solid ${C.rowBorder}` : 'none', background: idx===0 ? 'rgba(0,180,200,0.04)' : 'transparent' }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
+                  <span style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:600, color:C.white, lineHeight:1 }}>{d.diaN}</span>
+                  <span style={{ fontSize:'11px', fontWeight:700, letterSpacing:'0.06em', color:C.muted }}>{d.diaLabel}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: 'none' }}>
-                  {eventos.map((e, i) => (
-                    <div key={i} style={{ padding: '16px 12px', textAlign: 'center', borderRight: i < 3 ? '1px solid #f2e4c0' : 'none' }}>
-                      <p style={{ fontSize: '1.4rem', lineHeight: 1, marginBottom: 6 }}>
-                        {e.tipo === 'alta' ? '🌊' : '🏖️'}
-                      </p>
-                      <p style={{ fontWeight: 700, color: '#1C1208', fontSize: '0.9rem', marginBottom: 2 }}>{e.hora}</p>
-                      <p style={{ fontSize: '0.7rem', fontWeight: 600, color: e.tipo === 'alta' ? '#2563eb' : '#b07420', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        {e.tipo === 'alta' ? 'Alta' : 'Baja'}
-                      </p>
-                      <p style={{ fontSize: '0.72rem', color: '#1C120888', marginTop: 2 }}>{e.altura}m</p>
-                    </div>
-                  ))}
+                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
+                  <span style={{ fontSize:'1rem', fontWeight:600, color:C.white }}>{d.bajahora}</span>
+                  <span style={{ fontSize:'0.82rem', fontWeight:700, color:C.teal }}>{String(d.bajaAltura).replace('.',',')} m</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
+                  <span style={{ fontSize:'1rem', fontWeight:500, color:'rgba(255,255,255,0.6)' }}>{d.altaHora}</span>
+                  <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.35)' }}>{String(d.altaAltura).replace('.',',')} m</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                  <span style={{ display:'inline-block', padding:'5px 14px', borderRadius:'999px', fontSize:'10px', fontWeight:700, letterSpacing:'0.1em', background:estado.bg, color:estado.color }}>{estado.label}</span>
                 </div>
               </div>
             )
           })}
         </div>
 
-        <p style={{ fontSize: '0.75rem', color: '#1C120866', textAlign: 'center', marginTop: 24 }}>
+        <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:'24px' }}>
           * Datos orientativos. Para excursiones acuáticas, consultá con tu guía local.
         </p>
       </div>

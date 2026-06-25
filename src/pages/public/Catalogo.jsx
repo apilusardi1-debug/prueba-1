@@ -61,6 +61,15 @@ export default function Catalogo({ categoria }) {
       {/* ── Header ──────────────────────────────── */}
       <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: '80px 24px 36px' }}>
         <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
+          {/* Breadcrumb / back */}
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '20px', color: C.navyMuted, fontSize: '13px', fontFamily: "'Helvetica Neue', sans-serif", textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.color = C.navy}
+            onMouseLeave={e => e.currentTarget.style.color = C.navyMuted}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Inicio
+          </Link>
           <p style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.teal, marginBottom: '12px' }}>
             DreamTours · Nordeste Brasilero
           </p>

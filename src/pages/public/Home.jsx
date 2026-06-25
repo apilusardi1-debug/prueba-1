@@ -116,10 +116,18 @@ export default function Home() {
           }}>
             Descubrí las piscinas naturales mas lindas de Brasil.
           </p>
-          <Link to="/paquetes"
-            className="bg-tropical-sun text-deep-ocean font-label-lg text-label-lg px-8 py-4 rounded hover:opacity-90 transition-all duration-300 shadow-lg inline-block">
-            Explorar Destinos
-          </Link>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <Link to="/paquetes"
+              style={{ background: '#000000', color: '#ffffff', fontWeight: 700, fontSize: '15px', padding: '14px 28px', borderRadius: '8px', display: 'inline-block', transition: 'opacity 0.2s', letterSpacing: '0.01em' }}
+              className="hover:opacity-80">
+              Explorar viajes
+            </Link>
+            <Link to="/paquetes"
+              style={{ background: 'transparent', color: '#ffffff', fontWeight: 600, fontSize: '15px', padding: '13px 28px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid rgba(255,255,255,0.6)', transition: 'all 0.2s', letterSpacing: '0.01em' }}
+              className="hover:border-white hover:bg-white/10">
+              Planear mi viaje
+            </Link>
+          </div>
         </div>
       </section>
 

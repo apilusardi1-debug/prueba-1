@@ -5,7 +5,7 @@ import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
 
 const NAV_LINKS = [
-  { to: '/paquetes',    label: 'Paquetes Aéreos',  icon: 'flight' },
+  { to: '/paquetes',    label: 'Paquetes AÃ©reos',  icon: 'flight' },
   { to: '/excursiones', label: 'Excursiones',       icon: 'explore' },
   { to: '/hoteles',     label: 'Hoteles & Posadas', icon: 'hotel' },
   { to: '/traslados',   label: 'Traslados',         icon: 'directions_car' },
@@ -50,7 +50,7 @@ export default function PublicLayout() {
       {/* Header */}
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 backdrop-blur-md ${scrolled ? 'bg-white/95 shadow-md' : 'bg-transparent'}`}>
         <div className="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-5 max-w-container-max mx-auto">
-          <button onClick={() => setDrawerOpen(true)} aria-label="Menú" className="p-1">
+          <button onClick={() => setDrawerOpen(true)} aria-label="MenÃº" className="p-1">
             <span className="material-symbols-outlined" style={{ color: iconColor }}>menu</span>
           </button>
           <Link to="/" aria-label="Inicio" className="flex-shrink-0">
@@ -71,7 +71,7 @@ export default function PublicLayout() {
               >
                 <span>{languages.find(l => l.code === lang)?.flag}</span>
                 <span className="hidden sm:inline">{languages.find(l => l.code === lang)?.label}</span>
-                <span style={{ fontSize: '10px', lineHeight: 1 }}>▾</span>
+                <span style={{ fontSize: '10px', lineHeight: 1 }}>â¾</span>
               </button>
               {langDropdownOpen && (
                 <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-surface-variant/30 overflow-hidden z-50 min-w-[140px]">
@@ -108,7 +108,7 @@ export default function PublicLayout() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
           <div className="relative w-72 bg-white shadow-2xl flex flex-col h-full">
             <div className="flex items-center justify-between px-6 py-5 border-b border-surface-variant">
-              <img src="/logo.png" alt="DreamTours" className="h-10 w-auto object-contain"
+              <img src="/logo.png" alt="DreamTours" className="h-14 w-auto object-contain"
                 onError={e => { e.target.style.display = 'none' }} />
               <button onClick={() => setDrawerOpen(false)} className="p-1">
                 <span className="material-symbols-outlined text-on-surface-variant">close</span>
@@ -143,7 +143,7 @@ export default function PublicLayout() {
       <footer className="bg-deep-ocean w-full py-16 mt-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <div className="col-span-1 flex flex-col items-center md:items-start mb-8 md:mb-0">
-            <img src="/logo.png" alt="DreamTours" className="h-11 w-auto mb-4 object-contain"
+            <img src="/logo.png" alt="DreamTours" className="h-16 w-auto mb-4 object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
               onError={e => { e.target.style.display = 'none' }} />
             <p className="font-body-md text-body-md text-sand-beige/80">Tu agencia argentina en el Nordeste de Brasil.</p>
@@ -151,13 +151,13 @@ export default function PublicLayout() {
           <div className="flex flex-col gap-3">
             <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Explorar</h4>
             <Link to="/destinos"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Destinos</Link>
-            <Link to="/paquetes"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Paquetes Aéreos</Link>
+            <Link to="/paquetes"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Paquetes AÃ©reos</Link>
             <Link to="/excursiones" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Excursiones</Link>
             <Link to="/marea"       className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Tabla de Marea</Link>
           </div>
           <div className="flex flex-col gap-3">
             <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Nosotros</h4>
-            <Link to="/nosotros"     className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Quiénes Somos</Link>
+            <Link to="/nosotros"     className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">QuiÃ©nes Somos</Link>
             <Link to="/hoteles"      className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Hoteles & Posadas</Link>
             <Link to="/traslados"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Traslados</Link>
             <Link to="/mis-reservas" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Mis Reservas</Link>
@@ -168,7 +168,7 @@ export default function PublicLayout() {
           </div>
         </div>
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mt-12 pt-6 border-t border-surface-variant/20">
-          <p className="text-sm text-sand-beige/60 text-center">© 2025 DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
+          <p className="text-sm text-sand-beige/60 text-center">Â© 2025 DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
         </div>
       </footer>
 

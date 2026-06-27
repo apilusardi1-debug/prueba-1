@@ -25,6 +25,8 @@ export default function Leads() {
   const [enviando, setEnviando] = useState(false)
   const [convirtiendo, setConvirtiendo] = useState(false)
   const [convertidoMsg, setConvertidoMsg] = useState('')
+  const [editForm, setEditForm] = useState(null)
+  const [guardandoLead, setGuardandoLead] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -67,6 +69,32 @@ export default function Leads() {
       alert('Error al guardar. Revisá la conexión.')
     }
     setEnviando(false)
+  }
+
+  function abrirLead(lead) {
+    setSeleccionado(lead)
+    setConvertidoMsg('')
+    setEditForm({
+      nombre: lead.nombre || '',
+      whatsapp: lead.whatsapp || '',
+      email: lead.email || '',
+      excursion_interes: lead.excursion_interes || '',
+      excursion_id: lead.excursion_id || '',
+      origen: lead.origen || '',
+      estado: lead.estado || 'nuevo',
+      notas: lead.notas || '',
+    })
+  }
+
+  async function guardarLead() {
+    if (!editForm.nombre.trim()) return
+    setGuardandoLead(true)
+    const { data } = await leadsApi.update(seleccionado.id, editForm)
+    if (data) {
+      setLeads(prev => prev.map(l => l.id === data.id ? data : l))
+      setSeleccionado(data)
+    }
+    setGuardandoLead(false)
   }
 
   async function convertirACliente(lead) {
@@ -147,7 +175,7 @@ export default function Leads() {
                 <div className="space-y-2">
                   {colLeads.map(lead => (
                     <div key={lead.id} className="bg-white rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => setSeleccionado(lead)}>
+                      onClick={() => abrirLead(lead)}>
                       <p className="font-semibold text-sm text-gray-900">{lead.nombre}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{lead.excursion_interes}</p>
                       <div className="flex items-center gap-2 mt-2">
@@ -203,7 +231,7 @@ export default function Leads() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         {lead.whatsapp && <button onClick={() => navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`)} className="text-green-500">💬</button>}
-                        <button onClick={() => setSeleccionado(lead)} className="text-xs font-medium text-gray-600 hover:text-gray-900">Ver</button>
+                        <button onClick={() => abrirLead(lead)} className="text-xs font-medium text-gray-600 hover:text-gray-900">Ver</button>
                       </div>
                     </td>
                   </tr>
@@ -260,62 +288,113 @@ export default function Leads() {
         </div>
       )}
 
-      {seleccionado && (
+      {seleccionado && editForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setSeleccionado(null); setConvertidoMsg('') }}>
-          <div className="bg-white w-96 h-full shadow-xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg">{seleccionado.nombre}</h2>
-              <button onClick={() => setSeleccionado(null)} className="text-gray-400 text-xl">✕</button>
-            </div>
-            <div className="space-y-3 text-sm mb-5">
-              <div className="flex justify-between"><span className="text-gray-400">WhatsApp</span><span>{seleccionado.whatsapp || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Email</span><span>{seleccionado.email || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Excursión</span><span>{seleccionado.excursion_interes}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Origen</span><span>{seleccionado.origen}</span></div>
-            </div>
-            <div className="mb-5">
-              <p className="text-sm font-medium text-gray-700 mb-1">Estado</p>
-              <select value={seleccionado.estado}
-                onChange={e => { cambiarEstado(seleccionado.id, e.target.value); setSeleccionado(p => ({ ...p, estado: e.target.value })) }}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-                {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-            </div>
-            <div className="mb-5">
-              <p className="text-sm font-medium text-gray-700 mb-1">Notas</p>
-              <textarea rows={4} defaultValue={seleccionado.notas}
-                onBlur={e => guardarNota(seleccionado.id, e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
-                placeholder="Agregar notas..." />
-            </div>
-            {/* Convertir a cliente */}
-            <div className="mb-3">
-              {convertidoMsg === 'ok' && (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-3">
-                  ✅ Convertido a cliente correctamente
-                </div>
-              )}
-              {convertidoMsg === 'ya_existe' && (
-                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-3 rounded-xl mb-3">
-                  ⚠️ Ya existe como cliente con ese WhatsApp
-                </div>
-              )}
-              <button
-                onClick={() => convertirACliente(seleccionado)}
-                disabled={convirtiendo || convertidoMsg === 'ok'}
-                className="w-full flex items-center justify-center gap-2 bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
-              >
-                {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? '✅ Ya es cliente' : '👤 Convertir a cliente'}
-              </button>
+          <div className="bg-white w-96 h-full shadow-xl flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+              <h2 className="font-bold text-lg text-gray-900">Lead</h2>
+              <button onClick={() => { setSeleccionado(null); setConvertidoMsg('') }} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
 
-            {seleccionado.whatsapp && (
+            {/* Campos editables */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+              {[
+                { key: 'nombre',    label: 'Nombre',    type: 'text', placeholder: 'Nombre completo' },
+                { key: 'whatsapp',  label: 'WhatsApp',  type: 'text', placeholder: '5491155554444' },
+                { key: 'email',     label: 'Email',     type: 'text', placeholder: 'correo@email.com' },
+                { key: 'origen',    label: 'Origen',    type: 'text', placeholder: 'WhatsApp, Instagram...' },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
+                  <input
+                    type="text"
+                    value={editForm[key]}
+                    onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                  />
+                </div>
+              ))}
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Excursión de interés</label>
+                <select
+                  value={editForm.excursion_id}
+                  onChange={e => {
+                    const nombre = excursiones.find(x => x.id === e.target.value)?.nombre || ''
+                    setEditForm(p => ({ ...p, excursion_id: e.target.value, excursion_interes: nombre }))
+                  }}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                >
+                  <option value="">— Sin especificar</option>
+                  {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Estado</label>
+                <select
+                  value={editForm.estado}
+                  onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                >
+                  {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Notas</label>
+                <textarea
+                  rows={4}
+                  value={editForm.notas}
+                  onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))}
+                  placeholder="Observaciones, preferencias, detalles..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
+                />
+              </div>
+
+              {/* Guardar cambios */}
               <button
-                onClick={() => { setSeleccionado(null); setConvertidoMsg(''); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
-                className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
-                💬 Abrir conversación en WhatsApp
+                onClick={guardarLead}
+                disabled={guardandoLead}
+                className="w-full bg-gray-900 hover:bg-gray-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+              >
+                {guardandoLead ? 'Guardando...' : 'Guardar cambios'}
               </button>
-            )}
+
+              <div className="border-t border-gray-100 pt-4 space-y-3">
+                {/* Convertir a cliente */}
+                {convertidoMsg === 'ok' && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl">
+                    ✅ Convertido a cliente correctamente
+                  </div>
+                )}
+                {convertidoMsg === 'ya_existe' && (
+                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-3 rounded-xl">
+                    ⚠️ Ya existe como cliente con ese WhatsApp
+                  </div>
+                )}
+                <button
+                  onClick={() => convertirACliente(seleccionado)}
+                  disabled={convirtiendo || convertidoMsg === 'ok'}
+                  className="w-full flex items-center justify-center gap-2 bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+                >
+                  {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? '✅ Ya es cliente' : '👤 Convertir a cliente'}
+                </button>
+
+                {seleccionado.whatsapp && (
+                  <button
+                    onClick={() => { setSeleccionado(null); setConvertidoMsg(''); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
+                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+                  >
+                    💬 Abrir en WhatsApp
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

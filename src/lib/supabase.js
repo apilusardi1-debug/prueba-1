@@ -46,6 +46,7 @@ export const leadsApi = {
   getByWhatsapp: (whatsapp) => supabase?.from('leads').select('id').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   updateEstado: (id, estado, notas) => supabase?.from('leads').update({ estado, notas }).eq('id', id).select().single(),
+  update: (id, data) => supabase?.from('leads').update(data).eq('id', id).select().single(),
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────────

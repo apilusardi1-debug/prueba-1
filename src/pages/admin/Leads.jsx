@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { leadsApi, excursionesApi } from '../../lib/supabase.js'
+import { leadsApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import Badge from '../../components/ui/Badge.jsx'
 
 const COLUMNAS = ['nuevo', 'contactado', 'reservado', 'perdido']
@@ -23,6 +23,8 @@ export default function Leads() {
   const [mostrarFormLead, setMostrarFormLead] = useState(false)
   const [formLead, setFormLead] = useState(FORM_VACIO)
   const [enviando, setEnviando] = useState(false)
+  const [convirtiendo, setConvirtiendo] = useState(false)
+  const [convertidoMsg, setConvertidoMsg] = useState('')
 
   useEffect(() => {
     async function cargar() {
@@ -65,6 +67,33 @@ export default function Leads() {
       alert('Error al guardar. Revisá la conexión.')
     }
     setEnviando(false)
+  }
+
+  async function convertirACliente(lead) {
+    setConvirtiendo(true)
+    setConvertidoMsg('')
+    const phone = (lead.whatsapp || '').replace(/\D/g, '')
+
+    // Ver si ya existe como cliente
+    const { data: existente } = await clientesApi.getByWhatsapp(phone)
+    if (existente) {
+      setConvertidoMsg('ya_existe')
+      setConvirtiendo(false)
+      return
+    }
+
+    const { data } = await clientesApi.create({
+      nombre: lead.nombre,
+      whatsapp: phone,
+      email: lead.email || null,
+    })
+
+    if (data) {
+      await cambiarEstado(lead.id, 'reservado')
+      setSeleccionado(p => ({ ...p, estado: 'reservado' }))
+      setConvertidoMsg('ok')
+    }
+    setConvirtiendo(false)
   }
 
   async function guardarNota(id, notas) {
@@ -232,7 +261,7 @@ export default function Leads() {
       )}
 
       {seleccionado && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => setSeleccionado(null)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setSeleccionado(null); setConvertidoMsg('') }}>
           <div className="bg-white w-96 h-full shadow-xl p-6 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-lg">{seleccionado.nombre}</h2>
@@ -259,9 +288,30 @@ export default function Leads() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
                 placeholder="Agregar notas..." />
             </div>
+            {/* Convertir a cliente */}
+            <div className="mb-3">
+              {convertidoMsg === 'ok' && (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-3">
+                  ✅ Convertido a cliente correctamente
+                </div>
+              )}
+              {convertidoMsg === 'ya_existe' && (
+                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-3 rounded-xl mb-3">
+                  ⚠️ Ya existe como cliente con ese WhatsApp
+                </div>
+              )}
+              <button
+                onClick={() => convertirACliente(seleccionado)}
+                disabled={convirtiendo || convertidoMsg === 'ok'}
+                className="w-full flex items-center justify-center gap-2 bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+              >
+                {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? '✅ Ya es cliente' : '👤 Convertir a cliente'}
+              </button>
+            </div>
+
             {seleccionado.whatsapp && (
               <button
-                onClick={() => { setSeleccionado(null); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
+                onClick={() => { setSeleccionado(null); setConvertidoMsg(''); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
                 className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
                 💬 Abrir conversación en WhatsApp
               </button>

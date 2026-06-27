@@ -19,6 +19,9 @@ serve(async (req) => {
 
     console.log(`Enviando a ${phoneClean} via WuzAPI`)
 
+    const wuzController = new AbortController()
+    const wuzTimer = setTimeout(() => wuzController.abort(), 15000)
+
     const res = await fetch(`${WUZAPI_URL}/chat/send/text?token=${WUZAPI_TOKEN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -26,7 +29,9 @@ serve(async (req) => {
         Phone: phoneClean,
         Body: message,
       }),
+      signal: wuzController.signal,
     })
+    clearTimeout(wuzTimer)
 
     const responseText = await res.text()
     console.log(`WuzAPI response ${res.status}:`, responseText)

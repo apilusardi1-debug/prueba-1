@@ -42,11 +42,14 @@ const ACTIVIDAD_ICON = {
 /* ════════════════════════════════════════════════
    LISTA DE CLIENTES
    ════════════════════════════════════════════════ */
+const FORM_VACIO = { nombre: '', whatsapp: '', email: '', pais: '', ciudad: '' }
+
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [perfil, setPerfil] = useState(null)
+  const [modalNuevo, setModalNuevo] = useState(false)
 
   useEffect(() => {
     clientesApi.getAll().then(({ data }) => {
@@ -60,6 +63,14 @@ export default function Clientes() {
       .filter(Boolean).some(v => v.toLowerCase().includes(busqueda.toLowerCase()))
   )
 
+  async function crearCliente(datos) {
+    const { data } = await clientesApi.create(datos)
+    if (data) {
+      setClientes(prev => [data, ...prev])
+      setModalNuevo(false)
+    }
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -68,6 +79,12 @@ export default function Clientes() {
           <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
           <p className="text-gray-400 text-sm">{clientes.length} clientes registrados</p>
         </div>
+        <button
+          onClick={() => setModalNuevo(true)}
+          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] rounded-xl px-4 py-2 hover:bg-[#003366] transition-colors shadow-sm"
+        >
+          <span className="text-base leading-none">+</span> Nuevo cliente
+        </button>
       </div>
 
       {/* Buscador */}
@@ -152,6 +169,77 @@ export default function Clientes() {
           }}
         />
       )}
+
+      {/* Modal nuevo cliente */}
+      {modalNuevo && (
+        <ModalNuevoCliente
+          onGuardar={crearCliente}
+          onCerrar={() => setModalNuevo(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   MODAL NUEVO CLIENTE
+   ════════════════════════════════════════════════ */
+function ModalNuevoCliente({ onGuardar, onCerrar }) {
+  const [form, setForm] = useState(FORM_VACIO)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+
+  function set(key, val) { setForm(p => ({ ...p, [key]: val })) }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.nombre.trim()) return setError('El nombre es obligatorio')
+    if (!form.whatsapp.trim()) return setError('El WhatsApp es obligatorio')
+    setError('')
+    setGuardando(true)
+    await onGuardar({ ...form, whatsapp: form.whatsapp.replace(/\D/g, '') })
+    setGuardando(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900 text-base">Nuevo cliente</h2>
+          <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg transition-colors">×</button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {[
+            { key: 'nombre',   label: 'Nombre completo', placeholder: 'Juan García', required: true },
+            { key: 'whatsapp', label: 'WhatsApp',         placeholder: '5491155554444', required: true },
+            { key: 'email',    label: 'Email',            placeholder: 'juan@email.com' },
+            { key: 'pais',     label: 'País',             placeholder: 'Argentina' },
+            { key: 'ciudad',   label: 'Ciudad',           placeholder: 'Buenos Aires' },
+          ].map(({ key, label, placeholder, required }) => (
+            <div key={key}>
+              <label className="text-xs font-medium text-gray-500 block mb-1">
+                {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+              </label>
+              <input
+                type="text"
+                value={form[key]}
+                onChange={e => set(key, e.target.value)}
+                placeholder={placeholder}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              />
+            </div>
+          ))}
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <button
+            type="submit"
+            disabled={guardando}
+            className="w-full bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+          >
+            {guardando ? 'Guardando...' : 'Crear cliente'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

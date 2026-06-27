@@ -301,9 +301,13 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
       estado: form.estado,
       notas: form.notas || null,
     })
-    const { data } = await reservasClienteApi.getByCliente(cliente.id, cliente.whatsapp)
-    if (data) setReservas(data)
-    setModalReserva(false)
+    if (form.fecha) {
+      navigate(`/admin/agenda?fecha=${form.fecha}`)
+    } else {
+      const { data } = await reservasClienteApi.getByCliente(cliente.id, cliente.whatsapp)
+      if (data) setReservas(data)
+      setModalReserva(false)
+    }
   }
 
   async function guardarPerfil() {

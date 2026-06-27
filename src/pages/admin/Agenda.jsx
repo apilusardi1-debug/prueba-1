@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { choferesApi, guiasApi, reservasApi, excursionesApi } from '../../lib/supabase.js'
 import { sendWhatsApp } from '../../lib/ultramsg.js'
 
@@ -116,7 +117,9 @@ function IconCalendario() {
 
 /* ══════════════════════════════════════════════════════════════════ */
 export default function Agenda() {
-  const [vista, setVista] = useState('tabla')
+  const [searchParams] = useSearchParams()
+  const fechaParam = searchParams.get('fecha')
+  const [vista, setVista] = useState(fechaParam ? 'calendario' : 'tabla')
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
   const [reservasNorm, setReservasNorm] = useState([])
@@ -216,6 +219,7 @@ export default function Agenda() {
           onAsignarGuia={handleAsignarGuia}
           modal={modal}
           setModal={setModal}
+          fechaInicial={fechaParam}
         />
       )}
     </div>
@@ -358,13 +362,19 @@ function VistaTabla({ reservasNorm, cargando }) {
 /* ══════════════════════════════════════════════════════════════════
    VISTA CALENDARIO
 ══════════════════════════════════════════════════════════════════ */
-function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal }) {
+function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal, fechaInicial }) {
   const todasLasSalidas = buildSalidas(reservasNorm)
   const hoy = new Date()
   const todayStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
 
-  const [mes, setMes] = useState(() => new Date())
-  const [diaSeleccionado, setDiaSeleccionado] = useState(todayStr)
+  const [mes, setMes] = useState(() => {
+    if (fechaInicial) {
+      const [y, m] = fechaInicial.split('-').map(Number)
+      return new Date(y, m - 1, 1)
+    }
+    return new Date()
+  })
+  const [diaSeleccionado, setDiaSeleccionado] = useState(fechaInicial || todayStr)
 
   const anio = mes.getFullYear()
   const numMes = mes.getMonth()
@@ -427,6 +437,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                 const fechaStr = toFechaStr(dia, mesOffset)
                 const esHoy = fechaStr === todayStr
                 const seleccionado = fechaStr === diaSeleccionado
+                const esNueva = fechaStr === fechaInicial
                 const tieneSalidas = !!salidasPorFecha[fechaStr]
                 const esMesActual = mesOffset === 0
 
@@ -437,13 +448,15 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                       esHoy
                         ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
                         : seleccionado
-                        ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold ring-1 ring-zinc-300 dark:ring-zinc-700'
+                        ? 'bg-[#002147] text-white font-semibold'
+                        : esNueva
+                        ? 'ring-2 ring-[#002147] text-[#002147] font-semibold'
                         : esMesActual
                         ? 'text-gray-700 dark:text-zinc-300 group-hover:bg-gray-100 dark:group-hover:bg-zinc-800'
                         : 'text-gray-300 dark:text-zinc-700'
                     }`}>{dia}</span>
                     {tieneSalidas && esMesActual && (
-                      <span className={`w-1 h-1 rounded-full ${esHoy ? 'bg-zinc-400 dark:bg-zinc-500' : seleccionado ? 'bg-zinc-500 dark:bg-zinc-400' : 'bg-gray-300 dark:bg-zinc-700'}`} />
+                      <span className={`w-1 h-1 rounded-full ${esHoy ? 'bg-zinc-400 dark:bg-zinc-500' : seleccionado ? 'bg-white/70' : esNueva ? 'bg-[#002147]' : 'bg-gray-300 dark:bg-zinc-700'}`} />
                     )}
                   </button>
                 )

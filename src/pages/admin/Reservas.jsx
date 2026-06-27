@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { reservasApi, choferesApi, guiasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import { sendWhatsApp } from '../../lib/ultramsg.js'
 
@@ -15,6 +16,7 @@ const FORM_VACIO = {
 }
 
 export default function Reservas() {
+  const navigate = useNavigate()
   const [reservas, setReservas] = useState([])
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
@@ -92,9 +94,7 @@ export default function Reservas() {
       notas: form.notas || null,
     })
     if (data) {
-      const { data: full } = await reservasApi.getAll()
-      if (full) setReservas(full)
-      setModalNueva(false)
+      navigate(`/admin/agenda?fecha=${form.fecha}`)
     }
   }
 

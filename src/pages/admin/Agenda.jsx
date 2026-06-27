@@ -35,6 +35,8 @@ function normalizarReserva(r) {
     estado: r.estado || 'pendiente',
     fecha: r.fecha,
     total: r.total || 0,
+    chofer_id: r.chofer_id || null,
+    guia_id: r.guia_id || null,
   }
 }
 
@@ -131,10 +133,35 @@ export default function Agenda() {
     ]).then(([ch, gu, res]) => {
       if (!ch.error) setChoferes((ch.data || []).filter((c) => c.activo))
       if (!gu.error) setGuias(gu.data || [])
-      if (!res.error) setReservasNorm((res.data || []).map(normalizarReserva))
+      if (!res.error) {
+        const norm = (res.data || []).map(normalizarReserva)
+        setReservasNorm(norm)
+        const initAsig = {}
+        const initGuia = {}
+        for (const r of norm) {
+          if (r.chofer_id) initAsig[r.id] = r.chofer_id
+          if (r.guia_id) {
+            const key = `${r.excursionId}-${r.fecha}`
+            if (!initGuia[key]) initGuia[key] = r.guia_id
+          }
+        }
+        setAsignaciones(initAsig)
+        setGuiaAsignaciones(initGuia)
+      }
       setCargando(false)
     })
   }, [])
+
+  async function handleAsignar(reservaId, choferId) {
+    setAsignaciones((p) => ({ ...p, [reservaId]: choferId }))
+    await reservasApi.updateAsignacion(reservaId, { chofer_id: choferId || null })
+  }
+
+  async function handleAsignarGuia(opKey, guiaId) {
+    setGuiaAsignaciones((p) => ({ ...p, [opKey]: guiaId }))
+    const reservasDeOp = reservasNorm.filter((r) => `${r.excursionId}-${r.fecha}` === opKey)
+    await Promise.all(reservasDeOp.map((r) => reservasApi.updateAsignacion(r.id, { guia_id: guiaId || null })))
+  }
 
   return (
     <div className="p-8">
@@ -185,8 +212,8 @@ export default function Agenda() {
           guias={guias}
           asignaciones={asignaciones}
           guiaAsignaciones={guiaAsignaciones}
-          onAsignar={(id, cid) => setAsignaciones((p) => ({ ...p, [id]: cid }))}
-          onAsignarGuia={(opKey, gid) => setGuiaAsignaciones((p) => ({ ...p, [opKey]: gid }))}
+          onAsignar={handleAsignar}
+          onAsignarGuia={handleAsignarGuia}
           modal={modal}
           setModal={setModal}
         />
@@ -700,6 +727,10 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
             <div className="text-sm text-gray-400 dark:text-zinc-500 space-y-0.5">
               <p>{conChofer.length}/{pasajeros.length} con chofer asignado</p>
               {!guiaAsignado && <p className="text-yellow-500 dark:text-yellow-400 text-xs">⚠ Falta asignar guía</p>}
+              {guiaAsignado && !guiaAsignado.whatsapp && <p className="text-red-500 dark:text-red-400 text-xs">⚠ Guía sin número de WhatsApp</p>}
+              {conChofer.some((r) => { const c = choferes.find((ch) => ch.id === asignaciones[r.id]); return c && !c.whatsapp }) && (
+                <p className="text-orange-500 dark:text-orange-400 text-xs">⚠ Hay choferes sin WhatsApp guardado</p>
+              )}
             </div>
             <button onClick={cerrarOperacion} disabled={!listoParaCerrar || enviando}
               className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors ${

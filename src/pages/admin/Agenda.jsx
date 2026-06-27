@@ -155,6 +155,11 @@ export default function Agenda() {
     })
   }, [])
 
+  async function handleEliminarReserva(id) {
+    await reservasApi.delete(id)
+    setReservasNorm(prev => prev.filter(r => r.id !== id))
+  }
+
   async function handleAsignar(reservaId, choferId) {
     setAsignaciones((p) => ({ ...p, [reservaId]: choferId }))
     await reservasApi.updateAsignacion(reservaId, { chofer_id: choferId || null })
@@ -220,6 +225,7 @@ export default function Agenda() {
           modal={modal}
           setModal={setModal}
           fechaInicial={fechaParam}
+          onEliminarReserva={handleEliminarReserva}
         />
       )}
     </div>
@@ -362,8 +368,9 @@ function VistaTabla({ reservasNorm, cargando }) {
 /* ══════════════════════════════════════════════════════════════════
    VISTA CALENDARIO
 ══════════════════════════════════════════════════════════════════ */
-function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal, fechaInicial }) {
+function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsignaciones, onAsignar, onAsignarGuia, modal, setModal, fechaInicial, onEliminarReserva }) {
   const todasLasSalidas = buildSalidas(reservasNorm)
+  const [eliminandoId, setEliminandoId] = useState(null)
   const hoy = new Date()
   const todayStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
 
@@ -529,6 +536,17 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                               <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.532 5.85L.073 23.927l6.236-1.434A11.938 11.938 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.65-.491-5.18-1.349l-.37-.217-3.7.851.875-3.614-.24-.382A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
                             </svg>
                           </a>
+                          {eliminandoId === r.id ? (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-xs text-gray-400">¿Eliminar?</span>
+                              <button onClick={() => { onEliminarReserva(r.id); setEliminandoId(null) }} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
+                              <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 hover:text-gray-600">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setEliminandoId(r.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0" title="Eliminar reserva">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

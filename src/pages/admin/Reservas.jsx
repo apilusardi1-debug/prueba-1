@@ -25,6 +25,7 @@ export default function Reservas() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [enviando, setEnviando] = useState({})
   const [modalNueva, setModalNueva] = useState(false)
+  const [eliminandoId, setEliminandoId] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -73,6 +74,12 @@ export default function Reservas() {
 
     await sendWhatsApp(persona.whatsapp, mensaje)
     setEnviando(prev => ({ ...prev, [reserva.id + campo]: false }))
+  }
+
+  async function eliminarReserva(id) {
+    await reservasApi.delete(id)
+    setReservas(prev => prev.filter(r => r.id !== id))
+    setEliminandoId(null)
   }
 
   async function crearReserva(form) {
@@ -236,11 +243,24 @@ export default function Reservas() {
                       </select>
                     </td>
                     <td className="px-5 py-3">
-                      <a href={`https://wa.me/${r.cliente_whatsapp}?text=Hola!%20Te%20contactamos%20por%20tu%20reserva%20de%20${encodeURIComponent(r.excursiones?.nombre || '')}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="text-green-500 hover:text-green-600 text-lg">
-                        💬
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a href={`https://wa.me/${r.cliente_whatsapp}?text=Hola!%20Te%20contactamos%20por%20tu%20reserva%20de%20${encodeURIComponent(r.excursiones?.nombre || '')}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-green-500 hover:text-green-600 text-lg">
+                          💬
+                        </a>
+                        {eliminandoId === r.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400">¿Eliminar?</span>
+                            <button onClick={() => eliminarReserva(r.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
+                            <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 hover:text-gray-600">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setEliminandoId(r.id)} className="text-gray-300 hover:text-red-400 transition-colors" title="Eliminar reserva">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

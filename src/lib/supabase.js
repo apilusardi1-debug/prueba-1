@@ -38,6 +38,7 @@ export const reservasApi = {
   create: (data) => supabase?.from('reservas').insert(data).select().single(),
   updateEstado: (id, estado) => supabase?.from('reservas').update({ estado }).eq('id', id).select().single(),
   updateAsignacion: (id, data) => supabase?.from('reservas').update(data).eq('id', id).select('*, excursiones(nombre), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').single(),
+  delete: (id) => supabase?.from('reservas').delete().eq('id', id),
 }
 
 // ── Leads ──────────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export const leadsApi = {
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   updateEstado: (id, estado, notas) => supabase?.from('leads').update({ estado, notas }).eq('id', id).select().single(),
   update: (id, data) => supabase?.from('leads').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ export const clientesApi = {
   create: (data) => supabase?.from('clientes').insert(data).select().single(),
   update: (id, data) => supabase?.from('clientes').update(data).eq('id', id).select().single(),
   updateNotas: (id, notas) => supabase?.from('clientes').update({ notas }).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('clientes').delete().eq('id', id),
 }
 
 // ── Reservas por cliente ────────────────────────────────────────────────────────

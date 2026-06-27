@@ -50,6 +50,7 @@ export default function Clientes() {
   const [busqueda, setBusqueda] = useState('')
   const [perfil, setPerfil] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [eliminandoId, setEliminandoId] = useState(null)
 
   useEffect(() => {
     clientesApi.getAll().then(({ data }) => {
@@ -69,6 +70,12 @@ export default function Clientes() {
       setClientes(prev => [data, ...prev])
       setModalNuevo(false)
     }
+  }
+
+  async function eliminarCliente(id) {
+    await clientesApi.delete(id)
+    setClientes(prev => prev.filter(c => c.id !== id))
+    setEliminandoId(null)
   }
 
   return (
@@ -144,12 +151,25 @@ export default function Clientes() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <button
-                      onClick={() => setPerfil(c)}
-                      className="text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors"
-                    >
-                      Ver perfil →
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setPerfil(c)}
+                        className="text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors"
+                      >
+                        Ver perfil →
+                      </button>
+                      {eliminandoId === c.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-gray-400">¿Eliminar?</span>
+                          <button onClick={() => eliminarCliente(c.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
+                          <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 hover:text-gray-600">No</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEliminandoId(c.id)} className="text-gray-300 hover:text-red-400 transition-colors" title="Eliminar cliente">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

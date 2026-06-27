@@ -27,6 +27,7 @@ export default function Leads() {
   const [convertidoMsg, setConvertidoMsg] = useState('')
   const [editForm, setEditForm] = useState(null)
   const [guardandoLead, setGuardandoLead] = useState(false)
+  const [eliminandoId, setEliminandoId] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -42,6 +43,13 @@ export default function Leads() {
     }
     cargar()
   }, [])
+
+  async function eliminarLead(id) {
+    await leadsApi.delete(id)
+    setLeads(prev => prev.filter(l => l.id !== id))
+    setEliminandoId(null)
+    if (seleccionado?.id === id) setSeleccionado(null)
+  }
 
   async function cambiarEstado(id, nuevoEstado) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
@@ -176,7 +184,20 @@ export default function Leads() {
                   {colLeads.map(lead => (
                     <div key={lead.id} className="bg-white rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                       onClick={() => abrirLead(lead)}>
-                      <p className="font-semibold text-sm text-gray-900">{lead.nombre}</p>
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="font-semibold text-sm text-gray-900">{lead.nombre}</p>
+                        {eliminandoId === lead.id ? (
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => eliminarLead(lead.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
+                            <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); setEliminandoId(lead.id) }}
+                            className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0" title="Eliminar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5">{lead.excursion_interes}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-gray-400">{lead.origen}</span>
@@ -232,6 +253,17 @@ export default function Leads() {
                       <div className="flex items-center gap-3">
                         {lead.whatsapp && <button onClick={() => navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`)} className="text-green-500">💬</button>}
                         <button onClick={() => abrirLead(lead)} className="text-xs font-medium text-gray-600 hover:text-gray-900">Ver</button>
+                        {eliminandoId === lead.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400">¿Eliminar?</span>
+                            <button onClick={() => eliminarLead(lead.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
+                            <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 hover:text-gray-600">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setEliminandoId(lead.id)} className="text-gray-300 hover:text-red-400 transition-colors" title="Eliminar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

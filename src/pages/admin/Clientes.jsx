@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   clientesApi, reservasClienteApi, pagosApi,
-  actividadApi, notasClienteApi,
+  actividadApi, notasClienteApi, excursionesApi, reservasApi,
 } from '../../lib/supabase.js'
 
 /* ─── helpers ─── */
@@ -257,6 +257,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   const [nuevaNota, setNuevaNota] = useState('')
   const [cargando, setCargando] = useState(true)
   const [editando, setEditando] = useState(false)
+  const [modalReserva, setModalReserva] = useState(false)
   const [form, setForm] = useState({
     nombre: cliente.nombre || '',
     email: cliente.email || '',
@@ -281,6 +282,29 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
       setCargando(false)
     })
   }, [cliente.id])
+
+  async function crearReserva(form) {
+    const personas = (parseInt(form.adultos) || 0) + (parseInt(form.menores) || 0)
+    await reservasApi.create({
+      cliente_nombre: cliente.nombre,
+      cliente_whatsapp: (cliente.whatsapp || '').replace(/\D/g, ''),
+      cliente_id: cliente.id,
+      excursion_id: form.excursion_id || null,
+      fecha: form.fecha || null,
+      adultos: parseInt(form.adultos) || 0,
+      menores: parseInt(form.menores) || 0,
+      personas,
+      hospedaje: form.hospedaje || null,
+      ubicacion: form.hospedaje || null,
+      total: parseInt(form.total) || null,
+      moneda: form.moneda,
+      estado: form.estado,
+      notas: form.notas || null,
+    })
+    const { data } = await reservasClienteApi.getByCliente(cliente.id, cliente.whatsapp)
+    if (data) setReservas(data)
+    setModalReserva(false)
+  }
 
   async function guardarPerfil() {
     const { data } = await clientesApi.update(cliente.id, form)
@@ -433,6 +457,14 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
               {/* RESERVAS */}
               {tab === 'reservas' && (
                 <div className="divide-y divide-gray-50">
+                  <div className="px-6 py-3 flex justify-end">
+                    <button
+                      onClick={() => setModalReserva(true)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#002147] hover:bg-[#003366] rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      <span className="text-sm leading-none">+</span> Nueva reserva
+                    </button>
+                  </div>
                   {reservas.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                       <p className="text-3xl mb-2">📋</p>
@@ -572,6 +604,146 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
             </>
           )}
         </div>
+      </div>
+
+      {modalReserva && (
+        <ModalReservaCliente
+          cliente={cliente}
+          onGuardar={crearReserva}
+          onCerrar={() => setModalReserva(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════
+   MODAL NUEVA RESERVA PARA CLIENTE EXISTENTE
+   ════════════════════════════════════════════════ */
+const RESERVA_VACIA = { excursion_id: '', fecha: '', adultos: 1, menores: 0, hospedaje: '', total: '', moneda: 'BRL', estado: 'pendiente', notas: '' }
+
+function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
+  const [form, setForm] = useState(RESERVA_VACIA)
+  const [excursiones, setExcursiones] = useState([])
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    excursionesApi.getAll().then(({ data }) => setExcursiones(data || []))
+  }, [])
+
+  function set(key, val) { setForm(p => ({ ...p, [key]: val })) }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.excursion_id) return setError('Seleccioná una excursión')
+    if (!form.fecha) return setError('La fecha es obligatoria')
+    setError('')
+    setGuardando(true)
+    await onGuardar(form)
+    setGuardando(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onCerrar}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+        <div className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-gray-900 text-base">Nueva reserva</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Cliente: <span className="font-medium text-gray-600">{cliente.nombre}</span></p>
+            </div>
+            <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg">×</button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Excursión <span className="text-red-400">*</span></label>
+              <select value={form.excursion_id} onChange={e => set('excursion_id', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                <option value="">— Seleccionar</option>
+                {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Fecha <span className="text-red-400">*</span></label>
+              <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Adultos</label>
+              <input type="number" min="0" value={form.adultos} onChange={e => set('adultos', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Menores</label>
+              <input type="number" min="0" value={form.menores} onChange={e => set('menores', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Hospedaje / Pickup</label>
+            <input type="text" value={form.hospedaje} onChange={e => set('hospedaje', e.target.value)}
+              placeholder="Hotel, dirección..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Total</label>
+              <input type="number" min="0" value={form.total} onChange={e => set('total', e.target.value)}
+                placeholder="0"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">Moneda</label>
+              <select value={form.moneda} onChange={e => set('moneda', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                <option value="BRL">BRL</option>
+                <option value="USD">USD</option>
+                <option value="ARS">ARS</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Estado</label>
+            <select value={form.estado} onChange={e => set('estado', e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+              <option value="pendiente">Pendiente</option>
+              <option value="confirmada">Confirmada</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Notas</label>
+            <textarea rows={2} value={form.notas} onChange={e => set('notas', e.target.value)}
+              placeholder="Observaciones..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
+            />
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <button type="submit" disabled={guardando}
+            className="w-full bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors">
+            {guardando ? 'Guardando...' : 'Crear reserva'}
+          </button>
+        </form>
       </div>
     </div>
   )

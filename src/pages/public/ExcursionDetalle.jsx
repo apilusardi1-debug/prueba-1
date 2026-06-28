@@ -1,11 +1,11 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { excursionesApi, normalizarExcursion, reservasApi } from '../../lib/supabase.js'
+import { excursionesApi, normalizarExcursion, reservasApi, vendedoresApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
-const FORM_EMPTY = { fecha: '', nombre: '', telefono: '', adultos: 1, menores: 0, ubicacion: '' }
+const FORM_EMPTY = { fecha: '', nombre: '', telefono: '', adultos: 1, menores: 0, ubicacion: '', codigo_vendedor: '' }
 
 export default function ExcursionDetalle() {
   const { id } = useParams()
@@ -18,6 +18,9 @@ export default function ExcursionDetalle() {
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
   const [error, setError] = useState(null)
+  const [vendedor, setVendedor] = useState(null)
+  const [codigoError, setCodigoError] = useState('')
+  const [verificandoCodigo, setVerificandoCodigo] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -34,7 +37,23 @@ export default function ExcursionDetalle() {
     setForm({ ...FORM_EMPTY, fecha: ex?.fechas?.[0] || '' })
     setExito(false)
     setError(null)
+    setVendedor(null)
+    setCodigoError('')
     setModal(true)
+  }
+
+  async function verificarCodigo() {
+    if (!form.codigo_vendedor.trim()) return
+    setVerificandoCodigo(true)
+    setCodigoError('')
+    const { data, error } = await vendedoresApi.getByCodigoReferido(form.codigo_vendedor.trim())
+    if (error || !data) {
+      setCodigoError('Código no válido')
+      setVendedor(null)
+    } else {
+      setVendedor(data)
+    }
+    setVerificandoCodigo(false)
   }
 
   async function enviarReserva(e) {
@@ -45,15 +64,20 @@ export default function ExcursionDetalle() {
     setEnviando(true)
     setError(null)
     try {
+      const personas = (form.adultos || 0) + (form.menores || 0)
       const { error } = await reservasApi.create({
         excursion_id: ex.id,
         fecha: form.fecha,
         cliente_nombre: form.nombre.trim(),
-        cliente_whatsapp: form.telefono.trim(),
+        cliente_whatsapp: form.telefono.trim().replace(/\D/g, ''),
         adultos: form.adultos,
         menores: form.menores,
+        personas,
         ubicacion: form.ubicacion.trim() || null,
+        hospedaje: form.ubicacion.trim() || null,
         estado: 'pendiente',
+        vendedor_id: vendedor?.id || null,
+        vendedor_codigo: vendedor ? form.codigo_vendedor.toUpperCase() : null,
       })
       if (error) throw error
       setExito(true)
@@ -286,6 +310,54 @@ export default function ExcursionDetalle() {
                       onFocus={e => e.target.style.borderColor='#b07420'}
                       onBlur={e => e.target.style.borderColor='#e8d09a'}
                     />
+                  </div>
+
+                  {/* Código de vendedor */}
+                  <div style={{ borderTop: '1px solid #e8d09a', paddingTop: 16 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Código de vendedor <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '0.7rem', color: '#1C120888' }}>(opcional)</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={form.codigo_vendedor}
+                        onChange={e => {
+                          setForm(p => ({ ...p, codigo_vendedor: e.target.value.toUpperCase() }))
+                          setVendedor(null)
+                          setCodigoError('')
+                        }}
+                        placeholder="Ej: JUAN01"
+                        maxLength={20}
+                        style={{
+                          flex: 1, border: `1.5px solid ${vendedor ? '#25d366' : codigoError ? '#e74c3c' : '#e8d09a'}`,
+                          borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem',
+                          background: vendedor ? '#f0fdf4' : 'white', color: '#1C1208',
+                          outline: 'none', fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={verificarCodigo}
+                        disabled={!form.codigo_vendedor.trim() || verificandoCodigo}
+                        style={{
+                          background: '#1C1208', color: '#f9f3e3', fontWeight: 700,
+                          padding: '10px 18px', borderRadius: 10, border: 'none',
+                          fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                          opacity: (!form.codigo_vendedor.trim() || verificandoCodigo) ? 0.4 : 1,
+                        }}
+                      >
+                        {verificandoCodigo ? '...' : 'Verificar'}
+                      </button>
+                    </div>
+                    {vendedor && (
+                      <p style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600, marginTop: 6 }}>
+                        ✓ Código válido — {vendedor.nombre}
+                      </p>
+                    )}
+                    {codigoError && (
+                      <p style={{ fontSize: '0.78rem', color: '#e74c3c', marginTop: 6 }}>{codigoError}</p>
+                    )}
                   </div>
 
                   <button

@@ -81,6 +81,7 @@ export const guiasApi = {
 // ── Vendedores ─────────────────────────────────────────────────────────────────
 export const vendedoresApi = {
   getAll: () => supabase?.from('vendedores').select('*').order('nombre'),
+  getByCodigoReferido: (codigo) => supabase?.from('vendedores').select('*').eq('codigo_referido', codigo.toUpperCase()).single(),
   create: (data) => supabase?.from('vendedores').insert(data).select().single(),
   update: (id, data) => supabase?.from('vendedores').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('vendedores').delete().eq('id', id),

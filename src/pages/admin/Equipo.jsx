@@ -7,7 +7,7 @@ const TABS = [
   { id: 'vendedores', label: 'Vendedores', icono: '💼', api: vendedoresApi },
 ]
 
-const EMPTY = { nombre: '', whatsapp: '' }
+const EMPTY = { nombre: '', whatsapp: '', codigo_referido: '' }
 
 const LABELS = { choferes: 'chofer', guias: 'guía', vendedores: 'vendedor' }
 
@@ -52,7 +52,7 @@ export default function Equipo() {
   }
 
   function abrirEditar(item) {
-    setForm({ nombre: item.nombre, whatsapp: item.whatsapp })
+    setForm({ nombre: item.nombre, whatsapp: item.whatsapp, codigo_referido: item.codigo_referido || '' })
     setEditando(item.id)
     setMostrarForm(true)
   }
@@ -163,6 +163,15 @@ export default function Equipo() {
                   >
                     💬 {item.whatsapp}
                   </a>
+                  {tabActiva === 'vendedores' && item.codigo_referido && (
+                    <div className="mt-1.5 inline-flex items-center gap-1.5 bg-brand-50 border border-brand-100 rounded-lg px-2.5 py-1">
+                      <span className="text-xs text-gray-400">Código:</span>
+                      <span className="text-xs font-bold font-mono text-brand-700 tracking-wider">{item.codigo_referido}</span>
+                    </div>
+                  )}
+                  {tabActiva === 'vendedores' && !item.codigo_referido && (
+                    <p className="text-xs text-orange-400 mt-1">Sin código asignado</p>
+                  )}
                 </div>
                 <button
                   onClick={() => toggleActivo(item)}
@@ -225,6 +234,22 @@ export default function Equipo() {
                 />
                 <p className="text-xs text-gray-400 mt-1">Con código de país, sin +, sin espacios. Ej: 5491112345678</p>
               </div>
+              {tabActiva === 'vendedores' && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">
+                    Código de referido <span className="text-gray-400 font-normal">(único por vendedor)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.codigo_referido}
+                    onChange={(e) => setForm({ ...form, codigo_referido: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    placeholder="Ej: JUAN01"
+                    maxLength={20}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Sin espacios. Se convierte a mayúsculas automáticamente.</p>
+                </div>
+              )}
             </div>
             <button
               onClick={guardar}

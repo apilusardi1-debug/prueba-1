@@ -159,3 +159,20 @@ export async function sincronizarWhatsApp() {
   const { data, error } = await supabase.functions.invoke('sync-whatsapp', {})
   return { data, error }
 }
+
+// ── Movimientos de caja ────────────────────────────────────────────────────────
+export const movimientosApi = {
+  getAll: () => supabase?.from('movimientos_caja').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
+  create: (data) => supabase?.from('movimientos_caja').insert(data).select().single(),
+  update: (id, data) => supabase?.from('movimientos_caja').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('movimientos_caja').delete().eq('id', id),
+}
+
+// ── Costos por excursión ───────────────────────────────────────────────────────
+export const costosExcursionApi = {
+  getAll: () => supabase?.from('costos_excursion').select('*').eq('activo', true).order('concepto'),
+  getByExcursion: (excursionId) => supabase?.from('costos_excursion').select('*').eq('excursion_id', excursionId).eq('activo', true),
+  create: (data) => supabase?.from('costos_excursion').insert(data).select().single(),
+  update: (id, data) => supabase?.from('costos_excursion').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('costos_excursion').update({ activo: false }).eq('id', id),
+}

@@ -2,9 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN')!
 const MP_USER_ID = Deno.env.get('MP_USER_ID')!
-const EXTERNAL_STORE_ID = 'dreamstour_store_01'
-const EXTERNAL_POS_ID = 'dreamstour_caja_01'
-const WEBHOOK_URL = 'https://przvftnhwwistmcbkeon.supabase.co/functions/v1/mp-webhook'
+const EXTERNAL_STORE_ID = 'dreamstourstore01'
+const EXTERNAL_POS_ID = 'dreamstourcaja01'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,52 +23,71 @@ async function mpFetch(path: string, options: RequestInit = {}) {
   return res.json()
 }
 
+async function getOrCreatePos() {
+  // 1. Buscar POS existente por external_id
+  const list = await mpFetch(`/pos?external_id=${EXTERNAL_POS_ID}`)
+  console.log('POS list total:', list?.paging?.total)
+
+  if (list?.results?.length > 0) {
+    const posId = list.results[0].id
+    const pos = await mpFetch(`/pos/${posId}`)
+    console.log('POS found:', posId)
+    if (pos.qr?.image) return pos
+  }
+
+  // 2. Buscar store existente
+  let storeId: string | null = null
+  const storeList = await mpFetch(`/users/${MP_USER_ID}/stores/search?external_id=${EXTERNAL_STORE_ID}`)
+  console.log('Store search:', JSON.stringify(storeList).slice(0, 200))
+
+  if (storeList?.data?.id) {
+    storeId = storeList.data.id
+  } else {
+    // Crear store
+    const store = await mpFetch(`/users/${MP_USER_ID}/stores`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'DreamsTour',
+        external_id: EXTERNAL_STORE_ID,
+        location: {
+          street_number: '1',
+          street_name: 'Online',
+          city_name: 'Salvador',
+          state_name: 'Bahia',
+          latitude: -12.97,
+          longitude: -38.50,
+          reference: 'DreamsTour',
+        },
+      }),
+    })
+    console.log('Store created:', store.id)
+    storeId = store.id
+  }
+
+  if (!storeId) return null
+
+  // 3. Crear POS
+  const pos = await mpFetch('/pos', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Caja DreamsTour',
+      fixed_amount: false,
+      store_id: storeId,
+      external_store_id: EXTERNAL_STORE_ID,
+      external_id: EXTERNAL_POS_ID,
+    }),
+  })
+  console.log('POS created:', pos.id, 'qr:', !!pos.qr?.image)
+  return pos
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    // 1. Intentar obtener el POS existente
-    let pos = await mpFetch(`/pos/${EXTERNAL_POS_ID}`)
+    const pos = await getOrCreatePos()
 
-    // 2. Si no existe, crear store + POS
-    if (pos.error || !pos.qr_code_base64) {
-      // Crear store
-      const store = await mpFetch(`/users/${MP_USER_ID}/stores`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'DreamsTour',
-          external_id: EXTERNAL_STORE_ID,
-          location: {
-            street_number: '1',
-            street_name: 'Online',
-            city_name: 'Maceio',
-            state_name: 'AL',
-            latitude: -9.665,
-            longitude: -35.735,
-            reference: 'DreamsTour',
-          },
-        }),
-      })
-
-      if (store.error) {
-        console.error('Error creando store:', store)
-      }
-
-      // Crear POS con webhook y sin monto fijo
-      pos = await mpFetch('/pos', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Caja DreamsTour',
-          fixed_amount: false,
-          store_id: store.id,
-          external_store_id: EXTERNAL_STORE_ID,
-          external_id: EXTERNAL_POS_ID,
-          notification_url: WEBHOOK_URL,
-        }),
-      })
-    }
-
-    if (!pos.qr_code_base64) {
+    if (!pos?.qr?.image) {
       return new Response(JSON.stringify({ error: 'No se pudo generar el QR', details: pos }), {
         status: 500,
         headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -77,8 +95,9 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      qr_base64: pos.qr_code_base64,
+      qr_image: pos.qr.image,
       qr_string: pos.qr_code,
+      pos_id: pos.id,
     }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })

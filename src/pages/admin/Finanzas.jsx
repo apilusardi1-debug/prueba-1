@@ -507,7 +507,7 @@ export default function Finanzas() {
 
 // ── Tab Mercado Pago ──────────────────────────────────────────────────────────
 function TabMercadoPago({ movimientos }) {
-  const [qrBase64, setQrBase64] = useState(null)
+  const [qrImage, setQrImage] = useState(null)
   const [cargandoQr, setCargandoQr] = useState(true)
   const [errorQr, setErrorQr] = useState(null)
 
@@ -518,8 +518,8 @@ function TabMercadoPago({ movimientos }) {
           headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
         })
         const data = await res.json()
-        if (data.qr_base64) {
-          setQrBase64(data.qr_base64)
+        if (data.qr_image) {
+          setQrImage(data.qr_image)
         } else {
           setErrorQr(data.error || 'No se pudo obtener el QR')
         }
@@ -532,12 +532,16 @@ function TabMercadoPago({ movimientos }) {
     fetchQr()
   }, [])
 
-  function descargarQr() {
-    if (!qrBase64) return
+  async function descargarQr() {
+    if (!qrImage) return
+    const res = await fetch(qrImage)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = `data:image/png;base64,${qrBase64}`
+    link.href = url
     link.download = 'qr-dreamstour-mercadopago.png'
     link.click()
+    URL.revokeObjectURL(url)
   }
 
   const pagosMp = movimientos.filter(m => m.referencia_mp)
@@ -563,7 +567,7 @@ function TabMercadoPago({ movimientos }) {
           </div>
         ) : (
           <img
-            src={`data:image/png;base64,${qrBase64}`}
+            src={qrImage}
             alt="QR Mercado Pago"
             className="w-56 h-56 rounded-2xl border border-gray-100"
           />
@@ -572,7 +576,7 @@ function TabMercadoPago({ movimientos }) {
         <div className="w-full space-y-2">
           <button
             onClick={descargarQr}
-            disabled={!qrBase64}
+            disabled={!qrImage}
             className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
           >
             Descargar QR

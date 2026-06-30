@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { movimientosApi, costosExcursionApi, excursionesApi } from '../../lib/supabase.js'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
 
@@ -253,6 +256,7 @@ export default function Finanzas() {
         {[
           { id: 'movimientos', label: '📋 Movimientos' },
           { id: 'costos', label: '⚙️ Costos operativos' },
+          { id: 'mercadopago', label: '💳 Mercado Pago' },
         ].map(t => (
           <button
             key={t.id}
@@ -376,6 +380,11 @@ export default function Finanzas() {
         <TabCostos excursiones={excursiones} costos={costos} onRefresh={cargarTodo} />
       )}
 
+      {/* ── Tab: Mercado Pago ────────────────────────────────────────────────── */}
+      {tab === 'mercadopago' && (
+        <TabMercadoPago movimientos={movimientos} />
+      )}
+
       {/* ── Modal: Nuevo movimiento ──────────────────────────────────────────── */}
       {modalMovimiento && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setModalMovimiento(false)}>
@@ -492,6 +501,111 @@ export default function Finanzas() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Tab Mercado Pago ──────────────────────────────────────────────────────────
+function TabMercadoPago({ movimientos }) {
+  const [qrBase64, setQrBase64] = useState(null)
+  const [cargandoQr, setCargandoQr] = useState(true)
+  const [errorQr, setErrorQr] = useState(null)
+
+  useEffect(() => {
+    async function fetchQr() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/mp-qr`, {
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+        })
+        const data = await res.json()
+        if (data.qr_base64) {
+          setQrBase64(data.qr_base64)
+        } else {
+          setErrorQr(data.error || 'No se pudo obtener el QR')
+        }
+      } catch (err) {
+        setErrorQr(err.message)
+      } finally {
+        setCargandoQr(false)
+      }
+    }
+    fetchQr()
+  }, [])
+
+  function descargarQr() {
+    if (!qrBase64) return
+    const link = document.createElement('a')
+    link.href = `data:image/png;base64,${qrBase64}`
+    link.download = 'qr-dreamstour-mercadopago.png'
+    link.click()
+  }
+
+  const pagosMp = movimientos.filter(m => m.referencia_mp)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, 20)
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* QR */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col items-center gap-5">
+        <div className="text-center">
+          <h2 className="text-lg font-bold text-gray-900">QR Mercado Pago</h2>
+          <p className="text-sm text-gray-400 mt-1">El cliente escanea, ingresa el monto y paga</p>
+        </div>
+
+        {cargandoQr ? (
+          <div className="w-56 h-56 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 text-sm">
+            Cargando QR...
+          </div>
+        ) : errorQr ? (
+          <div className="w-56 h-56 bg-red-50 rounded-2xl flex items-center justify-center text-center p-4">
+            <p className="text-sm text-red-500">{errorQr}</p>
+          </div>
+        ) : (
+          <img
+            src={`data:image/png;base64,${qrBase64}`}
+            alt="QR Mercado Pago"
+            className="w-56 h-56 rounded-2xl border border-gray-100"
+          />
+        )}
+
+        <div className="w-full space-y-2">
+          <button
+            onClick={descargarQr}
+            disabled={!qrBase64}
+            className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+          >
+            Descargar QR
+          </button>
+          <p className="text-xs text-center text-gray-400">
+            Los pagos quedan registrados automáticamente en Movimientos
+          </p>
+        </div>
+      </div>
+
+      {/* Últimos pagos MP */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-base font-bold text-gray-900 mb-4">Últimos pagos recibidos</h2>
+
+        {pagosMp.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <p className="text-3xl mb-2">💳</p>
+            <p className="text-sm">Aún no hay pagos registrados via MP QR</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pagosMp.map(m => (
+              <div key={m.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{m.persona_nombre || 'Cliente'}</p>
+                  <p className="text-xs text-gray-400">{formatFecha(m.fecha)} · {m.notas}</p>
+                </div>
+                <span className="text-sm font-bold text-green-600">+{formatMonto(m.monto, m.moneda)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

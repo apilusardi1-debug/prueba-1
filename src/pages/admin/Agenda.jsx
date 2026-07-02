@@ -419,7 +419,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
   })
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
 
       {/* ── Calendario ── */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
@@ -437,21 +437,29 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
           ))}
         </div>
 
-        <div className="px-3 pb-4">
+        <div className="px-2 pb-4">
           {semanas.map((semana, si) => (
-            <div key={si} className="grid grid-cols-7">
+            <div key={si} className="grid grid-cols-7 border-b border-gray-50 dark:border-zinc-800/50 last:border-0">
               {semana.map(({ dia, mesOffset }, di) => {
                 const fechaStr = toFechaStr(dia, mesOffset)
                 const esHoy = fechaStr === todayStr
                 const seleccionado = fechaStr === diaSeleccionado
                 const esNueva = fechaStr === fechaInicial
-                const tieneSalidas = !!salidasPorFecha[fechaStr]
+                const salidas = esMesActual => esMesActual ? (salidasPorFecha[fechaStr] || []) : []
                 const esMesActual = mesOffset === 0
+                const salidasDia = salidas(esMesActual)
+
+                const CHIP_COLORS = [
+                  'bg-[#002147] text-white',
+                  'bg-blue-500 text-white',
+                  'bg-indigo-500 text-white',
+                  'bg-blue-700 text-white',
+                ]
 
                 return (
                   <button key={di} onClick={() => setDiaSeleccionado(fechaStr)}
-                    className="flex flex-col items-center py-1.5 gap-0.5 group">
-                    <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                    className="flex flex-col items-start pt-1.5 pb-2 px-0.5 gap-1 min-h-[72px] group border-r border-gray-50 dark:border-zinc-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium transition-all mx-auto ${
                       esHoy
                         ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
                         : seleccionado
@@ -459,12 +467,19 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                         : esNueva
                         ? 'ring-2 ring-[#002147] text-[#002147] font-semibold'
                         : esMesActual
-                        ? 'text-gray-700 dark:text-zinc-300 group-hover:bg-gray-100 dark:group-hover:bg-zinc-800'
+                        ? 'text-gray-700 dark:text-zinc-300'
                         : 'text-gray-300 dark:text-zinc-700'
                     }`}>{dia}</span>
-                    {tieneSalidas && esMesActual && (
-                      <span className={`w-1 h-1 rounded-full ${esHoy ? 'bg-zinc-400 dark:bg-zinc-500' : seleccionado ? 'bg-white/70' : esNueva ? 'bg-[#002147]' : 'bg-gray-300 dark:bg-zinc-700'}`} />
-                    )}
+                    <div className="w-full flex flex-col gap-0.5 px-0.5">
+                      {salidasDia.slice(0, 2).map((s, i) => (
+                        <span key={i} className={`w-full px-1 py-0.5 rounded text-[9px] font-semibold truncate leading-tight ${CHIP_COLORS[i % CHIP_COLORS.length]}`}>
+                          {s.excursion.nombre}
+                        </span>
+                      ))}
+                      {salidasDia.length > 2 && (
+                        <span className="text-[9px] text-gray-400 dark:text-zinc-600 pl-1">+{salidasDia.length - 2} más</span>
+                      )}
+                    </div>
                   </button>
                 )
               })}

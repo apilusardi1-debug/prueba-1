@@ -66,7 +66,7 @@ Mensajes automáticos a chofer, guía y cliente al **cerrar operación**.
 
 ### 2. CRM comercial (atención al cliente)
 Inbox omnicanal, routing de conversaciones entre miembros del equipo.
-- **Proveedor objetivo**: Meta Cloud API oficial (gratis hasta 1000 conv/mes)
+- **Proveedor objetivo**: Meta Cloud API oficial (desde jul-2025 se cobra por mensaje entregado — marketing ~R$0,31-0,38, utility/auth ~R$0,15-0,19; servicio dentro de ventana de 24hs sigue gratis. Ya no existe la franquicia de 1000 conversaciones gratis/mes)
 - **Estado**: En proceso de setup — pendiente verificación Meta Business
 
 ## VPS Hostinger

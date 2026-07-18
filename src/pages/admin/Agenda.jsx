@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { choferesApi, guiasApi, reservasApi, excursionesApi } from '../../lib/supabase.js'
-import { sendWhatsApp } from '../../lib/ultramsg.js'
+import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -75,18 +75,11 @@ const STATUS_CONFIG = {
   cancelada:  { label: 'Cancelada',  dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',    darkText: 'dark:text-red-400',    darkBg: 'dark:bg-red-950/40' },
 }
 
-const HORARIOS_EXCURSION = {
-  'maragogi':   { partida: '7:00 AM', regreso: '6:00 PM' },
-  'carneiros':  { partida: '6:30 AM', regreso: '5:30 PM' },
-  'default':    { partida: '8:00 AM', regreso: '6:00 PM' },
-}
-
 function getHorario(excursion) {
-  if (!excursion) return HORARIOS_EXCURSION.default
-  const nombre = (excursion.nombre || '').toLowerCase()
-  if (nombre.includes('maragogi')) return HORARIOS_EXCURSION.maragogi
-  if (nombre.includes('carneiros')) return HORARIOS_EXCURSION.carneiros
-  return HORARIOS_EXCURSION.default
+  return {
+    partida: excursion?.hora_salida || '8:00 AM',
+    regreso: excursion?.hora_regreso || '6:00 PM',
+  }
 }
 
 const AVATAR_COLORS = ['bg-blue-500','bg-purple-500','bg-emerald-500','bg-orange-400','bg-pink-500','bg-teal-500','bg-indigo-500','bg-rose-500']
@@ -614,12 +607,12 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       const hora = new Date().getHours()
       const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
-      async function enviar(destino, phone, msg) {
+      async function enviar(destino, phone, template, params) {
         if (!phone) {
           logs.push({ destino, phone: '—', ok: false, error: 'Sin número de WhatsApp guardado' })
           return
         }
-        const res = await sendWhatsApp(phone, msg)
+        const res = await sendWhatsAppTemplate(phone, template, params)
         logs.push({ destino, phone, ok: res.ok, error: res.error })
       }
 
@@ -628,9 +621,9 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
         return `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 📞 +${r.clienteWhatsapp} · 🚗 ${choferR ? choferR.nombre : 'Sin chofer'}`
       }).join('\n')
-      await enviar(`Guía (${guiaAsignado.nombre})`, guiaAsignado.whatsapp,
-        `Hola ${guiaAsignado.nombre} 👋\n\n🗺 *${excursion.nombre}*\n📅 ${fechaFmt}\n🕐 Salida: ${horario.partida} — Regreso: ${horario.regreso}\n\n*Pasajeros de la operación:*\n${lineasGuia}\n\n¡Muchas gracias!`
-      )
+      await enviar(`Guía (${guiaAsignado.nombre})`, guiaAsignado.whatsapp, 'aviso_guia', [
+        guiaAsignado.nombre, excursion.nombre, fechaFmt, horario.partida, horario.regreso, lineasGuia,
+      ])
 
       // Mensaje a cada CHOFER
       const porChofer = {}
@@ -643,17 +636,17 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         const chofer = choferes.find((c) => c.id === cid)
         if (!chofer) continue
         const lineas = sus.map((r) => `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 🏨 ${r.hospedaje || 'Sin hospedaje'}`).join('\n')
-        await enviar(`Chofer (${chofer.nombre})`, chofer.whatsapp,
-          `Hola ${chofer.nombre} 👋\n\n🗺 *${excursion.nombre}*\n📅 ${fechaFmt}\n🕐 Salida: ${horario.partida}\n\n*Tus pasajeros:*\n${lineas}\n\n🧭 Guía: *${guiaAsignado.nombre}*\n\n¡Gracias!`
-        )
+        await enviar(`Chofer (${chofer.nombre})`, chofer.whatsapp, 'aviso_chofer', [
+          chofer.nombre, excursion.nombre, fechaFmt, horario.partida, lineas, guiaAsignado.nombre,
+        ])
       }
 
       // Mensaje a cada CLIENTE
       for (const r of pasajeros) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
-        await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp,
-          `${saludo}, soy *${guiaAsignado.nombre}* 👋\n\nEl chofer asignado para realizar su traslado es *${choferR ? choferR.nombre : 'por confirmar'}*, él lo estará buscando por la puerta de su hospedaje a las *${horario.partida}* del día de mañana para dirigirnos hacia *${excursion.nombre}*.\n\nYo los estaré esperando ahí para ingresar todos juntos.\n\nAnte cualquier duda o consulta podés escribirme directamente al 📱 *+${guiaAsignado.whatsapp}*`
-        )
+        await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp, 'aviso_cliente', [
+          saludo, guiaAsignado.nombre, choferR ? choferR.nombre : 'por confirmar', horario.partida, excursion.nombre, guiaAsignado.whatsapp,
+        ])
       }
     } catch (err) {
       logs.push({ destino: 'Error inesperado', phone: '—', ok: false, error: err.message })

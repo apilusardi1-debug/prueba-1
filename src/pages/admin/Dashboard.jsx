@@ -3,13 +3,13 @@ import { excursiones, leads, clientes, reservas, formatPrecio, estadosLead } fro
 
 function StatCard({ icon, label, value, sub, to }) {
   const content = (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm dark:shadow-black/20 border border-gray-100 dark:border-zinc-800 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3 mb-3">
         <span className="text-2xl">{icon}</span>
-        <span className="text-sm text-gray-500 font-medium">{label}</span>
+        <span className="text-sm text-gray-500 dark:text-zinc-400 font-medium">{label}</span>
       </div>
-      <p className="text-3xl font-bold text-gray-900">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      <p className="text-3xl font-bold text-gray-900 dark:text-zinc-100">{value}</p>
+      {sub && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{sub}</p>}
     </div>
   )
   return to ? <Link to={to}>{content}</Link> : content
@@ -27,8 +27,8 @@ export default function Dashboard() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-400 text-sm mt-1">Bienvenido, {session.email}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Dashboard</h1>
+        <p className="text-gray-400 dark:text-zinc-500 text-sm mt-1">Bienvenido, {session.email}</p>
       </div>
 
       {/* Stats */}
@@ -41,19 +41,19 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Leads recientes */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Leads recientes</h2>
-            <Link to="/admin/leads" className="text-xs text-brand-600 hover:underline">Ver todos</Link>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
+            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Leads recientes</h2>
+            <Link to="/admin/leads" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Ver todos</Link>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
             {leadsRecientes.map((lead) => {
               const estado = estadosLead[lead.estado]
               return (
                 <div key={lead.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{lead.nombre}</p>
-                    <p className="text-xs text-gray-400">{lead.excursionInteres}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500">{lead.excursionInteres}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estado.color}`}>
@@ -76,21 +76,21 @@ export default function Dashboard() {
         </div>
 
         {/* Excursiones con pocos cupos */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Cupos disponibles</h2>
-            <Link to="/admin/excursiones" className="text-xs text-brand-600 hover:underline">Gestionar</Link>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
+            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Cupos disponibles</h2>
+            <Link to="/admin/excursiones" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Gestionar</Link>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
             {excursiones.map((ex) => {
               const pct = Math.round(((ex.cupos - ex.cuposDisponibles) / ex.cupos) * 100)
               return (
                 <div key={ex.id} className="px-5 py-3">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium text-gray-800 truncate flex-1 mr-2">{ex.nombre}</p>
-                    <p className="text-xs text-gray-400 shrink-0">{ex.cuposDisponibles} libre{ex.cuposDisponibles !== 1 ? 's' : ''}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate flex-1 mr-2">{ex.nombre}</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{ex.cuposDisponibles} libre{ex.cuposDisponibles !== 1 ? 's' : ''}</p>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                  <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full ${pct >= 80 ? 'bg-red-400' : pct >= 50 ? 'bg-yellow-400' : 'bg-green-400'}`}
                       style={{ width: `${pct}%` }}

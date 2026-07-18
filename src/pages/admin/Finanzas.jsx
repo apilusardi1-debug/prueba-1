@@ -33,12 +33,12 @@ function formatFecha(f) {
 }
 
 const CATEGORIAS = [
-  { id: 'reserva',   label: 'Reserva',   color: 'bg-blue-100 text-blue-700' },
-  { id: 'guia',      label: 'Guía',      color: 'bg-purple-100 text-purple-700' },
-  { id: 'chofer',    label: 'Chofer',    color: 'bg-orange-100 text-orange-700' },
-  { id: 'proveedor', label: 'Proveedor', color: 'bg-yellow-100 text-yellow-700' },
-  { id: 'comision',  label: 'Comisión',  color: 'bg-pink-100 text-pink-700' },
-  { id: 'otro',      label: 'Otro',      color: 'bg-gray-100 text-gray-600' },
+  { id: 'reserva',   label: 'Reserva',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  { id: 'guia',      label: 'Guía',      color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' },
+  { id: 'chofer',    label: 'Chofer',    color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400' },
+  { id: 'proveedor', label: 'Proveedor', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
+  { id: 'comision',  label: 'Comisión',  color: 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400' },
+  { id: 'otro',      label: 'Otro',      color: 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
 ]
 
 const METODOS = ['efectivo', 'transferencia', 'qr', 'tarjeta']
@@ -175,17 +175,17 @@ export default function Finanzas() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Finanzas</h1>
-          <p className="text-gray-400 text-sm">Balance, movimientos y costos operativos</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Finanzas</h1>
+          <p className="text-gray-400 dark:text-zinc-600 text-sm">Balance, movimientos y costos operativos</p>
         </div>
         <div className="flex gap-2 items-center">
-          <div className="flex bg-white border border-gray-200 rounded-xl p-1 gap-1">
+          <div className="flex bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-1 gap-1">
             {['hoy', 'semana', 'mes'].map(p => (
               <button
                 key={p}
                 onClick={() => setPeriodo(p)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  periodo === p ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  periodo === p ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-800 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800'
                 }`}
               >
                 {p === 'hoy' ? 'Hoy' : p === 'semana' ? 'Semana' : 'Mes'}
@@ -194,7 +194,7 @@ export default function Finanzas() {
           </div>
           <button
             onClick={() => { setForm(FORM_EMPTY); setModalMovimiento(true) }}
-            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <IcoPlus /> Registrar movimiento
           </button>
@@ -203,47 +203,47 @@ export default function Finanzas() {
 
       {/* Cards de balance */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center text-green-600"><IcoIngreso /></div>
-            <span className="text-sm font-medium text-gray-500">Ingresos</span>
+            <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-950/40 flex items-center justify-center text-green-600 dark:text-green-400"><IcoIngreso /></div>
+            <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Ingresos</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">{formatMonto(totalIngresos, 'USD')}</p>
-          <p className="text-xs text-gray-400 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso').length} movimientos</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(totalIngresos, 'USD')}</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso').length} movimientos</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center text-red-500"><IcoEgreso /></div>
-            <span className="text-sm font-medium text-gray-500">Egresos</span>
+            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center text-red-500 dark:text-red-400"><IcoEgreso /></div>
+            <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Egresos</span>
           </div>
-          <p className="text-2xl font-bold text-red-500">{formatMonto(totalEgresos, 'USD')}</p>
-          <p className="text-xs text-gray-400 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso').length} movimientos</p>
+          <p className="text-2xl font-bold text-red-500 dark:text-red-400">{formatMonto(totalEgresos, 'USD')}</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso').length} movimientos</p>
         </div>
 
-        <div className={`rounded-2xl border shadow-sm p-5 ${balance >= 0 ? 'bg-brand-50 border-brand-100' : 'bg-red-50 border-red-100'}`}>
+        <div className={`rounded-2xl border shadow-sm p-5 ${balance >= 0 ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-100 dark:border-brand-900' : 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900'}`}>
           <div className="flex items-center gap-3 mb-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-brand-100 text-brand-700' : 'bg-red-100 text-red-600'}`}><IcoBalance /></div>
-            <span className="text-sm font-medium text-gray-500">Balance neto</span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400' : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'}`}><IcoBalance /></div>
+            <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Balance neto</span>
           </div>
-          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-brand-700' : 'text-red-600'}`}>{formatMonto(balance, 'USD')}</p>
-          <p className="text-xs text-gray-400 mt-1">Solo movimientos en USD</p>
+          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-brand-700 dark:text-brand-400' : 'text-red-600 dark:text-red-400'}`}>{formatMonto(balance, 'USD')}</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Solo movimientos en USD</p>
         </div>
       </div>
 
       {/* Desglose rápido */}
       {Object.keys(porCategoria).length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 mb-3">Desglose por categoría (USD)</p>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Desglose por categoría (USD)</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {CATEGORIAS.map(cat => {
               const d = porCategoria[cat.id]
               if (!d) return null
               return (
-                <div key={cat.id} className="bg-gray-50 rounded-xl p-3">
+                <div key={cat.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-3">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.color}`}>{cat.label}</span>
-                  {d.ingreso > 0 && <p className="text-xs text-green-600 mt-1.5 font-medium">+{formatMonto(d.ingreso, 'USD')}</p>}
-                  {d.egreso > 0 && <p className="text-xs text-red-500 font-medium">-{formatMonto(d.egreso, 'USD')}</p>}
+                  {d.ingreso > 0 && <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 font-medium">+{formatMonto(d.ingreso, 'USD')}</p>}
+                  {d.egreso > 0 && <p className="text-xs text-red-500 dark:text-red-400 font-medium">-{formatMonto(d.egreso, 'USD')}</p>}
                 </div>
               )
             })}
@@ -252,7 +252,7 @@ export default function Finanzas() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5 w-fit">
+      <div className="flex gap-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-1.5 w-fit">
         {[
           { id: 'movimientos', label: '📋 Movimientos' },
           { id: 'costos', label: '⚙️ Costos operativos' },
@@ -262,7 +262,7 @@ export default function Finanzas() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-5 py-2 rounded-xl text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+              tab === t.id ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-800 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800'
             }`}
           >
             {t.label}
@@ -272,13 +272,13 @@ export default function Finanzas() {
 
       {/* ── Tab: Movimientos ─────────────────────────────────────────────────── */}
       {tab === 'movimientos' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
           {/* Filtros */}
-          <div className="flex flex-wrap gap-3 p-4 border-b border-gray-50">
+          <div className="flex flex-wrap gap-3 p-4 border-b border-gray-50 dark:border-zinc-800">
             <select
               value={filtroTipo}
               onChange={e => setFiltroTipo(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <option value="todos">Todos los tipos</option>
               <option value="ingreso">Solo ingresos</option>
@@ -287,21 +287,21 @@ export default function Finanzas() {
             <select
               value={filtroCategoria}
               onChange={e => setFiltroCategoria(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <option value="todas">Todas las categorías</option>
               {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
-            <span className="ml-auto text-sm text-gray-400 self-center">{movimientosFiltrados.length} registros</span>
+            <span className="ml-auto text-sm text-gray-400 dark:text-zinc-600 self-center">{movimientosFiltrados.length} registros</span>
           </div>
 
           {cargando ? (
-            <div className="text-center py-12 text-gray-400">Cargando...</div>
+            <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div>
           ) : movimientosFiltrados.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
+            <div className="text-center py-16 text-gray-400 dark:text-zinc-600">
               <p className="text-4xl mb-3">💰</p>
               <p className="font-medium">No hay movimientos en este período.</p>
-              <button onClick={() => { setForm(FORM_EMPTY); setModalMovimiento(true) }} className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium underline">
+              <button onClick={() => { setForm(FORM_EMPTY); setModalMovimiento(true) }} className="mt-3 text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium underline">
                 Registrar el primero
               </button>
             </div>
@@ -309,27 +309,27 @@ export default function Finanzas() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Fecha</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Tipo</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Categoría</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Concepto</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Persona</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Método</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Monto</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Estado</th>
+                  <tr className="border-b border-gray-100 dark:border-zinc-800">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Fecha</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Tipo</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Categoría</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Concepto</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Persona</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Método</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Monto</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Estado</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                   {movimientosFiltrados.map(m => {
                     const cat = CATEGORIAS.find(c => c.id === m.categoria)
                     return (
-                      <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{formatFecha(m.fecha)}</td>
+                      <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <td className="px-4 py-3 text-gray-500 dark:text-zinc-500 font-mono text-xs">{formatFecha(m.fecha)}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                            m.tipo === 'ingreso' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                            m.tipo === 'ingreso' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400'
                           }`}>
                             {m.tipo === 'ingreso' ? '↑' : '↓'} {m.tipo}
                           </span>
@@ -337,17 +337,17 @@ export default function Finanzas() {
                         <td className="px-4 py-3">
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat?.color}`}>{cat?.label}</span>
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-800 max-w-[200px] truncate">{m.concepto}</td>
-                        <td className="px-4 py-3 text-gray-500">{m.persona_nombre || '—'}</td>
-                        <td className="px-4 py-3 text-gray-400 capitalize">{m.metodo}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800 dark:text-zinc-200 max-w-[200px] truncate">{m.concepto}</td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-zinc-500">{m.persona_nombre || '—'}</td>
+                        <td className="px-4 py-3 text-gray-400 dark:text-zinc-600 capitalize">{m.metodo}</td>
                         <td className={`px-4 py-3 text-right font-bold font-mono ${
-                          m.tipo === 'ingreso' ? 'text-green-600' : 'text-red-500'
+                          m.tipo === 'ingreso' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
                         }`}>
                           {m.tipo === 'ingreso' ? '+' : '-'}{formatMonto(m.monto, m.moneda)}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            m.estado === 'confirmado' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                            m.estado === 'confirmado' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400'
                           }`}>
                             {m.estado}
                           </span>
@@ -355,12 +355,12 @@ export default function Finanzas() {
                         <td className="px-4 py-3 text-center">
                           {eliminandoId === m.id ? (
                             <span className="flex items-center gap-1 justify-center text-xs">
-                              <button onClick={() => eliminarMovimiento(m.id)} className="text-red-500 font-semibold hover:text-red-700">Sí</button>
-                              <span className="text-gray-300">/</span>
-                              <button onClick={() => setEliminandoId(null)} className="text-gray-400 hover:text-gray-600">No</button>
+                              <button onClick={() => eliminarMovimiento(m.id)} className="text-red-500 dark:text-red-400 font-semibold hover:text-red-700 dark:hover:text-red-300">Sí</button>
+                              <span className="text-gray-300 dark:text-zinc-700">/</span>
+                              <button onClick={() => setEliminandoId(null)} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300">No</button>
                             </span>
                           ) : (
-                            <button onClick={() => setEliminandoId(m.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                            <button onClick={() => setEliminandoId(m.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
                               <IcoTrash />
                             </button>
                           )}
@@ -388,10 +388,10 @@ export default function Finanzas() {
       {/* ── Modal: Nuevo movimiento ──────────────────────────────────────────── */}
       {modalMovimiento && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setModalMovimiento(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="font-bold text-lg">Registrar movimiento</h2>
-              <button onClick={() => setModalMovimiento(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-zinc-800">
+              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Registrar movimiento</h2>
+              <button onClick={() => setModalMovimiento(false)} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
             </div>
 
             <div className="p-5 space-y-4">
@@ -404,7 +404,7 @@ export default function Finanzas() {
                     className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
                       form.tipo === t
                         ? t === 'ingreso' ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        : 'border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
                     }`}
                   >
                     {t === 'ingreso' ? '↑ Ingreso' : '↓ Egreso'}
@@ -415,15 +415,15 @@ export default function Finanzas() {
               <div className="grid grid-cols-2 gap-3">
                 {/* Fecha */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">Fecha</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Fecha</label>
                   <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                 </div>
                 {/* Categoría */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">Categoría</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Categoría</label>
                   <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
                     {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
@@ -431,41 +431,41 @@ export default function Finanzas() {
 
               {/* Concepto */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Concepto *</label>
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Concepto *</label>
                 <input type="text" value={form.concepto} onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
                   placeholder="Ej: Seña Maragogi — Juan Pérez"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               </div>
 
               {/* Persona */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Persona (guía / chofer / vendedor)</label>
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Persona (guía / chofer / vendedor)</label>
                 <input type="text" value={form.persona_nombre} onChange={e => setForm(f => ({ ...f, persona_nombre: e.target.value }))}
                   placeholder="Nombre (opcional)"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {/* Monto */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">Monto *</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Monto *</label>
                   <input type="number" value={form.monto} onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
                     placeholder="0.00" min="0" step="0.01"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                 </div>
                 {/* Moneda */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">Moneda</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Moneda</label>
                   <select value={form.moneda} onChange={e => setForm(f => ({ ...f, moneda: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
                     {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 {/* Método */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">Método</label>
+                  <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Método</label>
                   <select value={form.metodo} onChange={e => setForm(f => ({ ...f, metodo: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
                     {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
@@ -476,7 +476,7 @@ export default function Finanzas() {
                 {['confirmado', 'pendiente'].map(e => (
                   <button key={e} onClick={() => setForm(f => ({ ...f, estado: e }))}
                     className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                      form.estado === e ? 'bg-brand-600 text-white border-brand-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      form.estado === e ? 'bg-brand-600 dark:bg-brand-500 text-white border-brand-600 dark:border-brand-500' : 'border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
                     }`}>
                     {e === 'confirmado' ? '✅ Confirmado' : '⏳ Pendiente'}
                   </button>
@@ -485,16 +485,16 @@ export default function Finanzas() {
 
               {/* Notas */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Notas</label>
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Notas</label>
                 <textarea value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
                   rows={2} placeholder="Opcional..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
               </div>
             </div>
 
             <div className="px-5 pb-5">
               <button onClick={guardarMovimiento} disabled={guardando || !form.concepto.trim() || !form.monto}
-                className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+                className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
                 {guardando ? 'Guardando...' : 'Guardar movimiento'}
               </button>
             </div>
@@ -551,25 +551,25 @@ function TabMercadoPago({ movimientos }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* QR */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col items-center gap-5">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-6 flex flex-col items-center gap-5">
         <div className="text-center">
-          <h2 className="text-lg font-bold text-gray-900">QR Mercado Pago</h2>
-          <p className="text-sm text-gray-400 mt-1">El cliente escanea, ingresa el monto y paga</p>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">QR Mercado Pago</h2>
+          <p className="text-sm text-gray-400 dark:text-zinc-600 mt-1">El cliente escanea, ingresa el monto y paga</p>
         </div>
 
         {cargandoQr ? (
-          <div className="w-56 h-56 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 text-sm">
+          <div className="w-56 h-56 bg-gray-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-gray-400 dark:text-zinc-600 text-sm">
             Cargando QR...
           </div>
         ) : errorQr ? (
-          <div className="w-56 h-56 bg-red-50 rounded-2xl flex items-center justify-center text-center p-4">
-            <p className="text-sm text-red-500">{errorQr}</p>
+          <div className="w-56 h-56 bg-red-50 dark:bg-red-950/40 rounded-2xl flex items-center justify-center text-center p-4">
+            <p className="text-sm text-red-500 dark:text-red-400">{errorQr}</p>
           </div>
         ) : (
           <img
             src={qrImage}
             alt="QR Mercado Pago"
-            className="w-56 h-56 rounded-2xl border border-gray-100"
+            className="w-56 h-56 rounded-2xl border border-gray-100 dark:border-zinc-800"
           />
         )}
 
@@ -577,34 +577,34 @@ function TabMercadoPago({ movimientos }) {
           <button
             onClick={descargarQr}
             disabled={!qrImage}
-            className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
           >
             Descargar QR
           </button>
-          <p className="text-xs text-center text-gray-400">
+          <p className="text-xs text-center text-gray-400 dark:text-zinc-600">
             Los pagos quedan registrados automáticamente en Movimientos
           </p>
         </div>
       </div>
 
       {/* Últimos pagos MP */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-base font-bold text-gray-900 mb-4">Últimos pagos recibidos</h2>
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
+        <h2 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Últimos pagos recibidos</h2>
 
         {pagosMp.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
             <p className="text-3xl mb-2">💳</p>
             <p className="text-sm">Aún no hay pagos registrados via MP QR</p>
           </div>
         ) : (
           <div className="space-y-2">
             {pagosMp.map(m => (
-              <div key={m.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+              <div key={m.id} className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{m.persona_nombre || 'Cliente'}</p>
-                  <p className="text-xs text-gray-400">{formatFecha(m.fecha)} · {m.notas}</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{m.persona_nombre || 'Cliente'}</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-600">{formatFecha(m.fecha)} · {m.notas}</p>
                 </div>
-                <span className="text-sm font-bold text-green-600">+{formatMonto(m.monto, m.moneda)}</span>
+                <span className="text-sm font-bold text-green-600 dark:text-green-400">+{formatMonto(m.monto, m.moneda)}</span>
               </div>
             ))}
           </div>
@@ -646,8 +646,8 @@ function TabCostos({ excursiones, costos, onRefresh }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Lista excursiones */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <p className="text-sm font-semibold text-gray-700 mb-3">Excursiones</p>
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Excursiones</p>
         <div className="space-y-1">
           {excursiones.map(exc => {
             const nCostos = costos.filter(c => c.excursion_id === exc.id).length
@@ -656,12 +656,12 @@ function TabCostos({ excursiones, costos, onRefresh }) {
                 key={exc.id}
                 onClick={() => setExcSeleccionada(exc.id)}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors flex items-center justify-between ${
-                  excSeleccionada === exc.id ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+                  excSeleccionada === exc.id ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
                 }`}
               >
                 <span className="truncate">{exc.nombre}</span>
                 {nCostos > 0 && (
-                  <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">{nCostos}</span>
+                  <span className="ml-2 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 px-2 py-0.5 rounded-full shrink-0">{nCostos}</span>
                 )}
               </button>
             )
@@ -670,15 +670,15 @@ function TabCostos({ excursiones, costos, onRefresh }) {
       </div>
 
       {/* Costos de la excursión seleccionada */}
-      <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
         {!excSeleccionada ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
             <p className="text-3xl mb-2">⚙️</p>
             <p className="text-sm">Seleccioná una excursión para ver sus costos</p>
           </div>
         ) : (
           <>
-            <p className="font-semibold text-gray-800 mb-4">
+            <p className="font-semibold text-gray-800 dark:text-zinc-200 mb-4">
               {excursiones.find(e => e.id === excSeleccionada)?.nombre}
             </p>
 
@@ -686,14 +686,14 @@ function TabCostos({ excursiones, costos, onRefresh }) {
             {costosDeExcursion.length > 0 ? (
               <div className="space-y-2 mb-5">
                 {costosDeExcursion.map(c => (
-                  <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div key={c.id} className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{c.concepto}</p>
-                      <p className="text-xs text-gray-400">por persona</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{c.concepto}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-600">por persona</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-700">{formatMonto(c.monto_por_persona, c.moneda)}</span>
-                      <button onClick={() => eliminarCosto(c.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                      <span className="font-bold text-gray-700 dark:text-zinc-300">{formatMonto(c.monto_por_persona, c.moneda)}</span>
+                      <button onClick={() => eliminarCosto(c.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
                         <IcoTrash />
                       </button>
                     </div>
@@ -701,38 +701,38 @@ function TabCostos({ excursiones, costos, onRefresh }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 mb-5">Sin costos cargados todavía.</p>
+              <p className="text-sm text-gray-400 dark:text-zinc-600 mb-5">Sin costos cargados todavía.</p>
             )}
 
             {/* Agregar costo */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Agregar costo</p>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-4">
+              <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-3">Agregar costo</p>
               <div className="flex gap-2 flex-wrap">
                 <input
                   type="text"
                   value={formCosto.concepto}
                   onChange={e => setFormCosto(f => ({ ...f, concepto: e.target.value }))}
                   placeholder="Ej: Catamarán, Day use, Entrada..."
-                  className="flex-1 min-w-[150px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="flex-1 min-w-[150px] border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <input
                   type="number"
                   value={formCosto.monto_por_persona}
                   onChange={e => setFormCosto(f => ({ ...f, monto_por_persona: e.target.value }))}
                   placeholder="Monto"
-                  className="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="w-28 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <select
                   value={formCosto.moneda}
                   onChange={e => setFormCosto(f => ({ ...f, moneda: e.target.value }))}
-                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
                 <button
                   onClick={agregarCosto}
                   disabled={guardando || !formCosto.concepto.trim() || !formCosto.monto_por_persona}
-                  className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1"
+                  className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1"
                 >
                   <IcoPlus /> Agregar
                 </button>

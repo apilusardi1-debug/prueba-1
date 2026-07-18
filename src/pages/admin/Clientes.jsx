@@ -20,23 +20,23 @@ function fmtMonto(n, moneda = 'USD') {
 
 /* ─── colores estado reserva ─── */
 const ESTADO_RESERVA = {
-  pendiente:   'bg-yellow-50 text-yellow-700 border-yellow-200',
-  confirmada:  'bg-blue-50 text-blue-700 border-blue-200',
-  completada:  'bg-green-50 text-green-700 border-green-200',
-  cancelada:   'bg-red-50 text-red-700 border-red-200',
+  pendiente:   'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-900',
+  confirmada:  'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900',
+  completada:  'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900',
+  cancelada:   'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900',
 }
 
 /* ─── iconos de actividad ─── */
 const ACTIVIDAD_ICON = {
-  lead_recibido:        { icon: '🎯', color: 'bg-blue-50 text-blue-600' },
-  lead_convertido:      { icon: '✅', color: 'bg-green-50 text-green-600' },
-  reserva_creada:       { icon: '📋', color: 'bg-indigo-50 text-indigo-600' },
-  reserva_confirmada:   { icon: '✔️', color: 'bg-blue-50 text-blue-600' },
-  pago_registrado:      { icon: '💳', color: 'bg-amber-50 text-amber-600' },
-  excursion_completada: { icon: '🗺️', color: 'bg-green-50 text-green-600' },
-  mensaje_enviado:      { icon: '💬', color: 'bg-teal-50 text-teal-600' },
-  nota_agregada:        { icon: '📝', color: 'bg-gray-50 text-gray-600' },
-  reserva_cancelada:    { icon: '❌', color: 'bg-red-50 text-red-600' },
+  lead_recibido:        { icon: '🎯', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
+  lead_convertido:      { icon: '✅', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
+  reserva_creada:       { icon: '📋', color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' },
+  reserva_confirmada:   { icon: '✔️', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
+  pago_registrado:      { icon: '💳', color: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' },
+  excursion_completada: { icon: '🗺️', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
+  mensaje_enviado:      { icon: '💬', color: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' },
+  nota_agregada:        { icon: '📝', color: 'bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
+  reserva_cancelada:    { icon: '❌', color: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400' },
 }
 
 /* ════════════════════════════════════════════════
@@ -83,12 +83,12 @@ export default function Clientes() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-400 text-sm">{clientes.length} clientes registrados</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Clientes</h1>
+          <p className="text-gray-400 dark:text-zinc-600 text-sm">{clientes.length} clientes registrados</p>
         </div>
         <button
           onClick={() => setModalNuevo(true)}
-          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] rounded-xl px-4 py-2 hover:bg-[#003366] transition-colors shadow-sm"
+          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm"
         >
           <span className="text-base leading-none">+</span> Nuevo cliente
         </button>
@@ -101,22 +101,22 @@ export default function Clientes() {
           placeholder="Buscar por nombre, email, WhatsApp o país..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
-          className="w-full max-w-md border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="w-full max-w-md border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
         {cargando ? (
-          <div className="text-center py-16 text-gray-400 text-sm">Cargando...</div>
+          <div className="text-center py-16 text-gray-400 dark:text-zinc-600 text-sm">Cargando...</div>
         ) : filtrados.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-gray-400 dark:text-zinc-600">
             <p className="text-4xl mb-2">👥</p>
             <p className="text-sm">No hay clientes que coincidan.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
+            <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-400 dark:text-zinc-600 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3 text-left">Cliente</th>
                 <th className="px-5 py-3 text-left">WhatsApp</th>
@@ -126,27 +126,27 @@ export default function Clientes() {
                 <th className="px-5 py-3 text-left"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
               {filtrados.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600 text-xs font-bold flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-900 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xs font-bold flex-shrink-0">
                         {iniciales(c.nombre)}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{c.nombre}</p>
-                        {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
+                        <p className="font-medium text-gray-900 dark:text-zinc-100">{c.nombre}</p>
+                        {c.email && <p className="text-xs text-gray-400 dark:text-zinc-600">{c.email}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-gray-500 text-xs font-mono">{c.whatsapp}</td>
-                  <td className="px-5 py-3 text-gray-500 text-xs">{c.pais || '—'}{c.ciudad ? `, ${c.ciudad}` : ''}</td>
+                  <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs font-mono">{c.whatsapp}</td>
+                  <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs">{c.pais || '—'}{c.ciudad ? `, ${c.ciudad}` : ''}</td>
                   <td className="px-5 py-3">
-                    <span className="font-semibold text-gray-800">{c.cantidad_reservas || 0}</span>
+                    <span className="font-semibold text-gray-800 dark:text-zinc-200">{c.cantidad_reservas || 0}</span>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="font-semibold text-brand-600">
+                    <span className="font-semibold text-brand-600 dark:text-brand-400">
                       {c.total_gastado > 0 ? fmtMonto(c.total_gastado) : '—'}
                     </span>
                   </td>
@@ -154,18 +154,18 @@ export default function Clientes() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setPerfil(c)}
-                        className="text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors"
+                        className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 transition-colors"
                       >
                         Ver perfil →
                       </button>
                       {eliminandoId === c.id ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-gray-400">¿Eliminar?</span>
-                          <button onClick={() => eliminarCliente(c.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Sí</button>
-                          <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 hover:text-gray-600">No</button>
+                          <span className="text-xs text-gray-400 dark:text-zinc-600">¿Eliminar?</span>
+                          <button onClick={() => eliminarCliente(c.id)} className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Sí</button>
+                          <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-300">No</button>
                         </div>
                       ) : (
-                        <button onClick={() => setEliminandoId(c.id)} className="text-gray-300 hover:text-red-400 transition-colors" title="Eliminar cliente">
+                        <button onClick={() => setEliminandoId(c.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors" title="Eliminar cliente">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                       )}
@@ -224,10 +224,10 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900 text-base">Nuevo cliente</h2>
-          <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg transition-colors">×</button>
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900 dark:text-zinc-100 text-base">Nuevo cliente</h2>
+          <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg transition-colors">×</button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {[
@@ -238,7 +238,7 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
             { key: 'ciudad',   label: 'Ciudad',           placeholder: 'Buenos Aires' },
           ].map(({ key, label, placeholder, required }) => (
             <div key={key}>
-              <label className="text-xs font-medium text-gray-500 block mb-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">
                 {label}{required && <span className="text-red-400 ml-0.5">*</span>}
               </label>
               <input
@@ -246,15 +246,15 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
                 value={form[key]}
                 onChange={e => set(key, e.target.value)}
                 placeholder={placeholder}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
               />
             </div>
           ))}
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={guardando}
-            className="w-full bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+            className="w-full bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
           >
             {guardando ? 'Guardando...' : 'Crear cliente'}
           </button>
@@ -363,43 +363,43 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
       {/* Panel */}
       <div
-        className="relative ml-auto w-full max-w-2xl bg-white h-full flex flex-col shadow-2xl"
+        className="relative ml-auto w-full max-w-2xl bg-white dark:bg-zinc-900 h-full flex flex-col shadow-2xl dark:shadow-black/60"
         onClick={e => e.stopPropagation()}
       >
 
         {/* ── Header ── */}
-        <div className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-lg font-bold flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-brand-700 dark:text-brand-400 text-lg font-bold flex-shrink-0">
                 {iniciales(cliente.nombre)}
               </div>
               <div>
-                <h2 className="font-bold text-gray-900 text-lg leading-tight">{cliente.nombre}</h2>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <h2 className="font-bold text-gray-900 dark:text-zinc-100 text-lg leading-tight">{cliente.nombre}</h2>
+                <p className="text-sm text-gray-400 dark:text-zinc-600 mt-0.5">
                   {[cliente.pais, cliente.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
                 </p>
                 <div className="flex items-center gap-3 mt-1">
                   {cliente.whatsapp && (
                     <button
                       onClick={() => { onCerrar(); navigate(`/admin/crm/whatsapp?phone=${cliente.whatsapp}`) }}
-                      className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                      className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1"
                     >
                       💬 {cliente.whatsapp}
                     </button>
                   )}
-                  {cliente.email && <span className="text-xs text-gray-400">{cliente.email}</span>}
+                  {cliente.email && <span className="text-xs text-gray-400 dark:text-zinc-600">{cliente.email}</span>}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setEditando(!editando)}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
               >
                 {editando ? 'Cancelar' : '✏️ Editar'}
               </button>
-              <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg transition-colors">×</button>
+              <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg transition-colors">×</button>
             </div>
           </div>
 
@@ -414,18 +414,18 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                 { key: 'ciudad', label: 'Ciudad' },
               ].map(({ key, label, col }) => (
                 <div key={key} className={col === 2 ? 'col-span-2' : ''}>
-                  <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                  <label className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">{label}</label>
                   <input
                     value={form[key]}
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   />
                 </div>
               ))}
               <div className="col-span-2">
                 <button
                   onClick={guardarPerfil}
-                  className="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm py-2 rounded-xl transition-colors"
+                  className="w-full bg-brand-500 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 text-white font-semibold text-sm py-2 rounded-xl transition-colors"
                 >
                   Guardar cambios
                 </button>
@@ -437,13 +437,13 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
           {!editando && (
             <div className="grid grid-cols-3 gap-3 mt-4">
               {[
-                { label: 'Reservas', value: reservas.length, color: 'text-brand-600' },
-                { label: 'Completadas', value: excursionesCompletadas, color: 'text-green-600' },
-                { label: 'Total pagado', value: totalPagado > 0 ? fmtMonto(totalPagado) : '—', color: 'text-amber-600' },
+                { label: 'Reservas', value: reservas.length, color: 'text-brand-600 dark:text-brand-400' },
+                { label: 'Completadas', value: excursionesCompletadas, color: 'text-green-600 dark:text-green-400' },
+                { label: 'Total pagado', value: totalPagado > 0 ? fmtMonto(totalPagado) : '—', color: 'text-amber-600 dark:text-amber-400' },
               ].map(s => (
-                <div key={s.label} className="bg-gray-50 rounded-xl px-4 py-3 text-center">
+                <div key={s.label} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3 text-center">
                   <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -451,20 +451,20 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex border-b border-gray-100 flex-shrink-0 px-6">
+        <div className="flex border-b border-gray-100 dark:border-zinc-800 flex-shrink-0 px-6">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 tab === t.id
-                  ? 'border-brand-500 text-brand-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
+                  ? 'border-brand-500 text-brand-600 dark:text-brand-400'
+                  : 'border-transparent text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-300'
               }`}
             >
               {t.label}
               {t.count > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600'}`}>
                   {t.count}
                 </span>
               )}
@@ -475,22 +475,22 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
         {/* ── Contenido ── */}
         <div className="flex-1 overflow-y-auto">
           {cargando ? (
-            <div className="text-center py-12 text-gray-400 text-sm">Cargando...</div>
+            <div className="text-center py-12 text-gray-400 dark:text-zinc-600 text-sm">Cargando...</div>
           ) : (
             <>
               {/* RESERVAS */}
               {tab === 'reservas' && (
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-50 dark:divide-zinc-800">
                   <div className="px-6 py-3 flex justify-end">
                     <button
                       onClick={() => setModalReserva(true)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#002147] hover:bg-[#003366] rounded-lg px-3 py-1.5 transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 rounded-lg px-3 py-1.5 transition-colors"
                     >
                       <span className="text-sm leading-none">+</span> Nueva reserva
                     </button>
                   </div>
                   {reservas.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
+                    <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
                       <p className="text-3xl mb-2">📋</p>
                       <p className="text-sm">Sin reservas registradas</p>
                     </div>
@@ -498,19 +498,19 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                     <div key={r.id} className="px-6 py-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <p className="font-semibold text-gray-900 text-sm">
+                          <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">
                             {r.excursiones?.nombre || 'Excursión'}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
                             📅 {fmtFecha(r.fecha)} · 👥 {r.personas} {r.personas === 1 ? 'persona' : 'personas'}
                           </p>
-                          {r.hospedaje && <p className="text-xs text-gray-400 mt-0.5">🏨 {r.hospedaje}</p>}
+                          {r.hospedaje && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">🏨 {r.hospedaje}</p>}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full border capitalize ${ESTADO_RESERVA[r.estado] || 'bg-gray-50 text-gray-500 border-gray-100'}`}>
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full border capitalize ${ESTADO_RESERVA[r.estado] || 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 border-gray-100 dark:border-zinc-700'}`}>
                             {r.estado}
                           </span>
-                          <p className="text-sm font-bold text-gray-800 mt-1">
+                          <p className="text-sm font-bold text-gray-800 dark:text-zinc-200 mt-1">
                             {r.total ? fmtMonto(r.total, r.moneda) : '—'}
                           </p>
                         </div>
@@ -522,23 +522,23 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
               {/* PAGOS */}
               {tab === 'pagos' && (
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-50 dark:divide-zinc-800">
                   {pagos.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
+                    <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
                       <p className="text-3xl mb-2">💳</p>
                       <p className="text-sm">Sin pagos registrados</p>
                     </div>
                   ) : pagos.map(p => (
                     <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">{fmtMonto(p.monto, p.moneda)}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">{fmtMonto(p.monto, p.moneda)}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
                           {p.metodo} · {fmtFecha(p.fecha_pago || p.created_at)}
                         </p>
-                        {p.notas && <p className="text-xs text-gray-400 mt-0.5">{p.notas}</p>}
+                        {p.notas && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{p.notas}</p>}
                       </div>
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        p.estado === 'confirmado' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                        p.estado === 'confirmado' ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400'
                       }`}>
                         {p.estado}
                       </span>
@@ -551,25 +551,25 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
               {tab === 'actividad' && (
                 <div className="px-6 py-4">
                   {actividad.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-8 text-gray-400 dark:text-zinc-600">
                       <p className="text-3xl mb-2">📜</p>
                       <p className="text-sm">Sin actividad registrada aún</p>
                     </div>
                   ) : (
                     <div className="relative pl-6">
-                      <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-100" />
+                      <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-100 dark:bg-zinc-800" />
                       <div className="space-y-4">
                         {actividad.map(a => {
-                          const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: '•', color: 'bg-gray-50 text-gray-500' }
+                          const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: '•', color: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500' }
                           return (
                             <div key={a.id} className="flex gap-3">
                               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 -ml-3.5 z-10 ${cfg.color}`}>
                                 {cfg.icon}
                               </div>
                               <div className="flex-1 pb-4">
-                                <p className="text-sm font-medium text-gray-800">{a.titulo}</p>
-                                {a.descripcion && <p className="text-xs text-gray-400 mt-0.5">{a.descripcion}</p>}
-                                <p className="text-xs text-gray-300 mt-1">{fmtFecha(a.created_at)}</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{a.titulo}</p>
+                                {a.descripcion && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{a.descripcion}</p>}
+                                <p className="text-xs text-gray-300 dark:text-zinc-700 mt-1">{fmtFecha(a.created_at)}</p>
                               </div>
                             </div>
                           )
@@ -590,12 +590,12 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       value={nuevaNota}
                       onChange={e => setNuevaNota(e.target.value)}
                       placeholder="Agregar nota interna..."
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                      className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
                     />
                     <button
                       onClick={agregarNota}
                       disabled={!nuevaNota.trim()}
-                      className="mt-2 text-sm font-semibold px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white rounded-xl transition-colors"
+                      className="mt-2 text-sm font-semibold px-4 py-2 bg-brand-500 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl transition-colors"
                     >
                       + Agregar nota
                     </button>
@@ -603,19 +603,19 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
                   {/* Lista de notas */}
                   {notas.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-4">Sin notas todavía</p>
+                    <p className="text-sm text-gray-400 dark:text-zinc-600 text-center py-4">Sin notas todavía</p>
                   ) : (
                     <div className="space-y-3">
                       {notas.map(n => (
-                        <div key={n.id} className="bg-gray-50 rounded-xl p-4">
+                        <div key={n.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-4">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm text-gray-700 flex-1">{n.contenido}</p>
+                            <p className="text-sm text-gray-700 dark:text-zinc-300 flex-1">{n.contenido}</p>
                             <button
                               onClick={() => borrarNota(n.id)}
-                              className="text-gray-300 hover:text-red-400 text-sm flex-shrink-0 transition-colors"
+                              className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 text-sm flex-shrink-0 transition-colors"
                             >✕</button>
                           </div>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-2">
                             {n.autor && <span className="font-medium">{n.autor} · </span>}
                             {fmtFecha(n.created_at)}
                           </p>
@@ -671,15 +671,15 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onCerrar}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
-        <div className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-gray-900 text-base">Nueva reserva</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Cliente: <span className="font-medium text-gray-600">{cliente.nombre}</span></p>
+              <h2 className="font-bold text-gray-900 dark:text-zinc-100 text-base">Nueva reserva</h2>
+              <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">Cliente: <span className="font-medium text-gray-600 dark:text-zinc-400">{cliente.nombre}</span></p>
             </div>
-            <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 text-lg">×</button>
+            <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg">×</button>
           </div>
         </div>
 
@@ -687,56 +687,56 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Excursión <span className="text-red-400">*</span></label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Excursión <span className="text-red-400">*</span></label>
               <select value={form.excursion_id} onChange={e => set('excursion_id', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
                 <option value="">— Seleccionar</option>
                 {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Fecha <span className="text-red-400">*</span></label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Fecha <span className="text-red-400">*</span></label>
               <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Adultos</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Adultos</label>
               <input type="number" min="0" value={form.adultos} onChange={e => set('adultos', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Menores</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Menores</label>
               <input type="number" min="0" value={form.menores} onChange={e => set('menores', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Hospedaje / Pickup</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Hospedaje / Pickup</label>
             <input type="text" value={form.hospedaje} onChange={e => set('hospedaje', e.target.value)}
               placeholder="Hotel, dirección..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Total</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Total</label>
               <input type="number" min="0" value={form.total} onChange={e => set('total', e.target.value)}
                 placeholder="0"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">Moneda</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Moneda</label>
               <select value={form.moneda} onChange={e => set('moneda', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
                 <option value="BRL">BRL</option>
                 <option value="USD">USD</option>
                 <option value="ARS">ARS</option>
@@ -745,26 +745,26 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Estado</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Estado</label>
             <select value={form.estado} onChange={e => set('estado', e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
               <option value="pendiente">Pendiente</option>
               <option value="confirmada">Confirmada</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Notas</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Notas</label>
             <textarea rows={2} value={form.notas} onChange={e => set('notas', e.target.value)}
               placeholder="Observaciones..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
             />
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
 
           <button type="submit" disabled={guardando}
-            className="w-full bg-[#002147] hover:bg-[#003366] disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors">
+            className="w-full bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors">
             {guardando ? 'Guardando...' : 'Crear reserva'}
           </button>
         </form>

@@ -1,131 +1,220 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
-import { excursionesApi, clientesApi, propuestasApi } from '../../../lib/supabase.js'
+import html2canvas from 'html2canvas'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen } from '../../../lib/supabase.js'
 
-async function loadImgDataUrl(url) {
-  return new Promise(resolve => {
-    if (!url) return resolve(null)
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
-      canvas.getContext('2d').drawImage(img, 0, 0)
-      resolve(canvas.toDataURL('image/jpeg', 0.85))
-    }
-    img.onerror = () => resolve(null)
-    img.src = url
-  })
+const NAVY = '#0d2438'
+const CREMA = '#efe9db'
+const ANCHO = 794
+const ALTO = 1123
+const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+const VUELO_VACIO = {
+  origen_ciudad: '', origen_codigo: '', destino_ciudad: '', destino_codigo: '',
+  ida_fecha: '', ida_sale: '', ida_llega: '',
+  vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '',
+  banner_destino: '', banner_link: '', banner_imagen: '',
 }
 
-function formatPrecio(n) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
+const HOSPEDAJE_VACIO = {
+  nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
+  incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
+  items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
 }
 
-async function generarPDF(cliente, items, total) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const W = 210
-  const margen = 18
-  const ancho = W - margen * 2
+// Precarga con 2 de los 3 hospedajes de la sección Hospedajes (HOTELES en
+// Hospedajes.jsx) para arrancar el Generador con datos reales de ejemplo
+// en vez de un formulario vacío. Ojo: esos hoteles son datos de demo
+// (fotos de stock, whatsapp/email inventados) — el precio acá es una
+// estimación (precio por noche del catálogo x 7 noches), hay que
+// verificarlo antes de mandarle esto a un cliente real.
+const HOSPEDAJES_EJEMPLO = [
+  {
+    nombre: 'Vivá Porto de Galinhas', subtitulo: 'Resort · Porto de Galinhas, PE',
+    imagen: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&q=80',
+    noches: 7, precio: 4550, moneda: 'BRL',
+    incluye: 'Aéreo + Hospedaje + Traslados',
+    pension: 'Pensión completa incluida (desayuno, almuerzo y cena)',
+    descripcion: 'Resort frente al mar con acceso directo a las piscinas naturales de Porto de Galinhas. Piscinas, spa, animación nocturna y actividades acuáticas.',
+    items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
+  },
+  {
+    nombre: 'Enotel Porto de Galinhas', subtitulo: 'Resort · Porto de Galinhas, PE',
+    imagen: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=900&q=80',
+    noches: 7, precio: 6300, moneda: 'BRL',
+    incluye: 'Aéreo + Hospedaje + Traslados',
+    pension: '',
+    descripcion: 'El resort más premiado de Porto de Galinhas. Arquitectura inspirada en el estilo colonial local, spa de lujo, piscinas temáticas y gastronomía de autor.',
+    items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
+  },
+]
 
-  doc.setFillColor(15, 23, 42)
-  doc.rect(0, 0, W, 42, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(22)
-  doc.text('DREAMSTOUR', margen, 18)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(148, 163, 184)
-  doc.text(`Propuesta de Paquete — ${cliente.nombre}`, margen, 26)
-  const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
-  doc.setFontSize(9)
-  doc.text(`Generado el ${fecha}`, margen, 34)
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
 
-  let y = 54
+function formatearNumero(n) {
+  return Number(n || 0).toLocaleString('es-AR')
+}
 
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i]
-    if (i > 0) { doc.addPage(); y = 20 }
+function fechaLarga(iso) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${d} de ${MESES_LARGOS[m - 1]}`
+}
 
-    const imgData = await loadImgDataUrl(it.imagen)
-    if (imgData) {
-      doc.addImage(imgData, 'JPEG', margen, y, ancho, 72, undefined, 'FAST')
-    } else {
-      doc.setFillColor(226, 232, 240)
-      doc.roundedRect(margen, y, ancho, 72, 3, 3, 'F')
-    }
-    y += 78
+const FUENTE_TITULOS = "'Bebas Neue', Arial, sans-serif"
+const FUENTE_CUERPO = "'Helvetica Neue', Helvetica, Arial, sans-serif"
 
-    doc.setTextColor(15, 23, 42)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(18)
-    doc.text(it.nombre, margen, y)
-    y += 8
-
-    doc.setTextColor(100, 116, 139)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.text(`📍 ${it.destino || ''}`, margen, y)
-    y += 10
-
-    doc.setTextColor(15, 23, 42)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
-    doc.text(`${formatPrecio(it.precio)} x ${it.cantidad}`, margen, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(11)
-    doc.text(`= ${formatPrecio(it.precio * it.cantidad)}`, margen + 62, y)
-    y += 10
-
-    doc.setDrawColor(226, 232, 240)
-    doc.setLineWidth(0.4)
-    doc.line(margen, y, W - margen, y)
-    y += 8
-
-    if (it.descripcion) {
-      doc.setTextColor(71, 85, 105)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10)
-      doc.setLineHeightFactor(1.5)
-      const lines = doc.splitTextToSize(it.descripcion, ancho)
-      doc.text(lines, margen, y)
-      y += lines.length * 6 + 10
-    }
+async function cargarFuente() {
+  if (!document.getElementById('font-bebas-neue')) {
+    const link = document.createElement('link')
+    link.id = 'font-bebas-neue'
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap'
+    document.head.appendChild(link)
+    await new Promise(resolve => { link.onload = resolve; link.onerror = resolve; setTimeout(resolve, 1500) })
   }
+  try { if (document.fonts?.ready) await document.fonts.ready } catch (_) {}
+}
 
-  doc.addPage()
-  doc.setFillColor(240, 253, 244)
-  doc.roundedRect(margen, 30, ancho, 24, 3, 3, 'F')
-  doc.setTextColor(22, 163, 74)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(`Total de la propuesta: ${formatPrecio(total)}`, margen + 6, 46)
+// Íconos en línea (sin emojis): mismo estilo lineal blanco usado en el resto del panel.
+const ICONOS = {
+  avion: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>`,
+  maleta: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>`,
+  auto: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l1.6-5a2 2 0 0 1 1.9-1.4h9a2 2 0 0 1 1.9 1.4L19 13"/><rect x="2" y="13" width="20" height="5" rx="1.5"/><circle cx="7" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>`,
+  calendario: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  hotel: (s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>`,
+}
 
-  doc.setTextColor(71, 85, 105)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.text(`Cliente: ${cliente.nombre}`, margen, 66)
-  if (cliente.whatsapp) doc.text(`WhatsApp: +${cliente.whatsapp}`, margen, 73)
+async function renderPagina(html) {
+  const cont = document.createElement('div')
+  cont.style.position = 'fixed'
+  cont.style.left = '-99999px'
+  cont.style.top = '0'
+  cont.style.width = `${ANCHO}px`
+  cont.style.height = `${ALTO}px`
+  cont.innerHTML = html
+  document.body.appendChild(cont)
+  const canvas = await html2canvas(cont, { width: ANCHO, height: ALTO, scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+  document.body.removeChild(cont)
+  return canvas
+}
 
-  const totalPags = doc.getNumberOfPages()
-  for (let p = 1; p <= totalPags; p++) {
-    doc.setPage(p)
-    doc.setFillColor(15, 23, 42)
-    doc.rect(0, 287, W, 10, 'F')
-    doc.setTextColor(148, 163, 184)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.text('DreamsTour · Nordeste Brasilero · dreamstour.com', margen, 293)
-    doc.text(`${p} / ${totalPags}`, W - margen, 293, { align: 'right' })
-  }
+function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
+  const bannerVisible = vuelo.banner_link && vuelo.banner_destino
+  return `
+  <div style="width:${ANCHO}px;height:${ALTO}px;background:${CREMA};font-family:${FUENTE_CUERPO};position:relative;box-sizing:border-box;">
+    <div style="background:${NAVY};padding:36px 48px 30px;">
+      <p style="font-family:${FUENTE_TITULOS};font-weight:400;color:#fff;font-size:34px;letter-spacing:1px;margin:0 0 22px;border-bottom:3px solid #fff;padding-bottom:10px;display:inline-block;">PAQUETE DE VIAJE</p>
+      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">Nombre del cliente:</p>
+      <p style="color:#cfe3ee;font-size:16px;margin:0 0 16px;text-transform:uppercase;">${escapeHtml(clienteNombre)}</p>
+      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">Cotización personalizada para:</p>
+      <p style="color:#cfe3ee;font-size:16px;margin:0;text-transform:uppercase;">${escapeHtml(cantidadPasajeros || '—')} ${Number(cantidadPasajeros) === 1 ? 'ADULTO' : 'ADULTOS'}</p>
+    </div>
 
-  doc.save(`Propuesta_${cliente.nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    <div style="padding:36px 48px;">
+      <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:28px;margin:0 0 26px;">AÉREOS:</p>
+
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:26px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${ICONOS.maleta(16)}
+        </div>
+        <div>
+          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">EQUIPAJE INCLUIDO:</p>
+          <p style="color:#333;font-size:13px;margin:0 0 4px;">- 1 mochila o bolso</p>
+          <p style="color:#333;font-size:13px;margin:0 0 4px;">- 1 artículo personal</p>
+          <p style="color:#333;font-size:13px;margin:0;">- 1 valija carry-on (en cabina)</p>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:30px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${ICONOS.auto(16)}
+        </div>
+        <div>
+          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">TRASLADOS PRIVADOS INCLUIDOS:</p>
+          <p style="color:#333;font-size:13px;margin:0 0 4px;">Aeropuerto / Hotel</p>
+          <p style="color:#333;font-size:13px;margin:0;">In - Out</p>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:34px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="width:22px;height:22px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;">${ICONOS.calendario(12)}</span>
+            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;">IDA:</span>
+            <span style="color:#333;font-size:14px;">${fechaLarga(vuelo.ida_fecha)}</span>
+          </div>
+          <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.ida_sale)} HS</b></p>
+          <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.ida_llega)} HS</b></p>
+          <div style="border-top:2px solid ${NAVY};margin-top:14px;width:90%;"></div>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="width:22px;height:22px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;">${ICONOS.calendario(12)}</span>
+            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;">VUELTA:</span>
+            <span style="color:#333;font-size:14px;">${fechaLarga(vuelo.vuelta_fecha)}</span>
+          </div>
+          <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.vuelta_sale)} HS</b></p>
+          <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
+          <div style="border-top:2px solid ${NAVY};margin-top:14px;width:90%;margin-left:auto;"></div>
+        </div>
+      </div>
+
+      ${bannerVisible ? `
+      <div style="background:${NAVY};border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;margin:0;line-height:1.4;max-width:420px;">SI TE INTERESA VER LAS ACTIVIDADES Y PASEOS QUE OFRECEMOS EN ${escapeHtml(vuelo.banner_destino).toUpperCase()} HACÉ CLIC ACÁ ↗</p>
+        ${vuelo.banner_imagen ? `<div style="width:70px;height:50px;border-radius:6px;overflow:hidden;flex-shrink:0;"><img src="${vuelo.banner_imagen}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>` : ''}
+      </div>` : ''}
+    </div>
+
+    <div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:20px 0;text-align:center;">
+      <img src="${window.location.origin}/logo.png" style="height:44px;filter:brightness(0) invert(1);opacity:0.95;" />
+    </div>
+  </div>`
+}
+
+function htmlPaginaHospedajes(grupo) {
+  return `
+  <div style="width:${ANCHO}px;height:${ALTO}px;background:${CREMA};font-family:${FUENTE_CUERPO};position:relative;box-sizing:border-box;">
+    <div style="background:${NAVY};padding:28px 48px;display:flex;align-items:center;gap:14px;">
+      ${ICONOS.hotel(22)}
+      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:30px;margin:0;letter-spacing:1px;">HOSPEDAJES</p>
+    </div>
+    <div style="padding:32px 48px;">
+      ${grupo.map((h, idx) => `
+        <div style="${idx > 0 ? `border-top:1.5px solid #0d243880;margin-top:26px;padding-top:26px;` : ''}">
+          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:23px;margin:0 0 2px;">${escapeHtml(h.nombre).toUpperCase()}</p>
+          <p style="font-family:${FUENTE_CUERPO};color:#888;font-size:12px;letter-spacing:1px;margin:0 0 14px;text-transform:uppercase;">${escapeHtml(h.subtitulo)}</p>
+          <div style="display:flex;gap:22px;flex-direction:${idx % 2 === 0 ? 'row' : 'row-reverse'};">
+            <div style="flex:1;">
+              ${h.imagen ? `<div style="border-radius:10px;overflow:hidden;margin-bottom:8px;"><img src="${h.imagen}" style="width:100%;height:150px;object-fit:cover;display:block;" /></div>` : ''}
+              ${h.link_video ? `<p style="font-family:${FUENTE_CUERPO};color:#0a8a5f;font-size:11px;font-weight:700;margin:0;">CLIC ACÁ PARA VER VIDEOS ↗</p>` : ''}
+            </div>
+            <div style="flex:1;font-family:${FUENTE_CUERPO};">
+              <p style="color:${NAVY};font-size:12px;font-weight:700;margin:0 0 2px;">${escapeHtml(h.noches)} NOCHES:</p>
+              <p style="color:${NAVY};font-size:16px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.moneda)}$ ${formatearNumero(h.precio)}</p>
+              <p style="color:#333;font-size:11px;margin:0 0 2px;">${escapeHtml(h.incluye)}</p>
+              <p style="color:#333;font-size:11px;font-weight:700;margin:0 0 10px;">${escapeHtml(h.pension)}</p>
+              ${h.descripcion ? `<p style="color:#333;font-size:11px;font-weight:400;line-height:1.6;margin:0 0 10px;">${escapeHtml(h.descripcion)}</p>` : ''}
+              ${h.items.filter(Boolean).length ? `
+                <p style="color:${NAVY};font-size:11px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.items_titulo)}</p>
+                ${h.items.filter(Boolean).map(it => `<p style="color:#333;font-size:11px;font-weight:400;margin:0 0 2px;">- ${escapeHtml(it)}</p>`).join('')}
+              ` : ''}
+              ${h.nota ? `<p style="color:#888;font-size:10px;font-style:italic;margin:8px 0 0;">${escapeHtml(h.nota)}</p>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:20px 0;text-align:center;">
+      <img src="${window.location.origin}/logo.png" style="height:44px;filter:brightness(0) invert(1);opacity:0.95;" />
+    </div>
+  </div>`
 }
 
 export default function GeneradorPropuesta() {
-  const [excursiones, setExcursiones] = useState([])
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqCliente, setBusqCliente] = useState('')
@@ -135,23 +224,22 @@ export default function GeneradorPropuesta() {
   const [cantidadPasajeros, setCantidadPasajeros] = useState('')
   const [periodo, setPeriodo] = useState('')
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
-  const [seleccionados, setSeleccionados] = useState({})
-  const [precios, setPrecios] = useState({})
+  const [vuelo, setVuelo] = useState(VUELO_VACIO)
+  const [hospedajes, setHospedajes] = useState(HOSPEDAJES_EJEMPLO.map(h => ({ ...h })))
+  const [subiendoIdx, setSubiendoIdx] = useState(null)
+  const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [generando, setGenerando] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(false)
 
   useEffect(() => {
     async function cargar() {
-      const [{ data: ex }, { data: cl }] = await Promise.all([
-        excursionesApi.getAll(),
-        clientesApi.getAll(),
-      ])
-      setExcursiones((ex || []).filter(e => e.categoria === 'paquetes'))
+      const { data: cl } = await clientesApi.getAll()
       setClientes(cl || [])
       setLoading(false)
     }
     cargar()
+    excursionesApi.getAll()
   }, [])
 
   function buscarCliente(texto) {
@@ -169,35 +257,77 @@ export default function GeneradorPropuesta() {
     setSugerencias([])
   }
 
-  function toggleItem(ex) {
-    setSeleccionados(prev => {
-      const next = { ...prev }
-      if (next[ex.id]) delete next[ex.id]
-      else next[ex.id] = 1
-      return next
-    })
-    setPrecios(prev => ({ ...prev, [ex.id]: prev[ex.id] ?? ex.precio }))
+  function setVueloCampo(campo, valor) {
+    setVuelo(v => ({ ...v, [campo]: valor }))
   }
 
-  const items = useMemo(() => {
-    return Object.entries(seleccionados).map(([id, cantidad]) => {
-      const ex = excursiones.find(e => e.id === id)
-      if (!ex) return null
-      return { ...ex, cantidad, precio: parseFloat(precios[id]) || 0 }
-    }).filter(Boolean)
-  }, [seleccionados, precios, excursiones])
+  async function subirImagenBanner(archivo) {
+    if (!archivo) return
+    setSubiendoBanner(true)
+    const { url } = await subirImagen(archivo)
+    if (url) setVueloCampo('banner_imagen', url)
+    setSubiendoBanner(false)
+  }
 
-  const total = items.reduce((sum, it) => sum + it.precio * it.cantidad, 0)
+  function agregarHospedaje() {
+    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''] }])
+  }
+
+  function quitarHospedaje(idx) {
+    setHospedajes(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function setHospedajeCampo(idx, campo, valor) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, [campo]: valor } : h))
+  }
+
+  async function subirImagenHospedaje(idx, archivo) {
+    if (!archivo) return
+    setSubiendoIdx(idx)
+    const { url } = await subirImagen(archivo)
+    if (url) setHospedajeCampo(idx, 'imagen', url)
+    setSubiendoIdx(null)
+  }
+
+  function setItemHospedaje(idx, itemIdx, valor) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: h.items.map((it, j) => j === itemIdx ? valor : it) } : h))
+  }
+
+  function agregarItem(idx) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: [...h.items, ''] } : h))
+  }
+
+  function quitarItem(idx, itemIdx) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: h.items.filter((_, j) => j !== itemIdx) } : h))
+  }
+
+  const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
 
   async function generar() {
     if (!busqCliente.trim()) return setError('Ingresá el nombre del cliente.')
-    if (items.length === 0) return setError('Seleccioná al menos un paquete.')
+    if (!hospedajes.some(h => h.nombre.trim())) return setError('Cargá al menos un hospedaje con nombre.')
     setError('')
     setGenerando(true)
     setExito(false)
     try {
+      await cargarFuente()
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
-      await generarPDF(cliente, items, total)
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'px', format: [ANCHO, ALTO] })
+
+      const canvasAereos = await renderPagina(htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo }))
+      doc.addImage(canvasAereos.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
+
+      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
+      for (let i = 0; i < hospedajesValidos.length; i += 2) {
+        doc.addPage([ANCHO, ALTO], 'portrait')
+        const grupo = hospedajesValidos.slice(i, i + 2)
+        const canvasHosp = await renderPagina(htmlPaginaHospedajes(grupo))
+        doc.addImage(canvasHosp.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
+      }
+
+      doc.save(`Propuesta_${cliente.nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
+
       await propuestasApi.create({
         cliente_id: clienteSel?.id || null,
         cliente_nombre: cliente.nombre,
@@ -205,20 +335,23 @@ export default function GeneradorPropuesta() {
         cantidad_pasajeros: parseInt(cantidadPasajeros) || null,
         periodo: periodo.trim() || null,
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
-        items: items.map(it => ({ excursion_id: it.id, nombre: it.nombre, precio: it.precio, cantidad: it.cantidad })),
+        vuelo,
+        hospedajes_detalle: hospedajesValidos,
+        items: [],
         total,
-        moneda: 'BRL',
+        moneda: hospedajesValidos[0]?.moneda === 'ARS' ? 'ARS' : (hospedajesValidos[0]?.moneda || 'BRL'),
         estado: 'enviada',
       })
+
       setExito(true)
-      setSeleccionados({})
-      setPrecios({})
       setBusqCliente('')
       setClienteWhatsapp('')
       setClienteSel(null)
       setCantidadPasajeros('')
       setPeriodo('')
       setPresupuestoLimite('')
+      setVuelo(VUELO_VACIO)
+      setHospedajes([{ ...HOSPEDAJE_VACIO, items: [''] }])
     } catch (e) {
       setError('Error al generar la propuesta: ' + (e.message || 'intentá de nuevo'))
     }
@@ -231,7 +364,7 @@ export default function GeneradorPropuesta() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Generador de propuesta</h2>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Armá una propuesta con uno o más paquetes y generá el PDF para enviar al cliente</p>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Cargá el vuelo y los hospedajes, y generá el PDF "Paquete de viaje" para enviar al cliente</p>
       </div>
 
       {/* Cliente */}
@@ -292,80 +425,168 @@ export default function GeneradorPropuesta() {
         />
       </div>
 
-      {/* Paquetes */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Paquetes disponibles</h3>
-        {excursiones.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-zinc-500">No hay excursiones con categoría "Paquetes aéreos" cargadas todavía.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {excursiones.map(ex => {
-              const activo = !!seleccionados[ex.id]
-              return (
-                <div key={ex.id}
-                  className={`bg-white dark:bg-zinc-900 rounded-2xl border-2 overflow-hidden flex flex-col transition-all ${
-                    activo ? 'border-brand-500 shadow-md shadow-brand-500/10' : 'border-transparent'
-                  }`}
-                  style={{ outline: activo ? undefined : '1px solid #e5e7eb' }}
-                >
-                  {ex.imagen && <img src={ex.imagen} alt={ex.nombre} className="w-full h-36 object-cover cursor-pointer" onClick={() => toggleItem(ex)} />}
-                  <div className="p-4 flex flex-col gap-2">
-                    <h4 className="font-bold text-gray-900 dark:text-zinc-100 text-sm cursor-pointer" onClick={() => toggleItem(ex)}>{ex.nombre}</h4>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500">{ex.destino}</p>
-                    <button
-                      onClick={() => toggleItem(ex)}
-                      className={`text-xs font-semibold py-1.5 rounded-lg transition-colors ${
-                        activo ? 'bg-brand-600 dark:bg-brand-500 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'
-                      }`}
-                    >
-                      {activo ? '✓ Incluido en la propuesta' : '+ Agregar a la propuesta'}
-                    </button>
-                    {activo && (
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100 dark:border-zinc-800">
-                        <div>
-                          <label className="text-[10px] text-gray-400 dark:text-zinc-500 block">Precio (R$)</label>
-                          <input type="number" value={precios[ex.id] ?? ex.precio}
-                            onChange={e => setPrecios(p => ({ ...p, [ex.id]: e.target.value }))}
-                            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-zinc-100"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 dark:text-zinc-500 block">Cantidad</label>
-                          <input type="number" min="1" value={seleccionados[ex.id]}
-                            onChange={e => setSeleccionados(s => ({ ...s, [ex.id]: parseInt(e.target.value) || 1 }))}
-                            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-zinc-100"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+      {/* Vuelo */}
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input value={vuelo.origen_ciudad} onChange={e => setVueloCampo('origen_ciudad', e.target.value)} placeholder="Ciudad de origen (Ej: Ezeiza)"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <input value={vuelo.origen_codigo} onChange={e => setVueloCampo('origen_codigo', e.target.value.toUpperCase())} placeholder="Código origen (Ej: EZE)"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <input value={vuelo.destino_ciudad} onChange={e => setVueloCampo('destino_ciudad', e.target.value)} placeholder="Ciudad de destino (Ej: Recife)"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <input value={vuelo.destino_codigo} onChange={e => setVueloCampo('destino_codigo', e.target.value.toUpperCase())} placeholder="Código destino (Ej: REC)"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha ida</label>
+            <input type="date" value={vuelo.ida_fecha} onChange={e => setVueloCampo('ida_fecha', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           </div>
-        )}
-      </div>
-
-      {/* Resumen y generar */}
-      {items.length > 0 && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg">
-          {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
-          {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ Propuesta generada y descargada correctamente.</p>}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-400 dark:text-zinc-500">{items.length} paquete{items.length !== 1 ? 's' : ''} seleccionado{items.length !== 1 ? 's' : ''}</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-zinc-100">Total: {formatPrecio(total)}</p>
-            </div>
-            <button
-              onClick={generar}
-              disabled={generando}
-              className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
-            >
-              {generando ? 'Generando...' : '📄 Generar propuesta (PDF)'}
-            </button>
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (ida)</label>
+            <input type="time" value={vuelo.ida_sale} onChange={e => setVueloCampo('ida_sale', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (ida)</label>
+            <input type="time" value={vuelo.ida_llega} onChange={e => setVueloCampo('ida_llega', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           </div>
         </div>
-      )}
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha vuelta</label>
+            <input type="date" value={vuelo.vuelta_fecha} onChange={e => setVueloCampo('vuelta_fecha', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (vuelta)</label>
+            <input type="time" value={vuelo.vuelta_sale} onChange={e => setVueloCampo('vuelta_sale', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (vuelta)</label>
+            <input type="time" value={vuelo.vuelta_llega} onChange={e => setVueloCampo('vuelta_llega', e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+        </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Banner "ver actividades" (opcional — si lo dejás vacío, no aparece en el PDF)</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <input value={vuelo.banner_destino} onChange={e => setVueloCampo('banner_destino', e.target.value)} placeholder="Destino a mostrar (Ej: Porto)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <input value={vuelo.banner_link} onChange={e => setVueloCampo('banner_link', e.target.value)} placeholder="Link de actividades"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <label className="mt-2 inline-block text-xs text-brand-600 dark:text-brand-400 cursor-pointer">
+            {subiendoBanner ? 'Subiendo...' : vuelo.banner_imagen ? '✓ Imagen del banner cargada — cambiar' : '+ Imagen del banner'}
+            <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenBanner(e.target.files[0])} />
+          </label>
+        </div>
+      </div>
+
+      {/* Hospedajes */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Hospedajes</h3>
+          <button onClick={agregarHospedaje} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+            + Agregar hospedaje
+          </button>
+        </div>
+
+        {hospedajes.map((h, idx) => (
+          <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Hospedaje {idx + 1}</p>
+              {hospedajes.length > 1 && (
+                <button onClick={() => quitarHospedaje(idx)} className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
+                  ✕ Quitar
+                </button>
+              )}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input value={h.nombre} onChange={e => setHospedajeCampo(idx, 'nombre', e.target.value)} placeholder="Nombre (Ej: Condominio Marulhos)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={h.subtitulo} onChange={e => setHospedajeCampo(idx, 'subtitulo', e.target.value)} placeholder="Subtítulo (Ej: Marulhos Resort - Frente al mar)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+
+            <div className="flex items-center gap-3">
+              {h.imagen && <img src={h.imagen} alt="preview" className="w-16 h-12 object-cover rounded-lg" />}
+              <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer">
+                {subiendoIdx === idx ? 'Subiendo...' : h.imagen ? '✓ Imagen cargada — cambiar' : '+ Subir imagen'}
+                <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenHospedaje(idx, e.target.files[0])} />
+              </label>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3">
+              <input type="number" value={h.noches} onChange={e => setHospedajeCampo(idx, 'noches', e.target.value)} placeholder="Noches"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input type="number" value={h.precio} onChange={e => setHospedajeCampo(idx, 'precio', e.target.value)} placeholder="Precio"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                <option value="ARS">ARS$</option>
+                <option value="BRL">R$</option>
+                <option value="USD">U$D</option>
+              </select>
+            </div>
+
+            <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <input value={h.pension} onChange={e => setHospedajeCampo(idx, 'pension', e.target.value)} placeholder="Pensión (Ej: Media pensión incluida (desayuno y cena))"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <textarea value={h.descripcion} onChange={e => setHospedajeCampo(idx, 'descripcion', e.target.value)} rows={3} placeholder="Descripción"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
+
+            <input value={h.items_titulo} onChange={e => setHospedajeCampo(idx, 'items_titulo', e.target.value)} placeholder="Título de la lista (Ej: Servicios: / Monoambiente con:)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <div className="space-y-2">
+              {h.items.map((it, i2) => (
+                <div key={i2} className="flex gap-2">
+                  <input value={it} onChange={e => setItemHospedaje(idx, i2, e.target.value)} placeholder="Ej: Piscina con vista al mar"
+                    className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  {h.items.length > 1 && (
+                    <button onClick={() => quitarItem(idx, i2)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors px-1">✕</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => agregarItem(idx)} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+                + Agregar ítem
+              </button>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input value={h.nota} onChange={e => setHospedajeCampo(idx, 'nota', e.target.value)} placeholder="Nota opcional (Ej: *No incluye limpieza)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={h.link_video} onChange={e => setHospedajeCampo(idx, 'link_video', e.target.value)} placeholder="Link de video (opcional)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Generar */}
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg">
+        {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
+        {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ Propuesta generada y descargada correctamente.</p>}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-400 dark:text-zinc-500">{hospedajes.filter(h => h.nombre.trim()).length} hospedaje{hospedajes.filter(h => h.nombre.trim()).length !== 1 ? 's' : ''}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-zinc-100">Total: {formatearNumero(total)}</p>
+          </div>
+          <button
+            onClick={generar}
+            disabled={generando}
+            className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
+          >
+            {generando ? 'Generando...' : 'Generar propuesta (PDF)'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

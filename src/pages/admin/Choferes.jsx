@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { choferesApi } from '../../lib/supabase.js'
 
-const EMPTY = { nombre: '', whatsapp: '' }
+const EMPTY = { nombre: '', whatsapp: '', auto_modelo: '', auto_patente: '' }
 
 export default function Choferes() {
   const [choferes, setChoferes] = useState([])
@@ -27,7 +27,7 @@ export default function Choferes() {
   }
 
   function abrirEditar(c) {
-    setForm({ nombre: c.nombre, whatsapp: c.whatsapp })
+    setForm({ nombre: c.nombre, whatsapp: c.whatsapp, auto_modelo: c.auto_modelo || '', auto_patente: c.auto_patente || '' })
     setEditando(c.id)
     setMostrarForm(true)
   }
@@ -92,6 +92,9 @@ export default function Choferes() {
               <div>
                 <p className="font-semibold text-gray-900 dark:text-zinc-100">🚗 {c.nombre}</p>
                 <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{c.whatsapp}</p>
+                {(c.auto_modelo || c.auto_patente) && (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{c.auto_modelo}{c.auto_modelo && c.auto_patente ? ' · ' : ''}{c.auto_patente}</p>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2">
                 <button onClick={() => toggleActivo(c)} className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'}`}>
@@ -133,6 +136,26 @@ export default function Choferes() {
                   onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   placeholder="Ej: 5491112345678"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Modelo del auto</label>
+                <input
+                  type="text"
+                  value={form.auto_modelo}
+                  onChange={(e) => setForm({ ...form, auto_modelo: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  placeholder="Ej: Chevrolet Spin blanca"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Patente</label>
+                <input
+                  type="text"
+                  value={form.auto_patente}
+                  onChange={(e) => setForm({ ...form, auto_patente: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  placeholder="Ej: ABC-1234"
                 />
               </div>
             </div>

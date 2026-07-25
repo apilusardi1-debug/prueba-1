@@ -28,6 +28,7 @@ export default function Leads() {
   const [editForm, setEditForm] = useState(null)
   const [guardandoLead, setGuardandoLead] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
+  const [colArrastrando, setColArrastrando] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -54,6 +55,14 @@ export default function Leads() {
   async function cambiarEstado(id, nuevoEstado) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
     await leadsApi.updateEstado(id, nuevoEstado, null)
+  }
+
+  function soltarEnColumna(e, col) {
+    e.preventDefault()
+    setColArrastrando(null)
+    const id = e.dataTransfer.getData('text/plain')
+    const lead = leads.find(l => l.id === id)
+    if (lead && lead.estado !== col) cambiarEstado(id, col)
   }
 
   async function registrarLead() {
@@ -175,14 +184,23 @@ export default function Leads() {
             const colLeads = leads.filter(l => l.estado === col)
             const { label, color } = estadosLead[col]
             return (
-              <div key={col} className="bg-gray-100 dark:bg-zinc-800 rounded-2xl p-3">
+              <div
+                key={col}
+                className={`rounded-2xl p-3 transition-colors ${colArrastrando === col ? 'bg-brand-100 dark:bg-brand-950/40 ring-2 ring-brand-400' : 'bg-gray-100 dark:bg-zinc-800'}`}
+                onDragOver={e => { e.preventDefault(); if (colArrastrando !== col) setColArrastrando(col) }}
+                onDragLeave={() => setColArrastrando(prev => (prev === col ? null : prev))}
+                onDrop={e => soltarEnColumna(e, col)}
+              >
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <Badge className={color}>{label}</Badge>
                   <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium">{colLeads.length}</span>
                 </div>
                 <div className="space-y-2">
                   {colLeads.map(lead => (
-                    <div key={lead.id} className="bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm dark:shadow-black/20 cursor-pointer hover:shadow-md transition-shadow"
+                    <div key={lead.id}
+                      draggable
+                      onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
+                      className="bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm dark:shadow-black/20 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
                       onClick={() => abrirLead(lead)}>
                       <div className="flex items-start justify-between gap-1">
                         <p className="font-semibold text-sm text-gray-900 dark:text-zinc-100">{lead.nombre}</p>

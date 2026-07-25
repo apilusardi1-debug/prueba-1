@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
+import { tieneAcceso } from '../../lib/roles.js'
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -62,6 +63,28 @@ const Icon = {
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
   ),
+  Paquetes: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/>
+      <polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
+    </svg>
+  ),
+  Generador: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+    </svg>
+  ),
+  Enviadas: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  ),
+  Cerradas: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  ),
   Equipo: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -115,11 +138,11 @@ const Icon = {
 /* ─── Navegación ────────────────────────────────────────────────── */
 const NAV = [
   { path: '/admin', label: 'Dashboard', icon: Icon.Dashboard, exact: true },
+  { path: '/admin/clientes', label: 'Clientes', icon: Icon.Clientes },
   {
     label: 'CRM', icon: Icon.CRM,
     sub: [
       { path: '/admin/leads',        label: 'Leads',     icon: Icon.Leads },
-      { path: '/admin/clientes',     label: 'Clientes',  icon: Icon.Clientes },
       { path: '/admin/crm/whatsapp', label: 'WhatsApp',  icon: Icon.WhatsApp },
     ],
   },
@@ -127,6 +150,15 @@ const NAV = [
   { path: '/admin/excursiones', label: 'Excursiones', icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
   { path: '/admin/hospedajes',  label: 'Hospedajes',  icon: Icon.Hospedajes },
+  {
+    label: 'Paquetes', icon: Icon.Paquetes,
+    sub: [
+      { path: '/admin/paquetes/clientes',  label: 'Clientes',            icon: Icon.Clientes },
+      { path: '/admin/paquetes/generador', label: 'Generador propuesta', icon: Icon.Generador },
+      { path: '/admin/paquetes/enviadas',  label: 'Propuestas enviadas', icon: Icon.Enviadas },
+      { path: '/admin/paquetes/cerradas',  label: 'Propuestas cerradas', icon: Icon.Cerradas },
+    ],
+  },
   { path: '/admin/finanzas',    label: 'Finanzas',    icon: Icon.Finanzas },
   { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
   { path: '/admin/configuracion', label: 'Configuración', icon: Icon.Config },
@@ -142,13 +174,24 @@ function Sidebar() {
   const [openSub, setOpenSub] = useState(null)
   const visible = isExpanded || isHovered || isMobileOpen
 
+  const rol = JSON.parse(localStorage.getItem('admin_session') || '{}').role
+  const navVisible = NAV
+    .map(item => {
+      if (item.sub) {
+        const sub = item.sub.filter(s => tieneAcceso(rol, s.path))
+        return sub.length ? { ...item, sub } : null
+      }
+      return tieneAcceso(rol, item.path) ? item : null
+    })
+    .filter(Boolean)
+
   function isActive(path, exact) {
     return exact ? pathname === path : pathname === path || pathname.startsWith(path + '/')
   }
 
   // Abrir automáticamente el sub que contiene la ruta activa
   useEffect(() => {
-    NAV.forEach((item, i) => {
+    navVisible.forEach((item, i) => {
       if (item.sub?.some(s => pathname.startsWith(s.path))) {
         setOpenSub(i)
       }
@@ -208,7 +251,7 @@ function Sidebar() {
         {!visible && <div className="flex justify-center mb-3"><Icon.Dots /></div>}
 
         <ul className="space-y-1">
-          {NAV.map((item, i) => {
+          {navVisible.map((item, i) => {
             if (item.sub) {
               const parentActive = item.sub.some(s => pathname.startsWith(s.path))
               const isOpen = openSub === i
@@ -319,6 +362,10 @@ function Header({ dark, setDark }) {
     if (pathname.startsWith('/admin/excursiones')) return 'Excursiones'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
+    if (pathname.startsWith('/admin/paquetes/clientes')) return 'Clientes de Paquetes'
+    if (pathname.startsWith('/admin/paquetes/generador')) return 'Generador de Propuesta'
+    if (pathname.startsWith('/admin/paquetes/enviadas')) return 'Propuestas Enviadas'
+    if (pathname.startsWith('/admin/paquetes/cerradas')) return 'Propuestas Cerradas'
     if (pathname.startsWith('/admin/finanzas')) return 'Finanzas'
     if (pathname.startsWith('/admin/equipo')) return 'Equipo'
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración'

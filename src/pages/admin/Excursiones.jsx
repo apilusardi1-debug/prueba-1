@@ -4,8 +4,8 @@ import { formatPrecio } from '../../data/mockData.js'
 
 const EMPTY = {
   nombre: '', destino: '', categoria: 'excursiones', precio: '',
-  cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: '', incluye: '',
-  hora_salida: '8:00 AM', hora_regreso: '6:00 PM'
+  cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: '', incluye: '', opcionales: '',
+  hora_salida: '8:00 AM', hora_regreso: '6:00 PM', opcionales_imagen: ''
 }
 
 export default function Excursiones() {
@@ -13,10 +13,12 @@ export default function Excursiones() {
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [subiendoImg, setSubiendoImg] = useState(false)
+  const [subiendoOpcionalesImg, setSubiendoOpcionalesImg] = useState(false)
   const [editando, setEditando] = useState(null) // null | 'nuevo' | id
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState(null)
   const fileRef = useRef()
+  const opcionalesFileRef = useRef()
 
   useEffect(() => {
     cargar()
@@ -51,6 +53,8 @@ export default function Excursiones() {
       imagen: ex.imagen || '',
       fechas: (ex.fechas || []).join(', '),
       incluye: (ex.incluye || []).join(', '),
+      opcionales: (ex.opcionales || []).join(', '),
+      opcionales_imagen: ex.opcionales_imagen || '',
       descripcion: ex.descripcion || '',
     })
     setError(null)
@@ -65,6 +69,16 @@ export default function Excursiones() {
     if (error) setError('Error al subir imagen: ' + error)
     else setForm(p => ({ ...p, imagen: url }))
     setSubiendoImg(false)
+  }
+
+  async function handleOpcionalesImagen(e) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    setSubiendoOpcionalesImg(true)
+    const { url, error } = await subirImagen(archivo)
+    if (error) setError('Error al subir imagen: ' + error)
+    else setForm(p => ({ ...p, opcionales_imagen: url }))
+    setSubiendoOpcionalesImg(false)
   }
 
   async function guardar() {
@@ -90,6 +104,8 @@ export default function Excursiones() {
       cupos_disponibles: cupos,
       fechas: form.fechas.split(',').map(f => f.trim()).filter(Boolean),
       incluye: form.incluye.split(',').map(f => f.trim()).filter(Boolean),
+      opcionales: form.opcionales.split(',').map(f => f.trim()).filter(Boolean),
+      opcionales_imagen: form.opcionales_imagen.trim(),
       activa: true,
     }
 
@@ -142,35 +158,35 @@ export default function Excursiones() {
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {excursiones.map((ex) => (
           <div key={ex.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20 overflow-hidden">
             {ex.imagen && (
-              <img src={ex.imagen} alt={ex.nombre} className="w-full h-36 object-cover" />
+              <img src={ex.imagen} alt={ex.nombre} className="w-full h-24 object-cover" />
             )}
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs text-brand-600 dark:text-brand-400 font-semibold uppercase tracking-wider">{ex.destino}</p>
-                <span className="text-xs text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{ex.categoria}</span>
+            <div className="p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold uppercase tracking-wider truncate">{ex.destino}</p>
+                <span className="text-[10px] text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full shrink-0">{ex.categoria}</span>
               </div>
-              <h3 className="font-bold text-gray-900 dark:text-zinc-100 mb-1">{ex.nombre}</h3>
-              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-3">{ex.duracion} · {ex.dificultad}</p>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-brand-700 dark:text-brand-400">{formatPrecio(ex.precio, ex.moneda)}</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ex.cuposDisponibles <= 3 ? 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
-                  {ex.cuposDisponibles}/{ex.cupos} cupos
+              <h3 className="font-bold text-sm text-gray-900 dark:text-zinc-100 mb-1 truncate">{ex.nombre}</h3>
+              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-2">{ex.duracion} · {ex.dificultad}</p>
+              <div className="flex items-center justify-between mb-2 gap-1">
+                <span className="font-bold text-xs text-brand-700 dark:text-brand-400 truncate">{formatPrecio(ex.precio, ex.moneda)}</span>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${ex.cuposDisponibles <= 3 ? 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
+                  {ex.cuposDisponibles}/{ex.cupos}
                 </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <button
                   onClick={() => abrirEditar(ex)}
-                  className="flex-1 border border-gray-200 dark:border-zinc-700 hover:border-brand-400 dark:hover:border-brand-500 text-gray-600 dark:text-zinc-400 hover:text-brand-600 dark:hover:text-brand-400 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  className="flex-1 border border-gray-200 dark:border-zinc-700 hover:border-brand-400 dark:hover:border-brand-500 text-gray-600 dark:text-zinc-400 hover:text-brand-600 dark:hover:text-brand-400 py-1 rounded-lg text-[11px] font-medium transition-colors"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => eliminar(ex.id)}
-                  className="border border-red-100 dark:border-red-900 hover:border-red-300 dark:hover:border-red-700 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                  className="border border-red-100 dark:border-red-900 hover:border-red-300 dark:hover:border-red-700 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 px-2 py-1 rounded-lg text-[11px] transition-colors"
                 >
                   ✕
                 </button>
@@ -210,6 +226,37 @@ export default function Excursiones() {
                     className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50"
                   >
                     {subiendoImg ? '⏳ Subiendo...' : '📷 Subir imagen desde tu dispositivo'}
+                  </button>
+                )}
+              </div>
+
+              {/* Archivo de opcionales (menu/actividades) para el link de WhatsApp */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Archivo de opcionales (imagen o PDF con el menú/actividades, se manda como link por WhatsApp)</label>
+                <input ref={opcionalesFileRef} type="file" accept="image/*,application/pdf" onChange={handleOpcionalesImagen} className="hidden" />
+                {form.opcionales_imagen ? (
+                  <div className="relative">
+                    {form.opcionales_imagen.toLowerCase().endsWith('.pdf') ? (
+                      <div className="w-full h-32 flex items-center justify-center gap-2 rounded-lg bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-sm">
+                        📄 PDF cargado
+                      </div>
+                    ) : (
+                      <img src={form.opcionales_imagen} alt="preview opcionales" className="w-full h-32 object-cover rounded-lg" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setForm(p => ({ ...p, opcionales_imagen: '' })); if (opcionalesFileRef.current) opcionalesFileRef.current.value = '' }}
+                      className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg"
+                    >✕ Quitar</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => opcionalesFileRef.current?.click()}
+                    disabled={subiendoOpcionalesImg}
+                    className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50"
+                  >
+                    {subiendoOpcionalesImg ? '⏳ Subiendo...' : '📎 Subir imagen o PDF de opcionales'}
                   </button>
                 )}
               </div>

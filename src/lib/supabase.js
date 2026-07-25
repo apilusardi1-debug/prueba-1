@@ -37,6 +37,9 @@ export const reservasApi = {
   getByWhatsapp: (whatsapp) => supabase?.from('reservas').select('*, excursiones(nombre, imagen)').eq('cliente_whatsapp', whatsapp),
   create: (data) => supabase?.from('reservas').insert(data).select().single(),
   updateEstado: (id, estado) => supabase?.from('reservas').update({ estado }).eq('id', id).select().single(),
+  updatePago: (id, pagado) => supabase?.from('reservas').update({ pagado }).eq('id', id).select().single(),
+  updateCostoOperativo: (id, { costo_operativo, costo_operativo_moneda, costo_operativo_detalle }) =>
+    supabase?.from('reservas').update({ costo_operativo, costo_operativo_moneda, costo_operativo_detalle }).eq('id', id).select().single(),
   updateAsignacion: (id, data) => supabase?.from('reservas').update(data).eq('id', id).select('*, excursiones(nombre), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').single(),
   delete: (id) => supabase?.from('reservas').delete().eq('id', id),
 }
@@ -175,4 +178,33 @@ export const costosExcursionApi = {
   create: (data) => supabase?.from('costos_excursion').insert(data).select().single(),
   update: (id, data) => supabase?.from('costos_excursion').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('costos_excursion').update({ activo: false }).eq('id', id),
+}
+
+// ── Usuarios del panel admin ─────────────────────────────────────────────────────
+export const usuariosAdminApi = {
+  getAll: () => supabase?.from('usuarios_admin').select('*').order('nombre'),
+  getByEmail: (email) => supabase?.from('usuarios_admin').select('*').eq('email', email).maybeSingle(),
+  create: (data) => supabase?.from('usuarios_admin').insert(data).select().single(),
+  update: (id, data) => supabase?.from('usuarios_admin').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('usuarios_admin').delete().eq('id', id),
+}
+
+// Hash de contraseña (SHA-256) para no guardarla ni compararla en texto plano.
+export async function hashPassword(texto) {
+  const datos = new TextEncoder().encode(texto)
+  const buffer = await crypto.subtle.digest('SHA-256', datos)
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// ── Propuestas de paquetes ──────────────────────────────────────────────────────
+export const propuestasApi = {
+  getAll: () => supabase?.from('propuestas').select('*').order('created_at', { ascending: false }),
+  getByEstado: (estado) => supabase?.from('propuestas').select('*').eq('estado', estado).order('created_at', { ascending: false }),
+  create: (data) => supabase?.from('propuestas').insert(data).select().single(),
+  update: (id, data) => supabase?.from('propuestas').update(data).eq('id', id).select().single(),
+  actualizarEstado: (id, estado) => supabase?.from('propuestas').update({
+    estado,
+    cerrada_at: estado === 'enviada' ? null : new Date().toISOString(),
+  }).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('propuestas').delete().eq('id', id),
 }

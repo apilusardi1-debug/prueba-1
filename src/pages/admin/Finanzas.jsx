@@ -32,21 +32,33 @@ function formatFecha(f) {
   return `${d}/${m}/${y}`
 }
 
-const CATEGORIAS = [
-  { id: 'reserva',   label: 'Reserva',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+const CATEGORIAS_INGRESO = [
+  { id: 'ingreso',    label: 'Ingreso',    color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  { id: 'sena',       label: 'Seña',       color: 'bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400' },
+  { id: 'pago_total', label: 'Pago total', color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
+]
+const CATEGORIAS_EGRESO = [
   { id: 'guia',      label: 'Guía',      color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' },
   { id: 'chofer',    label: 'Chofer',    color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400' },
   { id: 'proveedor', label: 'Proveedor', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
   { id: 'comision',  label: 'Comisión',  color: 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400' },
   { id: 'otro',      label: 'Otro',      color: 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
 ]
+// Lista completa (incluye 'reserva' legado) — se usa solo para filtrar/mostrar
+// movimientos ya cargados, no para elegir categoría al crear uno nuevo.
+const CATEGORIAS = [
+  { id: 'reserva', label: 'Reserva', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  ...CATEGORIAS_INGRESO,
+  ...CATEGORIAS_EGRESO,
+]
 
 const METODOS = ['efectivo', 'transferencia', 'qr', 'tarjeta']
 const MONEDAS = ['USD', 'BRL', 'ARS']
+const CLAVE_EDITAR_MOVIMIENTO = 'dreamtorus'
 
 const FORM_EMPTY = {
-  fecha: hoy(), tipo: 'ingreso', categoria: 'reserva',
-  concepto: '', monto: '', moneda: 'USD',
+  fecha: hoy(), tipo: 'ingreso', categoria: 'ingreso',
+  concepto: '', monto: '', moneda: 'BRL',
   persona_nombre: '', metodo: 'efectivo', estado: 'confirmado', notas: '',
 }
 
@@ -77,6 +89,11 @@ const IcoTrash = () => (
     <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
   </svg>
 )
+const IcoEdit = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+  </svg>
+)
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Finanzas() {
@@ -92,6 +109,10 @@ export default function Finanzas() {
   const [form, setForm] = useState(FORM_EMPTY)
   const [guardando, setGuardando] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
+  const [movEditandoId, setMovEditandoId] = useState(null)
+  const [passwordParaId, setPasswordParaId] = useState(null)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [passwordError, setPasswordError] = useState('')
 
   useEffect(() => { cargarTodo() }, [])
 
@@ -124,12 +145,12 @@ export default function Finanzas() {
   }, [movimientosFiltradosPeriodo, filtroTipo, filtroCategoria])
 
   const totalIngresos = useMemo(() =>
-    movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso' && m.moneda === 'USD')
+    movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso' && m.moneda === 'BRL')
       .reduce((s, m) => s + Number(m.monto), 0),
     [movimientosFiltradosPeriodo]
   )
   const totalEgresos = useMemo(() =>
-    movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso' && m.moneda === 'USD')
+    movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso' && m.moneda === 'BRL')
       .reduce((s, m) => s + Number(m.monto), 0),
     [movimientosFiltradosPeriodo]
   )
@@ -139,7 +160,7 @@ export default function Finanzas() {
   const porCategoria = useMemo(() => {
     const map = {}
     movimientosFiltradosPeriodo.forEach(m => {
-      if (m.moneda !== 'USD') return
+      if (m.moneda !== 'BRL') return
       if (!map[m.categoria]) map[m.categoria] = { ingreso: 0, egreso: 0 }
       map[m.categoria][m.tipo] += Number(m.monto)
     })
@@ -150,16 +171,22 @@ export default function Finanzas() {
   async function guardarMovimiento() {
     if (!form.concepto.trim() || !form.monto) return
     setGuardando(true)
-    await movimientosApi.create({
+    const payload = {
       fecha: form.fecha, tipo: form.tipo, categoria: form.categoria,
       concepto: form.concepto, monto: parseFloat(form.monto),
       moneda: form.moneda, persona_nombre: form.persona_nombre || null,
       metodo: form.metodo, estado: form.estado,
       notas: form.notas || null,
-    })
+    }
+    if (movEditandoId) {
+      await movimientosApi.update(movEditandoId, payload)
+    } else {
+      await movimientosApi.create(payload)
+    }
     setGuardando(false)
     setModalMovimiento(false)
     setForm(FORM_EMPTY)
+    setMovEditandoId(null)
     cargarTodo()
   }
 
@@ -167,6 +194,36 @@ export default function Finanzas() {
     await movimientosApi.delete(id)
     setMovimientos(prev => prev.filter(m => m.id !== id))
     setEliminandoId(null)
+  }
+
+  function pedirEdicion(m) {
+    setPasswordParaId(m.id)
+    setPasswordInput('')
+    setPasswordError('')
+  }
+
+  function cancelarPassword() {
+    setPasswordParaId(null)
+    setPasswordInput('')
+    setPasswordError('')
+  }
+
+  function confirmarPassword() {
+    if (passwordInput !== CLAVE_EDITAR_MOVIMIENTO) {
+      setPasswordError('Contraseña incorrecta.')
+      return
+    }
+    const m = movimientos.find(mov => mov.id === passwordParaId)
+    if (!m) { cancelarPassword(); return }
+    setForm({
+      fecha: m.fecha, tipo: m.tipo, categoria: m.categoria,
+      concepto: m.concepto, monto: String(m.monto), moneda: m.moneda,
+      persona_nombre: m.persona_nombre || '', metodo: m.metodo,
+      estado: m.estado, notas: m.notas || '',
+    })
+    setMovEditandoId(m.id)
+    setModalMovimiento(true)
+    cancelarPassword()
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -193,7 +250,7 @@ export default function Finanzas() {
             ))}
           </div>
           <button
-            onClick={() => { setForm(FORM_EMPTY); setModalMovimiento(true) }}
+            onClick={() => { setForm(FORM_EMPTY); setMovEditandoId(null); setModalMovimiento(true) }}
             className="flex items-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <IcoPlus /> Registrar movimiento
@@ -208,7 +265,7 @@ export default function Finanzas() {
             <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-950/40 flex items-center justify-center text-green-600 dark:text-green-400"><IcoIngreso /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Ingresos</span>
           </div>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(totalIngresos, 'USD')}</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(totalIngresos, 'BRL')}</p>
           <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso').length} movimientos</p>
         </div>
 
@@ -217,7 +274,7 @@ export default function Finanzas() {
             <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center text-red-500 dark:text-red-400"><IcoEgreso /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Egresos</span>
           </div>
-          <p className="text-2xl font-bold text-red-500 dark:text-red-400">{formatMonto(totalEgresos, 'USD')}</p>
+          <p className="text-2xl font-bold text-red-500 dark:text-red-400">{formatMonto(totalEgresos, 'BRL')}</p>
           <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso').length} movimientos</p>
         </div>
 
@@ -226,15 +283,15 @@ export default function Finanzas() {
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400' : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'}`}><IcoBalance /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Balance neto</span>
           </div>
-          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-brand-700 dark:text-brand-400' : 'text-red-600 dark:text-red-400'}`}>{formatMonto(balance, 'USD')}</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Solo movimientos en USD</p>
+          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-brand-700 dark:text-brand-400' : 'text-red-600 dark:text-red-400'}`}>{formatMonto(balance, 'BRL')}</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Solo movimientos en BRL</p>
         </div>
       </div>
 
       {/* Desglose rápido */}
       {Object.keys(porCategoria).length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Desglose por categoría (USD)</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Desglose por categoría (BRL)</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {CATEGORIAS.map(cat => {
               const d = porCategoria[cat.id]
@@ -360,9 +417,14 @@ export default function Finanzas() {
                               <button onClick={() => setEliminandoId(null)} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300">No</button>
                             </span>
                           ) : (
-                            <button onClick={() => setEliminandoId(m.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
-                              <IcoTrash />
-                            </button>
+                            <span className="flex items-center gap-2 justify-center">
+                              <button onClick={() => pedirEdicion(m)} className="text-gray-300 dark:text-zinc-700 hover:text-brand-500 dark:hover:text-brand-400 transition-colors" title="Editar (requiere contraseña)">
+                                <IcoEdit />
+                              </button>
+                              <button onClick={() => setEliminandoId(m.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
+                                <IcoTrash />
+                              </button>
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -377,7 +439,7 @@ export default function Finanzas() {
 
       {/* ── Tab: Costos operativos ───────────────────────────────────────────── */}
       {tab === 'costos' && (
-        <TabCostos excursiones={excursiones} costos={costos} onRefresh={cargarTodo} />
+        <TabCostos excursiones={excursiones} costos={costos} setCostos={setCostos} />
       )}
 
       {/* ── Tab: Mercado Pago ────────────────────────────────────────────────── */}
@@ -390,8 +452,8 @@ export default function Finanzas() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setModalMovimiento(false)}>
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-zinc-800">
-              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Registrar movimiento</h2>
-              <button onClick={() => setModalMovimiento(false)} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
+              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">{movEditandoId ? 'Editar movimiento' : 'Registrar movimiento'}</h2>
+              <button onClick={() => { setModalMovimiento(false); setMovEditandoId(null) }} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
             </div>
 
             <div className="p-5 space-y-4">
@@ -400,7 +462,7 @@ export default function Finanzas() {
                 {['ingreso', 'egreso'].map(t => (
                   <button
                     key={t}
-                    onClick={() => setForm(f => ({ ...f, tipo: t }))}
+                    onClick={() => setForm(f => ({ ...f, tipo: t, categoria: (t === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_EGRESO)[0].id }))}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
                       form.tipo === t
                         ? t === 'ingreso' ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500'
@@ -424,7 +486,7 @@ export default function Finanzas() {
                   <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Categoría</label>
                   <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
                     className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    {(form.tipo === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_EGRESO).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -495,7 +557,35 @@ export default function Finanzas() {
             <div className="px-5 pb-5">
               <button onClick={guardarMovimiento} disabled={guardando || !form.concepto.trim() || !form.monto}
                 className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
-                {guardando ? 'Guardando...' : 'Guardar movimiento'}
+                {guardando ? 'Guardando...' : movEditandoId ? 'Guardar cambios' : 'Guardar movimiento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contraseña para editar */}
+      {passwordParaId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={cancelarPassword}>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100 mb-1">Contraseña requerida</h2>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">Ingresá la contraseña para poder editar este movimiento.</p>
+            <input
+              type="password"
+              autoFocus
+              value={passwordInput}
+              onChange={e => { setPasswordInput(e.target.value); setPasswordError('') }}
+              onKeyDown={e => e.key === 'Enter' && confirmarPassword()}
+              placeholder="••••••••"
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
+            {passwordError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{passwordError}</p>}
+            <div className="flex gap-2 mt-4">
+              <button onClick={cancelarPassword} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 font-medium py-2.5 rounded-xl text-sm transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmarPassword} className="flex-1 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+                Confirmar
               </button>
             </div>
           </div>
@@ -615,32 +705,188 @@ function TabMercadoPago({ movimientos }) {
 }
 
 // ── Tab Costos ────────────────────────────────────────────────────────────────
-function TabCostos({ excursiones, costos, onRefresh }) {
+function crearTramoHelpers(setState) {
+  return {
+    setTramo: (idx, campo, valor) => setState(f => ({ ...f, tramos: f.tramos.map((t, i) => i === idx ? { ...t, [campo]: valor } : t) })),
+    agregarTramo: () => setState(f => ({ ...f, tramos: [...f.tramos, { hasta: '', monto: '' }] })),
+    quitarTramo: (idx) => setState(f => ({ ...f, tramos: f.tramos.filter((_, i) => i !== idx) })),
+  }
+}
+
+function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, onCancelar, textoBoton }) {
+  const { setTramo, agregarTramo, quitarTramo } = tramosHelpers
+  const deshabilitado = guardando || !valor.concepto.trim() ||
+    (valor.tipo === 'por_persona' ? !valor.monto_por_persona : valor.tramos.every(t => !t.hasta || !t.monto))
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-3">
+        {[
+          { id: 'por_persona', label: 'Por persona' },
+          { id: 'chofer_tramos', label: 'Por chofer (según pasajeros)' },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => onChange(f => ({ ...f, tipo: t.id }))}
+            className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+              valor.tipo === t.id
+                ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent'
+                : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-2">
+        <input
+          type="text"
+          value={valor.concepto}
+          onChange={e => onChange(f => ({ ...f, concepto: e.target.value }))}
+          placeholder={valor.tipo === 'chofer_tramos' ? 'Ej: Pago chofer' : 'Ej: Prenatour, Catamarán, Entrada...'}
+          className="flex-1 min-w-[150px] border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        {valor.tipo === 'por_persona' && (
+          <input
+            type="number"
+            value={valor.monto_por_persona}
+            onChange={e => onChange(f => ({ ...f, monto_por_persona: e.target.value }))}
+            placeholder="Monto por persona"
+            className="w-40 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+        )}
+        <select
+          value={valor.moneda}
+          onChange={e => onChange(f => ({ ...f, moneda: e.target.value }))}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
+          {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {valor.tipo === 'chofer_tramos' && (
+        <div className="mb-3 space-y-2">
+          {valor.tramos.map((t, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">Hasta</span>
+              <input
+                type="number"
+                value={t.hasta}
+                onChange={e => setTramo(idx, 'hasta', e.target.value)}
+                placeholder="Pasajeros"
+                className="w-24 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+              <span className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">pax →</span>
+              <input
+                type="number"
+                value={t.monto}
+                onChange={e => setTramo(idx, 'monto', e.target.value)}
+                placeholder="Monto"
+                className="w-28 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+              {valor.tramos.length > 1 && (
+                <button onClick={() => quitarTramo(idx)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
+                  <IcoTrash />
+                </button>
+              )}
+            </div>
+          ))}
+          <button onClick={agregarTramo} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+            + Agregar tramo
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onSubmit}
+          disabled={deshabilitado}
+          className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1"
+        >
+          {textoBoton === 'Agregar' && <IcoPlus />} {textoBoton}
+        </button>
+        {onCancelar && (
+          <button onClick={onCancelar} className="text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 font-medium px-3 py-2">
+            Cancelar
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TabCostos({ excursiones, costos, setCostos }) {
   const [excSeleccionada, setExcSeleccionada] = useState(null)
-  const [formCosto, setFormCosto] = useState({ concepto: '', monto_por_persona: '', moneda: 'BRL' })
+  const [formCosto, setFormCosto] = useState({ tipo: 'por_persona', concepto: '', monto_por_persona: '', moneda: 'BRL', tramos: [{ hasta: '', monto: '' }] })
   const [guardando, setGuardando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [formEdit, setFormEdit] = useState(null)
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
 
   const costosDeExcursion = excSeleccionada
     ? costos.filter(c => c.excursion_id === excSeleccionada)
     : []
 
+  const tramosHelpersAgregar = crearTramoHelpers(setFormCosto)
+  const tramosHelpersEditar = crearTramoHelpers(setFormEdit)
+
+  function armarPayload(valor) {
+    const tramosValidos = valor.tramos.filter(t => t.hasta && t.monto)
+    return {
+      concepto: valor.concepto,
+      moneda: valor.moneda,
+      tipo: valor.tipo,
+      monto_por_persona: valor.tipo === 'por_persona' ? parseFloat(valor.monto_por_persona) : null,
+      tramos: valor.tipo === 'chofer_tramos'
+        ? tramosValidos.map(t => ({ hasta: parseFloat(t.hasta), monto: parseFloat(t.monto) })).sort((a, b) => a.hasta - b.hasta)
+        : null,
+    }
+  }
+
   async function agregarCosto() {
-    if (!excSeleccionada || !formCosto.concepto.trim() || !formCosto.monto_por_persona) return
+    if (!excSeleccionada || !formCosto.concepto.trim()) return
+    const tramosValidos = formCosto.tramos.filter(t => t.hasta && t.monto)
+    if (formCosto.tipo === 'por_persona' && !formCosto.monto_por_persona) return
+    if (formCosto.tipo === 'chofer_tramos' && tramosValidos.length === 0) return
     setGuardando(true)
-    await costosExcursionApi.create({
-      excursion_id: excSeleccionada,
-      concepto: formCosto.concepto,
-      monto_por_persona: parseFloat(formCosto.monto_por_persona),
-      moneda: formCosto.moneda,
-    })
-    setFormCosto({ concepto: '', monto_por_persona: '', moneda: 'BRL' })
+    const { data } = await costosExcursionApi.create({ excursion_id: excSeleccionada, ...armarPayload(formCosto) })
+    if (data) setCostos(prev => [...prev, data])
+    setFormCosto({ tipo: 'por_persona', concepto: '', monto_por_persona: '', moneda: 'BRL', tramos: [{ hasta: '', monto: '' }] })
     setGuardando(false)
-    onRefresh()
   }
 
   async function eliminarCosto(id) {
+    setCostos(prev => prev.filter(c => c.id !== id))
     await costosExcursionApi.delete(id)
-    onRefresh()
+  }
+
+  function iniciarEdicion(c) {
+    setEditandoId(c.id)
+    setFormEdit({
+      tipo: c.tipo || 'por_persona',
+      concepto: c.concepto,
+      monto_por_persona: c.monto_por_persona != null ? String(c.monto_por_persona) : '',
+      moneda: c.moneda || 'BRL',
+      tramos: c.tramos && c.tramos.length ? c.tramos.map(t => ({ hasta: String(t.hasta), monto: String(t.monto) })) : [{ hasta: '', monto: '' }],
+    })
+  }
+
+  function cancelarEdicion() {
+    setEditandoId(null)
+    setFormEdit(null)
+  }
+
+  async function guardarEdicion() {
+    if (!formEdit.concepto.trim()) return
+    const tramosValidos = formEdit.tramos.filter(t => t.hasta && t.monto)
+    if (formEdit.tipo === 'por_persona' && !formEdit.monto_por_persona) return
+    if (formEdit.tipo === 'chofer_tramos' && tramosValidos.length === 0) return
+    setGuardandoEdicion(true)
+    const { data } = await costosExcursionApi.update(editandoId, armarPayload(formEdit))
+    if (data) setCostos(prev => prev.map(c => c.id === editandoId ? data : c))
+    setGuardandoEdicion(false)
+    cancelarEdicion()
   }
 
   return (
@@ -686,17 +932,42 @@ function TabCostos({ excursiones, costos, onRefresh }) {
             {costosDeExcursion.length > 0 ? (
               <div className="space-y-2 mb-5">
                 {costosDeExcursion.map(c => (
-                  <div key={c.id} className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{c.concepto}</p>
-                      <p className="text-xs text-gray-400 dark:text-zinc-600">por persona</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-700 dark:text-zinc-300">{formatMonto(c.monto_por_persona, c.moneda)}</span>
-                      <button onClick={() => eliminarCosto(c.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
-                        <IcoTrash />
-                      </button>
-                    </div>
+                  <div key={c.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
+                    {editandoId === c.id ? (
+                      <FormularioCosto
+                        valor={formEdit}
+                        onChange={setFormEdit}
+                        tramosHelpers={tramosHelpersEditar}
+                        guardando={guardandoEdicion}
+                        onSubmit={guardarEdicion}
+                        onCancelar={cancelarEdicion}
+                        textoBoton="Guardar cambios"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{c.concepto}</p>
+                          {c.tipo === 'chofer_tramos' ? (
+                            <p className="text-xs text-gray-400 dark:text-zinc-600">
+                              por chofer — {(c.tramos || []).map(t => `hasta ${t.hasta} pax: ${formatMonto(t.monto, c.moneda)}`).join(' · ')}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400 dark:text-zinc-600">por persona</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {c.tipo !== 'chofer_tramos' && (
+                            <span className="font-bold text-gray-700 dark:text-zinc-300">{formatMonto(c.monto_por_persona, c.moneda)}</span>
+                          )}
+                          <button onClick={() => iniciarEdicion(c)} className="text-gray-400 dark:text-zinc-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                            <IcoEdit />
+                          </button>
+                          <button onClick={() => eliminarCosto(c.id)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors">
+                            <IcoTrash />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -707,36 +978,14 @@ function TabCostos({ excursiones, costos, onRefresh }) {
             {/* Agregar costo */}
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-4">
               <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-3">Agregar costo</p>
-              <div className="flex gap-2 flex-wrap">
-                <input
-                  type="text"
-                  value={formCosto.concepto}
-                  onChange={e => setFormCosto(f => ({ ...f, concepto: e.target.value }))}
-                  placeholder="Ej: Catamarán, Day use, Entrada..."
-                  className="flex-1 min-w-[150px] border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                />
-                <input
-                  type="number"
-                  value={formCosto.monto_por_persona}
-                  onChange={e => setFormCosto(f => ({ ...f, monto_por_persona: e.target.value }))}
-                  placeholder="Monto"
-                  className="w-28 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                />
-                <select
-                  value={formCosto.moneda}
-                  onChange={e => setFormCosto(f => ({ ...f, moneda: e.target.value }))}
-                  className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                >
-                  {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <button
-                  onClick={agregarCosto}
-                  disabled={guardando || !formCosto.concepto.trim() || !formCosto.monto_por_persona}
-                  className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1"
-                >
-                  <IcoPlus /> Agregar
-                </button>
-              </div>
+              <FormularioCosto
+                valor={formCosto}
+                onChange={setFormCosto}
+                tramosHelpers={tramosHelpersAgregar}
+                guardando={guardando}
+                onSubmit={agregarCosto}
+                textoBoton="Agregar"
+              />
             </div>
           </>
         )}

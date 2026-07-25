@@ -16,6 +16,7 @@ export default function Equipo() {
   const [datos, setDatos] = useState({ choferes: [], guias: [], vendedores: [] })
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+  const [vista, setVista] = useState('tarjetas')
   const [form, setForm] = useState(EMPTY)
   const [editando, setEditando] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -126,8 +127,8 @@ export default function Equipo() {
         ))}
       </div>
 
-      {/* Buscador */}
-      <div className="mb-5">
+      {/* Buscador + toggle de vista */}
+      <div className="mb-5 flex items-center justify-between gap-3">
         <input
           type="text"
           placeholder={`Buscar ${tab.label.toLowerCase()} por nombre o WhatsApp...`}
@@ -135,9 +136,24 @@ export default function Equipo() {
           onChange={(e) => setBusqueda(e.target.value)}
           className="w-full max-w-md border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
+        <div className="flex gap-2 shrink-0">
+          {['tarjetas', 'lista'].map((v) => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+                vista === v
+                  ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                  : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Tarjetas */}
+      {/* Tarjetas / Lista */}
       {cargando ? (
         <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div>
       ) : filtrados.length === 0 ? (
@@ -147,6 +163,74 @@ export default function Equipo() {
           <button onClick={abrirNuevo} className="mt-4 text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium underline">
             Agregar el primero
           </button>
+        </div>
+      ) : vista === 'lista' ? (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-zinc-800 text-left text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide">
+                <th className="px-5 py-3 font-medium">Nombre</th>
+                <th className="px-5 py-3 font-medium">WhatsApp</th>
+                {tabActiva === 'vendedores' && <th className="px-5 py-3 font-medium">Código</th>}
+                <th className="px-5 py-3 font-medium">Estado</th>
+                <th className="px-5 py-3 font-medium text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map((item) => (
+                <tr key={item.id} className="border-b border-gray-50 dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">{tab.icono} {item.nombre}</td>
+                  <td className="px-5 py-3">
+                    <a
+                      href={`https://wa.me/${item.whatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium inline-flex items-center gap-1"
+                    >
+                      💬 {item.whatsapp}
+                    </a>
+                  </td>
+                  {tabActiva === 'vendedores' && (
+                    <td className="px-5 py-3">
+                      {item.codigo_referido ? (
+                        <span className="text-xs font-bold font-mono text-brand-700 dark:text-brand-400 tracking-wider bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-800 rounded-lg px-2 py-0.5">
+                          {item.codigo_referido}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-orange-400 dark:text-orange-400">Sin código</span>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-5 py-3">
+                    <button
+                      onClick={() => toggleActivo(item)}
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'}`}
+                    >
+                      {item.activo ? 'Activo' : 'Inactivo'}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => abrirEditar(item)}
+                        className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <a
+                        href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        WhatsApp
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

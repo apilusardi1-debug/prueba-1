@@ -4,7 +4,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const META_TOKEN = Deno.env.get('META_WHATSAPP_TOKEN')
 const META_PHONE_NUMBER_ID = Deno.env.get('META_PHONE_NUMBER_ID')
 const META_API_VERSION = 'v21.0'
-const TEMPLATE_LANGUAGE = Deno.env.get('META_TEMPLATE_LANGUAGE') || 'es'
+
+// Cada plantilla quedó registrada en Meta con el idioma que tenía seleccionado
+// el dropdown al momento de crearla (no todas quedaron en Español (ARG) por
+// error humano) — el nombre + idioma tienen que matchear exacto con Meta o el
+// envío falla, así que va por plantilla en vez de un default único.
+const TEMPLATE_LANGUAGES: Record<string, string> = {
+  aviso_guia: 'es_AR',
+  aviso_chofer: 'en',
+  aviso_cliente: 'en',
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -17,9 +26,8 @@ const CORS = {
 // va estructurado (nombre + parámetros) como exige la Cloud API.
 const TEMPLATE_BODIES: Record<string, string> = {
   aviso_guia: 'Hola {{1}} 👋\n\n🗺 *{{2}}*\n📅 {{3}}\n🕐 Salida: {{4}} — Regreso: {{5}}\n\n*Pasajeros de la operación:*\n{{6}}\n\n¡Muchas gracias!',
-  aviso_chofer: 'Hola {{1}} 👋\n\n🗺 *{{2}}*\n📅 {{3}}\n🕐 Salida: {{4}}\n\n*Tus pasajeros:*\n{{5}}\n\n🧭 Guía: *{{6}}*\n\n¡Gracias!',
-  aviso_cliente: '{{1}}, soy *{{2}}* 👋\n\nEl chofer asignado para realizar su traslado es *{{3}}*, él lo estará buscando por la puerta de su hospedaje a las *{{4}}* del día de mañana para dirigirnos hacia *{{5}}*.\n\nYo los estaré esperando ahí para ingresar todos juntos.\n\nAnte cualquier duda o consulta podés escribirme directamente al 📱 *{{6}}*',
-  aviso_asignacion: 'Hola {{1}} 👋 Quedaste asignado/a como {{2}} para la excursión *{{3}}* el {{4}}. Clientes: {{5}}. Pickup: {{6}}. Cualquier duda escribinos.',
+  aviso_chofer: 'Hola {{1}} 👋\n\nTe confirmamos los datos de tu próxima excursión:\n\n🗺 *{{2}}*\n📅 {{3}}\n🕐 Salida: {{4}}\n\n*Tus pasajeros a cargo:*\n{{5}}\n\nCualquier consulta sobre la operación, podés contactar a tu guía *{{6}}* al 📱 {{7}}\n\n¡Muchas gracias por tu trabajo!',
+  aviso_cliente: '👋 {{1}}! Te escribimos de Dream Tours con la información de tu excursión de mañana a *{{2}}*\n\n🧭 Guía: *{{3}}*\n🚗 Chofer: *{{4}}*\n🚘 Auto: {{5}}\n🔖 Patente: {{6}}\n🕐 *Horario de salida*: {{7}}\n🕐 *Horario de regreso*: {{8}}\n🏨 El chofer pasará a buscarlos por *{{9}}*\n\nAnte cualquier duda o consulta, podés escribirle directamente a tu guía al 📱 *{{10}}* — ese día los va a estar esperando en el parador para ingresar todos juntos.\n\n¡Que disfruten el paseo! Acá te dejamos el menú y las actividades opcionales: {{11}} 🎉',
 }
 
 function renderTemplate(name: string, params: string[]): string {
@@ -56,7 +64,7 @@ serve(async (req) => {
         type: 'template',
         template: {
           name: template,
-          language: { code: TEMPLATE_LANGUAGE },
+          language: { code: TEMPLATE_LANGUAGES[template] || 'es_AR' },
           components: [
             {
               type: 'body',

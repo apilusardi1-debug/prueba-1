@@ -1,7 +1,30 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { reservasApi, choferesApi, guiasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
-import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
+import { reservasApi, choferesApi, guiasApi, excursionesApi, clientesApi, costosExcursionApi } from '../../lib/supabase.js'
+import { formatPrecio } from '../../data/mockData.js'
+
+function calcularCostoOperativo(excursionId, pax, costosCatalogo) {
+  const costosExc = costosCatalogo.filter(c => c.excursion_id === excursionId && c.activo !== false)
+  let total = 0
+  let moneda = 'BRL'
+  const detalle = []
+  for (const c of costosExc) {
+    moneda = c.moneda || moneda
+    if (c.tipo === 'chofer_tramos') {
+      const tramos = [...(c.tramos || [])].sort((a, b) => a.hasta - b.hasta)
+      const tramo = tramos.find(t => pax <= t.hasta) || tramos[tramos.length - 1]
+      if (tramo) {
+        total += tramo.monto
+        detalle.push({ concepto: c.concepto, monto: tramo.monto, nota: `hasta ${tramo.hasta} pax` })
+      }
+    } else {
+      const monto = (c.monto_por_persona || 0) * pax
+      total += monto
+      detalle.push({ concepto: c.concepto, monto, nota: `${formatPrecio(c.monto_por_persona, c.moneda)} x ${pax}` })
+    }
+  }
+  return { total, moneda, detalle }
+}
 
 const ESTADOS = {
   pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
@@ -21,9 +44,9 @@ export default function Reservas() {
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
   const [excursiones, setExcursiones] = useState([])
+  const [costos, setCostos] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState('')
-  const [enviando, setEnviando] = useState({})
   const [modalNueva, setModalNueva] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
@@ -31,16 +54,18 @@ export default function Reservas() {
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: r }, { data: c }, { data: g }, { data: e }] = await Promise.all([
+        const [{ data: r }, { data: c }, { data: g }, { data: e }, { data: co }] = await Promise.all([
           reservasApi.getAll(),
           choferesApi.getAll(),
           guiasApi.getAll(),
           excursionesApi.getAll(),
+          costosExcursionApi.getAll(),
         ])
         if (e) setExcursiones(e)
         if (r) setReservas(r)
         if (c) setChoferes(c)
         if (g) setGuias(g)
+        if (co) setCostos(co)
       } catch (_) {}
       setLoading(false)
     }
@@ -52,30 +77,27 @@ export default function Reservas() {
     await reservasApi.updateEstado(id, estado)
   }
 
+  async function actualizarPago(id, pagado) {
+    const monto = parseFloat(pagado) || 0
+    setReservas(prev => prev.map(r => r.id === id ? { ...r, pagado: monto } : r))
+    await reservasApi.updatePago(id, monto)
+  }
+
   async function asignar(reserva, campo, valor) {
     const update = { [campo]: valor || null }
     setReservas(prev => prev.map(r => r.id === reserva.id ? { ...r, ...update } : r))
+    await reservasApi.updateAsignacion(reserva.id, update)
 
-    const { data } = await reservasApi.updateAsignacion(reserva.id, update)
-    if (!data) return
-
-    const esChofer = campo === 'chofer_id'
-    const persona = esChofer ? data.choferes : data.guias
-    if (!persona?.whatsapp || !valor) return
-
-    setEnviando(prev => ({ ...prev, [reserva.id + campo]: true }))
-
-    const personas = (reserva.adultos || 0) + (reserva.menores || 0)
-    const fecha = reserva.fecha
-      ? new Date(reserva.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '–'
-
-    const rol = esChofer ? 'chofer' : 'guía'
-
-    await sendWhatsAppTemplate(persona.whatsapp, 'aviso_asignacion', [
-      persona.nombre, rol, data.excursiones?.nombre || '–', fecha, `${personas} persona${personas !== 1 ? 's' : ''}`, reserva.ubicacion || '–',
-    ])
-    setEnviando(prev => ({ ...prev, [reserva.id + campo]: false }))
+    if (campo === 'chofer_id' && valor) {
+      const pax = (reserva.adultos || 0) + (reserva.menores || 0)
+      const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursion_id, pax, costos)
+      if (detalle.length > 0) {
+        setReservas(prev => prev.map(r => r.id === reserva.id
+          ? { ...r, costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle }
+          : r))
+        await reservasApi.updateCostoOperativo(reserva.id, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
+      }
+    }
   }
 
   async function eliminarReserva(id) {
@@ -237,6 +259,10 @@ export default function Reservas() {
                 <th className="px-5 py-3 text-left">Pickup</th>
                 <th className="px-5 py-3 text-left">Chofer</th>
                 <th className="px-5 py-3 text-left">Guía</th>
+                <th className="px-5 py-3 text-left">Costo op.</th>
+                <th className="px-5 py-3 text-left">Total</th>
+                <th className="px-5 py-3 text-left">Pagado</th>
+                <th className="px-5 py-3 text-left">Saldo</th>
                 <th className="px-5 py-3 text-left">Estado</th>
                 <th className="px-5 py-3 text-left"></th>
               </tr>
@@ -289,7 +315,6 @@ export default function Reservas() {
                             <option key={c.id} value={c.id}>{c.nombre}</option>
                           ))}
                         </select>
-                        {enviando[r.id + 'chofer_id'] && <span className="text-xs text-gray-400 dark:text-zinc-500">...</span>}
                       </div>
                     </td>
 
@@ -306,10 +331,35 @@ export default function Reservas() {
                             <option key={g.id} value={g.id}>{g.nombre}</option>
                           ))}
                         </select>
-                        {enviando[r.id + 'guia_id'] && <span className="text-xs text-gray-400 dark:text-zinc-500">...</span>}
                       </div>
                     </td>
 
+                    <td className="px-5 py-3 text-xs whitespace-nowrap">
+                      {r.costo_operativo ? (
+                        <span
+                          className="text-gray-600 dark:text-zinc-400 cursor-help border-b border-dashed border-gray-300 dark:border-zinc-600"
+                          title={(r.costo_operativo_detalle || []).map(d => `${d.concepto} (${d.nota}): ${formatPrecio(d.monto, r.costo_operativo_moneda)}`).join('\n')}
+                        >
+                          {formatPrecio(r.costo_operativo, r.costo_operativo_moneda)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 dark:text-zinc-700">–</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs whitespace-nowrap">
+                      {formatPrecio(r.total, r.moneda)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <input
+                        type="number"
+                        defaultValue={r.pagado || 0}
+                        onBlur={e => actualizarPago(r.id, e.target.value)}
+                        className="w-20 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-zinc-600"
+                      />
+                    </td>
+                    <td className={`px-5 py-3 text-xs font-medium whitespace-nowrap ${(r.total - (r.pagado || 0)) > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {formatPrecio(Math.max((r.total || 0) - (r.pagado || 0), 0), r.moneda)}
+                    </td>
                     <td className="px-5 py-3">
                       <select value={r.estado} onChange={e => cambiarEstado(r.id, e.target.value)}
                         className={`text-xs font-medium px-2 py-1 rounded-full border-0 outline-none cursor-pointer ${estado.color}`}>

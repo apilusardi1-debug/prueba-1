@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usuariosAdminApi, hashPassword } from '../../lib/supabase.js'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,12 +14,11 @@ export default function Login() {
     setLoading(true)
     setError('')
 
-    // TODO: reemplazar con Supabase auth
-    // const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    await new Promise((r) => setTimeout(r, 800))
+    const { data: usuario } = await usuariosAdminApi.getByEmail(email.trim().toLowerCase())
+    const hash = await hashPassword(password)
 
-    if (email === 'admin@turismo.com' && password === 'admin123') {
-      localStorage.setItem('admin_session', JSON.stringify({ email, role: 'admin' }))
+    if (usuario && usuario.activo && usuario.password_hash === hash) {
+      localStorage.setItem('admin_session', JSON.stringify({ email: usuario.email, nombre: usuario.nombre, role: usuario.rol }))
       navigate('/admin')
     } else {
       setError('Email o contraseña incorrectos.')
@@ -71,10 +71,6 @@ export default function Login() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
-
-        <p className="text-center text-xs text-gray-400 dark:text-zinc-500 mt-4">
-          Demo: admin@turismo.com / admin123
-        </p>
       </div>
     </div>
   )

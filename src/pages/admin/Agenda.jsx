@@ -616,13 +616,30 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         logs.push({ destino, phone, ok: res.ok, error: res.error })
       }
 
-      // Mensaje al GUÍA
-      const lineasGuia = pasajeros.map((r) => {
+      function bloquePasajeroCompleto(r) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
-        return `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 📞 +${r.clienteWhatsapp} · 🚗 ${choferR ? choferR.nombre : 'Sin chofer'}`
-      }).join('\n')
+        const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
+        return [
+          `*${r.clienteNombre}* — 👥 ${r.personas} pax`,
+          `🏨 ${r.hospedaje || 'Sin hospedaje'}`,
+          `📞 +${r.clienteWhatsapp}`,
+          `🚗 ${choferR ? choferR.nombre : 'Sin chofer'}${choferR?.whatsapp ? ` · 📞 +${choferR.whatsapp}` : ''}`,
+          `💰 Saldo a abonar: ${formatPrecio(saldo, r.moneda)}`,
+        ].join('\n')
+      }
+
+      function bloquePasajeroSimple(r) {
+        return [
+          `*${r.clienteNombre}* — 👥 ${r.personas} pax`,
+          `🏨 ${r.hospedaje || 'Sin hospedaje'}`,
+          `📞 +${r.clienteWhatsapp}`,
+        ].join('\n')
+      }
+
+      // Mensaje al GUÍA
+      const bloquesGuia = pasajeros.map(bloquePasajeroCompleto).join('\n\n')
       await enviar(`Guía (${guiaAsignado.nombre})`, guiaAsignado.whatsapp, 'aviso_guia', [
-        guiaAsignado.nombre, excursion.nombre, fechaFmt, horario.partida, horario.regreso, lineasGuia,
+        guiaAsignado.nombre, excursion.nombre, fechaFmt, horario.partida, horario.regreso, bloquesGuia,
       ])
 
       // Mensaje a cada CHOFER
@@ -635,17 +652,28 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       for (const [cid, sus] of Object.entries(porChofer)) {
         const chofer = choferes.find((c) => c.id === cid)
         if (!chofer) continue
-        const lineas = sus.map((r) => `• *${r.clienteNombre}* — 👥 ${r.personas} pax · 🏨 ${r.hospedaje || 'Sin hospedaje'}`).join('\n')
+        const bloquesChofer = sus.map(bloquePasajeroSimple).join('\n\n')
         await enviar(`Chofer (${chofer.nombre})`, chofer.whatsapp, 'aviso_chofer', [
-          chofer.nombre, excursion.nombre, fechaFmt, horario.partida, lineas, guiaAsignado.nombre,
+          chofer.nombre, excursion.nombre, fechaFmt, horario.partida, bloquesChofer, guiaAsignado.nombre, guiaAsignado.whatsapp,
         ])
       }
 
       // Mensaje a cada CLIENTE
+      const linkOpcionales = excursion.opcionales_imagen || 'https://prueba-1-rose.vercel.app'
       for (const r of pasajeros) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
         await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp, 'aviso_cliente', [
-          saludo, guiaAsignado.nombre, choferR ? choferR.nombre : 'por confirmar', horario.partida, excursion.nombre, guiaAsignado.whatsapp,
+          saludo,
+          excursion.nombre,
+          guiaAsignado.nombre,
+          choferR ? choferR.nombre : 'por confirmar',
+          choferR?.auto_modelo || 'A confirmar',
+          choferR?.auto_patente || 'A confirmar',
+          horario.partida,
+          horario.regreso,
+          r.hospedaje || 'tu hospedaje',
+          guiaAsignado.whatsapp,
+          linkOpcionales,
         ])
       }
     } catch (err) {

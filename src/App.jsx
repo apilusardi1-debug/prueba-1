@@ -30,6 +30,9 @@ import Equipo from './pages/admin/Equipo.jsx'
 import Hospedajes from './pages/admin/Hospedajes.jsx'
 import WhatsAppCRM from './pages/admin/crm/WhatsApp.jsx'
 import Finanzas from './pages/admin/Finanzas.jsx'
+import ClientesPaquetes from './pages/admin/paquetes/ClientesPaquetes.jsx'
+import GeneradorPropuesta from './pages/admin/paquetes/GeneradorPropuesta.jsx'
+import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -65,6 +68,10 @@ const router = createBrowserRouter([
       { path: '/admin/excursiones',   element: <Excursiones /> },
       { path: '/admin/agenda',            element: <Agenda /> },
       { path: '/admin/hospedajes',         element: <Hospedajes /> },
+      { path: '/admin/paquetes/clientes',  element: <ClientesPaquetes /> },
+      { path: '/admin/paquetes/generador', element: <GeneradorPropuesta /> },
+      { path: '/admin/paquetes/enviadas',  element: <PropuestasLista estado="enviada" /> },
+      { path: '/admin/paquetes/cerradas',  element: <PropuestasLista estado="cerrada" /> },
       { path: '/admin/equipo',           element: <Equipo /> },
       { path: '/admin/configuracion',    element: <SiteConfig /> },
       { path: '/admin/crm/whatsapp',    element: <WhatsAppCRM /> },

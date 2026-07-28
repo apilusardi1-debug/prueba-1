@@ -10,14 +10,16 @@ function formatPrecio(n) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
 }
 
-function calcularCostoOperativo(excursionId, pax, costosCatalogo) {
+function calcularCostoOperativo(excursionId, pax, costosCatalogo, conChofer, conGuia) {
   const costosExc = costosCatalogo.filter(c => c.excursion_id === excursionId && c.activo !== false)
   let total = 0
   let moneda = 'BRL'
   const detalle = []
   for (const c of costosExc) {
     moneda = c.moneda || moneda
-    if (c.tipo === 'chofer_tramos') {
+    if (c.tipo === 'chofer_tramos' || c.tipo === 'guia_tramos') {
+      if (c.tipo === 'chofer_tramos' && !conChofer) continue
+      if (c.tipo === 'guia_tramos' && !conGuia) continue
       const tramos = [...(c.tramos || [])].sort((a, b) => a.hasta - b.hasta)
       const tramo = tramos.find(t => pax <= t.hasta) || tramos[tramos.length - 1]
       if (tramo) {
@@ -179,25 +181,26 @@ export default function Agenda() {
     setReservasNorm(prev => prev.filter(r => r.id !== id))
   }
 
+  async function recalcularCosto(reservaId, cambios) {
+    const reserva = reservasNorm.find((r) => r.id === reservaId)
+    if (!reserva) return
+    const choferId = 'chofer_id' in cambios ? cambios.chofer_id : reserva.chofer_id
+    const guiaId = 'guia_id' in cambios ? cambios.guia_id : reserva.guia_id
+    const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursionId, reserva.personas || 1, costos, !!choferId, !!guiaId)
+    await reservasApi.updateCostoOperativo(reservaId, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
+  }
+
   async function handleAsignar(reservaId, choferId) {
     setAsignaciones((p) => ({ ...p, [reservaId]: choferId }))
     await reservasApi.updateAsignacion(reservaId, { chofer_id: choferId || null })
-
-    if (choferId) {
-      const reserva = reservasNorm.find((r) => r.id === reservaId)
-      if (reserva) {
-        const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursionId, reserva.personas || 1, costos)
-        if (detalle.length > 0) {
-          await reservasApi.updateCostoOperativo(reservaId, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
-        }
-      }
-    }
+    await recalcularCosto(reservaId, { chofer_id: choferId || null })
   }
 
   async function handleAsignarGuia(opKey, guiaId) {
     setGuiaAsignaciones((p) => ({ ...p, [opKey]: guiaId }))
     const reservasDeOp = reservasNorm.filter((r) => `${r.excursionId}-${r.fecha}` === opKey)
     await Promise.all(reservasDeOp.map((r) => reservasApi.updateAsignacion(r.id, { guia_id: guiaId || null })))
+    await Promise.all(reservasDeOp.map((r) => recalcularCosto(r.id, { guia_id: guiaId || null })))
   }
 
   return (

@@ -802,6 +802,7 @@ function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, 
         {[
           { id: 'por_persona', label: 'Por persona' },
           { id: 'chofer_tramos', label: 'Por chofer (según pasajeros)' },
+          { id: 'guia_tramos', label: 'Por guía (según pasajeros)' },
         ].map(t => (
           <button
             key={t.id}
@@ -822,7 +823,7 @@ function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, 
           type="text"
           value={valor.concepto}
           onChange={e => onChange(f => ({ ...f, concepto: e.target.value }))}
-          placeholder={valor.tipo === 'chofer_tramos' ? 'Ej: Pago chofer' : 'Ej: Prenatour, Catamarán, Entrada...'}
+          placeholder={valor.tipo === 'chofer_tramos' ? 'Ej: Pago chofer' : valor.tipo === 'guia_tramos' ? 'Ej: Pago guía' : 'Ej: Prenatour, Catamarán, Entrada...'}
           className="flex-1 min-w-[150px] border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
         {valor.tipo === 'por_persona' && (
@@ -843,7 +844,7 @@ function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, 
         </select>
       </div>
 
-      {valor.tipo === 'chofer_tramos' && (
+      {(valor.tipo === 'chofer_tramos' || valor.tipo === 'guia_tramos') && (
         <div className="mb-3 space-y-2">
           {valor.tramos.map((t, idx) => (
             <div key={idx} className="flex items-center gap-2">
@@ -916,7 +917,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
       moneda: valor.moneda,
       tipo: valor.tipo,
       monto_por_persona: valor.tipo === 'por_persona' ? parseFloat(valor.monto_por_persona) : null,
-      tramos: valor.tipo === 'chofer_tramos'
+      tramos: (valor.tipo === 'chofer_tramos' || valor.tipo === 'guia_tramos')
         ? tramosValidos.map(t => ({ hasta: parseFloat(t.hasta), monto: parseFloat(t.monto) })).sort((a, b) => a.hasta - b.hasta)
         : null,
     }
@@ -926,7 +927,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
     if (!excSeleccionada || !formCosto.concepto.trim()) return
     const tramosValidos = formCosto.tramos.filter(t => t.hasta && t.monto)
     if (formCosto.tipo === 'por_persona' && !formCosto.monto_por_persona) return
-    if (formCosto.tipo === 'chofer_tramos' && tramosValidos.length === 0) return
+    if (formCosto.tipo !== 'por_persona' && tramosValidos.length === 0) return
     setGuardando(true)
     const { data } = await costosExcursionApi.create({ excursion_id: excSeleccionada, ...armarPayload(formCosto) })
     if (data) setCostos(prev => [...prev, data])
@@ -959,7 +960,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
     if (!formEdit.concepto.trim()) return
     const tramosValidos = formEdit.tramos.filter(t => t.hasta && t.monto)
     if (formEdit.tipo === 'por_persona' && !formEdit.monto_por_persona) return
-    if (formEdit.tipo === 'chofer_tramos' && tramosValidos.length === 0) return
+    if (formEdit.tipo !== 'por_persona' && tramosValidos.length === 0) return
     setGuardandoEdicion(true)
     const { data } = await costosExcursionApi.update(editandoId, armarPayload(formEdit))
     if (data) setCostos(prev => prev.map(c => c.id === editandoId ? data : c))
@@ -1025,16 +1026,16 @@ function TabCostos({ excursiones, costos, setCostos }) {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{c.concepto}</p>
-                          {c.tipo === 'chofer_tramos' ? (
+                          {c.tipo === 'chofer_tramos' || c.tipo === 'guia_tramos' ? (
                             <p className="text-xs text-gray-400 dark:text-zinc-600">
-                              por chofer — {(c.tramos || []).map(t => `hasta ${t.hasta} pax: ${formatMonto(t.monto, c.moneda)}`).join(' · ')}
+                              por {c.tipo === 'chofer_tramos' ? 'chofer' : 'guía'} — {(c.tramos || []).map(t => `hasta ${t.hasta} pax: ${formatMonto(t.monto, c.moneda)}`).join(' · ')}
                             </p>
                           ) : (
                             <p className="text-xs text-gray-400 dark:text-zinc-600">por persona</p>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          {c.tipo !== 'chofer_tramos' && (
+                          {c.tipo === 'por_persona' && (
                             <span className="font-bold text-gray-700 dark:text-zinc-300">{formatMonto(c.monto_por_persona, c.moneda)}</span>
                           )}
                           <button onClick={() => iniciarEdicion(c)} className="text-gray-400 dark:text-zinc-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">

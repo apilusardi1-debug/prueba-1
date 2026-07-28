@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { movimientosApi, costosExcursionApi, excursionesApi } from '../../lib/supabase.js'
+import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -59,6 +59,7 @@ const CLAVE_EDITAR_MOVIMIENTO = 'dreamtorus'
 const FORM_EMPTY = {
   fecha: hoy(), tipo: 'ingreso', categoria: 'ingreso',
   concepto: '', monto: '', moneda: 'BRL',
+  cliente_id: null, cliente_nombre: '',
   persona_nombre: '', metodo: 'efectivo', estado: 'confirmado', notas: '',
 }
 
@@ -102,6 +103,8 @@ export default function Finanzas() {
   const [movimientos, setMovimientos] = useState([])
   const [excursiones, setExcursiones] = useState([])
   const [costos, setCostos] = useState([])
+  const [clientes, setClientes] = useState([])
+  const [sugerenciasCliente, setSugerenciasCliente] = useState([])
   const [cargando, setCargando] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
@@ -118,15 +121,29 @@ export default function Finanzas() {
 
   async function cargarTodo() {
     setCargando(true)
-    const [rm, re, rc] = await Promise.all([
+    const [rm, re, rc, rcl] = await Promise.all([
       movimientosApi.getAll(),
       excursionesApi.getAll(),
       costosExcursionApi.getAll(),
+      clientesApi.getAll(),
     ])
     setMovimientos(rm.data || [])
     setExcursiones(re.data || [])
     setCostos(rc.data || [])
+    setClientes(rcl.data || [])
     setCargando(false)
+  }
+
+  function buscarCliente(texto) {
+    setForm(f => ({ ...f, cliente_nombre: texto, cliente_id: null }))
+    if (texto.length < 2) return setSugerenciasCliente([])
+    const lower = texto.toLowerCase()
+    setSugerenciasCliente(clientes.filter(c => c.nombre?.toLowerCase().includes(lower) || c.whatsapp?.includes(texto)).slice(0, 5))
+  }
+
+  function elegirCliente(c) {
+    setForm(f => ({ ...f, cliente_id: c.id, cliente_nombre: c.nombre }))
+    setSugerenciasCliente([])
   }
 
   // ── Filtrado y balance ──────────────────────────────────────────────────────
@@ -175,6 +192,7 @@ export default function Finanzas() {
       fecha: form.fecha, tipo: form.tipo, categoria: form.categoria,
       concepto: form.concepto, monto: parseFloat(form.monto),
       moneda: form.moneda, persona_nombre: form.persona_nombre || null,
+      cliente_id: form.cliente_id, cliente_nombre: form.cliente_nombre.trim() || null,
       metodo: form.metodo, estado: form.estado,
       notas: form.notas || null,
     }
@@ -219,6 +237,7 @@ export default function Finanzas() {
       fecha: m.fecha, tipo: m.tipo, categoria: m.categoria,
       concepto: m.concepto, monto: String(m.monto), moneda: m.moneda,
       persona_nombre: m.persona_nombre || '', metodo: m.metodo,
+      cliente_id: m.cliente_id || null, cliente_nombre: m.cliente_nombre || '',
       estado: m.estado, notas: m.notas || '',
     })
     setMovEditandoId(m.id)
@@ -371,6 +390,7 @@ export default function Finanzas() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Tipo</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Categoría</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Concepto</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Cliente</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Persona</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Método</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Monto</th>
@@ -395,6 +415,7 @@ export default function Finanzas() {
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat?.color}`}>{cat?.label}</span>
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-800 dark:text-zinc-200 max-w-[200px] truncate">{m.concepto}</td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-zinc-500">{m.cliente_nombre || '—'}</td>
                         <td className="px-4 py-3 text-gray-500 dark:text-zinc-500">{m.persona_nombre || '—'}</td>
                         <td className="px-4 py-3 text-gray-400 dark:text-zinc-600 capitalize">{m.metodo}</td>
                         <td className={`px-4 py-3 text-right font-bold font-mono ${
@@ -497,6 +518,25 @@ export default function Finanzas() {
                 <input type="text" value={form.concepto} onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
                   placeholder="Ej: Seña Maragogi — Juan Pérez"
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+
+              {/* Cliente */}
+              <div className="relative">
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Cliente</label>
+                <input type="text" value={form.cliente_nombre} onChange={e => buscarCliente(e.target.value)}
+                  placeholder="Buscar cliente..." autoComplete="off"
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                {sugerenciasCliente.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
+                    {sugerenciasCliente.map(c => (
+                      <button key={c.id} type="button" onClick={() => elegirCliente(c)}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2">
+                        <span className="font-medium text-gray-800 dark:text-zinc-200">{c.nombre}</span>
+                        <span className="text-xs text-gray-400 dark:text-zinc-500 font-mono">{c.whatsapp}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Persona */}

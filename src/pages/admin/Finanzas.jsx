@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
+import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi } from '../../lib/supabase.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -105,6 +105,9 @@ export default function Finanzas() {
   const [costos, setCostos] = useState([])
   const [clientes, setClientes] = useState([])
   const [sugerenciasCliente, setSugerenciasCliente] = useState([])
+  const [personas, setPersonas] = useState([])
+  const [sugerenciasPersona, setSugerenciasPersona] = useState([])
+  const [conceptos, setConceptos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
@@ -121,16 +124,26 @@ export default function Finanzas() {
 
   async function cargarTodo() {
     setCargando(true)
-    const [rm, re, rc, rcl] = await Promise.all([
+    const [rm, re, rc, rcl, rch, rg, rv, rco] = await Promise.all([
       movimientosApi.getAll(),
       excursionesApi.getAll(),
       costosExcursionApi.getAll(),
       clientesApi.getAll(),
+      choferesApi.getAll(),
+      guiasApi.getAll(),
+      vendedoresApi.getAll(),
+      conceptosApi.getAll(),
     ])
     setMovimientos(rm.data || [])
     setExcursiones(re.data || [])
     setCostos(rc.data || [])
     setClientes(rcl.data || [])
+    setPersonas([
+      ...(rch.data || []).map(p => ({ nombre: p.nombre, tipo: 'Chofer' })),
+      ...(rg.data || []).map(p => ({ nombre: p.nombre, tipo: 'Guía' })),
+      ...(rv.data || []).map(p => ({ nombre: p.nombre, tipo: 'Vendedor' })),
+    ])
+    setConceptos((rco.data || []).filter(c => c.activo))
     setCargando(false)
   }
 
@@ -144,6 +157,18 @@ export default function Finanzas() {
   function elegirCliente(c) {
     setForm(f => ({ ...f, cliente_id: c.id, cliente_nombre: c.nombre }))
     setSugerenciasCliente([])
+  }
+
+  function buscarPersona(texto) {
+    setForm(f => ({ ...f, persona_nombre: texto }))
+    if (texto.length < 2) return setSugerenciasPersona([])
+    const lower = texto.toLowerCase()
+    setSugerenciasPersona(personas.filter(p => p.nombre?.toLowerCase().includes(lower)).slice(0, 5))
+  }
+
+  function elegirPersona(p) {
+    setForm(f => ({ ...f, persona_nombre: p.nombre }))
+    setSugerenciasPersona([])
   }
 
   // ── Filtrado y balance ──────────────────────────────────────────────────────
@@ -515,9 +540,11 @@ export default function Finanzas() {
               {/* Concepto */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Concepto *</label>
-                <input type="text" value={form.concepto} onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
-                  placeholder="Ej: Seña Maragogi — Juan Pérez"
-                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <select value={form.concepto} onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                  <option value="">— Seleccioná un concepto —</option>
+                  {conceptos.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                </select>
               </div>
 
               {/* Cliente */}
@@ -540,11 +567,22 @@ export default function Finanzas() {
               </div>
 
               {/* Persona */}
-              <div>
+              <div className="relative">
                 <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Persona (guía / chofer / vendedor)</label>
-                <input type="text" value={form.persona_nombre} onChange={e => setForm(f => ({ ...f, persona_nombre: e.target.value }))}
-                  placeholder="Nombre (opcional)"
+                <input type="text" value={form.persona_nombre} onChange={e => buscarPersona(e.target.value)}
+                  placeholder="Nombre (opcional)" autoComplete="off"
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                {sugerenciasPersona.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
+                    {sugerenciasPersona.map((p, i) => (
+                      <button key={`${p.nombre}-${i}`} type="button" onClick={() => elegirPersona(p)}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2">
+                        <span className="font-medium text-gray-800 dark:text-zinc-200">{p.nombre}</span>
+                        <span className="text-xs text-gray-400 dark:text-zinc-500">{p.tipo}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">

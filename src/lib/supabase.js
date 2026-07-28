@@ -180,6 +180,14 @@ export const costosExcursionApi = {
   delete: (id) => supabase?.from('costos_excursion').update({ activo: false }).eq('id', id),
 }
 
+// ── Conceptos de movimiento (Finanzas) ───────────────────────────────────────────
+export const conceptosApi = {
+  getAll: () => supabase?.from('conceptos_movimiento').select('*').order('nombre'),
+  create: (data) => supabase?.from('conceptos_movimiento').insert(data).select().single(),
+  update: (id, data) => supabase?.from('conceptos_movimiento').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('conceptos_movimiento').delete().eq('id', id),
+}
+
 // ── Usuarios del panel admin ─────────────────────────────────────────────────────
 export const usuariosAdminApi = {
   getAll: () => supabase?.from('usuarios_admin').select('*').order('nombre'),

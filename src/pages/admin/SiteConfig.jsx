@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
-import { usuariosAdminApi, hashPassword } from '../../lib/supabase.js'
+import { usuariosAdminApi, hashPassword, conceptosApi } from '../../lib/supabase.js'
 import { ROLES } from '../../lib/roles.js'
 
 const SECTION = {
@@ -275,6 +275,121 @@ function TabAccesos() {
   )
 }
 
+function TabConceptos() {
+  const [conceptos, setConceptos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [nuevo, setNuevo] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editandoNombre, setEditandoNombre] = useState('')
+
+  useEffect(() => { cargar() }, [])
+
+  async function cargar() {
+    setLoading(true)
+    const { data } = await conceptosApi.getAll()
+    setConceptos(data || [])
+    setLoading(false)
+  }
+
+  async function agregar() {
+    if (!nuevo.trim()) return
+    setGuardando(true)
+    const { data } = await conceptosApi.create({ nombre: nuevo.trim() })
+    if (data) setConceptos(prev => [...prev, data].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    setNuevo('')
+    setGuardando(false)
+  }
+
+  function iniciarEdicion(c) {
+    setEditandoId(c.id)
+    setEditandoNombre(c.nombre)
+  }
+
+  async function guardarEdicion(id) {
+    if (!editandoNombre.trim()) return
+    const { data } = await conceptosApi.update(id, { nombre: editandoNombre.trim() })
+    if (data) setConceptos(prev => prev.map(c => c.id === id ? data : c))
+    setEditandoId(null)
+  }
+
+  async function toggleActivo(c) {
+    await conceptosApi.update(c.id, { activo: !c.activo })
+    setConceptos(prev => prev.map(x => x.id === c.id ? { ...x, activo: !x.activo } : x))
+  }
+
+  async function eliminar(id) {
+    await conceptosApi.delete(id)
+    setConceptos(prev => prev.filter(c => c.id !== id))
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Conceptos de movimiento</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Opciones que aparecen en el campo "Concepto" al registrar un movimiento en Finanzas.</p>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm mb-4 overflow-hidden">
+        {loading ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Cargando...</p>
+        ) : conceptos.length === 0 ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Sin conceptos cargados.</p>
+        ) : (
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+            {conceptos.map(c => (
+              <div key={c.id} className="flex items-center gap-3 px-5 py-3">
+                {editandoId === c.id ? (
+                  <input
+                    type="text"
+                    value={editandoNombre}
+                    autoFocus
+                    onChange={e => setEditandoNombre(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && guardarEdicion(c.id)}
+                    onBlur={() => guardarEdicion(c.id)}
+                    className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                ) : (
+                  <button onClick={() => iniciarEdicion(c)} className="flex-1 text-left text-sm font-medium text-gray-800 dark:text-zinc-200 hover:text-brand-600 dark:hover:text-brand-400">
+                    {c.nombre}
+                  </button>
+                )}
+                <button
+                  onClick={() => toggleActivo(c)}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${c.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'}`}
+                >
+                  {c.activo ? 'Activo' : 'Inactivo'}
+                </button>
+                <button onClick={() => eliminar(c.id)} className="text-xs text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 font-medium shrink-0">
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={nuevo}
+          onChange={e => setNuevo(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && agregar()}
+          placeholder="Nuevo concepto (Ej: Comisión vendedor)"
+          className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <button
+          onClick={agregar}
+          disabled={guardando || !nuevo.trim()}
+          className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          + Agregar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SiteConfig() {
   const { config, saveConfig, loading } = useSiteConfig()
   const [form, setForm] = useState(config)
@@ -307,17 +422,17 @@ export default function SiteConfig() {
   const card = { background: 'white', borderRadius: 16, border: '1px solid #e8d09a', padding: '24px 28px', marginBottom: 20 }
 
   return (
-    <div style={{ maxWidth: tab === 'accesos' ? 960 : 720, margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ maxWidth: tab === 'sitio' ? 720 : 960, margin: '0 auto', padding: '32px 24px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 6 }}>Panel interno</p>
         <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.8rem', color: '#1C1208' }}>Configuración</h1>
-        <p style={{ fontSize: '0.85rem', color: '#888', marginTop: 4 }}>Sitio público, accesos y roles del panel.</p>
+        <p style={{ fontSize: '0.85rem', color: '#888', marginTop: 4 }}>Sitio público, accesos, roles y conceptos del panel.</p>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[{ id: 'sitio', label: '🖼️ Sitio público' }, { id: 'accesos', label: '🔐 Accesos' }].map(t => (
+        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }].map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -334,6 +449,7 @@ export default function SiteConfig() {
       </div>
 
       {tab === 'accesos' && <TabAccesos />}
+      {tab === 'conceptos' && <TabConceptos />}
 
       {tab === 'sitio' && (
         <>

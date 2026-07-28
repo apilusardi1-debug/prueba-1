@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { choferesApi, guiasApi, reservasApi, excursionesApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi } from '../../lib/supabase.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -8,6 +8,29 @@ const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 function formatPrecio(n) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
+}
+
+function calcularCostoOperativo(excursionId, pax, costosCatalogo) {
+  const costosExc = costosCatalogo.filter(c => c.excursion_id === excursionId && c.activo !== false)
+  let total = 0
+  let moneda = 'BRL'
+  const detalle = []
+  for (const c of costosExc) {
+    moneda = c.moneda || moneda
+    if (c.tipo === 'chofer_tramos') {
+      const tramos = [...(c.tramos || [])].sort((a, b) => a.hasta - b.hasta)
+      const tramo = tramos.find(t => pax <= t.hasta) || tramos[tramos.length - 1]
+      if (tramo) {
+        total += tramo.monto
+        detalle.push({ concepto: c.concepto, monto: tramo.monto, nota: `hasta ${tramo.hasta} pax` })
+      }
+    } else {
+      const monto = (c.monto_por_persona || 0) * pax
+      total += monto
+      detalle.push({ concepto: c.concepto, monto, nota: `${formatPrecio(c.monto_por_persona)} x ${pax}` })
+    }
+  }
+  return { total, moneda, detalle }
 }
 
 function formatFechaLarga(fechaStr) {
@@ -115,6 +138,7 @@ export default function Agenda() {
   const [vista, setVista] = useState(fechaParam ? 'calendario' : 'tabla')
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
+  const [costos, setCostos] = useState([])
   const [reservasNorm, setReservasNorm] = useState([])
   const [cargando, setCargando] = useState(true)
   const [asignaciones, setAsignaciones] = useState({})
@@ -126,9 +150,11 @@ export default function Agenda() {
       choferesApi.getAll(),
       guiasApi.getAll(),
       reservasApi.getAll(),
-    ]).then(([ch, gu, res]) => {
+      costosExcursionApi.getAll(),
+    ]).then(([ch, gu, res, co]) => {
       if (!ch.error) setChoferes((ch.data || []).filter((c) => c.activo))
       if (!gu.error) setGuias(gu.data || [])
+      if (!co.error) setCostos(co.data || [])
       if (!res.error) {
         const norm = (res.data || []).map(normalizarReserva)
         setReservasNorm(norm)
@@ -156,6 +182,16 @@ export default function Agenda() {
   async function handleAsignar(reservaId, choferId) {
     setAsignaciones((p) => ({ ...p, [reservaId]: choferId }))
     await reservasApi.updateAsignacion(reservaId, { chofer_id: choferId || null })
+
+    if (choferId) {
+      const reserva = reservasNorm.find((r) => r.id === reservaId)
+      if (reserva) {
+        const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursionId, reserva.personas || 1, costos)
+        if (detalle.length > 0) {
+          await reservasApi.updateCostoOperativo(reservaId, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
+        }
+      }
+    }
   }
 
   async function handleAsignarGuia(opKey, guiaId) {

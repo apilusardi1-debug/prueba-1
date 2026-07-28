@@ -1,30 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { reservasApi, choferesApi, guiasApi, excursionesApi, clientesApi, costosExcursionApi } from '../../lib/supabase.js'
+import { reservasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
-
-function calcularCostoOperativo(excursionId, pax, costosCatalogo) {
-  const costosExc = costosCatalogo.filter(c => c.excursion_id === excursionId && c.activo !== false)
-  let total = 0
-  let moneda = 'BRL'
-  const detalle = []
-  for (const c of costosExc) {
-    moneda = c.moneda || moneda
-    if (c.tipo === 'chofer_tramos') {
-      const tramos = [...(c.tramos || [])].sort((a, b) => a.hasta - b.hasta)
-      const tramo = tramos.find(t => pax <= t.hasta) || tramos[tramos.length - 1]
-      if (tramo) {
-        total += tramo.monto
-        detalle.push({ concepto: c.concepto, monto: tramo.monto, nota: `hasta ${tramo.hasta} pax` })
-      }
-    } else {
-      const monto = (c.monto_por_persona || 0) * pax
-      total += monto
-      detalle.push({ concepto: c.concepto, monto, nota: `${formatPrecio(c.monto_por_persona, c.moneda)} x ${pax}` })
-    }
-  }
-  return { total, moneda, detalle }
-}
 
 const ESTADOS = {
   pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
@@ -42,10 +19,7 @@ const FORM_VACIO = {
 export default function Reservas() {
   const navigate = useNavigate()
   const [reservas, setReservas] = useState([])
-  const [choferes, setChoferes] = useState([])
-  const [guias, setGuias] = useState([])
   const [excursiones, setExcursiones] = useState([])
-  const [costos, setCostos] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [modalNueva, setModalNueva] = useState(false)
@@ -55,17 +29,11 @@ export default function Reservas() {
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: r }, { data: c }, { data: g }, { data: e }, { data: co }] = await Promise.all([
+        const [{ data: r }, { data: e }] = await Promise.all([
           reservasApi.getAll(),
-          choferesApi.getAll(),
-          guiasApi.getAll(),
           excursionesApi.getAll(),
-          costosExcursionApi.getAll(),
         ])
         if (e) setExcursiones(e)
-        if (c) setChoferes(c)
-        if (g) setGuias(g)
-        if (co) setCostos(co)
 
         if (r) {
           const hoy = new Date().toISOString().split('T')[0]
@@ -93,23 +61,6 @@ export default function Reservas() {
     const monto = parseFloat(pagado) || 0
     setReservas(prev => prev.map(r => r.id === id ? { ...r, pagado: monto } : r))
     await reservasApi.updatePago(id, monto)
-  }
-
-  async function asignar(reserva, campo, valor) {
-    const update = { [campo]: valor || null }
-    setReservas(prev => prev.map(r => r.id === reserva.id ? { ...r, ...update } : r))
-    await reservasApi.updateAsignacion(reserva.id, update)
-
-    if (campo === 'chofer_id' && valor) {
-      const pax = (reserva.adultos || 0) + (reserva.menores || 0)
-      const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursion_id, pax, costos)
-      if (detalle.length > 0) {
-        setReservas(prev => prev.map(r => r.id === reserva.id
-          ? { ...r, costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle }
-          : r))
-        await reservasApi.updateCostoOperativo(reserva.id, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
-      }
-    }
   }
 
   async function eliminarReserva(id) {
@@ -273,8 +224,6 @@ export default function Reservas() {
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Personas</th>
                 <th className="px-5 py-3 text-left">Pickup</th>
-                <th className="px-5 py-3 text-left">Chofer</th>
-                <th className="px-5 py-3 text-left">Guía</th>
                 <th className="px-5 py-3 text-left">Costo op.</th>
                 <th className="px-5 py-3 text-left">Total</th>
                 <th className="px-5 py-3 text-left">Pagado</th>
@@ -316,38 +265,6 @@ export default function Reservas() {
                     </td>
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400 text-xs max-w-[140px]">
                       <p className="truncate">{r.ubicacion || '–'}</p>
-                    </td>
-
-                    {/* Chofer */}
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={r.chofer_id || ''}
-                          onChange={e => asignar(r, 'chofer_id', e.target.value)}
-                          className="text-xs border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-zinc-600 max-w-[120px]"
-                        >
-                          <option value="">— Sin asignar</option>
-                          {choferes.map(c => (
-                            <option key={c.id} value={c.id}>{c.nombre}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-
-                    {/* Guía */}
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={r.guia_id || ''}
-                          onChange={e => asignar(r, 'guia_id', e.target.value)}
-                          className="text-xs border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-zinc-600 max-w-[120px]"
-                        >
-                          <option value="">— Sin asignar</option>
-                          {guias.map(g => (
-                            <option key={g.id} value={g.id}>{g.nombre}</option>
-                          ))}
-                        </select>
-                      </div>
                     </td>
 
                     <td className="px-5 py-3 text-xs whitespace-nowrap">

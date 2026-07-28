@@ -29,6 +29,7 @@ function calcularCostoOperativo(excursionId, pax, costosCatalogo) {
 const ESTADOS = {
   pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
   confirmada:  { label: 'Confirmada',  color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
+  completada:  { label: 'Completada',  color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
   cancelada:   { label: 'Cancelada',   color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
 }
 
@@ -62,10 +63,21 @@ export default function Reservas() {
           costosExcursionApi.getAll(),
         ])
         if (e) setExcursiones(e)
-        if (r) setReservas(r)
         if (c) setChoferes(c)
         if (g) setGuias(g)
         if (co) setCostos(co)
+
+        if (r) {
+          const hoy = new Date().toISOString().split('T')[0]
+          const vencidas = r.filter(x => x.estado === 'confirmada' && x.fecha < hoy)
+          if (vencidas.length > 0) {
+            await Promise.all(vencidas.map(x => reservasApi.updateEstado(x.id, 'completada')))
+            const idsVencidas = new Set(vencidas.map(x => x.id))
+            setReservas(r.map(x => idsVencidas.has(x.id) ? { ...x, estado: 'completada' } : x))
+          } else {
+            setReservas(r)
+          }
+        }
       } catch (_) {}
       setLoading(false)
     }
@@ -160,7 +172,10 @@ export default function Reservas() {
     }
   }
 
-  const filtradas = reservas.filter(r => !filtroEstado || r.estado === filtroEstado)
+  // Por defecto ("Todas") se ocultan las completadas para que la vista de
+  // trabajo diario no se llene de viajes ya terminados — siguen accesibles
+  // enteras con el filtro "Completada" o en el perfil del cliente.
+  const filtradas = reservas.filter(r => filtroEstado ? r.estado === filtroEstado : r.estado !== 'completada')
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando reservas...</div>
 
@@ -180,10 +195,11 @@ export default function Reservas() {
       </div>
 
       {/* Resumen */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Pendientes', value: reservas.filter(r => r.estado === 'pendiente').length, color: 'text-yellow-600 dark:text-yellow-400' },
           { label: 'Confirmadas', value: reservas.filter(r => r.estado === 'confirmada').length, color: 'text-green-600 dark:text-green-400' },
+          { label: 'Completadas', value: reservas.filter(r => r.estado === 'completada').length, color: 'text-blue-600 dark:text-blue-400' },
           { label: 'Canceladas', value: reservas.filter(r => r.estado === 'cancelada').length, color: 'text-red-500 dark:text-red-400' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">

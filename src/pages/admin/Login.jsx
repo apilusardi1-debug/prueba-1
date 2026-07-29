@@ -14,10 +14,10 @@ export default function Login() {
     setLoading(true)
     setError('')
 
-    const { data: usuario } = await usuariosAdminApi.getByEmail(email.trim().toLowerCase())
     const hash = await hashPassword(password)
+    const { ok, usuario } = await usuariosAdminApi.login(email.trim().toLowerCase(), hash)
 
-    if (usuario && usuario.activo && usuario.password_hash === hash) {
+    if (ok && usuario) {
       localStorage.setItem('admin_session', JSON.stringify({ email: usuario.email, nombre: usuario.nombre, role: usuario.rol }))
       navigate('/admin')
     } else {

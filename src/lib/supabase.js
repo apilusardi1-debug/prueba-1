@@ -189,12 +189,22 @@ export const conceptosApi = {
 }
 
 // ── Usuarios del panel admin ─────────────────────────────────────────────────────
+// La tabla usuarios_admin tiene RLS activado sin políticas (bloqueada
+// para anon) — todo el acceso pasa por la Edge Function usuarios-admin,
+// que usa la service_role key del lado del servidor.
+async function invocarUsuariosAdmin(action, body = {}) {
+  if (!supabase) return { ok: false, error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('usuarios-admin', { body: { action, ...body } })
+  if (error) return { ok: false, error: error.message }
+  return data
+}
+
 export const usuariosAdminApi = {
-  getAll: () => supabase?.from('usuarios_admin').select('*').order('nombre'),
-  getByEmail: (email) => supabase?.from('usuarios_admin').select('*').eq('email', email).maybeSingle(),
-  create: (data) => supabase?.from('usuarios_admin').insert(data).select().single(),
-  update: (id, data) => supabase?.from('usuarios_admin').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('usuarios_admin').delete().eq('id', id),
+  login: (email, password_hash) => invocarUsuariosAdmin('login', { email, password_hash }),
+  getAll: () => invocarUsuariosAdmin('list'),
+  create: (data) => invocarUsuariosAdmin('create', data),
+  update: (id, data) => invocarUsuariosAdmin('update', { id, data }),
+  delete: (id) => invocarUsuariosAdmin('delete', { id }),
 }
 
 // Hash de contraseña (SHA-256) para no guardarla ni compararla en texto plano.

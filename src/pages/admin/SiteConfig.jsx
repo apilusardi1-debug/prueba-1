@@ -76,8 +76,8 @@ function TabAccesos() {
 
   async function cargar() {
     setLoading(true)
-    const { data } = await usuariosAdminApi.getAll()
-    setUsuarios(data || [])
+    const { ok, usuarios: lista } = await usuariosAdminApi.getAll()
+    setUsuarios(ok ? lista : [])
     setLoading(false)
   }
 
@@ -108,12 +108,12 @@ function TabAccesos() {
     }
     if (form.password) payload.password_hash = await hashPassword(form.password)
 
-    const { error: err } = editando
+    const { ok, error: err } = editando
       ? await usuariosAdminApi.update(editando, payload)
       : await usuariosAdminApi.create(payload)
 
-    if (err) {
-      setError(err.message?.includes('duplicate') ? 'Ya existe un usuario con ese email.' : 'Error al guardar.')
+    if (!ok) {
+      setError(err?.includes('duplicate') ? 'Ya existe un usuario con ese email.' : 'Error al guardar.')
     } else {
       setMostrarForm(false)
       cargar()

@@ -13,7 +13,7 @@ function fmtFecha(f) {
   if (!f) return '—'
   return new Date(f).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-function fmtMonto(n, moneda = 'USD') {
+function fmtMonto(n, moneda = 'BRL') {
   if (n == null) return '—'
   return `${moneda} ${Number(n).toLocaleString('es-AR')}`
 }

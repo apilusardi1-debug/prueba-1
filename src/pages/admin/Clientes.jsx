@@ -42,7 +42,7 @@ const ACTIVIDAD_ICON = {
 /* ════════════════════════════════════════════════
    LISTA DE CLIENTES
    ════════════════════════════════════════════════ */
-const FORM_VACIO = { nombre: '', whatsapp: '', email: '', pais: '', ciudad: '' }
+const FORM_VACIO = { nombre: '', whatsapp: '', email: '', pais: '', ciudad: '', cantidad_pasajeros: '' }
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -121,6 +121,7 @@ export default function Clientes() {
                 <th className="px-5 py-3 text-left">Cliente</th>
                 <th className="px-5 py-3 text-left">WhatsApp</th>
                 <th className="px-5 py-3 text-left">País</th>
+                <th className="px-5 py-3 text-left">Pasajeros</th>
                 <th className="px-5 py-3 text-left">Reservas</th>
                 <th className="px-5 py-3 text-left">Total gastado</th>
                 <th className="px-5 py-3 text-left"></th>
@@ -142,6 +143,7 @@ export default function Clientes() {
                   </td>
                   <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs font-mono">{c.whatsapp}</td>
                   <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs">{c.pais || '—'}{c.ciudad ? `, ${c.ciudad}` : ''}</td>
+                  <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs">{c.cantidad_pasajeros || '—'}</td>
                   <td className="px-5 py-3">
                     <span className="font-semibold text-gray-800 dark:text-zinc-200">{c.cantidad_reservas || 0}</span>
                   </td>
@@ -217,7 +219,11 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
     if (!form.whatsapp.trim()) return setError('El WhatsApp es obligatorio')
     setError('')
     setGuardando(true)
-    await onGuardar({ ...form, whatsapp: form.whatsapp.replace(/\D/g, '') })
+    await onGuardar({
+      ...form,
+      whatsapp: form.whatsapp.replace(/\D/g, ''),
+      cantidad_pasajeros: form.cantidad_pasajeros ? parseInt(form.cantidad_pasajeros) : null,
+    })
     setGuardando(false)
   }
 
@@ -236,13 +242,14 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
             { key: 'email',    label: 'Email',            placeholder: 'juan@email.com' },
             { key: 'pais',     label: 'País',             placeholder: 'Argentina' },
             { key: 'ciudad',   label: 'Ciudad',           placeholder: 'Buenos Aires' },
-          ].map(({ key, label, placeholder, required }) => (
+            { key: 'cantidad_pasajeros', label: 'Cantidad de pasajeros', placeholder: '2', type: 'number' },
+          ].map(({ key, label, placeholder, required, type }) => (
             <div key={key}>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">
                 {label}{required && <span className="text-red-400 ml-0.5">*</span>}
               </label>
               <input
-                type="text"
+                type={type || 'text'}
                 value={form[key]}
                 onChange={e => set(key, e.target.value)}
                 placeholder={placeholder}
@@ -285,6 +292,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
     ciudad: cliente.ciudad || '',
     whatsapp: cliente.whatsapp || '',
     notas: cliente.notas || '',
+    cantidad_pasajeros: cliente.cantidad_pasajeros ?? '',
   })
 
   useEffect(() => {
@@ -331,7 +339,8 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   }
 
   async function guardarPerfil() {
-    const { data } = await clientesApi.update(cliente.id, form)
+    const payload = { ...form, cantidad_pasajeros: form.cantidad_pasajeros ? parseInt(form.cantidad_pasajeros) : null }
+    const { data } = await clientesApi.update(cliente.id, payload)
     if (data) { onUpdate(data); setEditando(false) }
   }
 
@@ -412,10 +421,12 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                 { key: 'whatsapp', label: 'WhatsApp' },
                 { key: 'pais', label: 'País' },
                 { key: 'ciudad', label: 'Ciudad' },
-              ].map(({ key, label, col }) => (
+                { key: 'cantidad_pasajeros', label: 'Cantidad de pasajeros', type: 'number' },
+              ].map(({ key, label, col, type }) => (
                 <div key={key} className={col === 2 ? 'col-span-2' : ''}>
                   <label className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">{label}</label>
                   <input
+                    type={type || 'text'}
                     value={form[key]}
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"

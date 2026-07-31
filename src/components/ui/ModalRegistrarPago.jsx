@@ -5,6 +5,15 @@ const METODOS = ['efectivo', 'transferencia', 'qr', 'tarjeta']
 
 function hoy() { return new Date().toISOString().split('T')[0] }
 
+function usuarioActual() {
+  try {
+    const s = JSON.parse(localStorage.getItem('admin_session') || '{}')
+    return s.nombre || s.email || null
+  } catch (_) {
+    return null
+  }
+}
+
 // Único punto que registra un pago: crea el registro individual en
 // "pagos" (historial), actualiza el "pagado" acumulado de la reserva
 // (saldo), y opcionalmente carga el ingreso en la caja de Finanzas —
@@ -69,6 +78,7 @@ export default function ModalRegistrarPago({ reserva, clienteId, clienteNombre, 
         metodo,
         estado: 'confirmado',
         notas: null,
+        registrado_por: usuarioActual(),
       })
       if (errCaja) {
         setGuardando(false)

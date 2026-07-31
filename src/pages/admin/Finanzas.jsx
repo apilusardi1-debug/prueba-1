@@ -7,6 +7,15 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
 
+function usuarioActual() {
+  try {
+    const s = JSON.parse(localStorage.getItem('admin_session') || '{}')
+    return s.nombre || s.email || null
+  } catch (_) {
+    return null
+  }
+}
+
 function rangoFechas(periodo) {
   const hoyStr = hoy()
   if (periodo === 'hoy') return { desde: hoyStr, hasta: hoyStr }
@@ -224,7 +233,7 @@ export default function Finanzas() {
     if (movEditandoId) {
       await movimientosApi.update(movEditandoId, payload)
     } else {
-      await movimientosApi.create(payload)
+      await movimientosApi.create({ ...payload, registrado_por: usuarioActual() })
     }
     setGuardando(false)
     setModalMovimiento(false)
@@ -420,6 +429,7 @@ export default function Finanzas() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Método</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Monto</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Estado</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wide">Registrado por</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -455,6 +465,7 @@ export default function Finanzas() {
                             {m.estado}
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-gray-400 dark:text-zinc-600 text-xs">{m.registrado_por || '—'}</td>
                         <td className="px-4 py-3 text-center">
                           {eliminandoId === m.id ? (
                             <span className="flex items-center gap-1 justify-center text-xs">

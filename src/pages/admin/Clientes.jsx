@@ -4,6 +4,7 @@ import {
   clientesApi, reservasClienteApi, pagosApi,
   actividadApi, notasClienteApi, excursionesApi, reservasApi,
 } from '../../lib/supabase.js'
+import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 
 /* ─── helpers ─── */
 function iniciales(nombre = '') {
@@ -283,6 +284,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   const [notas, setNotas] = useState([])
   const [nuevaNota, setNuevaNota] = useState('')
   const [cargando, setCargando] = useState(true)
+  const [pagandoReserva, setPagandoReserva] = useState(null)
   const [editando, setEditando] = useState(false)
   const [modalReserva, setModalReserva] = useState(false)
   const [form, setForm] = useState({
@@ -505,7 +507,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       <p className="text-3xl mb-2">📋</p>
                       <p className="text-sm">Sin reservas registradas</p>
                     </div>
-                  ) : reservas.map(r => (
+                  ) : reservas.map(r => {
+                    const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
+                    return (
                     <div key={r.id} className="px-6 py-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
@@ -526,8 +530,23 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                           </p>
                         </div>
                       </div>
+                      {r.total > 0 && (
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 dark:border-zinc-800">
+                          <p className="text-xs text-gray-400 dark:text-zinc-600">
+                            {saldo > 0 ? <>Saldo pendiente: <span className="font-semibold text-amber-600 dark:text-amber-400">{fmtMonto(saldo, 'BRL')}</span></> : <span className="text-green-600 dark:text-green-400 font-semibold">Pagado por completo</span>}
+                          </p>
+                          {saldo > 0 && (
+                            <button
+                              onClick={() => setPagandoReserva(r)}
+                              className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300"
+                            >
+                              Registrar pago
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
 
@@ -646,6 +665,20 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
           cliente={cliente}
           onGuardar={crearReserva}
           onCerrar={() => setModalReserva(false)}
+        />
+      )}
+
+      {pagandoReserva && (
+        <ModalRegistrarPago
+          reserva={pagandoReserva}
+          clienteId={cliente.id}
+          clienteNombre={cliente.nombre}
+          onCerrar={() => setPagandoReserva(null)}
+          onGuardado={(nuevoPagado) => {
+            setReservas(prev => prev.map(r => r.id === pagandoReserva.id ? { ...r, pagado: nuevoPagado } : r))
+            setPagandoReserva(null)
+            pagosApi.getByCliente(cliente.id).then(({ data }) => setPagos(data || []))
+          }}
         />
       )}
     </div>

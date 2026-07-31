@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { reservasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
+import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 
 const ESTADOS = {
   pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
@@ -25,6 +26,7 @@ export default function Reservas() {
   const [modalNueva, setModalNueva] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
+  const [pagandoReserva, setPagandoReserva] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -57,11 +59,6 @@ export default function Reservas() {
     await reservasApi.updateEstado(id, estado)
   }
 
-  async function actualizarPago(id, pagado) {
-    const monto = parseFloat(pagado) || 0
-    setReservas(prev => prev.map(r => r.id === id ? { ...r, pagado: monto } : r))
-    await reservasApi.updatePago(id, monto)
-  }
 
   async function eliminarReserva(id) {
     await reservasApi.delete(id)
@@ -282,13 +279,13 @@ export default function Reservas() {
                     <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs whitespace-nowrap">
                       {formatPrecio(r.total, r.moneda)}
                     </td>
-                    <td className="px-5 py-3">
-                      <input
-                        type="number"
-                        defaultValue={r.pagado || 0}
-                        onBlur={e => actualizarPago(r.id, e.target.value)}
-                        className="w-20 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-zinc-600"
-                      />
+                    <td className="px-5 py-3 text-xs">
+                      <p className="text-gray-700 dark:text-zinc-300 font-medium">{formatPrecio(r.pagado || 0, r.moneda)}</p>
+                      {Math.max((r.total || 0) - (r.pagado || 0), 0) > 0 && (
+                        <button onClick={() => setPagandoReserva(r)} className="text-brand-600 dark:text-brand-400 hover:underline text-[11px] font-medium">
+                          Registrar pago
+                        </button>
+                      )}
                     </td>
                     <td className={`px-5 py-3 text-xs font-medium whitespace-nowrap ${(r.total - (r.pagado || 0)) > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                       {formatPrecio(Math.max((r.total || 0) - (r.pagado || 0), 0), r.moneda)}
@@ -334,6 +331,19 @@ export default function Reservas() {
           excursiones={excursiones}
           onGuardar={crearReserva}
           onCerrar={() => setModalNueva(false)}
+        />
+      )}
+
+      {pagandoReserva && (
+        <ModalRegistrarPago
+          reserva={pagandoReserva}
+          clienteId={pagandoReserva.cliente_id}
+          clienteNombre={pagandoReserva.cliente_nombre}
+          onCerrar={() => setPagandoReserva(null)}
+          onGuardado={(nuevoPagado) => {
+            setReservas(prev => prev.map(r => r.id === pagandoReserva.id ? { ...r, pagado: nuevoPagado } : r))
+            setPagandoReserva(null)
+          }}
         />
       )}
     </div>

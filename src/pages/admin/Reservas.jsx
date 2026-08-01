@@ -220,8 +220,6 @@ export default function Reservas() {
                 <th className="px-5 py-3 text-left">Excursión</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Personas</th>
-                <th className="px-5 py-3 text-left">Pickup</th>
-                <th className="px-5 py-3 text-left">Costo op.</th>
                 <th className="px-5 py-3 text-left">Total</th>
                 <th className="px-5 py-3 text-left">Pagado</th>
                 <th className="px-5 py-3 text-left">Saldo</th>
@@ -259,22 +257,6 @@ export default function Reservas() {
                     <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs">
                       {r.adultos > 0 && <span>👤 {r.adultos} ad.</span>}
                       {r.menores > 0 && <span className="ml-1">👶 {r.menores} men.</span>}
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 dark:text-zinc-400 text-xs max-w-[140px]">
-                      <p className="truncate">{r.ubicacion || '–'}</p>
-                    </td>
-
-                    <td className="px-5 py-3 text-xs whitespace-nowrap">
-                      {r.costo_operativo ? (
-                        <span
-                          className="text-gray-600 dark:text-zinc-400 cursor-help border-b border-dashed border-gray-300 dark:border-zinc-600"
-                          title={(r.costo_operativo_detalle || []).map(d => `${d.concepto} (${d.nota}): ${formatPrecio(d.monto, r.costo_operativo_moneda)}`).join('\n')}
-                        >
-                          {formatPrecio(r.costo_operativo, r.costo_operativo_moneda)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 dark:text-zinc-700">–</span>
-                      )}
                     </td>
                     <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs whitespace-nowrap">
                       {formatPrecio(r.total, r.moneda)}

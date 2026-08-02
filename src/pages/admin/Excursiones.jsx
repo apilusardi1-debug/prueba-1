@@ -18,6 +18,7 @@ export default function Excursiones() {
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState(null)
   const [aBorrar, setABorrar] = useState(null) // excursión pendiente de confirmar eliminación
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false)
   const fileRef = useRef()
   const opcionalesFileRef = useRef()
 
@@ -272,7 +273,6 @@ export default function Excursiones() {
                 { key: 'hora_regreso', label: 'Hora de regreso estimada (ej: 6:00 PM)' },
                 { key: 'precio', label: 'Precio (R$)' },
                 { key: 'cupos', label: 'Cupos totales' },
-                { key: 'fechas', label: 'Fechas (separadas por coma: 2025-08-10, 2025-08-17)' },
                 { key: 'incluye', label: 'Incluye (separado por coma: Vuelo ida y vuelta, Hotel, Desayuno)' },
               ].map(({ key, label }) => (
                 <div key={key}>
@@ -285,6 +285,19 @@ export default function Excursiones() {
                   />
                 </div>
               ))}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Fechas disponibles</label>
+                <button
+                  type="button"
+                  onClick={() => setCalendarioAbierto(true)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm text-left hover:border-brand-400 dark:hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-colors"
+                >
+                  {form.fechas
+                    ? `📅 ${form.fechas}`
+                    : <span className="text-gray-400 dark:text-zinc-500">Seleccionar fechas...</span>}
+                </button>
+              </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Categoría</label>
@@ -322,6 +335,17 @@ export default function Excursiones() {
         </div>
       )}
 
+      {calendarioAbierto && (
+        <CalendarioFechas
+          fechasIniciales={form.fechas.split(',').map(f => f.trim()).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f))}
+          onCerrar={() => setCalendarioAbierto(false)}
+          onAceptar={(fechas) => {
+            setForm(p => ({ ...p, fechas: fechas.join(', ') }))
+            setCalendarioAbierto(false)
+          }}
+        />
+      )}
+
       {/* Confirmar eliminación */}
       {aBorrar && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
@@ -346,6 +370,84 @@ export default function Excursiones() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function CalendarioFechas({ fechasIniciales, onAceptar, onCerrar }) {
+  const [seleccionadas, setSeleccionadas] = useState(fechasIniciales)
+  const [mesActual, setMesActual] = useState(() => {
+    const primera = fechasIniciales[0]
+    return primera ? new Date(primera + 'T00:00:00') : new Date()
+  })
+
+  const anio = mesActual.getFullYear()
+  const mes = mesActual.getMonth()
+  const primerDiaSemana = new Date(anio, mes, 1).getDay()
+  const offset = (primerDiaSemana + 6) % 7 // semana arranca el lunes
+  const diasEnMes = new Date(anio, mes + 1, 0).getDate()
+
+  const celdas = [...Array(offset).fill(null), ...Array(diasEnMes)].map((_, i) => (i < offset ? null : i - offset + 1))
+
+  function toggleDia(dia) {
+    const fecha = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    setSeleccionadas(prev => prev.includes(fecha) ? prev.filter(f => f !== fecha) : [...prev, fecha].sort())
+  }
+
+  const nombreMes = mesActual.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <button type="button" onClick={() => setMesActual(new Date(anio, mes - 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-lg">‹</button>
+          <span className="font-semibold text-sm text-gray-900 dark:text-zinc-100 capitalize">{nombreMes}</span>
+          <button type="button" onClick={() => setMesActual(new Date(anio, mes + 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-lg">›</button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+            <div key={i} className="text-center text-[10px] font-semibold text-gray-400 dark:text-zinc-500 py-1">{d}</div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 mb-4">
+          {celdas.map((dia, i) => {
+            if (dia === null) return <div key={i} />
+            const fecha = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+            const activo = seleccionadas.includes(fecha)
+            return (
+              <button
+                type="button"
+                key={i}
+                onClick={() => toggleDia(dia)}
+                className={`h-9 rounded-lg text-sm transition-colors ${
+                  activo
+                    ? 'bg-brand-600 dark:bg-brand-500 text-white font-semibold'
+                    : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                {dia}
+              </button>
+            )
+          })}
+        </div>
+
+        <p className="text-xs text-gray-400 dark:text-zinc-500 mb-4">
+          {seleccionadas.length === 0
+            ? 'Ninguna fecha seleccionada'
+            : `${seleccionadas.length} fecha${seleccionadas.length > 1 ? 's' : ''} seleccionada${seleccionadas.length > 1 ? 's' : ''}`}
+        </p>
+
+        <div className="flex gap-3">
+          <button type="button" onClick={onCerrar} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+            Cancelar
+          </button>
+          <button type="button" onClick={() => onAceptar(seleccionadas)} className="flex-1 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+            Aceptar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

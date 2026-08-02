@@ -451,7 +451,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
   })
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
 
       {/* ── Calendario ── */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
@@ -490,8 +490,8 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
 
                 return (
                   <button key={di} onClick={() => setDiaSeleccionado(fechaStr)}
-                    className="flex flex-col items-start pt-1.5 pb-2 px-0.5 gap-1 min-h-[72px] group border-r border-gray-50 dark:border-zinc-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors">
-                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium transition-all mx-auto ${
+                    className="flex flex-col items-start pt-2 pb-2.5 px-1 gap-1.5 min-h-[104px] group border-r border-gray-50 dark:border-zinc-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                    <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium transition-all mx-auto ${
                       esHoy
                         ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
                         : seleccionado
@@ -502,14 +502,14 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                         ? 'text-gray-700 dark:text-zinc-300'
                         : 'text-gray-300 dark:text-zinc-700'
                     }`}>{dia}</span>
-                    <div className="w-full flex flex-col gap-0.5 px-0.5">
-                      {salidasDia.slice(0, 2).map((s, i) => (
-                        <span key={i} className={`w-full px-1 py-0.5 rounded text-[9px] font-semibold truncate leading-tight ${CHIP_COLORS[i % CHIP_COLORS.length]}`}>
+                    <div className="w-full flex flex-col gap-1 px-0.5">
+                      {salidasDia.slice(0, 3).map((s, i) => (
+                        <span key={i} className={`w-full px-1.5 py-1 rounded text-[10.5px] font-semibold truncate leading-tight ${CHIP_COLORS[i % CHIP_COLORS.length]}`}>
                           {s.excursion.nombre}
                         </span>
                       ))}
-                      {salidasDia.length > 2 && (
-                        <span className="text-[9px] text-gray-400 dark:text-zinc-600 pl-1">+{salidasDia.length - 2} más</span>
+                      {salidasDia.length > 3 && (
+                        <span className="text-[10px] text-gray-400 dark:text-zinc-600 pl-1">+{salidasDia.length - 3} más</span>
                       )}
                     </div>
                   </button>
@@ -571,9 +571,9 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                           <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold ${avatarColor(r.clienteNombre)}`}>
                             {iniciales(r.clienteNombre)}
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 max-w-[45%]">
                             <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">{r.clienteNombre}</p>
-                            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{horario.partida} · Regreso {horario.regreso} · {r.personas} pax</p>
+                            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5 truncate">{horario.partida} · Regreso {horario.regreso} · {r.personas} pax</p>
                           </div>
                           <p className="text-xs text-gray-400 dark:text-zinc-600 flex-shrink-0 hidden sm:block">{r.hospedaje || '—'}</p>
                           <a href={`https://wa.me/${r.clienteWhatsapp}`} target="_blank" rel="noopener noreferrer"

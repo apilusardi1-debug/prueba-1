@@ -184,7 +184,7 @@ export default function ClientesPaquetes() {
       )}
 
       {seleccionada && editForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => setSeleccionada(null)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
           <div className="bg-white dark:bg-zinc-900 w-96 h-full shadow-xl dark:shadow-black/40 flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
               <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Propuesta</h2>
@@ -426,7 +426,7 @@ function ModalAgregarCliente({ onCerrar, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">

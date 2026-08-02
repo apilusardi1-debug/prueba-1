@@ -724,7 +724,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 border border-transparent dark:border-zinc-800 w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex items-start justify-between gap-4">

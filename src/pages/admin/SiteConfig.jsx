@@ -220,7 +220,7 @@ function TabAccesos() {
 
       {/* Modal */}
       {mostrarForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setMostrarForm(false)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">{editando ? 'Editar usuario' : 'Nuevo usuario'}</h2>

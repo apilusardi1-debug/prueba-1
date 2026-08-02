@@ -377,7 +377,7 @@ function ModalNuevaReserva({ excursiones, onGuardar, onCerrar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 

@@ -506,7 +506,7 @@ export default function Finanzas() {
 
       {/* ── Modal: Nuevo movimiento ──────────────────────────────────────────── */}
       {modalMovimiento && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setModalMovimiento(false)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-zinc-800">
               <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">{movEditandoId ? 'Editar movimiento' : 'Registrar movimiento'}</h2>
@@ -655,7 +655,7 @@ export default function Finanzas() {
 
       {/* Contraseña para editar */}
       {passwordParaId && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={cancelarPassword}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
             <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100 mb-1">Contraseña requerida</h2>
             <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">Ingresá la contraseña para poder editar este movimiento.</p>

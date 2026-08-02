@@ -200,7 +200,7 @@ export default function Excursiones() {
 
       {/* Modal */}
       {editando !== null && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4" onClick={() => setEditando(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-5 text-gray-900 dark:text-zinc-100">{editando === 'nuevo' ? 'Nueva excursión' : 'Editar excursión'}</h2>
 
@@ -324,7 +324,7 @@ export default function Excursiones() {
 
       {/* Confirmar eliminación */}
       {aBorrar && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4" onClick={() => setABorrar(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center mb-4 mx-auto">
               <svg className="w-6 h-6 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

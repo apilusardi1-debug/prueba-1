@@ -293,7 +293,7 @@ export default function Leads() {
       )}
 
       {mostrarFormLead && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setMostrarFormLead(false)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">📲 Nuevo lead</h2>
@@ -339,7 +339,7 @@ export default function Leads() {
       )}
 
       {seleccionado && editForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setSeleccionado(null); setConvertidoMsg('') }}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
           <div className="bg-white dark:bg-zinc-900 w-96 h-full shadow-xl dark:shadow-black/40 flex flex-col" onClick={e => e.stopPropagation()}>
 
             {/* Header */}

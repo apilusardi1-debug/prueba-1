@@ -229,7 +229,7 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
@@ -368,7 +368,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch" onClick={onCerrar}>
+    <div className="fixed inset-0 z-50 flex items-stretch">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
@@ -713,7 +713,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 

@@ -377,6 +377,13 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
         className="relative ml-auto w-full max-w-2xl bg-white dark:bg-zinc-900 h-full flex flex-col shadow-2xl dark:shadow-black/60"
         onClick={e => e.stopPropagation()}
       >
+        <button
+          onClick={onCerrar}
+          aria-label="Cerrar"
+          className="absolute top-1/2 -left-5 -translate-y-1/2 w-10 h-10 rounded-full bg-white dark:bg-zinc-900 shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-800 flex items-center justify-center text-gray-400 dark:text-zinc-500 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors z-10"
+        >
+          ›
+        </button>
 
         {/* ── Header ── */}
         <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">

@@ -106,11 +106,21 @@ export default function ModalRegistrarPago({ reserva, clienteId, clienteNombre, 
         <div className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Monto (R$)</label>
-            <input
-              type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)}
-              placeholder={saldo ? String(saldo) : '0.00'} autoFocus
-              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
+            <div className="relative">
+              <input
+                type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)}
+                placeholder={saldo ? String(saldo) : '0.00'} autoFocus
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl pl-3 pr-16 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => setMonto(String(saldo))}
+                disabled={!saldo}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 disabled:opacity-40 disabled:cursor-not-allowed bg-brand-50 dark:bg-brand-950/40 px-2.5 py-1 rounded-lg transition-colors"
+              >
+                Total
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 block mb-1">Método</label>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { pagosApi, reservasApi, movimientosApi, conceptosApi } from '../../lib/supabase.js'
+import { pagosApi, reservasApi, movimientosApi, conceptosApi, clientesApi } from '../../lib/supabase.js'
 
 const METODOS = ['efectivo', 'transferencia', 'qr', 'tarjeta']
 
@@ -86,8 +86,18 @@ export default function ModalRegistrarPago({ reserva, clienteId, clienteNombre, 
       }
     }
 
+    let clienteActualizado = null
+    if (clienteId) {
+      const { data: clienteActual } = await clientesApi.getById(clienteId)
+      if (clienteActual) {
+        const nuevoTotalGastado = (clienteActual.total_gastado || 0) + montoNum
+        const { data } = await clientesApi.update(clienteId, { total_gastado: nuevoTotalGastado })
+        clienteActualizado = data
+      }
+    }
+
     setGuardando(false)
-    onGuardado(nuevoPagado)
+    onGuardado(nuevoPagado, clienteActualizado)
   }
 
   return (

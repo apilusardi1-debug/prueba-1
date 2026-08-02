@@ -149,7 +149,7 @@ export default function Clientes() {
                     <span className="font-semibold text-gray-800 dark:text-zinc-200">{c.cantidad_reservas || 0}</span>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="font-semibold text-brand-600 dark:text-brand-400">
+                    <span className={c.total_gastado > 0 ? 'font-semibold text-green-600 dark:text-green-400' : 'font-semibold text-gray-400 dark:text-zinc-600'}>
                       {c.total_gastado > 0 ? fmtMonto(c.total_gastado) : '—'}
                     </span>
                   </td>
@@ -681,10 +681,11 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
           clienteId={cliente.id}
           clienteNombre={cliente.nombre}
           onCerrar={() => setPagandoReserva(null)}
-          onGuardado={(nuevoPagado) => {
+          onGuardado={(nuevoPagado, clienteActualizado) => {
             setReservas(prev => prev.map(r => r.id === pagandoReserva.id ? { ...r, pagado: nuevoPagado } : r))
             setPagandoReserva(null)
             pagosApi.getByCliente(cliente.id).then(({ data }) => setPagos(data || []))
+            if (clienteActualizado) onUpdate(clienteActualizado)
           }}
         />
       )}

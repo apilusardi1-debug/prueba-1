@@ -91,6 +91,19 @@ export default function Excursiones() {
     setGuardando(true)
     setError(null)
     const cupos = parseInt(form.cupos) || 0
+
+    // Al crear, cupos_disponibles arranca lleno. Al editar, no lo reseteamos
+    // a full — se ajusta solo por la diferencia de cupos totales, para no
+    // perder cuántos ya están reservados.
+    let cuposDisponibles = cupos
+    if (editando !== 'nuevo') {
+      const original = excursiones.find(e => e.id === editando)
+      if (original) {
+        const deltaCupos = cupos - (original.cupos || 0)
+        cuposDisponibles = Math.min(Math.max((original.cuposDisponibles ?? cupos) + deltaCupos, 0), cupos)
+      }
+    }
+
     const datos = {
       nombre: form.nombre.trim(),
       destino: form.destino.trim(),
@@ -103,7 +116,7 @@ export default function Excursiones() {
       imagen: form.imagen.trim(),
       precio: parseInt(form.precio) || 0,
       cupos,
-      cupos_disponibles: cupos,
+      cupos_disponibles: cuposDisponibles,
       fechas: form.fechas.split(',').map(f => f.trim()).filter(Boolean),
       incluye: form.incluye.split(',').map(f => f.trim()).filter(Boolean),
       opcionales: form.opcionales.split(',').map(f => f.trim()).filter(Boolean),

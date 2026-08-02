@@ -31,17 +31,64 @@ export const excursionesApi = {
   delete: (id) => supabase?.from('excursiones').delete().eq('id', id),
 }
 
+// Mantiene sincronizados los contadores "cacheados" que dependen de las
+// reservas (clientes.cantidad_reservas, excursiones.cupos_disponibles).
+// Centralizado acá para que cualquier lugar que cree/borre/cancele una
+// reserva los actualice automáticamente, sin tener que acordarse en cada
+// pantalla — así fue como total_gastado y estos dos quedaron desincronizados
+// antes de este fix.
+async function ajustarCantidadReservas(clienteId, delta) {
+  if (!supabase || !clienteId || !delta) return
+  const { data: cliente } = await supabase.from('clientes').select('cantidad_reservas').eq('id', clienteId).single()
+  if (!cliente) return
+  const nuevo = Math.max((cliente.cantidad_reservas || 0) + delta, 0)
+  await supabase.from('clientes').update({ cantidad_reservas: nuevo }).eq('id', clienteId)
+}
+
+async function ajustarCuposDisponibles(excursionId, delta) {
+  if (!supabase || !excursionId || !delta) return
+  const { data: excursion } = await supabase.from('excursiones').select('cupos, cupos_disponibles').eq('id', excursionId).single()
+  if (!excursion) return
+  const tope = excursion.cupos ?? 0
+  const nuevo = Math.min(Math.max((excursion.cupos_disponibles ?? tope) + delta, 0), tope)
+  await supabase.from('excursiones').update({ cupos_disponibles: nuevo }).eq('id', excursionId)
+}
+
 // ── Reservas ───────────────────────────────────────────────────────────────────
 export const reservasApi = {
   getAll: () => supabase?.from('reservas').select('*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').order('fecha'),
   getByWhatsapp: (whatsapp) => supabase?.from('reservas').select('*, excursiones(nombre, imagen)').eq('cliente_whatsapp', whatsapp),
-  create: (data) => supabase?.from('reservas').insert(data).select().single(),
-  updateEstado: (id, estado) => supabase?.from('reservas').update({ estado }).eq('id', id).select().single(),
+  create: async (data) => {
+    const result = await supabase?.from('reservas').insert(data).select().single()
+    const r = result?.data
+    if (r) {
+      await ajustarCantidadReservas(r.cliente_id, 1)
+      if (r.estado !== 'cancelada') await ajustarCuposDisponibles(r.excursion_id, -(r.personas || 0))
+    }
+    return result
+  },
+  updateEstado: async (id, estado) => {
+    const { data: antes } = await supabase?.from('reservas').select('excursion_id, personas, estado').eq('id', id).single() || {}
+    const result = await supabase?.from('reservas').update({ estado }).eq('id', id).select().single()
+    if (antes && antes.estado !== estado) {
+      if (estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
+      else if (antes.estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, -(antes.personas || 0))
+    }
+    return result
+  },
   updatePago: (id, pagado) => supabase?.from('reservas').update({ pagado }).eq('id', id).select().single(),
   updateCostoOperativo: (id, { costo_operativo, costo_operativo_moneda, costo_operativo_detalle }) =>
     supabase?.from('reservas').update({ costo_operativo, costo_operativo_moneda, costo_operativo_detalle }).eq('id', id).select().single(),
   updateAsignacion: (id, data) => supabase?.from('reservas').update(data).eq('id', id).select('*, excursiones(nombre), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').single(),
-  delete: (id) => supabase?.from('reservas').delete().eq('id', id),
+  delete: async (id) => {
+    const { data: antes } = await supabase?.from('reservas').select('cliente_id, excursion_id, personas, estado').eq('id', id).single() || {}
+    const result = await supabase?.from('reservas').delete().eq('id', id)
+    if (antes) {
+      await ajustarCantidadReservas(antes.cliente_id, -1)
+      if (antes.estado !== 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
+    }
+    return result
+  },
 }
 
 // ── Leads ──────────────────────────────────────────────────────────────────────

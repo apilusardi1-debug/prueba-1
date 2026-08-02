@@ -23,6 +23,9 @@ export default function Reservas() {
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState('')
+  const [filtroExcursion, setFiltroExcursion] = useState('')
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState('')
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState('')
   const [modalNueva, setModalNueva] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
@@ -123,7 +126,14 @@ export default function Reservas() {
   // Por defecto ("Todas") se ocultan las completadas para que la vista de
   // trabajo diario no se llene de viajes ya terminados — siguen accesibles
   // enteras con el filtro "Completada" o en el perfil del cliente.
-  const filtradas = reservas.filter(r => filtroEstado ? r.estado === filtroEstado : r.estado !== 'completada')
+  const filtradas = reservas.filter(r => {
+    if (filtroEstado ? r.estado !== filtroEstado : r.estado === 'completada') return false
+    if (filtroExcursion && r.excursion_id !== filtroExcursion) return false
+    if (filtroFechaDesde && (!r.fecha || r.fecha < filtroFechaDesde)) return false
+    if (filtroFechaHasta && (!r.fecha || r.fecha > filtroFechaHasta)) return false
+    return true
+  })
+  const hayFiltrosExtra = filtroExcursion || filtroFechaDesde || filtroFechaHasta
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando reservas...</div>
 
@@ -158,7 +168,7 @@ export default function Reservas() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         <button onClick={() => setFiltroEstado('')}
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${!filtroEstado ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'}`}>
           Todas
@@ -169,6 +179,40 @@ export default function Reservas() {
             {v.label}
           </button>
         ))}
+
+        <span className="w-px h-5 bg-gray-200 dark:bg-zinc-700 mx-1" />
+
+        <select
+          value={filtroExcursion}
+          onChange={e => setFiltroExcursion(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
+          <option value="">Todos los paseos</option>
+          {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+        </select>
+
+        <input
+          type="date"
+          value={filtroFechaDesde}
+          onChange={e => setFiltroFechaDesde(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <span className="text-gray-300 dark:text-zinc-600 text-sm">–</span>
+        <input
+          type="date"
+          value={filtroFechaHasta}
+          onChange={e => setFiltroFechaHasta(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+
+        {hayFiltrosExtra && (
+          <button
+            onClick={() => { setFiltroExcursion(''); setFiltroFechaDesde(''); setFiltroFechaHasta('') }}
+            className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 underline"
+          >
+            Limpiar
+          </button>
+        )}
       </div>
 
       {/* Barra de acciones en lote */}
@@ -201,7 +245,7 @@ export default function Reservas() {
       {filtradas.length === 0 ? (
         <div className="text-center py-20 text-gray-400 dark:text-zinc-500">
           <p className="text-4xl mb-3">📋</p>
-          <p>No hay reservas{filtroEstado ? ' con este estado' : ''}. Aparecerán cuando alguien reserve desde la app.</p>
+          <p>No hay reservas{(filtroEstado || hayFiltrosExtra) ? ' con estos filtros' : ''}. Aparecerán cuando alguien reserve desde la app.</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">

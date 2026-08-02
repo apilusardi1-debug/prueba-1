@@ -17,6 +17,7 @@ export default function Excursiones() {
   const [editando, setEditando] = useState(null) // null | 'nuevo' | id
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState(null)
+  const [aBorrar, setABorrar] = useState(null) // excursión pendiente de confirmar eliminación
   const fileRef = useRef()
   const opcionalesFileRef = useRef()
 
@@ -126,12 +127,13 @@ export default function Excursiones() {
     setGuardando(false)
   }
 
-  async function eliminar(id) {
-    if (!confirm('¿Eliminar esta excursión? Esta acción no se puede deshacer.')) return
+  async function eliminar() {
+    if (!aBorrar) return
     try {
-      await excursionesApi.delete(id)
-      setExcursiones(prev => prev.filter(e => e.id !== id))
+      await excursionesApi.delete(aBorrar.id)
+      setExcursiones(prev => prev.filter(e => e.id !== aBorrar.id))
     } catch (_) {}
+    setABorrar(null)
   }
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-600">Cargando excursiones...</div>
@@ -185,7 +187,7 @@ export default function Excursiones() {
                   Editar
                 </button>
                 <button
-                  onClick={() => eliminar(ex.id)}
+                  onClick={() => setABorrar(ex)}
                   className="border border-red-100 dark:border-red-900 hover:border-red-300 dark:hover:border-red-700 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 px-2 py-1 rounded-lg text-[11px] transition-colors"
                 >
                   ✕
@@ -314,6 +316,31 @@ export default function Excursiones() {
               </button>
               <button onClick={guardar} disabled={guardando} className="flex-1 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
                 {guardando ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmar eliminación */}
+      {aBorrar && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4" onClick={() => setABorrar(null)}>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center mb-4 mx-auto">
+              <svg className="w-6 h-6 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-center font-bold text-base text-gray-900 dark:text-zinc-100 mb-1">¿Eliminar excursión?</h3>
+            <p className="text-center text-sm text-gray-400 dark:text-zinc-500 mb-6">
+              "{aBorrar.nombre}" se va a eliminar y no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setABorrar(null)} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={eliminar} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                Eliminar
               </button>
             </div>
           </div>

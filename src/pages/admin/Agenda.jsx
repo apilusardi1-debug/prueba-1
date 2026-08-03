@@ -292,13 +292,28 @@ function VistaTabla({ reservasNorm, cargando }) {
   const [accionesAbierta, setAccionesAbierta] = useState(null)
   const [ordenPor, setOrdenPor] = useState('fecha') // 'fecha' (de la excursión) | 'creadaEn' (orden de emisión)
   const [ordenDir, setOrdenDir] = useState('asc')
+  const [filtroExcursion, setFiltroExcursion] = useState('')
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState('')
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState('')
 
   function ordenarPor(campo) {
     if (ordenPor === campo) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setOrdenPor(campo); setOrdenDir('asc') }
   }
 
-  const filasFiltradas = tabActiva === 'todas' ? reservasNorm : reservasNorm.filter((r) => r.estado === tabActiva)
+  const excursionesUnicas = [...new Map(reservasNorm.map((r) => [r.excursionId, r.excursionNombre])).entries()]
+    .filter(([id]) => id)
+    .map(([id, nombre]) => ({ id, nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const hayFiltrosExtra = filtroExcursion || filtroFechaDesde || filtroFechaHasta
+
+  const filasFiltradas = reservasNorm.filter((r) => {
+    if (tabActiva !== 'todas' && r.estado !== tabActiva) return false
+    if (filtroExcursion && r.excursionId !== filtroExcursion) return false
+    if (filtroFechaDesde && (!r.fecha || r.fecha < filtroFechaDesde)) return false
+    if (filtroFechaHasta && (!r.fecha || r.fecha > filtroFechaHasta)) return false
+    return true
+  })
   const factor = ordenDir === 'asc' ? 1 : -1
   const filas = [...filasFiltradas].sort((a, b) => {
     const av = a[ordenPor] || ''
@@ -345,6 +360,40 @@ function VistaTabla({ reservasNorm, cargando }) {
             </span>
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+        <select
+          value={filtroExcursion}
+          onChange={(e) => setFiltroExcursion(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
+          <option value="">Todos los paseos</option>
+          {excursionesUnicas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+        </select>
+
+        <input
+          type="date"
+          value={filtroFechaDesde}
+          onChange={(e) => setFiltroFechaDesde(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <span className="text-gray-300 dark:text-zinc-600 text-sm">–</span>
+        <input
+          type="date"
+          value={filtroFechaHasta}
+          onChange={(e) => setFiltroFechaHasta(e.target.value)}
+          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+
+        {hayFiltrosExtra && (
+          <button
+            onClick={() => { setFiltroExcursion(''); setFiltroFechaDesde(''); setFiltroFechaHasta('') }}
+            className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 underline"
+          >
+            Limpiar
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto">

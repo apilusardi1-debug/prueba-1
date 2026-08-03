@@ -170,7 +170,7 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
     </div>
 
     <div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:20px 0;text-align:center;">
-      <img src="${window.location.origin}/logo.png" style="height:44px;filter:brightness(0) invert(1);opacity:0.95;" />
+      <img src="${window.location.origin}/logo-blanco.png" style="height:44px;opacity:0.95;" />
     </div>
   </div>`
 }
@@ -209,7 +209,7 @@ function htmlPaginaHospedajes(grupo) {
       `).join('')}
     </div>
     <div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:20px 0;text-align:center;">
-      <img src="${window.location.origin}/logo.png" style="height:44px;filter:brightness(0) invert(1);opacity:0.95;" />
+      <img src="${window.location.origin}/logo-blanco.png" style="height:44px;opacity:0.95;" />
     </div>
   </div>`
 }

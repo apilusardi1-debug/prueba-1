@@ -19,12 +19,23 @@ function fmtMonto(n, moneda = 'BRL') {
   return `${moneda} ${Number(n).toLocaleString('es-AR')}`
 }
 
-/* ─── colores estado reserva ─── */
+/* ─── colores y etiquetas de estado de reserva ─── */
 const ESTADO_RESERVA = {
   pendiente:   'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-900',
   confirmada:  'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900',
   completada:  'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900',
   cancelada:   'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900',
+}
+const ESTADO_RESERVA_LABEL = {
+  pendiente: 'Pendiente', confirmada: 'Confirmada', completada: 'Finalizado', cancelada: 'Cancelada',
+}
+// Aunque todavía no se haya marcado "completada" en la base, una vez que
+// pasó la fecha de la excursión (y no está cancelada) el perfil del
+// cliente ya la muestra como finalizada.
+function estadoEfectivo(r) {
+  const hoy = new Date().toISOString().split('T')[0]
+  if (r.estado !== 'cancelada' && r.fecha && r.fecha < hoy) return 'completada'
+  return r.estado
 }
 
 /* ─── iconos de actividad ─── */
@@ -516,6 +527,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                     </div>
                   ) : reservas.map(r => {
                     const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
+                    const estado = estadoEfectivo(r)
                     return (
                     <div key={r.id} className="px-6 py-4">
                       <div className="flex items-start justify-between gap-3">
@@ -529,8 +541,8 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                           {r.hospedaje && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">🏨 {r.hospedaje}</p>}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full border capitalize ${ESTADO_RESERVA[r.estado] || 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 border-gray-100 dark:border-zinc-700'}`}>
-                            {r.estado}
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full border ${ESTADO_RESERVA[estado] || 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 border-gray-100 dark:border-zinc-700'}`}>
+                            {ESTADO_RESERVA_LABEL[estado] || estado}
                           </span>
                           <p className="text-sm font-bold text-gray-800 dark:text-zinc-200 mt-1">
                             {r.total ? fmtMonto(r.total, r.moneda) : '—'}

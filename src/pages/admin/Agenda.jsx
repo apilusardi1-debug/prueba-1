@@ -47,6 +47,11 @@ function formatFechaCorta(fechaStr) {
   })
 }
 
+function hoyStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function formatFechaHora(isoStr) {
   if (!isoStr) return '—'
   return new Date(isoStr).toLocaleDateString('es-AR', {
@@ -211,6 +216,12 @@ export default function Agenda() {
     await Promise.all(reservasDeOp.map((r) => recalcularCosto(r.id, { guia_id: guiaId || null })))
   }
 
+  // Una vez que pasa la fecha de la excursión, la reserva deja de aparecer
+  // en la Agenda (tabla y calendario) — el historial queda en el perfil
+  // del cliente, la Agenda es solo para lo que todavía viene.
+  const hoy = hoyStr()
+  const reservasVigentes = reservasNorm.filter((r) => !r.fecha || r.fecha >= hoy)
+
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
@@ -252,10 +263,10 @@ export default function Agenda() {
       </div>
 
       {vista === 'tabla' ? (
-        <VistaTabla reservasNorm={reservasNorm} cargando={cargando} />
+        <VistaTabla reservasNorm={reservasVigentes} cargando={cargando} />
       ) : (
         <VistaCalendario
-          reservasNorm={reservasNorm}
+          reservasNorm={reservasVigentes}
           choferes={choferes}
           guias={guias}
           asignaciones={asignaciones}

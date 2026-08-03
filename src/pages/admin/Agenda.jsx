@@ -47,6 +47,13 @@ function formatFechaCorta(fechaStr) {
   })
 }
 
+function formatFechaHora(isoStr) {
+  if (!isoStr) return '—'
+  return new Date(isoStr).toLocaleDateString('es-AR', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
 function normalizarReserva(r) {
   return {
     id: r.id,
@@ -60,6 +67,7 @@ function normalizarReserva(r) {
     personas: r.personas || 1,
     estado: r.estado || 'pendiente',
     fecha: r.fecha,
+    creadaEn: r.created_at || null,
     total: r.total || 0,
     chofer_id: r.chofer_id || null,
     guia_id: r.guia_id || null,
@@ -271,8 +279,23 @@ function VistaTabla({ reservasNorm, cargando }) {
   const [tabActiva, setTabActiva] = useState('todas')
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [accionesAbierta, setAccionesAbierta] = useState(null)
+  const [ordenPor, setOrdenPor] = useState('fecha') // 'fecha' (de la excursión) | 'creadaEn' (orden de emisión)
+  const [ordenDir, setOrdenDir] = useState('asc')
 
-  const filas = tabActiva === 'todas' ? reservasNorm : reservasNorm.filter((r) => r.estado === tabActiva)
+  function ordenarPor(campo) {
+    if (ordenPor === campo) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setOrdenPor(campo); setOrdenDir('asc') }
+  }
+
+  const filasFiltradas = tabActiva === 'todas' ? reservasNorm : reservasNorm.filter((r) => r.estado === tabActiva)
+  const factor = ordenDir === 'asc' ? 1 : -1
+  const filas = [...filasFiltradas].sort((a, b) => {
+    const av = a[ordenPor] || ''
+    const bv = b[ordenPor] || ''
+    if (av < bv) return -1 * factor
+    if (av > bv) return 1 * factor
+    return 0
+  })
   const conteos = {
     todas:      reservasNorm.length,
     pendiente:  reservasNorm.filter((r) => r.estado === 'pendiente').length,
@@ -322,17 +345,30 @@ function VistaTabla({ reservasNorm, cargando }) {
                 <input type="checkbox" checked={todosSeleccionados} onChange={toggleTodos}
                   className="w-4 h-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 cursor-pointer" />
               </th>
-              {['Excursión','Tipo','Estado','Pasajeros','Fecha','Hospedaje'].map((h) => (
+              {['Excursión','Tipo','Estado','Pasajeros'].map((h) => (
                 <th key={h} className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">{h}</th>
               ))}
+              <th className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">
+                <button onClick={() => ordenarPor('fecha')} className="flex items-center gap-1 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors">
+                  Fecha excursión
+                  {ordenPor === 'fecha' && <span className="text-[9px]">{ordenDir === 'asc' ? '▲' : '▼'}</span>}
+                </button>
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">
+                <button onClick={() => ordenarPor('creadaEn')} className="flex items-center gap-1 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors">
+                  Reservado el
+                  {ordenPor === 'creadaEn' && <span className="text-[9px]">{ordenDir === 'asc' ? '▲' : '▼'}</span>}
+                </button>
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">Hospedaje</th>
               <th className="w-12 py-3 px-4" />
             </tr>
           </thead>
           <tbody>
             {cargando ? (
-              <tr><td colSpan={9} className="py-16 text-center text-gray-400 dark:text-zinc-600 text-sm">Cargando reservas...</td></tr>
+              <tr><td colSpan={10} className="py-16 text-center text-gray-400 dark:text-zinc-600 text-sm">Cargando reservas...</td></tr>
             ) : filas.length === 0 ? (
-              <tr><td colSpan={9} className="py-16 text-center text-gray-400 dark:text-zinc-600">
+              <tr><td colSpan={10} className="py-16 text-center text-gray-400 dark:text-zinc-600">
                 <p className="text-3xl mb-2">📋</p>
                 <p className="text-sm">No hay reservas en esta categoría</p>
               </td></tr>
@@ -363,6 +399,7 @@ function VistaTabla({ reservasNorm, cargando }) {
                   </td>
                   <td className="py-3.5 px-4 text-gray-700 dark:text-zinc-300 font-medium">{reserva.personas} pax</td>
                   <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400 capitalize">{formatFechaCorta(reserva.fecha)}</td>
+                  <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400 whitespace-nowrap">{formatFechaHora(reserva.creadaEn)}</td>
                   <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400">{reserva.hospedaje || '—'}</td>
                   <td className="py-3.5 px-4 relative">
                     <button

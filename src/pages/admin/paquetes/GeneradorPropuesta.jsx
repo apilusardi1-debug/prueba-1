@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi } from '../../../lib/supabase.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -19,33 +19,6 @@ const HOSPEDAJE_VACIO = {
   incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
   items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
 }
-
-// Precarga con 2 de los 3 hospedajes de la sección Hospedajes (HOTELES en
-// Hospedajes.jsx) para arrancar el Generador con datos reales de ejemplo
-// en vez de un formulario vacío. Ojo: esos hoteles son datos de demo
-// (fotos de stock, whatsapp/email inventados) — el precio acá es una
-// estimación (precio por noche del catálogo x 7 noches), hay que
-// verificarlo antes de mandarle esto a un cliente real.
-const HOSPEDAJES_EJEMPLO = [
-  {
-    nombre: 'Vivá Porto de Galinhas', subtitulo: 'Resort · Porto de Galinhas, PE',
-    imagen: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&q=80',
-    noches: 7, precio: 4550, moneda: 'BRL',
-    incluye: 'Aéreo + Hospedaje + Traslados',
-    pension: 'Pensión completa incluida (desayuno, almuerzo y cena)',
-    descripcion: 'Resort frente al mar con acceso directo a las piscinas naturales de Porto de Galinhas. Piscinas, spa, animación nocturna y actividades acuáticas.',
-    items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
-  },
-  {
-    nombre: 'Enotel Porto de Galinhas', subtitulo: 'Resort · Porto de Galinhas, PE',
-    imagen: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=900&q=80',
-    noches: 7, precio: 6300, moneda: 'BRL',
-    incluye: 'Aéreo + Hospedaje + Traslados',
-    pension: '',
-    descripcion: 'El resort más premiado de Porto de Galinhas. Arquitectura inspirada en el estilo colonial local, spa de lujo, piscinas temáticas y gastronomía de autor.',
-    items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
-  },
-]
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -239,7 +212,8 @@ export default function GeneradorPropuesta() {
   const [periodo, setPeriodo] = useState('')
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
   const [vuelo, setVuelo] = useState(VUELO_VACIO)
-  const [hospedajes, setHospedajes] = useState(HOSPEDAJES_EJEMPLO.map(h => ({ ...h })))
+  const [hospedajes, setHospedajes] = useState([{ ...HOSPEDAJE_VACIO, items: [''] }])
+  const [hospedajesDB, setHospedajesDB] = useState([])
   const [subiendoIdx, setSubiendoIdx] = useState(null)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -250,11 +224,33 @@ export default function GeneradorPropuesta() {
     async function cargar() {
       const { data: cl } = await clientesApi.getAll()
       setClientes(cl || [])
+      const { data: hs } = await hospedajesApi.getAll()
+      setHospedajesDB(hs || [])
       setLoading(false)
     }
     cargar()
     excursionesApi.getAll()
   }, [])
+
+  // Sugerencias de hospedajes ya cargados en el modulo Hospedajes, para
+  // autocompletar nombre/foto/descripcion/amenities al armar la propuesta.
+  function sugerenciasHospedaje(texto) {
+    if (!texto || texto.trim().length < 2) return []
+    const lower = texto.trim().toLowerCase()
+    return hospedajesDB.filter(h => h.nombre.toLowerCase().includes(lower) && h.nombre.toLowerCase() !== lower).slice(0, 5)
+  }
+
+  function elegirHospedajeDB(idx, hDB) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? {
+      ...h,
+      nombre: hDB.nombre,
+      subtitulo: [hDB.tipo, hDB.destino].filter(Boolean).join(' · '),
+      imagen: hDB.imagen || h.imagen,
+      descripcion: hDB.descripcion || h.descripcion,
+      items_titulo: (hDB.amenities || []).length ? 'Servicios:' : h.items_titulo,
+      items: (hDB.amenities || []).length ? hDB.amenities : h.items,
+    } : h))
+  }
 
   function buscarCliente(texto) {
     setBusqCliente(texto)
@@ -534,8 +530,29 @@ export default function GeneradorPropuesta() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <input value={h.nombre} onChange={e => setHospedajeCampo(idx, 'nombre', e.target.value)} placeholder="Nombre (Ej: Condominio Marulhos)"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <div className="relative">
+                <input value={h.nombre} onChange={e => setHospedajeCampo(idx, 'nombre', e.target.value)} placeholder="Nombre (Ej: Condominio Marulhos)"
+                  autoComplete="off"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                {sugerenciasHospedaje(h.nombre).length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
+                    {sugerenciasHospedaje(h.nombre).map(hDB => (
+                      <button key={hDB.id} type="button" onClick={() => elegirHospedajeDB(idx, hDB)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-2.5">
+                        {hDB.imagen ? (
+                          <img src={hDB.imagen} alt="" className="w-10 h-8 object-cover rounded flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-8 rounded bg-gray-100 dark:bg-zinc-800 flex-shrink-0" />
+                        )}
+                        <span>
+                          <span className="block font-medium text-gray-800 dark:text-zinc-200">{hDB.nombre}</span>
+                          <span className="block text-xs text-gray-400 dark:text-zinc-500">{hDB.destino}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input value={h.subtitulo} onChange={e => setHospedajeCampo(idx, 'subtitulo', e.target.value)} placeholder="Subtítulo (Ej: Marulhos Resort - Frente al mar)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>

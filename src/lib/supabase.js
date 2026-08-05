@@ -101,6 +101,15 @@ export const leadsApi = {
   delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }
 
+// ── Hospedajes ─────────────────────────────────────────────────────────────────
+export const hospedajesApi = {
+  getAll: () => supabase?.from('hospedajes').select('*').eq('activa', true).order('nombre'),
+  getById: (id) => supabase?.from('hospedajes').select('*').eq('id', id).single(),
+  create: (data) => supabase?.from('hospedajes').insert(data).select().single(),
+  update: (id, data) => supabase?.from('hospedajes').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('hospedajes').delete().eq('id', id),
+}
+
 // ── Storage ────────────────────────────────────────────────────────────────────
 export async function subirImagen(archivo) {
   if (!supabase) return { url: null, error: 'Sin conexión' }

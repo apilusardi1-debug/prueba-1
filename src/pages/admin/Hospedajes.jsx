@@ -246,6 +246,7 @@ export default function Hospedajes() {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [subiendoGaleria, setSubiendoGaleria] = useState(false)
   const [aBorrar, setABorrar] = useState(null)
+  const [verDetalle, setVerDetalle] = useState(null)
   const fileRef = useRef()
   const galeriaFileRef = useRef()
 
@@ -509,7 +510,7 @@ export default function Hospedajes() {
                     )}
                   </span>
                 </div>
-                <div className="p-5 flex flex-col flex-1 gap-2">
+                <div className="p-5 flex flex-col flex-1 gap-2 cursor-pointer" onClick={() => setVerDetalle(h)}>
                   <h3 className="font-bold text-gray-900 dark:text-zinc-100 text-base leading-tight">{h.nombre}</h3>
                   <Estrellas n={h.estrellas} />
                   <div className="flex items-center justify-between">
@@ -534,7 +535,7 @@ export default function Hospedajes() {
                         </>
                       ) : <span />}
                     </div>
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                       <button onClick={() => abrirEditar(h)}
                         className="text-xs font-medium py-2 px-3 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
                         Editar
@@ -727,6 +728,121 @@ export default function Hospedajes() {
           </div>
         </div>
       )}
+
+      {/* Detalle del hospedaje */}
+      {verDetalle && (
+        <ModalDetalleHospedaje hospedaje={verDetalle} onCerrar={() => setVerDetalle(null)} />
+      )}
+    </div>
+  )
+}
+
+function IconoCheck() {
+  return (
+    <svg className="w-4 h-4 text-brand-600 dark:text-brand-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  )
+}
+
+function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
+  const fotos = [h.imagen, ...(h.galeria || [])].filter(Boolean)
+  const [fotoActiva, setFotoActiva] = useState(fotos[0] || '')
+  const direccionCompleta = [h.direccion, h.destino].filter(Boolean).join(', ')
+  const mapsUrl = direccionCompleta ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionCompleta)}` : null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide bg-gray-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
+              {h.tipo}
+            </span>
+            <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg flex-shrink-0 transition-colors">×</button>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Fotos */}
+            <div>
+              <div className="rounded-xl overflow-hidden mb-2 bg-gray-100 dark:bg-zinc-800 h-64 md:h-72">
+                {fotoActiva ? (
+                  <img src={fotoActiva} alt={h.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-zinc-700 text-sm">Sin foto</div>
+                )}
+              </div>
+              {fotos.length > 1 && (
+                <div className="grid grid-cols-6 gap-1.5">
+                  {fotos.map((f, i) => (
+                    <button key={i} onClick={() => setFotoActiva(f)}
+                      className={`rounded-lg overflow-hidden h-12 border-2 transition-colors ${fotoActiva === f ? 'border-brand-500' : 'border-transparent opacity-80 hover:opacity-100'}`}>
+                      <img src={f} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div>
+              <Estrellas n={h.estrellas} />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mt-1 mb-2 leading-snug">{h.nombre}</h2>
+              {direccionCompleta && (
+                <p className="text-sm text-gray-500 dark:text-zinc-400 flex items-center flex-wrap gap-x-1.5 mb-4">
+                  <span>📍 {direccionCompleta}</span>
+                  {mapsUrl && (
+                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline font-medium">
+                      Ver mapa
+                    </a>
+                  )}
+                </p>
+              )}
+              {h.descripcion && (
+                <p className="text-sm text-gray-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line mb-5">{h.descripcion}</p>
+              )}
+              {h.capacidad > 0 && (
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">👥 Hasta {h.capacidad} personas</p>
+              )}
+              {h.precio_min > 0 && (
+                <p className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">
+                  Desde R$ {h.precio_min}<span className="text-xs font-normal text-gray-400 dark:text-zinc-500"> /noche</span>
+                </p>
+              )}
+
+              {(h.amenities || []).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-3">Las ofertas de alojamiento</p>
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+                    {h.amenities.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300">
+                        <IconoCheck /> {a}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(h.whatsapp || h.contacto) && (
+                <div className="flex gap-2 mt-6 pt-5 border-t border-gray-100 dark:border-zinc-800">
+                  {h.whatsapp && (
+                    <a href={`https://wa.me/${h.whatsapp}`} target="_blank" rel="noopener noreferrer"
+                      className="text-sm font-medium py-2 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 transition-colors">
+                      WhatsApp
+                    </a>
+                  )}
+                  {h.contacto && (
+                    <a href={`mailto:${h.contacto}`}
+                      className="text-sm font-medium py-2 px-3 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 transition-colors">
+                      Email
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

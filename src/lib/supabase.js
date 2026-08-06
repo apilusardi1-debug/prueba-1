@@ -212,6 +212,15 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId })
   return { data, error }
 }
 
+// ── Importar hospedajes desde un link de cotización (Niara) ────────────────────
+export async function importarHospedajesDeLink(url) {
+  if (!supabase) return { error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('import-hospedaje-link', {
+    body: { url },
+  })
+  return { data, error }
+}
+
 // ── Sincronizar conversaciones históricas desde Evolution API ──────────────────
 export async function sincronizarWhatsApp() {
   if (!supabase) return { error: 'Sin conexión' }

@@ -46,6 +46,7 @@ const ICONOS = {
   auto: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l1.6-5a2 2 0 0 1 1.9-1.4h9a2 2 0 0 1 1.9 1.4L19 13"/><rect x="2" y="13" width="20" height="5" rx="1.5"/><circle cx="7" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>`,
   calendario: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
   hotel: (s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>`,
+  palmera: (s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V13"/><path d="M12 13c0-4-3-5-6-5 1 3 3 5 6 5Z"/><path d="M12 13c0-4 3-5 6-5-1 3-3 5-6 5Z"/><path d="M12 13c0-5-2-8-2-8"/><path d="M12 13c0-5 2-8 2-8"/></svg>`,
 }
 
 async function cargarFuente() {
@@ -69,6 +70,13 @@ async function renderPagina(html) {
   cont.style.height = `${ALTO}px`
   cont.innerHTML = html
   document.body.appendChild(cont)
+
+  // Sin esto, html2canvas saca la "foto" antes de que las imágenes remotas
+  // (Supabase Storage, fotos importadas de Niara, etc.) terminen de cargar,
+  // y esos huecos quedan en blanco en el PDF final.
+  const imgs = Array.from(cont.querySelectorAll('img'))
+  await Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise((res) => { img.onload = res; img.onerror = res }))))
+
   const canvas = await html2canvas(cont, { width: ANCHO, height: ALTO, scale: 2, useCORS: true, backgroundColor: '#ffffff' })
   document.body.removeChild(cont)
   return canvas
@@ -87,7 +95,7 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
     </div>
 
     <div style="padding:36px 48px;">
-      <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:28px;margin:0 0 26px;">AÉREOS:</p>
+      <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:28px;margin:0 0 26px;display:flex;align-items:center;gap:10px;">${ICONOS.avion(24).replace(/stroke="white"/g, `stroke="${NAVY}"`)}AÉREOS:</p>
 
       <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:26px;">
         <div style="width:34px;height:34px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -121,7 +129,7 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
           </div>
           <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.ida_sale)} HS</b></p>
           <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.ida_llega)} HS</b></p>
-          <div style="border-top:2px solid ${NAVY};margin-top:14px;width:90%;"></div>
+          <div style="display:flex;align-items:center;margin-top:14px;width:90%;"><div style="flex:1;border-top:2px solid ${NAVY};"></div><span style="color:${NAVY};font-size:16px;line-height:1;margin-left:4px;">→</span></div>
         </div>
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -131,14 +139,14 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
           </div>
           <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.vuelta_sale)} HS</b></p>
           <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
-          <div style="border-top:2px solid ${NAVY};margin-top:14px;width:90%;margin-left:auto;"></div>
+          <div style="display:flex;align-items:center;margin-top:14px;width:90%;margin-left:auto;"><span style="color:${NAVY};font-size:16px;line-height:1;margin-right:4px;">←</span><div style="flex:1;border-top:2px solid ${NAVY};"></div></div>
         </div>
       </div>
 
       ${bannerVisible ? `
-      <div style="background:${NAVY};border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
-        <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;margin:0;line-height:1.4;max-width:420px;">SI TE INTERESA VER LAS ACTIVIDADES Y PASEOS QUE OFRECEMOS EN ${escapeHtml(vuelo.banner_destino).toUpperCase()} HACÉ CLIC ACÁ ↗</p>
-        ${vuelo.banner_imagen ? `<div style="width:70px;height:50px;border-radius:6px;overflow:hidden;flex-shrink:0;"><img src="${vuelo.banner_imagen}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>` : ''}
+      <div style="background:${NAVY};border-radius:10px;padding:0;display:flex;align-items:stretch;justify-content:space-between;gap:16px;overflow:hidden;">
+        <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;margin:0;padding:16px 0 16px 18px;line-height:1.4;max-width:420px;align-self:center;">SI TE INTERESA VER LAS ACTIVIDADES Y PASEOS QUE OFRECEMOS EN ${escapeHtml(vuelo.banner_destino).toUpperCase()} HACE CLIC ACÁ ↗</p>
+        ${vuelo.banner_imagen ? `<div style="width:190px;flex-shrink:0;"><img src="${vuelo.banner_imagen}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>` : ''}
       </div>` : ''}
     </div>
 
@@ -152,24 +160,34 @@ function htmlPaginaHospedajes(grupo) {
   return `
   <div style="width:${ANCHO}px;height:${ALTO}px;background:${CREMA};font-family:${FUENTE_CUERPO};position:relative;box-sizing:border-box;">
     <div style="background:${NAVY};padding:28px 48px;display:flex;align-items:center;gap:14px;">
-      ${ICONOS.hotel(22)}
+      ${ICONOS.palmera(22)}
       <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:30px;margin:0;letter-spacing:1px;">HOSPEDAJES</p>
     </div>
     <div style="padding:32px 48px;">
       ${grupo.map((h, idx) => `
         <div style="${idx > 0 ? `border-top:1.5px solid #0d243880;margin-top:26px;padding-top:26px;` : ''}">
-          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:23px;margin:0 0 2px;">${escapeHtml(h.nombre).toUpperCase()}</p>
-          <p style="font-family:${FUENTE_CUERPO};color:#888;font-size:12px;letter-spacing:1px;margin:0 0 14px;text-transform:uppercase;">${escapeHtml(h.subtitulo)}</p>
-          <div style="display:flex;gap:22px;flex-direction:${idx % 2 === 0 ? 'row' : 'row-reverse'};">
+          <div style="display:flex;justify-content:space-between;gap:22px;margin-bottom:16px;">
             <div style="flex:1;">
-              ${h.imagen ? `<div style="border-radius:10px;overflow:hidden;margin-bottom:8px;"><img src="${h.imagen}" style="width:100%;height:150px;object-fit:cover;display:block;" /></div>` : ''}
-              ${h.link_video ? `<p style="font-family:${FUENTE_CUERPO};color:#0a8a5f;font-size:11px;font-weight:700;margin:0;">CLIC ACÁ PARA VER VIDEOS ↗</p>` : ''}
+              <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:23px;margin:0 0 2px;">${escapeHtml(h.nombre).toUpperCase()}</p>
+              <p style="font-family:${FUENTE_CUERPO};color:#888;font-size:12px;letter-spacing:1px;margin:0;text-transform:uppercase;">${escapeHtml(h.subtitulo)}</p>
             </div>
             <div style="flex:1;font-family:${FUENTE_CUERPO};">
               <p style="color:${NAVY};font-size:12px;font-weight:700;margin:0 0 2px;">${escapeHtml(h.noches)} NOCHES:</p>
               <p style="color:${NAVY};font-size:16px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.moneda)}$ ${formatearNumero(h.precio)}</p>
               <p style="color:#333;font-size:11px;margin:0 0 2px;">${escapeHtml(h.incluye)}</p>
-              <p style="color:#333;font-size:11px;font-weight:700;margin:0 0 10px;">${escapeHtml(h.pension)}</p>
+              <p style="color:#333;font-size:11px;font-weight:700;margin:0;">${escapeHtml(h.pension)}</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:22px;flex-direction:${idx % 2 === 0 ? 'row' : 'row-reverse'};">
+            <div style="flex:1;">
+              ${h.imagen ? `
+                <div style="position:relative;border-radius:10px;overflow:hidden;">
+                  <img src="${h.imagen}" style="width:100%;height:180px;object-fit:cover;display:block;" />
+                  ${h.link_video ? `<div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:6px 10px;box-sizing:border-box;"><p style="font-family:${FUENTE_CUERPO};color:#c9e34f;font-size:10px;font-weight:700;margin:0;letter-spacing:0.3px;">CLIC ACÁ PARA VER VIDEOS ↗</p></div>` : ''}
+                </div>
+              ` : (h.link_video ? `<p style="font-family:${FUENTE_CUERPO};color:#0a8a5f;font-size:11px;font-weight:700;margin:0;">CLIC ACÁ PARA VER VIDEOS ↗</p>` : '')}
+            </div>
+            <div style="flex:1;font-family:${FUENTE_CUERPO};">
               ${h.descripcion ? `<p style="color:#333;font-size:11px;font-weight:400;line-height:1.6;margin:0 0 10px;">${escapeHtml(h.descripcion)}</p>` : ''}
               ${h.items.filter(Boolean).length ? `
                 <p style="color:${NAVY};font-size:11px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.items_titulo)}</p>

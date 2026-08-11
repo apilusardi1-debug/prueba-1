@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { jsPDF } from 'jspdf'
+import html2canvas from 'html2canvas'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink, extraerDatosVuelo } from '../../../lib/supabase.js'
 
 const NAVY = '#0d2438'
@@ -46,46 +48,30 @@ const ICONOS = {
   hotel: (s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>`,
 }
 
-// Arma el documento HTML completo que se abre en una ventana nueva para
-// imprimir con el motor real del navegador (Ctrl+P → Guardar como PDF).
-// ANCHO/ALTO (794×1123px) equivalen a A4 a 96dpi, así que las páginas
-// armadas en htmlPaginaAereos/htmlPaginaHospedajes entran tal cual, sin
-// tener que tocar ni un px de esos estilos.
-function documentoCompleto(paginasHtml, tituloCliente) {
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Propuesta${tituloCliente ? ' - ' + escapeHtml(tituloCliente) : ''}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" />
-<style>
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  html, body { margin: 0; padding: 0; background: #fff; }
-  @page { size: ${ANCHO}px ${ALTO}px; margin: 0; }
-  @media print {
-    .pagina { break-after: page; }
-    .pagina:last-child { break-after: auto; }
+async function cargarFuente() {
+  if (!document.getElementById('font-bebas-neue')) {
+    const link = document.createElement('link')
+    link.id = 'font-bebas-neue'
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap'
+    document.head.appendChild(link)
+    await new Promise(resolve => { link.onload = resolve; link.onerror = resolve; setTimeout(resolve, 1500) })
   }
-</style>
-</head>
-<body>
-  ${paginasHtml.map(html => `<div class="pagina">${html}</div>`).join('')}
-</body>
-</html>`
+  try { if (document.fonts?.ready) await document.fonts.ready } catch (_) {}
 }
 
-// Espera a que la ventana nueva termine de cargar (documento, fuentes e
-// imágenes) antes de mandar a imprimir — si no, puede salir con la fuente
-// de sistema o con fotos a medio cargar.
-async function esperarCarga(ventana) {
-  await new Promise((resolve) => {
-    if (ventana.document.readyState === 'complete') resolve()
-    else ventana.addEventListener('load', resolve, { once: true })
-  })
-  try { if (ventana.document.fonts?.ready) await ventana.document.fonts.ready } catch (_) {}
-  const imgs = Array.from(ventana.document.images)
-  await Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise((res) => { img.onload = res; img.onerror = res }))))
-  await new Promise((res) => setTimeout(res, 300))
+async function renderPagina(html) {
+  const cont = document.createElement('div')
+  cont.style.position = 'fixed'
+  cont.style.left = '-99999px'
+  cont.style.top = '0'
+  cont.style.width = `${ANCHO}px`
+  cont.style.height = `${ALTO}px`
+  cont.innerHTML = html
+  document.body.appendChild(cont)
+  const canvas = await html2canvas(cont, { width: ANCHO, height: ALTO, scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+  document.body.removeChild(cont)
+  return canvas
 }
 
 function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
@@ -395,41 +381,30 @@ export default function GeneradorPropuesta() {
 
   const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
 
-  function generar() {
+  async function generar() {
     if (!busqCliente.trim()) return setError('Ingresá el nombre del cliente.')
     if (!hospedajes.some(h => h.nombre.trim())) return setError('Cargá al menos un hospedaje con nombre.')
     setError('')
-
-    // window.open tiene que llamarse synchronously, en el mismo tick del
-    // click, si no el navegador lo trata como pop-up y lo bloquea.
-    const ventana = window.open('', '_blank')
-    if (!ventana) {
-      setError('El navegador bloqueó la ventana de impresión. Habilitá los pop-ups para este sitio e intentá de nuevo.')
-      return
-    }
-
-    generarEnVentana(ventana)
-  }
-
-  async function generarEnVentana(ventana) {
     setGenerando(true)
     setExito(false)
     try {
+      await cargarFuente()
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
-      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
 
-      const paginas = [htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo })]
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'px', format: [ANCHO, ALTO] })
+
+      const canvasAereos = await renderPagina(htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo }))
+      doc.addImage(canvasAereos.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
+
+      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
       for (let i = 0; i < hospedajesValidos.length; i += 2) {
-        paginas.push(htmlPaginaHospedajes(hospedajesValidos.slice(i, i + 2)))
+        doc.addPage([ANCHO, ALTO], 'portrait')
+        const grupo = hospedajesValidos.slice(i, i + 2)
+        const canvasHosp = await renderPagina(htmlPaginaHospedajes(grupo))
+        doc.addImage(canvasHosp.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
       }
 
-      const blob = new Blob([documentoCompleto(paginas, cliente.nombre)], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      ventana.location = url
-
-      await esperarCarga(ventana)
-      ventana.focus()
-      ventana.print()
+      doc.save(`Propuesta_${cliente.nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
 
       await propuestasApi.create({
         cliente_id: clienteSel?.id || null,
@@ -457,7 +432,6 @@ export default function GeneradorPropuesta() {
       setHospedajes([{ ...HOSPEDAJE_VACIO, items: [''] }])
     } catch (e) {
       setError('Error al generar la propuesta: ' + (e.message || 'intentá de nuevo'))
-      ventana.close()
     }
     setGenerando(false)
   }
@@ -740,7 +714,7 @@ export default function GeneradorPropuesta() {
       {/* Generar */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg">
         {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
-        {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ Se abrió la vista de impresión — en el diálogo, elegí "Guardar como PDF" (destino), Márgenes: Ninguno, y desmarcá "Encabezados y pies de página".</p>}
+        {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ PDF descargado y propuesta guardada.</p>}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 dark:text-zinc-500">{hospedajes.filter(h => h.nombre.trim()).length} hospedaje{hospedajes.filter(h => h.nombre.trim()).length !== 1 ? 's' : ''}</p>
@@ -751,7 +725,7 @@ export default function GeneradorPropuesta() {
             disabled={generando}
             className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
           >
-            {generando ? 'Abriendo...' : 'Generar propuesta (imprimir a PDF)'}
+            {generando ? 'Generando PDF...' : 'Generar y descargar PDF'}
           </button>
         </div>
       </div>

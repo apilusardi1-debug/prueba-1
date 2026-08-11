@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { excursiones, destinos } from '../../data/mockData.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
 
 const RESENAS = [
   {
@@ -69,65 +70,39 @@ export default function Home() {
     <div className="bg-surface">
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative w-full h-[85vh] min-h-[600px] flex items-end pb-16 overflow-hidden">
+      <section className="relative w-full min-h-[760px] md:min-h-[820px] flex flex-col justify-center pt-32 pb-20 md:pb-28 overflow-hidden">
         <div className="absolute inset-0">
           <video
             src={config?.hero_video || '/hero.mp4'}
             autoPlay loop muted playsInline
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 glass-overlay" />
+          <div className="absolute inset-0 hero-overlay" />
         </div>
-        <div className="relative z-10 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto text-white">
-          {/* Label superior */}
-          <p style={{
-            fontFamily: "'Helvetica Neue', Arial, sans-serif",
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.26em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.72)',
-            marginBottom: '16px'
-          }}>
-            Creadores de Sueños
-          </p>
+
+        <div className="relative z-10 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
           {/* Titular principal */}
-          <h1 style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontWeight: 500,
-            fontSize: 'clamp(3.2rem, 7.5vw, 6.2rem)',
-            lineHeight: 0.98,
-            letterSpacing: '-0.02em',
-            color: '#ffffff',
-            marginBottom: '20px'
-          }}>
-            Tu viaje al{' '}
-            <span style={{ fontStyle: 'italic' }}>Nordeste</span>{' '}
-            Brasilero
+          <h1 className="font-display-hero uppercase text-hero-cream"
+            style={{ fontSize: 'clamp(2.75rem, 6.8vw, 5.25rem)', lineHeight: 0.95, letterSpacing: '0.01em' }}>
+            Hace realidad el viaje
           </h1>
-          {/* Subcopy */}
-          <p style={{
-            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-            fontSize: '16px',
-            lineHeight: 1.7,
-            color: 'rgba(255,255,255,0.78)',
-            marginBottom: '32px',
-            maxWidth: '480px'
-          }}>
-            Descubrí las piscinas naturales mas lindas de Brasil.
+          <p className="font-script-hero text-hero-sky"
+            style={{ fontSize: 'clamp(3.5rem, 9vw, 6.5rem)', lineHeight: 1, marginTop: '-0.1em' }}>
+            de tus sueños
           </p>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+
+          <div className="flex gap-4 flex-wrap mt-8 mb-16 md:mb-20">
             <Link to="/paquetes"
-              style={{ background: '#000000', color: '#ffffff', fontWeight: 700, fontSize: '15px', padding: '14px 28px', borderRadius: '8px', display: 'inline-block', transition: 'opacity 0.2s', letterSpacing: '0.01em' }}
-              className="hover:opacity-80">
-              Explorar viajes
+              className="border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors hover:bg-hero-yellow hover:text-hero-navy">
+              Ver Paquetes
             </Link>
             <Link to="/paquetes"
-              style={{ background: 'transparent', color: '#ffffff', fontWeight: 600, fontSize: '15px', padding: '13px 28px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid rgba(255,255,255,0.6)', transition: 'all 0.2s', letterSpacing: '0.01em' }}
-              className="hover:border-white hover:bg-white/10">
+              className="border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors hover:bg-hero-yellow hover:text-hero-navy">
               Planear mi viaje
             </Link>
           </div>
+
+          <HeroSearchWidget />
         </div>
       </section>
 

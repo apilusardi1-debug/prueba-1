@@ -388,16 +388,9 @@ export default function GeneradorPropuesta() {
     setSubiendoIdx(null)
   }
 
-  function setItemHospedaje(idx, itemIdx, valor) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: h.items.map((it, j) => j === itemIdx ? valor : it) } : h))
-  }
-
-  function agregarItem(idx) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: [...h.items, ''] } : h))
-  }
-
-  function quitarItem(idx, itemIdx) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items: h.items.filter((_, j) => j !== itemIdx) } : h))
+  function setItemsHospedaje(idx, texto) {
+    const items = texto.split(',').map(s => s.trim())
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items } : h))
   }
 
   const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
@@ -731,20 +724,8 @@ export default function GeneradorPropuesta() {
 
             <input value={h.items_titulo} onChange={e => setHospedajeCampo(idx, 'items_titulo', e.target.value)} placeholder="Título de la lista (Ej: Servicios: / Monoambiente con:)"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <div className="space-y-2">
-              {h.items.map((it, i2) => (
-                <div key={i2} className="flex gap-2">
-                  <input value={it} onChange={e => setItemHospedaje(idx, i2, e.target.value)} placeholder="Ej: Piscina con vista al mar"
-                    className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  {h.items.length > 1 && (
-                    <button onClick={() => quitarItem(idx, i2)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 transition-colors px-1">✕</button>
-                  )}
-                </div>
-              ))}
-              <button onClick={() => agregarItem(idx)} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
-                + Agregar ítem
-              </button>
-            </div>
+            <input value={h.items.join(', ')} onChange={e => setItemsHospedaje(idx, e.target.value)} placeholder="Ej: Piscina con vista al mar, Wifi gratis, Desayuno incluido"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
 
             <div className="grid sm:grid-cols-2 gap-3">
               <input value={h.nota} onChange={e => setHospedajeCampo(idx, 'nota', e.target.value)} placeholder="Nota opcional (Ej: *No incluye limpieza)"

@@ -25,6 +25,7 @@ export default function Leads() {
   const [enviando, setEnviando] = useState(false)
   const [convirtiendo, setConvirtiendo] = useState(false)
   const [convertidoMsg, setConvertidoMsg] = useState('')
+  const [clienteConvertidoId, setClienteConvertidoId] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [guardandoLead, setGuardandoLead] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
@@ -91,6 +92,7 @@ export default function Leads() {
   function abrirLead(lead) {
     setSeleccionado(lead)
     setConvertidoMsg('')
+    setClienteConvertidoId(null)
     setEditForm({
       nombre: lead.nombre || '',
       whatsapp: lead.whatsapp || '',
@@ -123,6 +125,7 @@ export default function Leads() {
     const { data: existente } = await clientesApi.getByWhatsapp(phone)
     if (existente) {
       setConvertidoMsg('ya_existe')
+      setClienteConvertidoId(existente.id)
       setConvirtiendo(false)
       return
     }
@@ -137,6 +140,7 @@ export default function Leads() {
       await cambiarEstado(lead.id, 'reservado')
       setSeleccionado(p => ({ ...p, estado: 'reservado' }))
       setConvertidoMsg('ok')
+      setClienteConvertidoId(data.id)
     }
     setConvirtiendo(false)
   }
@@ -434,6 +438,15 @@ export default function Leads() {
                 >
                   {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? '✅ Ya es cliente' : '👤 Convertir a cliente'}
                 </button>
+
+                {clienteConvertidoId && (
+                  <button
+                    onClick={() => navigate(`/admin/clientes?cliente=${clienteConvertidoId}`)}
+                    className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+                  >
+                    🧑‍💼 Ver perfil del cliente
+                  </button>
+                )}
 
                 {seleccionado.whatsapp && (
                   <button

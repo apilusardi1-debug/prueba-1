@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   clientesApi, reservasClienteApi, pagosApi,
   actividadApi, notasClienteApi, excursionesApi, reservasApi,
@@ -63,6 +63,7 @@ export default function Clientes() {
   const [perfil, setPerfil] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
     clientesApi.getAll().then(({ data }) => {
@@ -70,6 +71,17 @@ export default function Clientes() {
       setCargando(false)
     })
   }, [])
+
+  // Auto-abrir el perfil si viene ?cliente= desde Leads (al convertir un lead)
+  useEffect(() => {
+    const clienteId = searchParams.get('cliente')
+    if (!clienteId || !clientes.length) return
+    const match = clientes.find(c => c.id === clienteId)
+    if (match) {
+      setPerfil(match)
+      setSearchParams({}, { replace: true })
+    }
+  }, [clientes, searchParams])
 
   const filtrados = clientes.filter(c =>
     [c.nombre, c.email, c.whatsapp, c.pais, c.ciudad]

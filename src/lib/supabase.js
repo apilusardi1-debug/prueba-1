@@ -212,6 +212,16 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId })
   return { data, error }
 }
 
+// ── Descargar una imagen server-side y devolverla como data URI ────────────────
+// (evita el bloqueo de CORS de html2canvas con imagenes de otros dominios)
+export async function convertirImagenABase64(url) {
+  if (!supabase) return { error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('proxy-imagen', {
+    body: { url },
+  })
+  return { data, error }
+}
+
 // ── Importar hospedajes desde un link de cotización (Niara) ────────────────────
 export async function importarHospedajesDeLink(url) {
   if (!supabase) return { error: 'Sin conexión' }

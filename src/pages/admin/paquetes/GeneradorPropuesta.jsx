@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink, extraerDatosVuelo } from '../../../lib/supabase.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -212,6 +212,8 @@ export default function GeneradorPropuesta() {
   const [periodo, setPeriodo] = useState('')
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
   const [vuelo, setVuelo] = useState(VUELO_VACIO)
+  const [leyendoVuelo, setLeyendoVuelo] = useState(false)
+  const [errorVuelo, setErrorVuelo] = useState('')
   const [hospedajes, setHospedajes] = useState([{ ...HOSPEDAJE_VACIO, items: [''] }])
   const [hospedajesDB, setHospedajesDB] = useState([])
   const [subiendoIdx, setSubiendoIdx] = useState(null)
@@ -282,6 +284,39 @@ export default function GeneradorPropuesta() {
     const { url } = await subirImagen(archivo)
     if (url) setVueloCampo('banner_imagen', url)
     setSubiendoBanner(false)
+  }
+
+  function archivoABase64(archivo) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result.split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(archivo)
+    })
+  }
+
+  async function leerImagenVuelo(archivo) {
+    if (!archivo) return
+    setErrorVuelo('')
+    setLeyendoVuelo(true)
+    try {
+      const base64 = await archivoABase64(archivo)
+      const { data, error } = await extraerDatosVuelo(base64, archivo.type || 'image/png')
+      if (error || data?.error) {
+        setErrorVuelo(data?.error || error?.message || 'No se pudo leer la imagen.')
+      } else if (data?.vuelo) {
+        setVuelo(v => {
+          const next = { ...v }
+          for (const campo of Object.keys(data.vuelo)) {
+            if (data.vuelo[campo]) next[campo] = data.vuelo[campo]
+          }
+          return next
+        })
+      }
+    } catch (_) {
+      setErrorVuelo('No se pudo leer la imagen.')
+    }
+    setLeyendoVuelo(false)
   }
 
   function agregarHospedaje() {
@@ -503,7 +538,15 @@ export default function GeneradorPropuesta() {
 
       {/* Vuelo */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
+          <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer whitespace-nowrap">
+            {leyendoVuelo ? 'Leyendo imagen...' : '+ Cargar desde imagen'}
+            <input type="file" accept="image/*" className="hidden" disabled={leyendoVuelo}
+              onChange={e => leerImagenVuelo(e.target.files[0])} />
+          </label>
+        </div>
+        {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}
         <div className="grid sm:grid-cols-2 gap-3">
           <input value={vuelo.origen_ciudad} onChange={e => setVueloCampo('origen_ciudad', e.target.value)} placeholder="Ciudad de origen (Ej: Ezeiza)"
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

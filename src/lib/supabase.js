@@ -221,6 +221,15 @@ export async function importarHospedajesDeLink(url) {
   return { data, error }
 }
 
+// ── Extraer datos de vuelo desde una imagen (captura, e-ticket, etc.) ──────────
+export async function extraerDatosVuelo(imagenBase64, mediaType) {
+  if (!supabase) return { error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
+    body: { imagenBase64, mediaType },
+  })
+  return { data, error }
+}
+
 // ── Sincronizar conversaciones históricas desde Evolution API ──────────────────
 export async function sincronizarWhatsApp() {
   if (!supabase) return { error: 'Sin conexión' }

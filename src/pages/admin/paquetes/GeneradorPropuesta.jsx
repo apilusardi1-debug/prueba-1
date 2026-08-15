@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -225,11 +225,6 @@ export default function GeneradorPropuesta() {
   const [generando, setGenerando] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(false)
-  const [linkImportar, setLinkImportar] = useState('')
-  const [importando, setImportando] = useState(false)
-  const [errorImportar, setErrorImportar] = useState('')
-  const [resultadosImportar, setResultadosImportar] = useState([])
-  const [seleccionadosImportar, setSeleccionadosImportar] = useState(new Set())
 
   useEffect(() => {
     async function cargar() {
@@ -329,55 +324,6 @@ export default function GeneradorPropuesta() {
 
   function quitarHospedaje(idx) {
     setHospedajes(prev => prev.filter((_, i) => i !== idx))
-  }
-
-  async function importarLink() {
-    setErrorImportar('')
-    setResultadosImportar([])
-    setImportando(true)
-    const { data, error } = await importarHospedajesDeLink(linkImportar.trim())
-    setImportando(false)
-    if (error || data?.error) {
-      setErrorImportar(data?.error || error?.message || 'No se pudo leer ese link.')
-      return
-    }
-    const encontrados = data?.hospedajes || []
-    setResultadosImportar(encontrados)
-    setSeleccionadosImportar(new Set(encontrados.map(h => h.hotel_id)))
-  }
-
-  function toggleSeleccionImportar(hotelId) {
-    setSeleccionadosImportar(prev => {
-      const next = new Set(prev)
-      next.has(hotelId) ? next.delete(hotelId) : next.add(hotelId)
-      return next
-    })
-  }
-
-  function agregarHospedajesImportados() {
-    const elegidos = resultadosImportar.filter(r => seleccionadosImportar.has(r.hotel_id))
-    if (!elegidos.length) return
-    const nuevos = elegidos.map(r => ({
-      ...HOSPEDAJE_VACIO,
-      nombre: r.nombre || '',
-      subtitulo: [r.tipo, r.destino].filter(Boolean).join(' · '),
-      imagen: r.imagen || '',
-      noches: r.noches || '',
-      precio: r.precio || '',
-      moneda: r.moneda || 'BRL',
-      pension: r.pension || '',
-      descripcion: r.descripcion || '',
-      items_titulo: (r.amenities || []).length ? 'Servicios:' : 'Servicios:',
-      items: (r.amenities || []).length ? r.amenities : [''],
-    }))
-    setHospedajes(prev => {
-      // Si solo hay un hospedaje vacío sin cargar todavía, se reemplaza en vez de sumarse.
-      const base = prev.length === 1 && !prev[0].nombre.trim() ? [] : prev
-      return [...base, ...nuevos]
-    })
-    setResultadosImportar([])
-    setLinkImportar('')
-    setSeleccionadosImportar(new Set())
   }
 
   function setHospedajeCampo(idx, campo, valor) {
@@ -620,52 +566,6 @@ export default function GeneradorPropuesta() {
           </button>
         </div>
 
-        {/* Importar desde link de cotización */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Pegar link de cotización (Niara)</p>
-          <div className="flex gap-2">
-            <input value={linkImportar} onChange={e => setLinkImportar(e.target.value)}
-              placeholder="https://my-reservations.niara.tech/dreamstours/quotations/link/..."
-              className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <button onClick={importarLink} disabled={importando || !linkImportar.trim()}
-              className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0">
-              {importando ? 'Leyendo...' : 'Importar'}
-            </button>
-          </div>
-          {errorImportar && <p className="text-xs text-red-500 dark:text-red-400">{errorImportar}</p>}
-
-          {resultadosImportar.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-zinc-800">
-              <p className="text-xs text-gray-500 dark:text-zinc-400">Encontramos {resultadosImportar.length} hospedaje{resultadosImportar.length !== 1 ? 's' : ''} en ese link — elegí cuáles agregar:</p>
-              {resultadosImportar.map(r => (
-                <label key={r.hotel_id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer">
-                  <input type="checkbox" checked={seleccionadosImportar.has(r.hotel_id)}
-                    onChange={() => toggleSeleccionImportar(r.hotel_id)}
-                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  {r.imagen ? (
-                    <img src={r.imagen} alt="" className="w-14 h-10 object-cover rounded-lg flex-shrink-0" />
-                  ) : (
-                    <div className="w-14 h-10 rounded-lg bg-gray-100 dark:bg-zinc-800 flex-shrink-0" />
-                  )}
-                  <span className="text-sm">
-                    <span className="block font-medium text-gray-800 dark:text-zinc-200">{r.nombre}</span>
-                    <span className="block text-xs text-gray-400 dark:text-zinc-500">{r.destino} · {r.noches ? `${r.noches} noches` : ''} {r.precio ? `· ${r.moneda} ${formatearNumero(r.precio)}` : ''}</span>
-                  </span>
-                </label>
-              ))}
-              <div className="flex gap-2 pt-1">
-                <button onClick={agregarHospedajesImportados} disabled={seleccionadosImportar.size === 0}
-                  className="text-xs font-semibold bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg transition-colors">
-                  Agregar seleccionados ({seleccionadosImportar.size})
-                </button>
-                <button onClick={() => { setResultadosImportar([]); setLinkImportar('') }}
-                  className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 px-3 py-2">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
 
         {hospedajes.map((h, idx) => (
           <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink, extraerDatosVuelo } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, importarHospedajesDeLink, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -399,6 +399,21 @@ export default function GeneradorPropuesta() {
 
   const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
 
+  // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
+  // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
+  // pantalla — por eso se pasan por el proxy server-side antes de renderizar,
+  // que las devuelve como data URI (sin restricción de dominio para el canvas).
+  async function imagenParaPdf(url) {
+    if (!url || url.startsWith('data:')) return url
+    try {
+      const { data, error } = await convertirImagenABase64(url)
+      if (error || data?.error || !data?.dataUri) return url
+      return data.dataUri
+    } catch (_) {
+      return url
+    }
+  }
+
   async function generar() {
     if (!busqCliente.trim()) return setError('Ingresá el nombre del cliente.')
     if (!hospedajes.some(h => h.nombre.trim())) return setError('Cargá al menos un hospedaje con nombre.')
@@ -409,15 +424,20 @@ export default function GeneradorPropuesta() {
       await cargarFuente()
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
 
+      const vueloParaPdf = { ...vuelo, banner_imagen: await imagenParaPdf(vuelo.banner_imagen) }
+
       const doc = new jsPDF({ orientation: 'portrait', unit: 'px', format: [ANCHO, ALTO] })
 
-      const canvasAereos = await renderPagina(htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo }))
+      const canvasAereos = await renderPagina(htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo: vueloParaPdf }))
       doc.addImage(canvasAereos.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
-      for (let i = 0; i < hospedajesValidos.length; i += 2) {
+      const hospedajesParaPdf = await Promise.all(
+        hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
+      )
+      for (let i = 0; i < hospedajesParaPdf.length; i += 2) {
         doc.addPage([ANCHO, ALTO], 'portrait')
-        const grupo = hospedajesValidos.slice(i, i + 2)
+        const grupo = hospedajesParaPdf.slice(i, i + 2)
         const canvasHosp = await renderPagina(htmlPaginaHospedajes(grupo))
         doc.addImage(canvasHosp.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
       }

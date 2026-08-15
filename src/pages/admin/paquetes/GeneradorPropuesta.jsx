@@ -14,7 +14,15 @@ const VUELO_VACIO = {
   ida_fecha: '', ida_sale: '', ida_llega: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '',
   banner_destino: '', banner_link: '', banner_imagen: '',
+  equipaje: { mochila: true, carryOn: true, valija23: false, extra: false },
 }
+
+const EQUIPAJE_OPCIONES = [
+  { clave: 'mochila', label: 'Mochila de mano' },
+  { clave: 'carryOn', label: 'Carry on 10 kg' },
+  { clave: 'valija23', label: 'Valija 23 kg' },
+  { clave: 'extra', label: 'Equipaje extra' },
+]
 
 const HOSPEDAJE_VACIO = {
   nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
@@ -103,9 +111,7 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
         </div>
         <div>
           <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">EQUIPAJE INCLUIDO:</p>
-          <p style="color:#333;font-size:13px;margin:0 0 4px;">- 1 mochila o bolso</p>
-          <p style="color:#333;font-size:13px;margin:0 0 4px;">- 1 artículo personal</p>
-          <p style="color:#333;font-size:13px;margin:0;">- 1 valija carry-on (en cabina)</p>
+          ${EQUIPAJE_OPCIONES.filter(op => vuelo.equipaje?.[op.clave]).map(op => `<p style="color:#333;font-size:13px;margin:0 0 4px;">- ${op.label}</p>`).join('')}
         </div>
       </div>
 
@@ -275,6 +281,10 @@ export default function GeneradorPropuesta() {
 
   function setVueloCampo(campo, valor) {
     setVuelo(v => ({ ...v, [campo]: valor }))
+  }
+
+  function toggleEquipaje(clave) {
+    setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, [clave]: !v.equipaje?.[clave] } }))
   }
 
   async function subirImagenBanner(archivo) {
@@ -540,6 +550,18 @@ export default function GeneradorPropuesta() {
             <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (vuelta)</label>
             <input type="time" value={vuelo.vuelta_llega} onChange={e => setVueloCampo('vuelta_llega', e.target.value)}
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+        </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
+          <div className="flex flex-wrap gap-4">
+            {EQUIPAJE_OPCIONES.map(op => (
+              <label key={op.clave} className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+                <input type="checkbox" checked={!!vuelo.equipaje?.[op.clave]} onChange={() => toggleEquipaje(op.clave)}
+                  className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                {op.label}
+              </label>
+            ))}
           </div>
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">

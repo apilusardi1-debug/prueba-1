@@ -1,14 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
-import { hospedajesApi, subirImagen } from '../../lib/supabase.js'
-
-const TIPOS = ['Resort', 'Hotel', 'Pousada', 'Departamento']
-
-const EMPTY = {
-  nombre: '', tipo: 'Resort', destino: '', ubicacion: '', direccion: '',
-  descripcion: '', imagen: '', galeria: [], amenities: [''],
-  estrellas: '', capacidad: '', precio_min: '', contacto: '', whatsapp: '',
-}
+import { hospedajesApi } from '../../lib/supabase.js'
+import HospedajeForm, { TIPOS, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
 
 async function loadImgDataUrl(url) {
   return new Promise(resolve => {
@@ -239,16 +232,12 @@ export default function Hospedajes() {
   const [seleccionados, setSeleccionados] = useState([])
   const [generando, setGenerando] = useState(false)
 
-  const [editando, setEditando] = useState(null) // null | 'nuevo' | id
-  const [form, setForm] = useState(EMPTY)
+  const [editando, setEditando] = useState(null) // null | id
+  const [form, setForm] = useState(EMPTY_HOSPEDAJE)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
-  const [subiendoImg, setSubiendoImg] = useState(false)
-  const [subiendoGaleria, setSubiendoGaleria] = useState(false)
   const [aBorrar, setABorrar] = useState(null)
   const [verDetalle, setVerDetalle] = useState(null)
-  const fileRef = useRef()
-  const galeriaFileRef = useRef()
 
   useEffect(() => { cargar() }, [])
 
@@ -301,12 +290,6 @@ export default function Hospedajes() {
     }
   }
 
-  function abrirNuevo() {
-    setForm(EMPTY)
-    setError(null)
-    setEditando('nuevo')
-  }
-
   function abrirEditar(h) {
     setForm({
       nombre: h.nombre || '', tipo: h.tipo || 'Resort', destino: h.destino || '',
@@ -319,43 +302,6 @@ export default function Hospedajes() {
     setEditando(h.id)
   }
 
-  async function handleImagen(e) {
-    const archivo = e.target.files?.[0]
-    if (!archivo) return
-    setSubiendoImg(true)
-    const { url, error } = await subirImagen(archivo)
-    if (error) setError('Error al subir imagen: ' + error)
-    else setForm(p => ({ ...p, imagen: url }))
-    setSubiendoImg(false)
-  }
-
-  async function handleGaleria(e) {
-    const archivos = Array.from(e.target.files || [])
-    if (!archivos.length) return
-    setSubiendoGaleria(true)
-    for (const archivo of archivos) {
-      const { url, error } = await subirImagen(archivo)
-      if (url) setForm(p => ({ ...p, galeria: [...p.galeria, url] }))
-      if (error) setError('Error al subir imagen: ' + error)
-    }
-    setSubiendoGaleria(false)
-    if (galeriaFileRef.current) galeriaFileRef.current.value = ''
-  }
-
-  function quitarDeGaleria(idx) {
-    setForm(p => ({ ...p, galeria: p.galeria.filter((_, i) => i !== idx) }))
-  }
-
-  function setAmenity(idx, valor) {
-    setForm(p => ({ ...p, amenities: p.amenities.map((a, i) => i === idx ? valor : a) }))
-  }
-  function agregarAmenity() {
-    setForm(p => ({ ...p, amenities: [...p.amenities, ''] }))
-  }
-  function quitarAmenity(idx) {
-    setForm(p => ({ ...p, amenities: p.amenities.filter((_, i) => i !== idx) }))
-  }
-
   async function guardar() {
     if (!form.nombre.trim()) {
       setError('El nombre es obligatorio.')
@@ -363,34 +309,10 @@ export default function Hospedajes() {
     }
     setGuardando(true)
     setError(null)
-    const datos = {
-      nombre: form.nombre.trim(),
-      tipo: form.tipo,
-      destino: form.destino.trim(),
-      ubicacion: form.ubicacion.trim(),
-      direccion: form.direccion.trim(),
-      descripcion: form.descripcion.trim(),
-      imagen: form.imagen.trim(),
-      galeria: form.galeria.filter(Boolean),
-      amenities: form.amenities.map(a => a.trim()).filter(Boolean),
-      estrellas: parseInt(form.estrellas) || 0,
-      capacidad: parseInt(form.capacidad) || 0,
-      precio_min: parseFloat(form.precio_min) || null,
-      contacto: form.contacto.trim(),
-      whatsapp: form.whatsapp.trim(),
-      activa: true,
-    }
-
     try {
-      if (editando === 'nuevo') {
-        const { data, error } = await hospedajesApi.create(datos)
-        if (error) throw error
-        if (data) setHospedajes(prev => [...prev, data].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      } else {
-        const { data, error } = await hospedajesApi.update(editando, datos)
-        if (error) throw error
-        if (data) setHospedajes(prev => prev.map(h => h.id === editando ? data : h))
-      }
+      const { data, error } = await hospedajesApi.update(editando, datosDesdeForm(form))
+      if (error) throw error
+      if (data) setHospedajes(prev => prev.map(h => h.id === editando ? data : h))
       setEditando(null)
     } catch (e) {
       setError('Error al guardar: ' + (e.message || 'intentá de nuevo'))
@@ -419,12 +341,6 @@ export default function Hospedajes() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 dark:text-zinc-500">{filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''}</span>
-          <button
-            onClick={abrirNuevo}
-            className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm"
-          >
-            <span className="text-base leading-none">+</span> Nuevo hospedaje
-          </button>
           <button
             onClick={exportar}
             disabled={seleccionados.length === 0 || generando}
@@ -557,140 +473,9 @@ export default function Hospedajes() {
       {editando !== null && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="font-bold text-lg mb-5 text-gray-900 dark:text-zinc-100">{editando === 'nuevo' ? 'Nuevo hospedaje' : 'Editar hospedaje'}</h2>
+            <h2 className="font-bold text-lg mb-5 text-gray-900 dark:text-zinc-100">Editar hospedaje</h2>
 
-            {error && <p className="text-xs text-red-500 dark:text-red-400 mb-4 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
-
-            <div className="space-y-3 text-sm">
-              {/* Imagen principal */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Foto principal</label>
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleImagen} className="hidden" />
-                {form.imagen ? (
-                  <div className="relative">
-                    <img src={form.imagen} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-                    <button type="button" onClick={() => { setForm(p => ({ ...p, imagen: '' })); if (fileRef.current) fileRef.current.value = '' }}
-                      className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg">✕ Quitar</button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => fileRef.current?.click()} disabled={subiendoImg}
-                    className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50">
-                    {subiendoImg ? '⏳ Subiendo...' : '📷 Subir foto principal'}
-                  </button>
-                )}
-              </div>
-
-              {/* Galería */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Galería de fotos (opcional)</label>
-                <input ref={galeriaFileRef} type="file" accept="image/*" multiple onChange={handleGaleria} className="hidden" />
-                {form.galeria.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    {form.galeria.map((url, i) => (
-                      <div key={i} className="relative">
-                        <img src={url} alt="" className="w-full h-16 object-cover rounded-lg" />
-                        <button type="button" onClick={() => quitarDeGaleria(i)}
-                          className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button type="button" onClick={() => galeriaFileRef.current?.click()} disabled={subiendoGaleria}
-                  className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium disabled:opacity-50">
-                  {subiendoGaleria ? '⏳ Subiendo...' : '+ Agregar fotos'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Nombre *</label>
-                  <input type="text" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Tipo</label>
-                  <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Destino (ej: Porto de Galinhas, PE)</label>
-                  <input type="text" value={form.destino} onChange={e => setForm(p => ({ ...p, destino: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Ubicación (para filtrar)</label>
-                  <input type="text" value={form.ubicacion} onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Dirección</label>
-                <input type="text" value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Descripción</label>
-                <textarea rows={4} value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
-              </div>
-
-              {/* Amenities */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Amenities / servicios</label>
-                <div className="space-y-2">
-                  {form.amenities.map((a, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input value={a} onChange={e => setAmenity(i, e.target.value)} placeholder="Ej: Piscina, Wifi Gratuito..."
-                        className="flex-1 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                      {form.amenities.length > 1 && (
-                        <button type="button" onClick={() => quitarAmenity(i)} className="text-gray-300 dark:text-zinc-700 hover:text-red-400 px-1">✕</button>
-                      )}
-                    </div>
-                  ))}
-                  <button type="button" onClick={agregarAmenity} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
-                    + Agregar amenity
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Estrellas (0-5)</label>
-                  <input type="number" min="0" max="5" value={form.estrellas} onChange={e => setForm(p => ({ ...p, estrellas: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Capacidad</label>
-                  <input type="number" min="0" value={form.capacidad} onChange={e => setForm(p => ({ ...p, capacidad: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Precio desde (R$)</label>
-                  <input type="number" min="0" value={form.precio_min} onChange={e => setForm(p => ({ ...p, precio_min: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">WhatsApp de contacto (opcional)</label>
-                  <input type="text" value={form.whatsapp} onChange={e => setForm(p => ({ ...p, whatsapp: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Email de contacto (opcional)</label>
-                  <input type="text" value={form.contacto} onChange={e => setForm(p => ({ ...p, contacto: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                </div>
-              </div>
-            </div>
+            <HospedajeForm form={form} setForm={setForm} error={error} />
 
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditando(null)} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">

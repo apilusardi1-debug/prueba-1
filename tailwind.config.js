@@ -41,6 +41,10 @@ export default {
         'inverse-primary':          '#a7c8ff',
         'secondary-container':      '#fcd400',
         'error-container':          '#ffdad6',
+        'hero-cream':               '#f0ece7',
+        'hero-yellow':              '#f2e000',
+        'hero-sky':                 '#88d1f4',
+        'hero-navy':                '#072e40',
       },
       fontFamily: {
         'display-lg':        ['"Playfair Display"', 'Georgia', 'serif'],
@@ -53,6 +57,8 @@ export default {
         'label-sm':          ['Montserrat', 'system-ui', 'sans-serif'],
         sans:                ['Montserrat', 'system-ui', 'sans-serif'],
         serif:               ['"Playfair Display"', 'Georgia', 'serif'],
+        'display-hero':      ['"Bebas Neue"', 'sans-serif'],
+        'script-hero':       ['"bello-pro"', 'cursive'],
       },
       fontSize: {
         'display-lg':        ['64px', { lineHeight: '72px', letterSpacing: '-0.02em', fontWeight: '700' }],

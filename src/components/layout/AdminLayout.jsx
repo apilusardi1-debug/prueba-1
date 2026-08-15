@@ -63,6 +63,11 @@ const Icon = {
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
   ),
+  Nuevo: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
   Paquetes: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/>
@@ -149,7 +154,13 @@ const NAV = [
   { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
   { path: '/admin/excursiones', label: 'Excursiones', icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
-  { path: '/admin/hospedajes',  label: 'Hospedajes',  icon: Icon.Hospedajes },
+  {
+    label: 'Hospedajes', icon: Icon.Hospedajes,
+    sub: [
+      { path: '/admin/hospedajes',       label: 'Listado',        icon: Icon.Hospedajes, exact: true },
+      { path: '/admin/hospedajes/nuevo', label: 'Nuevo hospedaje', icon: Icon.Nuevo },
+    ],
+  },
   {
     label: 'Paquetes', icon: Icon.Paquetes,
     sub: [
@@ -206,7 +217,7 @@ function Sidebar() {
         [openSub]: subMenuRefs.current[openSub].scrollHeight,
       }))
     }
-  }, [openSub])
+  }, [openSub, visible])
 
   function toggleSub(i) {
     setOpenSub(prev => (prev === i ? null : i))
@@ -287,7 +298,7 @@ function Sidebar() {
                             <Link
                               to={s.path}
                               className={`menu-dropdown-item ${
-                                isActive(s.path) ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'
+                                isActive(s.path, s.exact) ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'
                               }`}
                             >
                               <span className="size-4 flex-shrink-0"><s.icon /></span>
@@ -361,6 +372,7 @@ function Header({ dark, setDark }) {
     if (pathname.startsWith('/admin/reservas')) return 'Reservas'
     if (pathname.startsWith('/admin/excursiones')) return 'Excursiones'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
+    if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
     if (pathname.startsWith('/admin/paquetes/clientes')) return 'Clientes de Paquetes'
     if (pathname.startsWith('/admin/paquetes/generador')) return 'Generador de Propuesta'

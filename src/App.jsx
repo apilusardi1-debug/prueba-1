@@ -28,6 +28,7 @@ import Agenda from './pages/admin/Agenda.jsx'
 import SiteConfig from './pages/admin/SiteConfig.jsx'
 import Equipo from './pages/admin/Equipo.jsx'
 import Hospedajes from './pages/admin/Hospedajes.jsx'
+import NuevoHospedaje from './pages/admin/hospedajes/NuevoHospedaje.jsx'
 import WhatsAppCRM from './pages/admin/crm/WhatsApp.jsx'
 import Finanzas from './pages/admin/Finanzas.jsx'
 import ClientesPaquetes from './pages/admin/paquetes/ClientesPaquetes.jsx'
@@ -68,6 +69,7 @@ const router = createBrowserRouter([
       { path: '/admin/excursiones',   element: <Excursiones /> },
       { path: '/admin/agenda',            element: <Agenda /> },
       { path: '/admin/hospedajes',         element: <Hospedajes /> },
+      { path: '/admin/hospedajes/nuevo',   element: <NuevoHospedaje /> },
       { path: '/admin/paquetes/clientes',  element: <ClientesPaquetes /> },
       { path: '/admin/paquetes/generador', element: <GeneradorPropuesta /> },
       { path: '/admin/paquetes/enviadas',  element: <PropuestasLista estado="enviada" /> },

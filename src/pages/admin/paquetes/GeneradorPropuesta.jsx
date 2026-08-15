@@ -14,7 +14,7 @@ const VUELO_VACIO = {
   ida_fecha: '', ida_sale: '', ida_llega: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '',
   banner_destino: '', banner_link: '', banner_imagen: '',
-  equipaje: { mochila: true, carryOn: true, valija23: false, extra: false },
+  equipaje: { mochila: true, carryOn: true, valija23: false, extra: false, extraDescripcion: '' },
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -111,7 +111,10 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
         </div>
         <div>
           <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">EQUIPAJE INCLUIDO:</p>
-          ${EQUIPAJE_OPCIONES.filter(op => vuelo.equipaje?.[op.clave]).map(op => `<p style="color:#333;font-size:13px;margin:0 0 4px;">- ${op.label}</p>`).join('')}
+          ${EQUIPAJE_OPCIONES.filter(op => vuelo.equipaje?.[op.clave]).map(op => {
+            const extra = op.clave === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
+            return `<p style="color:#333;font-size:13px;margin:0 0 4px;">- ${op.label}${extra ? `: ${escapeHtml(vuelo.equipaje.extraDescripcion)}` : ''}</p>`
+          }).join('')}
         </div>
       </div>
 
@@ -563,6 +566,11 @@ export default function GeneradorPropuesta() {
               </label>
             ))}
           </div>
+          {vuelo.equipaje?.extra && (
+            <input value={vuelo.equipaje?.extraDescripcion || ''} onChange={e => setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, extraDescripcion: e.target.value } }))}
+              placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
+              className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          )}
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
           <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Banner "ver actividades" (opcional — si lo dejás vacío, no aparece en el PDF)</p>

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { excursiones, destinos } from '../../data/mockData.js'
+import { destinos } from '../../data/mockData.js'
+import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
 
@@ -64,7 +65,21 @@ const SERVICIOS = [
 export default function Home() {
   const { config } = useSiteConfig()
   const [faqOpen, setFaqOpen] = useState(null)
-  const excursionesDestacadas = excursiones.filter(e => e.categoria === 'excursiones').slice(0, 3)
+  const [excursionesDestacadas, setExcursionesDestacadas] = useState([])
+
+  useEffect(() => {
+    async function cargarExcursiones() {
+      try {
+        const { data, error } = await excursionesApi.getAll()
+        if (!error && data) {
+          setExcursionesDestacadas(
+            data.map(normalizarExcursion).filter(e => e.categoria === 'excursiones').slice(0, 3)
+          )
+        }
+      } catch (_) {}
+    }
+    cargarExcursiones()
+  }, [])
 
   return (
     <div className="bg-surface">

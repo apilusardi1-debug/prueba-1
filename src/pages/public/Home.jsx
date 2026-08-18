@@ -175,13 +175,13 @@ export default function Home() {
           <h2 className="font-display-hero uppercase text-hero-navy mb-6" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}>
             Servicios
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="flex flex-wrap gap-x-10 gap-y-8">
             {SERVICIOS.map(({ label, icono, to }) => (
-              <Link key={to} to={to} className="group flex flex-col items-start">
-                <img src={icono} alt={label} className="w-full max-w-[160px] aspect-[4/3] object-contain mb-3" />
-                <span className="inline-flex items-center gap-1 font-display-hero uppercase text-hero-navy text-[15px] md:text-[17px] leading-tight">
+              <Link key={to} to={to} className="group flex flex-col items-start w-[120px] md:w-[150px]">
+                <img src={icono} alt={label} className="w-full aspect-[4/3] object-contain mb-3" />
+                <span className="inline-flex items-center gap-1 font-display-hero uppercase text-hero-navy text-[13px] md:text-[15px] leading-tight">
                   {label}
-                  <span className="material-symbols-outlined text-[16px] flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">arrow_outward</span>
+                  <span className="material-symbols-outlined text-[14px] flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">arrow_outward</span>
                 </span>
               </Link>
             ))}

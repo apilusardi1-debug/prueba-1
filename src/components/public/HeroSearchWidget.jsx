@@ -19,7 +19,7 @@ export default function HeroSearchWidget() {
   const [tab, setTab] = useState('hotel')
 
   return (
-    <div className="w-full max-w-3xl">
+    <div className="w-full max-w-3xl mx-auto">
       <div className="inline-flex bg-hero-cream rounded-full p-1 shadow-lg relative z-10 mb-[-2px]">
         {TABS.map(t => (
           <button

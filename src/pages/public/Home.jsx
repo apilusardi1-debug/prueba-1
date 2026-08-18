@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { destinos } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
@@ -61,6 +61,54 @@ const SERVICIOS = [
   { label: 'Traslados', icon: 'directions_car', to: '/traslados' },
   { label: 'Tours',     icon: 'explore',        to: '/excursiones' },
 ]
+
+const STATS_NOSOTROS = [
+  { valor: 7,    label: 'Años de experiencia' },
+  { valor: 350,  label: 'De pasajeros' },
+  { valor: 8000, label: 'Seguidores en nuestra comunidad', tall: true },
+]
+
+// Cuenta de 0 al valor final cuando el elemento entra en pantalla.
+function useCountUp(valor, duracion = 1500) {
+  const [count, setCount] = useState(0)
+  const ref = useRef(null)
+  const arrancado = useRef(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || arrancado.current) return
+      arrancado.current = true
+      const inicio = performance.now()
+      function tick(ahora) {
+        const progreso = Math.min((ahora - inicio) / duracion, 1)
+        const suavizado = 1 - Math.pow(1 - progreso, 3)
+        setCount(Math.round(valor * suavizado))
+        if (progreso < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+      observer.disconnect()
+    }, { threshold: 0.4 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [valor, duracion])
+
+  return [count, ref]
+}
+
+function StatPill({ valor, label, tall, className = '' }) {
+  const [count, ref] = useCountUp(valor)
+  return (
+    <div ref={ref} className={`bg-hero-cream rounded-2xl flex flex-col items-center justify-center text-center px-4 ${tall ? 'py-10' : 'py-6'} ${className}`}>
+      <span className="font-display-hero text-hero-navy leading-none"
+        style={{ fontSize: tall ? 'clamp(2.5rem, 5vw, 3.5rem)' : 'clamp(1.75rem, 3vw, 2.25rem)' }}>
+        +{count.toLocaleString('es-AR')}
+      </span>
+      <span className="font-label-lg text-label-sm text-hero-navy/80 uppercase tracking-wide mt-2">{label}</span>
+    </div>
+  )
+}
 
 export default function Home() {
   const { config } = useSiteConfig()
@@ -321,23 +369,48 @@ export default function Home() {
       </section>
 
       {/* ── QUIÉNES SOMOS ────────────────────────────────────── */}
-      <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <div className="max-w-3xl">
-          <h2 className="font-display-lg-mobile text-display-lg-mobile text-deep-ocean mb-8">¿Quiénes somos?</h2>
-          <div className="space-y-6 mb-10">
-            <p className="font-body-lg text-body-lg text-on-surface-variant">
-              Somos Flor y Marcos, hermanos argentinos que con nuestra experiencia en el nordeste brasilero, creamos DreamTours, una agencia familiar dedicada a ofrecerte la mejor experiencia.
+      <section className="relative overflow-hidden py-16 md:py-24"
+        style={{ background: 'linear-gradient(180deg, #1c6bb8 0%, #4f9fdd 45%, #bfe2f7 100%)' }}>
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute rounded-full bg-white/70 blur-2xl" style={{ width: 260, height: 90, top: '10%', left: '-4%' }} />
+          <div className="absolute rounded-full bg-white/50 blur-2xl" style={{ width: 180, height: 70, top: '6%', left: '55%' }} />
+          <div className="absolute rounded-full bg-white/60 blur-2xl" style={{ width: 220, height: 80, top: '28%', right: '4%' }} />
+          <div className="absolute rounded-full bg-white/40 blur-3xl" style={{ width: 360, height: 130, bottom: '2%', left: '15%' }} />
+          <div className="absolute rounded-full bg-white/50 blur-2xl" style={{ width: 200, height: 75, bottom: '10%', right: '20%' }} />
+        </div>
+
+        <div className="relative z-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
+          <div>
+            <h2 className="font-display-hero uppercase text-hero-yellow leading-none"
+              style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
+              ¿Quiénes somos?
+            </h2>
+            <p className="font-display-hero uppercase text-hero-cream mb-8"
+              style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
+              Creadores de sueños
             </p>
-            <p className="font-body-lg text-body-lg text-on-surface-variant">
-              No solo planeamos tu viaje, sino que también te recibimos en destino para que disfrutes cada momento.
-            </p>
+
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              <div className="flex flex-col gap-4 md:flex-1">
+                {STATS_NOSOTROS.filter(s => !s.tall).map(s => (
+                  <StatPill key={s.label} valor={s.valor} label={s.label} />
+                ))}
+              </div>
+              <div className="md:flex-1">
+                {STATS_NOSOTROS.filter(s => s.tall).map(s => (
+                  <StatPill key={s.label} valor={s.valor} label={s.label} tall className="h-full" />
+                ))}
+              </div>
+            </div>
+
+            <Link to="/nosotros"
+              className="inline-block bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
+              Conocé nuestra historia y nuestro equipo
+            </Link>
           </div>
-          <Link to="/nosotros"
-            className="inline-block bg-deep-ocean text-white font-label-lg text-label-lg px-10 py-4 rounded mb-12 hover:bg-deep-ocean/90 transition-colors">
-            Conocé al Equipo
-          </Link>
-          <div className="rounded-2xl overflow-hidden shadow-lg">
-            <img src="/equipo.jpg" alt="Nuestro equipo" className="w-full h-auto object-cover"
+
+          <div className="bg-hero-cream rounded-3xl p-3 shadow-2xl rotate-2 max-w-md mx-auto md:mx-0 md:justify-self-end">
+            <img src="/equipo.jpg" alt="Flor y Marcos, equipo DreamTours" className="w-full h-auto object-cover rounded-2xl"
               onError={e => { e.target.src = 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80' }} />
           </div>
         </div>

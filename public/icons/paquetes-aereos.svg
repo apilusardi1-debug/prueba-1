@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Capa_1" data-name="Capa 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1709.71 1320">
+  <defs>
+    <style>
+      .cls-1 {
+        font-family: BebasNeue, 'Bebas Neue';
+        font-size: 139.5px;
+      }
+
+      .cls-2 {
+        fill: #072e40;
+      }
+
+      .cls-3 {
+        fill: none;
+        stroke: #072e40;
+        stroke-width: 15.24px;
+      }
+
+      .cls-3, .cls-4 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-4 {
+        fill: #f0ece7;
+        stroke: #000;
+        stroke-width: 4.83px;
+      }
+
+      .cls-5 {
+        letter-spacing: .02em;
+      }
+
+      .cls-6 {
+        letter-spacing: .03em;
+      }
+
+      .cls-7 {
+        letter-spacing: .03em;
+      }
+    </style>
+  </defs>
+  <rect class="cls-4" x="277.73" y="231.65" width="1154.25" height="969.48" rx="227.91" ry="227.91"/>
+  <g>
+    <polygon class="cls-2" points="1128.52 1068.04 934.18 759.69 1026.29 674.71 1065.18 638.49 1186.54 1009.76 1128.52 1068.04"/>
+    <g>
+      <path class="cls-2" d="M460.73,878.36l62.66-62.96,117.39,22.5,82.34-91.06,106.75-116.85,67.56-72.55,25.98-27.57,31.65-33.38,35.22-36.8,98.97-99.05c15.18-15.19,35.13-24.17,55.46-28.03,23.97-4.54,47.92,2.91,64.03,19.47,33.51,34.47,20.41,89.07-10.93,120.38l-88.25,88.17-42.63,40.96-31.89,30.33-312.88,286.89,22.33,117.84-62.8,62.77-63.66-157.53-157.3-63.55Z"/>
+      <polygon class="cls-2" points="888.24 530.83 799.35 627.51 490.64 432.97 548.72 374.92 920.33 496.31 888.24 530.83"/>
+    </g>
+  </g>
+</svg>

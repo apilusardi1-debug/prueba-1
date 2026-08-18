@@ -56,10 +56,10 @@ const DESTINOS_HOME = [
 ]
 
 const SERVICIOS = [
-  { label: 'Vuelos',    icon: 'flight',         to: '/paquetes' },
-  { label: 'Hoteles',   icon: 'hotel',          to: '/hoteles' },
-  { label: 'Traslados', icon: 'directions_car', to: '/traslados' },
-  { label: 'Tours',     icon: 'explore',        to: '/excursiones' },
+  { label: 'Paquetes Aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
+  { label: 'Hoteles y Posadas',  icono: '/icons/hoteles-posadas.svg',    to: '/hoteles' },
+  { label: 'Transfers Privados', icono: '/icons/transfers-privados.svg', to: '/traslados' },
+  { label: 'Paseos en Español',  icono: '/icons/paseos-espanol.svg',     to: '/excursiones' },
 ]
 
 const STATS_NOSOTROS = [
@@ -170,17 +170,22 @@ export default function Home() {
       </section>
 
       {/* ── SERVICIOS ────────────────────────────────────────── */}
-      <section className="py-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-white -mt-8 relative z-20 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,33,71,0.05)]">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
-          {SERVICIOS.map(({ label, icon, to }) => (
-            <Link key={to} to={to}
-              className="flex flex-col items-center p-6 bg-surface rounded-xl hover:shadow-[0_10px_30px_rgba(0,33,71,0.08)] transition-all duration-300 group border border-surface-variant/50">
-              <div className="w-12 h-12 rounded-full bg-deep-ocean/5 flex items-center justify-center mb-4 group-hover:bg-deep-ocean/10 transition-colors">
-                <span className="material-symbols-outlined text-deep-ocean" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
-              </div>
-              <span className="font-label-lg text-label-lg text-deep-ocean">{label}</span>
-            </Link>
-          ))}
+      <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto -mt-8 relative z-20">
+        <div className="bg-hero-cream border-2 border-hero-navy rounded-3xl p-6 md:p-8 shadow-[0_10px_40px_rgba(0,33,71,0.08)]">
+          <h2 className="font-display-hero uppercase text-hero-navy mb-6" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}>
+            Servicios
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {SERVICIOS.map(({ label, icono, to }) => (
+              <Link key={to} to={to} className="group flex flex-col items-start">
+                <img src={icono} alt={label} className="w-full max-w-[160px] aspect-[4/3] object-contain mb-3" />
+                <span className="inline-flex items-center gap-1 font-display-hero uppercase text-hero-navy text-[15px] md:text-[17px] leading-tight">
+                  {label}
+                  <span className="material-symbols-outlined text-[16px] flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">arrow_outward</span>
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

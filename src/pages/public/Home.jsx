@@ -311,34 +311,35 @@ export default function Home() {
       </section>
 
       {/* ── RESEÑAS ──────────────────────────────────────────── */}
-      <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-surface-container-highest rounded-t-3xl">
-        <div className="text-center mb-10">
-          <div className="flex justify-center mb-4">
-            <img alt="TripAdvisor" className="h-10 w-auto" src="https://static.tacdn.com/assets/s/2651d377.svg" />
-          </div>
-          <h2 className="font-headline-lg text-headline-lg text-deep-ocean">Lo que dicen nuestros viajeros</h2>
-        </div>
+      <section className="py-16 md:py-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-hero-cream rounded-t-3xl">
+        <h2 className="font-display-hero uppercase text-hero-navy mb-10 md:mb-14"
+          style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
+          Lo que dicen nuestros viajeros
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {RESENAS.map((r, i) => (
-            <div key={i} className="bg-white rounded-3xl p-8 shadow-[0_10px_30px_rgba(0,33,71,0.05)]">
-              <div className="flex gap-1 text-[#00aa6c] mb-4">
+            <div key={i} className="bg-white border-2 border-hero-navy rounded-2xl p-8">
+              <div className="flex gap-1 text-hero-yellow mb-4">
                 {[...Array(5)].map((_, s) => (
                   <span key={s} className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: '"FILL" 1' }}>star</span>
                 ))}
               </div>
-              <h3 className="font-label-lg text-[16px] text-deep-ocean mb-3">{r.titulo}</h3>
+              <h3 className="font-label-lg text-[16px] text-hero-navy mb-3">{r.titulo}</h3>
               <p className="font-body-md text-body-md text-on-surface-variant mb-6 italic">"{r.texto}"</p>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-label-lg text-deep-ocean font-bold">
+                <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-label-lg text-hero-navy font-bold">
                   {r.inicial}
                 </div>
                 <div>
-                  <div className="font-label-lg text-[14px] text-deep-ocean">{r.nombre}</div>
+                  <div className="font-label-lg text-[14px] text-hero-navy">{r.nombre}</div>
                   <div className="font-label-sm text-[12px] text-on-surface-variant">Viajó en {r.fecha}</div>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+        <div className="flex justify-center mt-12">
+          <img alt="TripAdvisor" className="h-9 w-auto" src="https://static.tacdn.com/assets/s/2651d377.svg" />
         </div>
       </section>
 

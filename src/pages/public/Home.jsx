@@ -155,39 +155,33 @@ export default function Home() {
       </section>
 
       {/* ── EXCURSIONES DESTACADAS ───────────────────────────── */}
-      <section className="py-16 bg-surface-container-low">
+      <section className="py-16 md:py-20 bg-hero-cream">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="mb-10 text-center md:text-left">
-            <span className="font-label-lg text-label-lg text-primary uppercase tracking-wider block mb-2">Aventuras</span>
-            <h2 className="font-headline-lg text-headline-lg text-deep-ocean">Excursiones Destacadas</h2>
-          </div>
-          <div className="flex flex-col gap-6">
-            {excursionesDestacadas.map((e, i) => (
-              <div key={e.id} className="bg-white rounded-xl overflow-hidden flex flex-col md:flex-row shadow-[0_4px_20px_rgba(0,33,71,0.05)]">
-                <div className="md:w-1/3 h-48 md:h-auto">
-                  <img src={e.imagen} alt={e.nombre} className="w-full h-full object-cover" />
+          <h2 className="font-display-hero uppercase text-hero-navy text-center mb-10 md:mb-14"
+            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.02em' }}>
+            Reserva tu Paseo
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            {excursionesDestacadas.map(e => (
+              <Link key={e.id} to={`/excursiones/${e.id}`}
+                className="group block rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+                <div className="h-64 md:h-80 overflow-hidden">
+                  <img src={e.imagen} alt={e.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
-                <div className="p-6 md:p-8 flex flex-col justify-center flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-headline-md text-headline-md text-deep-ocean">{e.nombre}</h3>
-                    {i === 0 && (
-                      <span className="border border-primary/50 text-primary text-[10px] tracking-[0.1em] uppercase font-bold px-2 py-0.5 rounded-full whitespace-nowrap ml-2">
-                        Más Popular
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-6">{e.descripcion}</p>
-                  <div className="mt-auto flex items-center justify-between">
-                    <div className="flex items-center text-on-surface-variant gap-1 text-sm">
-                      <span className="material-symbols-outlined text-[18px]">schedule</span>
-                      {e.duracion}
+                <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
+                  <h3 className="font-display-hero uppercase text-hero-cream text-xl md:text-2xl leading-none line-clamp-2">
+                    {e.nombre}
+                  </h3>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">
+                      Desde {e.moneda === 'USD' ? 'US$' : 'R$'} {e.precio}
                     </div>
-                    <Link to={`/excursiones/${e.id}`} className="text-deep-ocean font-label-lg text-label-lg border-b-2 border-transparent hover:border-deep-ocean transition-all">
-                      Ver Detalles
-                    </Link>
+                    <div className="font-label-sm text-[11px] uppercase text-hero-yellow font-bold whitespace-nowrap">
+                      {e.cuposDisponibles} Cupos
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
           <div className="mt-10 text-center">

@@ -255,61 +255,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── TABLA DE MAREAS ──────────────────────────────────── */}
-      <section className="py-12 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <div className="bg-deep-ocean text-white rounded-3xl p-8 md:p-10 relative overflow-hidden shadow-[0_20px_40px_rgba(0,33,71,0.1)]">
-          <div className="absolute -right-16 -top-16 opacity-10">
-            <span className="material-symbols-outlined" style={{ fontSize: '200px' }}>water</span>
-          </div>
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <div className="flex items-center gap-2 mb-2 text-primary-fixed">
-                <span className="material-symbols-outlined">waves</span>
-                <span className="font-label-lg text-label-lg uppercase tracking-wider">Información Útil</span>
-              </div>
-              <h2 className="font-headline-lg text-headline-lg mb-4 text-white">Tabla de Mareas</h2>
-              <p className="font-body-md text-body-md text-surface-container-highest opacity-90 max-w-md">
-                Consultá el estado de las mareas para planificar tus visitas a las piscinas naturales. Las mejores condiciones se dan con marea baja.
-              </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <div className="flex justify-between items-center mb-6">
-                <span className="font-label-lg text-[16px]">Hoy, Maragogi</span>
-                <span className="bg-primary-fixed/20 text-primary-fixed font-label-sm text-[12px] px-3 py-1 rounded-full">Luna Llena</span>
-              </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-inverse-primary">arrow_downward</span>
-                    <span className="font-body-md">Marea Baja</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-label-lg">09:30 AM</div>
-                    <div className="font-label-sm text-surface-variant">0.2m</div>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-error-container">arrow_upward</span>
-                    <span className="font-body-md">Marea Alta</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-label-lg">03:45 PM</div>
-                    <div className="font-label-sm text-surface-variant">2.1m</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t border-white/10 text-center">
-                <Link to="/marea" className="inline-flex items-center gap-1 font-label-lg text-label-lg text-white hover:text-primary-fixed transition-colors group">
-                  Ver tabla completa
-                  <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── RESEÑAS ──────────────────────────────────────────── */}
       <section className="py-16 md:py-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-hero-cream rounded-t-3xl">
         <h2 className="font-display-hero uppercase text-hero-navy mb-10 md:mb-14"
@@ -343,29 +288,77 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FAQ ──────────────────────────────────────────────── */}
-      <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <div className="mb-10 text-center">
-          <span className="font-label-lg text-label-lg text-primary uppercase tracking-wider block mb-2">Ayuda</span>
-          <h2 className="font-headline-lg text-headline-lg text-deep-ocean">Preguntas Frecuentes</h2>
+      {/* ── FAQ + TABLA DE MAREAS ─────────────────────────────── */}
+      <section className="relative overflow-hidden py-16 md:py-24"
+        style={{ background: 'linear-gradient(180deg, #d7eef7 0%, #8fcbe8 22%, #3f96cc 55%, #1a5f96 80%, #0d3f68 100%)' }}>
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute rounded-full bg-white/25 blur-3xl" style={{ width: 500, height: 60, top: '28%', left: '-10%' }} />
+          <div className="absolute rounded-full bg-white/15 blur-3xl" style={{ width: 420, height: 50, top: '48%', right: '-8%' }} />
+          <div className="absolute rounded-full bg-white/10 blur-3xl" style={{ width: 600, height: 70, top: '70%', left: '10%' }} />
         </div>
-        <div className="space-y-4 max-w-3xl mx-auto">
-          {FAQS.map((faq, i) => (
-            <div key={i}
-              className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,33,71,0.05)] cursor-pointer"
-              onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
-              <div className="flex justify-between items-center">
-                <h3 className="font-headline-md text-[18px] text-deep-ocean pr-4">{faq.q}</h3>
-                <span className="material-symbols-outlined flex-shrink-0 text-on-surface-variant transition-transform duration-200"
-                  style={{ transform: faqOpen === i ? 'rotate(180deg)' : 'none' }}>
-                  expand_more
-                </span>
+
+        <div className="relative z-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <h2 className="font-display-hero uppercase text-hero-navy text-center mb-10 md:mb-14"
+            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
+            Preguntas Frecuentes
+          </h2>
+
+          <div className="space-y-4 max-w-3xl mx-auto mb-14 md:mb-20">
+            {FAQS.map((faq, i) => (
+              <div key={i}
+                className={`bg-hero-cream border-2 border-hero-navy p-6 cursor-pointer transition-[border-radius] ${faqOpen === i ? 'rounded-2xl' : 'rounded-full'}`}
+                onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
+                <div className="flex justify-between items-center gap-4">
+                  <h3 className="font-label-lg text-label-lg uppercase text-hero-navy">{faq.q}</h3>
+                  <span className="flex-shrink-0 text-hero-navy transition-transform duration-200"
+                    style={{ transform: faqOpen === i ? 'rotate(180deg)' : 'none' }}>
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M0 0h16L8 12z" /></svg>
+                  </span>
+                </div>
+                {faqOpen === i && (
+                  <p className="mt-4 font-body-md text-body-md text-hero-navy/80">{faq.a}</p>
+                )}
               </div>
-              {faqOpen === i && (
-                <p className="mt-4 font-body-md text-body-md text-on-surface-variant">{faq.a}</p>
-              )}
+            ))}
+          </div>
+
+          <div className="bg-hero-cream rounded-3xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center max-w-4xl mx-auto">
+            <div>
+              <span className="font-label-lg text-label-sm uppercase tracking-wider text-hero-navy/60 block mb-1">Información Útil</span>
+              <h3 className="font-display-hero uppercase text-hero-navy text-2xl md:text-3xl mb-3">Tabla de Marea</h3>
+              <p className="font-body-md text-body-md text-hero-navy/70">
+                Consultá el estado de las mareas para planificar tus paseos a las piscinas naturales.
+              </p>
             </div>
-          ))}
+            <div className="bg-hero-sky rounded-2xl p-5">
+              <div className="flex justify-between items-center pb-3 border-b border-hero-navy/15">
+                <div className="flex items-center gap-2 text-hero-navy">
+                  <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+                  <span className="font-label-lg text-label-sm uppercase">Marea Baja</span>
+                </div>
+                <div className="text-right text-hero-navy">
+                  <div className="font-label-lg text-[14px]">09:30 AM</div>
+                  <div className="font-label-sm text-[12px] text-hero-navy/60">0.2m</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-3">
+                <div className="flex items-center gap-2 text-hero-navy">
+                  <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+                  <span className="font-label-lg text-label-sm uppercase">Marea Alta</span>
+                </div>
+                <div className="text-right text-hero-navy">
+                  <div className="font-label-lg text-[14px]">03:45 PM</div>
+                  <div className="font-label-sm text-[12px] text-hero-navy/60">2.1m</div>
+                </div>
+              </div>
+              <div className="mt-4 text-center">
+                <Link to="/marea" className="inline-flex items-center gap-1 font-label-lg text-label-sm uppercase text-hero-navy hover:opacity-70 transition-opacity">
+                  Ver tabla completa
+                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

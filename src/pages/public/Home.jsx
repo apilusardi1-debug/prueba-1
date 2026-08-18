@@ -175,13 +175,13 @@ export default function Home() {
           <h2 className="font-display-hero uppercase text-hero-navy mb-6" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}>
             Servicios
           </h2>
-          <div className="flex flex-wrap gap-x-10 gap-y-8">
+          <div className="flex flex-wrap justify-between gap-x-6 gap-y-8">
             {SERVICIOS.map(({ label, icono, to }) => (
-              <Link key={to} to={to} className="group flex flex-col items-start w-[120px] md:w-[150px]">
-                <img src={icono} alt={label} className="w-full aspect-[4/3] object-contain mb-3" />
-                <span className="inline-flex items-center gap-1 font-display-hero uppercase text-hero-navy text-[13px] md:text-[15px] leading-tight">
+              <Link key={to} to={to} className="group flex flex-col items-start w-[45%] sm:w-[150px] md:w-[190px]">
+                <img src={icono} alt={label} className="w-full max-w-[110px] sm:max-w-[150px] md:max-w-[190px] aspect-[4/3] object-contain mb-3" />
+                <span className="inline-flex items-center gap-1 font-display-hero uppercase text-hero-navy text-[13px] md:text-[16px] leading-tight">
                   {label}
-                  <span className="material-symbols-outlined text-[14px] flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">arrow_outward</span>
+                  <span className="material-symbols-outlined text-[14px] md:text-[16px] flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">arrow_outward</span>
                 </span>
               </Link>
             ))}

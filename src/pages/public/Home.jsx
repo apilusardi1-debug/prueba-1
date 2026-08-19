@@ -413,18 +413,26 @@ export default function Home() {
       </section>
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
-      <section className="py-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <div className="bg-tropical-sun rounded-3xl p-10 text-center">
-          <h2 className="font-headline-lg text-headline-lg text-deep-ocean mb-3">¿Querés armar tu viaje a medida?</h2>
-          <p className="font-body-lg text-body-lg text-deep-ocean/70 mb-8 max-w-xl mx-auto">
-            Contactanos y diseñamos el viaje perfecto para vos
-          </p>
-          <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}
-            target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-deep-ocean text-white font-label-lg text-label-lg px-10 py-4 rounded-full hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined text-[20px]">chat</span>
-            Comunicarme por WhatsApp
-          </a>
+      <section className="grid grid-cols-1 md:grid-cols-2">
+        <div className="bg-hero-sky px-margin-mobile md:px-16 py-14 md:py-20 flex flex-col justify-center">
+          <h2 className="font-display-hero uppercase text-white mb-6"
+            style={{ fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', letterSpacing: '0.01em' }}>
+            ¿Querés armar tu viaje a medida?
+          </h2>
+          <div className="bg-white border-2 border-hero-navy rounded-2xl p-6 max-w-md">
+            <p className="font-display-hero uppercase text-hero-navy text-[15px] leading-snug tracking-wide mb-6">
+              Completá el formulario y nuestro equipo se va a contactar para diseñar un viaje 100% personalizado según tus intereses, tiempos y presupuesto.
+            </p>
+            <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-[15px] px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+              Cupos Abiertos
+              <span className="material-symbols-outlined text-hero-yellow text-[18px]">flight</span>
+            </a>
+          </div>
+        </div>
+        <div className="h-64 md:h-auto">
+          <img src="/viaje-a-medida.jpg" alt="Viajá con DreamTours" className="w-full h-full object-cover" style={{ objectPosition: '50% 28%' }} />
         </div>
       </section>
 

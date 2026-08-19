@@ -187,7 +187,7 @@ export default function Home() {
       {/* ── DESTINOS FAVORITOS ────────────────────────────────────────── */}
       <section className="py-16 overflow-hidden">
         <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <h2 className="font-headline-lg text-headline-lg text-deep-ocean mb-2">Destinos Favoritos</h2>
+          <h2 className="font-display-hero uppercase text-hero-navy mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>Destinos Favoritos</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">Los lugares más elegidos por nuestros viajeros</p>
         </div>
         {/* Carousel infinito con fade en bordes */}

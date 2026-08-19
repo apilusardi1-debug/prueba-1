@@ -405,7 +405,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="bg-hero-cream rounded-3xl p-3 shadow-2xl rotate-2 max-w-md mx-auto md:mx-0 md:justify-self-end">
+          <div className="bg-hero-cream rounded-3xl p-3 shadow-2xl max-w-md mx-auto md:mx-0 md:justify-self-end">
             <img src="/equipo.png" alt="Flor y Marcos, equipo DreamTours" className="w-full h-auto object-cover rounded-2xl"
               onError={e => { e.target.src = 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80' }} />
           </div>

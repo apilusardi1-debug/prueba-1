@@ -200,7 +200,7 @@ export default function Home() {
                 <img src={d.imagen} alt={d.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/90 via-deep-ocean/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6 w-full">
-                  <h3 className="font-headline-md text-headline-md text-white mb-1">{d.nombre}</h3>
+                  <h3 className="font-display-hero uppercase text-hero-yellow text-2xl md:text-3xl leading-[0.95] mb-1">{d.nombre}</h3>
                   <p className="font-label-sm text-label-sm text-sand-beige flex items-center gap-1 group-hover:underline">
                     Explorar destino <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                   </p>

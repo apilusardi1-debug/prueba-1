@@ -413,7 +413,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
-      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:h-[560px]">
+      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:min-h-[560px]">
         <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-0 flex flex-col justify-center">
           <h2 className="font-display-hero uppercase text-white mb-8"
             style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)', letterSpacing: '0.01em' }}>

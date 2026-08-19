@@ -15,6 +15,13 @@ const NAV_LINKS = [
   { to: '/mis-reservas',label: 'Mis Reservas',      icon: 'confirmation_number' },
 ]
 
+const FOOTER_LINKS = [
+  { to: '/',            label: 'Inicio' },
+  { to: '/paquetes',    label: 'Paquetes' },
+  { to: '/excursiones', label: 'Paseos' },
+  { to: '/nosotros',    label: 'Quiénes somos?' },
+]
+
 export default function PublicLayout() {
   const { lang, changeLang } = useLang()
   const { config } = useSiteConfig()
@@ -149,34 +156,60 @@ export default function PublicLayout() {
 
       {/* Footer */}
       <footer className="bg-deep-ocean w-full py-16 mt-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <div className="col-span-1 flex flex-col items-center md:items-start mb-8 md:mb-0">
-            <img src="/logo.png" alt="DreamTours" className="h-16 w-auto mb-4 object-contain"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          {/* Nav links */}
+          <nav className="flex flex-col items-center md:items-start gap-4">
+            {FOOTER_LINKS.map(({ to, label }) => {
+              const active = pathname === to
+              return (
+                <Link key={to} to={to}
+                  className={`font-label-lg text-label-lg uppercase tracking-wide pb-1 border-b-2 transition-colors ${active ? 'text-white border-hero-yellow' : 'text-sand-beige/80 border-transparent hover:text-white'}`}>
+                  {label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Tagline central */}
+          <div className="flex flex-col items-center text-center">
+            <h2 className="font-display-hero uppercase text-white leading-none"
+              style={{ fontSize: 'clamp(1.5rem, 3.2vw, 2.25rem)', letterSpacing: '0.01em' }}>
+              Hace realidad el viaje
+            </h2>
+            <p className="font-script-hero text-hero-sky"
+              style={{ fontSize: 'clamp(2rem, 4.5vw, 3rem)', lineHeight: 1, marginTop: '-0.05em' }}>
+              de tus sueños
+            </p>
+          </div>
+
+          {/* Logo + redes */}
+          <div className="flex flex-col items-center md:items-end gap-4">
+            <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
-              onError={e => { e.target.style.display = 'none' }} />
-            <p className="font-body-md text-body-md text-sand-beige/80">Tu agencia argentina en el Nordeste de Brasil.</p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Explorar</h4>
-            <Link to="/destinos"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Destinos</Link>
-            <Link to="/paquetes"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Paquetes Aéreos</Link>
-            <Link to="/excursiones" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Excursiones</Link>
-            <Link to="/marea"       className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Tabla de Marea</Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Nosotros</h4>
-            <Link to="/nosotros"     className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Quiénes Somos</Link>
-            <Link to="/hoteles"      className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Hoteles & Posadas</Link>
-            <Link to="/traslados"    className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Traslados</Link>
-            <Link to="/mis-reservas" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Mis Reservas</Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h4 className="font-label-lg text-label-lg text-sand-beige mb-1">Soporte</h4>
-            <Link to="/login" className="font-label-sm text-label-sm text-surface-variant/80 hover:text-sand-beige transition-colors">Acceso Equipo</Link>
+              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
+            <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
+              DreamTours
+            </span>
+            <div className="flex items-center gap-4">
+              <a href={config?.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+                className="text-sand-beige/80 hover:text-white transition-colors">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="4" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+                </svg>
+              </a>
+              <a href={config?.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
+                className="text-sand-beige/80 hover:text-white transition-colors">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 7.917v4.034a9.948 9.948 0 0 1 -5 -1.951v6.5a6.5 6.5 0 1 1 -8 -6.326v4.326a2.5 2.5 0 1 0 4 2v-13.5h4.083a6.005 6.005 0 0 0 4.917 4.917z" />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mt-12 pt-6 border-t border-surface-variant/20">
-          <p className="text-sm text-sand-beige/60 text-center">ÃÂ© 2025 DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
+          <p className="text-sm text-sand-beige/60 text-center">© 2025 DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
         </div>
       </footer>
 

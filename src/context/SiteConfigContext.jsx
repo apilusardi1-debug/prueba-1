@@ -10,7 +10,8 @@ export const CONFIG_DEFAULTS = {
   color_primario: '#b07420',
   color_acento:   '#d9a83a',
   whatsapp:       '5491100000000',
-  instagram_url:  'https://instagram.com/dreamstour',
+  instagram_url:  'https://www.instagram.com/dreamtours_esp/',
+  tiktok_url:     'https://www.tiktok.com/@dream.tours03',
 }
 
 const SiteConfigContext = createContext(CONFIG_DEFAULTS)

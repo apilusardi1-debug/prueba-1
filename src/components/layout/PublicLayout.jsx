@@ -183,17 +183,17 @@ export default function PublicLayout() {
           </div>
 
           {/* Logo + redes */}
-          <div className="flex flex-col items-center md:items-end gap-4">
-            <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
+          <div className="flex flex-col items-center md:items-end gap-5">
+            <img src="/logo.png" alt="DreamTours" className="h-24 md:h-28 w-auto object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
               onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
             <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
               DreamTours
             </span>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5">
               <a href={config?.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
                 className="text-sand-beige/80 hover:text-white transition-colors">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="4" y="4" width="16" height="16" rx="4" />
                   <circle cx="12" cy="12" r="3" />
                   <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
@@ -201,7 +201,7 @@ export default function PublicLayout() {
               </a>
               <a href={config?.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
                 className="text-sand-beige/80 hover:text-white transition-colors">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 7.917v4.034a9.948 9.948 0 0 1 -5 -1.951v6.5a6.5 6.5 0 1 1 -8 -6.326v4.326a2.5 2.5 0 1 0 4 2v-13.5h4.083a6.005 6.005 0 0 0 4.917 4.917z" />
                 </svg>
               </a>

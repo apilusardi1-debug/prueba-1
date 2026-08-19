@@ -19,7 +19,7 @@ export default function HeroSearchWidget() {
   const [tab, setTab] = useState('hotel')
 
   return (
-    <div className="w-full max-w-3xl">
+    <div className="w-full max-w-3xl mx-auto">
       <div className="inline-flex bg-hero-cream rounded-full p-1 shadow-lg relative z-10 mb-[-2px]">
         {TABS.map(t => (
           <button
@@ -35,9 +35,9 @@ export default function HeroSearchWidget() {
         ))}
       </div>
 
-      <div className="bg-hero-cream rounded-3xl md:rounded-full shadow-xl p-2 flex flex-col md:flex-row items-stretch md:items-center gap-1">
+      <div className="bg-hero-cream rounded-3xl md:rounded-full shadow-xl p-2 flex flex-col md:flex-row items-stretch md:items-center gap-1 overflow-hidden">
         {FIELDS.map((f, i) => (
-          <div key={f.key} className="flex items-center gap-2 flex-1 px-4 py-2.5 md:border-r md:last-of-type:border-r-0 border-hero-navy/10">
+          <div key={f.key} className="flex items-center gap-2 flex-1 min-w-0 px-4 py-2.5 md:border-r md:last-of-type:border-r-0 border-hero-navy/10">
             <span className="material-symbols-outlined text-hero-navy/50 text-[18px] flex-shrink-0">{f.icon}</span>
             <div className="min-w-0">
               <div className="font-label-sm text-[10px] uppercase tracking-wide text-hero-navy/50">{f.label}</div>

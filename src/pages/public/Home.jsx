@@ -413,25 +413,25 @@ export default function Home() {
       </section>
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
-      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr]">
-        <div className="bg-hero-sky px-margin-mobile md:px-16 py-14 md:py-20 flex flex-col justify-center">
-          <h2 className="font-display-hero uppercase text-white mb-6"
-            style={{ fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', letterSpacing: '0.01em' }}>
+      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:h-[560px]">
+        <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-0 flex flex-col justify-center">
+          <h2 className="font-display-hero uppercase text-white mb-8"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)', letterSpacing: '0.01em' }}>
             ¿Querés armar tu viaje a medida?
           </h2>
-          <div className="bg-white border-2 border-hero-navy rounded-2xl p-6 max-w-md">
-            <p className="font-display-hero uppercase text-hero-navy text-[15px] leading-snug tracking-wide mb-6">
+          <div className="bg-white border-2 border-hero-navy rounded-2xl p-8 max-w-lg">
+            <p className="font-display-hero uppercase text-hero-navy text-xl leading-snug tracking-wide mb-8">
               Completá el formulario y nuestro equipo se va a contactar para diseñar un viaje 100% personalizado según tus intereses, tiempos y presupuesto.
             </p>
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}
               target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-[15px] px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+              className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-xl px-8 py-4 rounded-full hover:opacity-90 transition-opacity">
               Cupos Abiertos
-              <span className="material-symbols-outlined text-hero-yellow text-[18px]">flight</span>
+              <span className="material-symbols-outlined text-hero-yellow text-2xl">flight</span>
             </a>
           </div>
         </div>
-        <div className="h-64 md:h-auto">
+        <div className="h-64 md:h-full">
           <img src="/viaje-a-medida.jpg" alt="Viajá con DreamTours" className="w-full h-full object-cover" style={{ objectPosition: '50% 28%' }} />
         </div>
       </section>

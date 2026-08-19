@@ -143,7 +143,7 @@ export default function Home() {
           <div className="absolute inset-0 hero-overlay" />
         </div>
 
-        <div className="relative z-10 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
+        <div className="relative z-10 px-margin-mobile md:px-margin-desktop w-full">
           {/* Titular principal */}
           <h1 className="font-display-hero uppercase text-hero-cream"
             style={{ fontSize: 'clamp(2.75rem, 6.8vw, 5.25rem)', lineHeight: 0.95, letterSpacing: '0.01em' }}>

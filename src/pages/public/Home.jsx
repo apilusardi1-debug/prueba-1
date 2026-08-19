@@ -170,17 +170,19 @@ export default function Home() {
       </section>
 
       {/* ── SERVICIOS ────────────────────────────────────────── */}
-      <section className="py-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-white -mt-8 relative z-20 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,33,71,0.05)]">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
-          {SERVICIOS.map(({ label, icono, to }) => (
-            <Link key={to} to={to}
-              className="flex flex-col items-center p-6 bg-surface rounded-xl hover:shadow-[0_10px_30px_rgba(0,33,71,0.08)] transition-all duration-300 group border border-hero-navy/10">
-              <div className="w-16 h-16 rounded-full bg-hero-cream flex items-center justify-center mb-4 group-hover:bg-hero-cream/60 transition-colors">
-                <img src={icono} alt="" className="w-11 h-11 object-contain" />
-              </div>
-              <span className="font-display-hero uppercase text-hero-navy text-[16px] tracking-wide">{label}</span>
-            </Link>
-          ))}
+      <section className="bg-white -mt-8 relative z-20 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,33,71,0.05)]">
+        <div className="py-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
+            {SERVICIOS.map(({ label, icono, to }) => (
+              <Link key={to} to={to}
+                className="flex flex-col items-center p-6 bg-surface rounded-xl hover:shadow-[0_10px_30px_rgba(0,33,71,0.08)] transition-all duration-300 group border border-hero-navy/10">
+                <div className="w-16 h-16 rounded-full bg-hero-cream flex items-center justify-center mb-4 group-hover:bg-hero-cream/60 transition-colors">
+                  <img src={icono} alt="" className="w-11 h-11 object-contain" />
+                </div>
+                <span className="font-display-hero uppercase text-hero-navy text-[16px] tracking-wide">{label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

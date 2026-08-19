@@ -415,7 +415,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
-      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:min-h-[560px]">
+      <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:min-h-[420px]">
         <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-0 flex flex-col justify-center">
           <h2 className="font-display-hero uppercase text-white mb-8"
             style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)', letterSpacing: '0.01em' }}>
@@ -433,8 +433,8 @@ export default function Home() {
             </a>
           </div>
         </div>
-        <div className="h-64 md:h-full">
-          <img src="/viaje-a-medida.jpg" alt="Viajá con DreamTours" className="w-full h-full object-cover" style={{ objectPosition: '50% 28%' }} />
+        <div className="relative h-64 md:h-full overflow-hidden">
+          <img src="/viaje-a-medida.jpg" alt="Viajá con DreamTours" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: '50% 46%' }} />
         </div>
       </section>
 

@@ -307,7 +307,7 @@ export default function Home() {
             Preguntas Frecuentes
           </h2>
 
-          <div className="space-y-4 max-w-3xl mx-auto mb-14 md:mb-20">
+          <div className="space-y-4 max-w-4xl mx-auto mb-14 md:mb-20">
             {FAQS.map((faq, i) => (
               <div key={i}
                 className={`bg-hero-cream border-2 border-hero-navy p-6 cursor-pointer transition-[border-radius] ${faqOpen === i ? 'rounded-2xl' : 'rounded-full'}`}
@@ -326,7 +326,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="bg-hero-cream rounded-3xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center max-w-4xl mx-auto">
+          <div className="bg-hero-cream rounded-3xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center max-w-5xl mx-auto">
             <div>
               <span className="font-label-lg text-label-sm uppercase tracking-wider text-hero-navy/60 block mb-1">Información Útil</span>
               <h3 className="font-display-hero uppercase text-hero-navy text-2xl md:text-3xl mb-3">Tabla de Marea</h3>

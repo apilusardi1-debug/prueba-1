@@ -77,7 +77,7 @@ export default {
         'section-gap':    '120px',
       },
       maxWidth: {
-        'container-max': '1280px',
+        'container-max': '1440px',
       },
       borderRadius: {
         DEFAULT: '0.5rem',

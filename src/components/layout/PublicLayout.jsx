@@ -56,7 +56,7 @@ export default function PublicLayout() {
 
       {/* Header */}
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 backdrop-blur-md ${scrolled ? 'bg-white/95 shadow-md' : 'bg-transparent'}`}>
-        <div className="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-5 max-w-container-max mx-auto">
+        <div className="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-5">
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <Link to="/" aria-label="Inicio" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

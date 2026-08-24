@@ -224,6 +224,21 @@ function Estrellas({ n }) {
   return <span className="text-amber-400 text-sm tracking-tight">{'★'.repeat(n)}{'☆'.repeat(5 - n)}</span>
 }
 
+const ORIGEN_ESTILOS = {
+  'Niara':     'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400',
+  'La Playa':  'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400',
+}
+
+function OrigenTag({ origen }) {
+  if (!origen) return null
+  const estilo = ORIGEN_ESTILOS[origen] || 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400'
+  return (
+    <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${estilo}`}>
+      {origen}
+    </span>
+  )
+}
+
 export default function Hospedajes() {
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -427,7 +442,10 @@ export default function Hospedajes() {
                   </span>
                 </div>
                 <div className="p-5 flex flex-col flex-1 gap-2 cursor-pointer" onClick={() => setVerDetalle(h)}>
-                  <h3 className="font-bold text-gray-900 dark:text-zinc-100 text-base leading-tight">{h.nombre}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-gray-900 dark:text-zinc-100 text-base leading-tight">{h.nombre}</h3>
+                    <OrigenTag origen={h.origen} />
+                  </div>
                   <Estrellas n={h.estrellas} />
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">{h.destino || '—'}</p>
@@ -571,7 +589,10 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
 
             {/* Info */}
             <div>
-              <Estrellas n={h.estrellas} />
+              <div className="flex items-center gap-2">
+                <Estrellas n={h.estrellas} />
+                <OrigenTag origen={h.origen} />
+              </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mt-1 mb-2 leading-snug">{h.nombre}</h2>
               {direccionCompleta && (
                 <p className="text-sm text-gray-500 dark:text-zinc-400 flex items-center flex-wrap gap-x-1.5 mb-4">

@@ -110,6 +110,14 @@ export const hospedajesApi = {
   delete: (id) => supabase?.from('hospedajes').delete().eq('id', id),
 }
 
+// ── Habitaciones de un hospedaje (tipos: Estándar, Superior, etc.) ──────────────
+export const habitacionesApi = {
+  getByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').select('*').eq('hospedaje_id', hospedajeId).order('nombre'),
+  createMany: (filas) => supabase?.from('hospedaje_habitaciones').insert(filas).select(),
+  delete: (id) => supabase?.from('hospedaje_habitaciones').delete().eq('id', id),
+  deleteByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').delete().eq('hospedaje_id', hospedajeId),
+}
+
 // ── Storage ────────────────────────────────────────────────────────────────────
 export async function subirImagen(archivo) {
   if (!supabase) return { url: null, error: 'Sin conexión' }

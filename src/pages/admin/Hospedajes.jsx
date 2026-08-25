@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
-import { hospedajesApi } from '../../lib/supabase.js'
+import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
 import HospedajeForm, { TIPOS, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
 
 async function loadImgDataUrl(url) {
@@ -549,10 +549,25 @@ function IconoCheck() {
 }
 
 function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
-  const fotos = [h.imagen, ...(h.galeria || [])].filter(Boolean)
-  const [fotoActiva, setFotoActiva] = useState(fotos[0] || '')
+  const fotosHotel = [h.imagen, ...(h.galeria || [])].filter(Boolean)
   const direccionCompleta = [h.direccion, h.destino].filter(Boolean).join(', ')
   const mapsUrl = direccionCompleta ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionCompleta)}` : null
+
+  const [habitaciones, setHabitaciones] = useState([])
+  useEffect(() => {
+    let activo = true
+    habitacionesApi.getByHospedaje(h.id).then(({ data }) => {
+      if (activo) setHabitaciones(data || [])
+    })
+    return () => { activo = false }
+  }, [h.id])
+
+  // null = mostrando las fotos generales del hotel; si no, la habitación
+  // seleccionada, para poder ver su propia galería de fotos.
+  const [habitacionActiva, setHabitacionActiva] = useState(null)
+  const fotos = habitacionActiva ? [habitacionActiva.imagen, ...(habitacionActiva.galeria || [])].filter(Boolean) : fotosHotel
+  const [fotoActiva, setFotoActiva] = useState(fotos[0] || '')
+  useEffect(() => { setFotoActiva(fotos[0] || '') }, [habitacionActiva])
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
@@ -568,6 +583,16 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
           <div className="grid md:grid-cols-2 gap-8">
             {/* Fotos */}
             <div>
+              {habitacionActiva && (
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">
+                    Fotos de: <span className="text-gray-900 dark:text-zinc-100">{habitacionActiva.nombre}</span>
+                  </p>
+                  <button onClick={() => setHabitacionActiva(null)} className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium">
+                    Ver fotos del hotel
+                  </button>
+                </div>
+              )}
               <div className="rounded-xl overflow-hidden mb-2 bg-gray-100 dark:bg-zinc-800 h-64 md:h-72">
                 {fotoActiva ? (
                   <img src={fotoActiva} alt={h.nombre} className="w-full h-full object-cover" />
@@ -647,6 +672,48 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
               )}
             </div>
           </div>
+
+          {habitaciones.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-zinc-800">
+              <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-3">
+                Tipos de habitación ({habitaciones.length})
+              </p>
+              <div className="grid md:grid-cols-2 gap-3">
+                {habitaciones.map(hab => {
+                  const totalFotos = [hab.imagen, ...(hab.galeria || [])].filter(Boolean).length
+                  const seleccionada = habitacionActiva?.id === hab.id
+                  return (
+                    <button key={hab.id} onClick={() => setHabitacionActiva(hab)}
+                      className={`flex gap-3 border rounded-xl p-3 text-left transition-colors ${
+                        seleccionada
+                          ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20'
+                          : 'border-gray-100 dark:border-zinc-800 hover:border-gray-200 dark:hover:border-zinc-700'
+                      }`}>
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
+                        {hab.imagen ? <img src={hab.imagen} alt="" className="w-full h-full object-cover" /> : null}
+                        {totalFotos > 1 && (
+                          <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[9px] font-semibold px-1 rounded">
+                            {totalFotos}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 dark:text-zinc-100 truncate">{hab.nombre}</p>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400">
+                          {[
+                            hab.superficie ? `${hab.superficie} m²` : null,
+                            hab.capacidad ? `hasta ${hab.capacidad} huéspedes` : null,
+                            hab.camas || null,
+                          ].filter(Boolean).join(' · ')}
+                        </p>
+                        {hab.vista && <p className="text-xs text-gray-400 dark:text-zinc-500">{hab.vista}</p>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

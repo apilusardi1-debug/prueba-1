@@ -15,6 +15,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 //   3. GET  dvzf45pftescl.cloudfront.net/hotels/{hotel_id}
 //      -> ficha completa del hotel (nombre, rating, categoria, direccion,
 //      hasta ~35 fotos, descripcion, amenities). No pidio auth en las pruebas.
+//      Tambien trae guestRooms: la lista completa de tipos de habitacion
+//      del hotel (Estandar, Superior, Familia Superior, Super Lujo Frente
+//      al Mar, etc.), cada uno con su propia superficie/capacidad/camas/
+//      vista/fotos/amenities -- independiente de la fecha cotizada.
 //
 // TENANT_ID es el id de cuenta de DreamsTour en Niara -- no es secreto (ya
 // viaja en cada request del propio sitio de Niara al navegador del cliente),
@@ -57,7 +61,10 @@ async function traerCotizacion(token: string, accessToken: string) {
 }
 
 async function traerHotel(hotelId: string) {
-  const res = await fetch(`https://dvzf45pftescl.cloudfront.net/hotels/${hotelId}?locale=pt-BR&tenantId=${encodeURIComponent(TENANT_ID)}`, {
+  // locale=es-MX (en vez de pt-BR): la propia API de Niara devuelve nombre,
+  // descripcion, amenities y habitaciones ya en español -- evita depender
+  // de la traduccion no oficial de Google Translate del lado del cliente.
+  const res = await fetch(`https://dvzf45pftescl.cloudfront.net/hotels/${hotelId}?locale=es-MX&tenantId=${encodeURIComponent(TENANT_ID)}`, {
     headers: { accept: 'application/json' },
   })
   if (!res.ok) return null
@@ -70,6 +77,40 @@ function elegirFotoPrincipal(imagenes: string[], fallback: string | null): strin
   // prefiere la primera .jpg/.jpeg de la lista.
   const jpg = (imagenes || []).find((u) => /\.(jpe?g)(\?|$)/i.test(u))
   return jpg || imagenes?.[0] || fallback || ''
+}
+
+// La ficha del hotel (traerHotel) ya trae guestRooms: la lista completa de
+// tipos de habitación que ofrece (Estándar, Superior, Familia Superior,
+// Super Lujo Frente al Mar, etc.), cada uno con su propia superficie,
+// capacidad, camas, vista, fotos y amenities -- independiente de la fecha
+// cotizada. Antes se descartaba y solo quedaba un precio/foto genérico por
+// hotel.
+function mapearHabitaciones(det: any): any[] {
+  const rooms = det?.guestRooms || []
+  return rooms.map((r: any) => {
+    const medias = r.medias || []
+    const imagenes: string[] = medias.flatMap((m: any) => (m.images || []).map((im: any) => im.url))
+    const descripcion = medias
+      .flatMap((m: any) => (m.texts || []).map((t: any) => t.Description))
+      .filter(Boolean)
+      .join(' ')
+    const amenities: string[] = (r.amenities || []).map((a: any) => a.description).filter(Boolean)
+    const camas = (r.bedTypes || []).map((b: any) => b.name).filter(Boolean).join(', ')
+    const vista = (r.views || []).map((v: any) => v.name).filter(Boolean).join(', ')
+
+    return {
+      nombre: r.description || '',
+      superficie: r.size || null,
+      capacidad: r.maxOccupancy || 0,
+      cantidad: r.quantity || 0,
+      camas,
+      vista,
+      descripcion,
+      imagen: imagenes[0] || '',
+      galeria: imagenes.slice(1),
+      amenities,
+    }
+  })
 }
 
 serve(async (req) => {
@@ -125,6 +166,7 @@ serve(async (req) => {
         amenities,
         imagen: elegirFotoPrincipal(imagenes, it.hotel_extra_thumbnail),
         imagenes,
+        habitaciones: mapearHabitaciones(det),
         noches: it.time_duration || null,
         precio: it.priceComposition_total_value ?? null,
         moneda: it.priceComposition_total_currency || 'BRL',

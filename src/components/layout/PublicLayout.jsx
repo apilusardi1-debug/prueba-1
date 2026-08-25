@@ -26,16 +26,23 @@ export default function PublicLayout() {
   const { lang, changeLang } = useLang()
   const { config } = useSiteConfig()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  const [scrolledPorScroll, setScrolledPorScroll] = useState(false)
   const [langDropdownOpen, setLangDropdownOpen] = useState(false)
   const langDropdownRef = useRef(null)
   const { pathname } = useLocation()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60)
+    const onScroll = () => setScrolledPorScroll(window.scrollY > 60)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  // El header transparente + logo blanco está pensado para flotar sobre una
+  // foto/video oscuro (como el hero del Home). En páginas sin ese fondo
+  // oscuro arriba, el logo blanco queda invisible -- así que en esas
+  // páginas el header arranca directamente "sólido" (blanco + logo a color).
+  const PAGINAS_CON_HERO_OSCURO = ['/', '/hoteles']
+  const scrolled = !PAGINAS_CON_HERO_OSCURO.includes(pathname) || scrolledPorScroll
 
   useEffect(() => { setDrawerOpen(false) }, [pathname])
 

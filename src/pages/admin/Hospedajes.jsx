@@ -3,6 +3,8 @@ import { jsPDF } from 'jspdf'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
 import HospedajeForm, { TIPOS, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
 
+const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
+
 async function loadImgDataUrl(url) {
   return new Promise(resolve => {
     const img = new Image()
@@ -243,7 +245,7 @@ export default function Hospedajes() {
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
-  const [seleccion, setSeleccion] = useState({ categorias: [], ubicaciones: [] })
+  const [seleccion, setSeleccion] = useState({ categorias: [], ubicaciones: [], origenes: [] })
   const [seleccionados, setSeleccionados] = useState([])
   const [generando, setGenerando] = useState(false)
 
@@ -273,7 +275,7 @@ export default function Hospedajes() {
 
   function resetFiltros() {
     setBusqueda('')
-    setSeleccion({ categorias: [], ubicaciones: [] })
+    setSeleccion({ categorias: [], ubicaciones: [], origenes: [] })
   }
 
   function toggleSeleccion(id) {
@@ -290,6 +292,7 @@ export default function Hospedajes() {
       if (busqueda && !h.nombre.toLowerCase().includes(busqueda.toLowerCase()) && !(h.destino || '').toLowerCase().includes(busqueda.toLowerCase())) return false
       if (seleccion.categorias.length && !seleccion.categorias.includes(h.tipo)) return false
       if (seleccion.ubicaciones.length && !seleccion.ubicaciones.includes(h.ubicacion)) return false
+      if (seleccion.origenes.length && !seleccion.origenes.includes(h.origen)) return false
       return true
     })
   }, [hospedajes, busqueda, seleccion])
@@ -391,6 +394,7 @@ export default function Hospedajes() {
         </div>
         <DropdownFiltro label="Categoría" opciones={TIPOS} seleccionados={seleccion.categorias} onChange={val => setFiltro('categorias', val)} />
         <DropdownFiltro label="Ubicación" opciones={ubicacionesDisponibles} seleccionados={seleccion.ubicaciones} onChange={val => setFiltro('ubicaciones', val)} />
+        <DropdownFiltro label="Origen" opciones={ORIGENES} seleccionados={seleccion.origenes} onChange={val => setFiltro('origenes', val)} />
         {hayFiltros && (
           <button onClick={resetFiltros} className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium ml-1">Limpiar</button>
         )}

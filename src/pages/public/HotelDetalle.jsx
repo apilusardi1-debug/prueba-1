@@ -134,12 +134,6 @@ export default function HotelDetalle() {
             {h.capacidad > 0 && (
               <p className="font-body-md text-body-md text-on-surface-variant mb-4">👥 Hasta {h.capacidad} personas</p>
             )}
-            {h.precio_min > 0 && (
-              <p className="font-display-hero text-hero-navy text-2xl mb-5">
-                Desde R$ {h.precio_min}<span className="font-body-md text-body-md text-on-surface-variant"> /noche</span>
-              </p>
-            )}
-
             {(h.amenities || []).length > 0 && (
               <div className="mb-6">
                 <p className="font-label-lg text-label-sm uppercase text-on-surface-variant mb-3">Servicios del hotel</p>

@@ -115,12 +115,7 @@ export default function Hoteles() {
                       <Estrellas n={h.estrellas} />
                       <p className="font-label-lg text-label-sm uppercase text-deep-ocean/70">{h.destino}</p>
                       <p className="font-body-md text-body-md text-on-surface-variant flex-1 line-clamp-2 mt-1">{h.descripcion}</p>
-                      <div className="mt-3 pt-3 border-t border-surface-variant flex items-center justify-between">
-                        {h.precio_min > 0 ? (
-                          <p className="font-display-hero text-hero-navy text-base">
-                            Desde R$ {h.precio_min}<span className="font-body-md text-body-md text-on-surface-variant"> /noche</span>
-                          </p>
-                        ) : <span />}
+                      <div className="mt-3 pt-3 border-t border-surface-variant flex items-center justify-end">
                         <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline">Ver más →</span>
                       </div>
                     </div>

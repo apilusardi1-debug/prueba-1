@@ -14,6 +14,7 @@ import MisReservas from './pages/public/MisReservas.jsx'
 import Destinos from './pages/public/Destinos.jsx'
 import DestinoDetalle from './pages/public/DestinoDetalle.jsx'
 import Hoteles from './pages/public/Hoteles.jsx'
+import HotelDetalle from './pages/public/HotelDetalle.jsx'
 import Marea from './pages/public/Marea.jsx'
 import Nosotros from './pages/public/Nosotros.jsx'
 
@@ -49,6 +50,7 @@ const router = createBrowserRouter([
       { path: '/destinos',              element: <Destinos /> },
       { path: '/destinos/:id',          element: <DestinoDetalle /> },
       { path: '/hoteles',               element: <Hoteles /> },
+      { path: '/hoteles/:id',           element: <HotelDetalle /> },
       { path: '/traslados',             element: <Catalogo categoria="traslados" /> },
       { path: '/marea',                 element: <Marea /> },
       { path: '/nosotros',              element: <Nosotros /> },

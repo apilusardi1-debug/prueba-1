@@ -63,6 +63,11 @@ const Icon = {
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
   ),
+  Videos: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+  ),
   Nuevo: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -157,10 +162,11 @@ const NAV = [
   {
     label: 'Hospedajes', icon: Icon.Hospedajes,
     sub: [
-      { path: '/admin/hospedajes',       label: 'Listado',        icon: Icon.Hospedajes, exact: true },
-      { path: '/admin/hospedajes/nuevo', label: 'Nuevo hospedaje', icon: Icon.Nuevo },
+      { path: '/admin/hospedajes',          label: 'Listado',            icon: Icon.Hospedajes, exact: true },
+      { path: '/admin/hospedajes/nuevo',    label: 'Nuevo hospedaje',    icon: Icon.Nuevo },
     ],
   },
+  { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
   {
     label: 'Paquetes', icon: Icon.Paquetes,
     sub: [
@@ -374,6 +380,7 @@ function Header({ dark, setDark }) {
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
+    if (pathname.startsWith('/admin/videos')) return 'Videos'
     if (pathname.startsWith('/admin/paquetes/clientes')) return 'Clientes de Paquetes'
     if (pathname.startsWith('/admin/paquetes/generador')) return 'Generador de Propuesta'
     if (pathname.startsWith('/admin/paquetes/enviadas')) return 'Propuestas Enviadas'

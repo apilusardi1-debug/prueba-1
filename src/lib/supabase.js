@@ -318,3 +318,25 @@ export const propuestasApi = {
   }).eq('id', id).select().single(),
   delete: (id) => supabase?.from('propuestas').delete().eq('id', id),
 }
+
+// ── Videos de la agencia (sección reels de la Home) ──────────────────────────────
+export const agenciaVideosApi = {
+  getAll: () => supabase?.from('agencia_videos').select('*').eq('activo', true).order('orden'),
+  getAllAdmin: () => supabase?.from('agencia_videos').select('*').order('orden'),
+  create: (data) => supabase?.from('agencia_videos').insert(data).select().single(),
+  update: (id, data) => supabase?.from('agencia_videos').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('agencia_videos').delete().eq('id', id),
+}
+
+async function subirArchivoAgenciaVideo(archivo, carpeta) {
+  if (!supabase) return { url: null, error: 'Sin conexión' }
+  const ext = archivo.name.split('.').pop()
+  const path = `${carpeta}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('videos-agencia').upload(path, archivo)
+  if (error) return { url: null, error: error.message }
+  const { data } = supabase.storage.from('videos-agencia').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}
+
+export const subirVideoAgencia = (archivo) => subirArchivoAgenciaVideo(archivo, 'videos')
+export const subirThumbnailVideoAgencia = (archivo) => subirArchivoAgenciaVideo(archivo, 'thumbnails')

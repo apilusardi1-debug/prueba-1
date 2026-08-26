@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
+import { generarPaginaAereosPDF } from '../../../lib/pdfPlantillaAereos.js'
+import { agregarPaginaHospedajes } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -13,7 +16,7 @@ const VUELO_VACIO = {
   origen_ciudad: '', origen_codigo: '', destino_ciudad: '', destino_codigo: '',
   ida_fecha: '', ida_sale: '', ida_llega: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '',
-  banner_destino: '', banner_link: '', banner_imagen: '',
+  banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
   equipaje: { mochila: true, carryOn: true, valija23: false, extra: false, extraDescripcion: '' },
 }
 
@@ -25,9 +28,10 @@ const EQUIPAJE_OPCIONES = [
 ]
 
 const HOSPEDAJE_VACIO = {
-  nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
+  id: null, nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
   incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
   items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
+  habitacion_id: null, personas: '',
 }
 
 function escapeHtml(str) {
@@ -59,14 +63,26 @@ const ICONOS = {
 
 async function cargarFuente() {
   if (!document.getElementById('font-bebas-neue')) {
-    const link = document.createElement('link')
-    link.id = 'font-bebas-neue'
-    link.rel = 'stylesheet'
-    link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap'
-    document.head.appendChild(link)
-    await new Promise(resolve => { link.onload = resolve; link.onerror = resolve; setTimeout(resolve, 1500) })
+    const style = document.createElement('style')
+    style.id = 'font-bebas-neue'
+    style.textContent = `
+      @font-face {
+        font-family: 'Bebas Neue';
+        src: url('${window.location.origin}/fonts/BebasNeue-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+    `
+    document.head.appendChild(style)
   }
-  try { if (document.fonts?.ready) await document.fonts.ready } catch (_) {}
+  // Forzamos la carga y rasterizado de la fuente antes de que html2canvas dispare
+  // la captura: sin esto, a veces cae a una fuente de reemplazo (fallback) por una
+  // condición de carrera con la carga de la tipografía.
+  try {
+    await document.fonts.load('400 34px "Bebas Neue"')
+    await document.fonts.ready
+  } catch (_) {}
 }
 
 async function renderPagina(html) {
@@ -94,60 +110,63 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
   const bannerVisible = vuelo.banner_link && vuelo.banner_destino
   return `
   <div style="width:${ANCHO}px;height:${ALTO}px;background:${CREMA};font-family:${FUENTE_CUERPO};position:relative;box-sizing:border-box;">
-    <div style="background:${NAVY};padding:36px 48px 30px;">
-      <p style="font-family:${FUENTE_TITULOS};font-weight:400;color:#fff;font-size:34px;letter-spacing:1px;margin:0 0 22px;border-bottom:3px solid #fff;padding-bottom:10px;display:inline-block;">PAQUETE DE VIAJE</p>
-      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">Nombre del cliente:</p>
-      <p style="color:#cfe3ee;font-size:16px;margin:0 0 16px;text-transform:uppercase;">${escapeHtml(clienteNombre)}</p>
-      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:15px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">Cotización personalizada para:</p>
-      <p style="color:#cfe3ee;font-size:16px;margin:0;text-transform:uppercase;">${escapeHtml(cantidadPasajeros || '—')} ${Number(cantidadPasajeros) === 1 ? 'ADULTO' : 'ADULTOS'}</p>
+    <div style="background:${NAVY};padding:18px 40px 15px 40px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div>
+        <p style="font-family:${FUENTE_TITULOS};font-weight:400;color:#f0ece7;font-size:47px;line-height:1;letter-spacing:0;margin:0 0 10px;border-bottom:3px solid #f0ece7;padding-bottom:6px;display:inline-block;">PAQUETE DE VIAJE</p>
+        <p style="font-family:${FUENTE_TITULOS};color:#f0ece7;font-size:27px;line-height:1.2;letter-spacing:1px;margin:0;text-transform:uppercase;">Nombre del cliente:</p>
+        <p style="font-family:${FUENTE_TITULOS};color:#f0ece7;font-size:27px;line-height:1.2;margin:0 0 1px;text-transform:uppercase;">${escapeHtml(clienteNombre)}</p>
+        <p style="font-family:${FUENTE_TITULOS};color:#f0ece7;font-size:27px;line-height:1.2;letter-spacing:1px;margin:0 0 1px;text-transform:uppercase;">Cotización personalizada para:</p>
+        <p style="font-family:${FUENTE_TITULOS};color:#f0ece7;font-size:27px;line-height:1.2;margin:0;text-transform:uppercase;">${escapeHtml(cantidadPasajeros || '—')} ${Number(cantidadPasajeros) === 1 ? 'ADULTO' : 'ADULTOS'}</p>
+      </div>
+      <img src="${window.location.origin}/icono-sol-luna.png" style="width:120px;height:120px;object-fit:contain;flex-shrink:0;opacity:0.95;display:block;" />
     </div>
 
-    <div style="padding:36px 48px;">
-      <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:28px;margin:0 0 26px;display:flex;align-items:center;gap:10px;">${ICONOS.avion(24).replace(/stroke="white"/g, `stroke="${NAVY}"`)}AÉREOS:</p>
+    <div style="padding:30px 40px;">
+      <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:40px;line-height:1;margin:0 0 22px;display:flex;align-items:center;gap:10px;">${ICONOS.avion(32).replace(/stroke="white"/g, `stroke="${NAVY}"`)}AÉREOS:</p>
 
-      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:26px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          ${ICONOS.maleta(16)}
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${ICONOS.maleta(22)}
         </div>
         <div>
-          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">EQUIPAJE INCLUIDO:</p>
+          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:33px;line-height:1.15;margin:6px 0 6px;letter-spacing:0.5px;">EQUIPAJE INCLUIDO:</p>
           ${EQUIPAJE_OPCIONES.filter(op => vuelo.equipaje?.[op.clave]).map(op => {
             const extra = op.clave === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
-            return `<p style="color:#333;font-size:13px;margin:0 0 4px;">- ${op.label}${extra ? `: ${escapeHtml(vuelo.equipaje.extraDescripcion)}` : ''}</p>`
+            return `<p style="color:#072e40;font-size:27px;line-height:1.25;margin:0;">- ${op.label}${extra ? `: ${escapeHtml(vuelo.equipaje.extraDescripcion)}` : ''}</p>`
           }).join('')}
         </div>
       </div>
 
-      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:30px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          ${ICONOS.auto(16)}
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:22px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${NAVY};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${ICONOS.auto(22)}
         </div>
         <div>
-          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;margin:4px 0 8px;letter-spacing:0.5px;">TRASLADOS PRIVADOS INCLUIDOS:</p>
-          <p style="color:#333;font-size:13px;margin:0 0 4px;">Aeropuerto / Hotel</p>
-          <p style="color:#333;font-size:13px;margin:0;">In - Out</p>
+          <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:33px;line-height:1.15;margin:6px 0 6px;letter-spacing:0.5px;">TRASLADOS PRIVADOS INCLUIDOS:</p>
+          <p style="color:#072e40;font-size:27px;line-height:1.25;margin:0;">Aeropuerto / Hotel</p>
+          <p style="color:#072e40;font-size:27px;line-height:1.25;margin:0;">In - Out</p>
         </div>
       </div>
 
-      <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:34px;">
+      <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:24px;">
         <div style="flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span style="width:22px;height:22px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;">${ICONOS.calendario(12)}</span>
-            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;">IDA:</span>
-            <span style="color:#333;font-size:14px;">${fechaLarga(vuelo.ida_fecha)}</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="width:28px;height:28px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${ICONOS.calendario(16)}</span>
+            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:33px;line-height:1;">IDA:</span>
+            <span style="color:#072e40;font-size:33px;line-height:1;font-family:${FUENTE_TITULOS};">${fechaLarga(vuelo.ida_fecha)}</span>
           </div>
-          <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.ida_sale)} HS</b></p>
-          <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.ida_llega)} HS</b></p>
+          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>SALE</b> de ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.ida_sale)} HS</b></p>
+          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.ida_llega)} HS</b></p>
           <div style="display:flex;align-items:center;margin-top:14px;width:90%;"><div style="flex:1;border-top:2px solid ${NAVY};"></div><span style="color:${NAVY};font-size:16px;line-height:1;margin-left:4px;">→</span></div>
         </div>
         <div style="flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span style="width:22px;height:22px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;">${ICONOS.calendario(12)}</span>
-            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:17px;">VUELTA:</span>
-            <span style="color:#333;font-size:14px;">${fechaLarga(vuelo.vuelta_fecha)}</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="width:28px;height:28px;border-radius:50%;background:${NAVY};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${ICONOS.calendario(16)}</span>
+            <span style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:33px;line-height:1;">VUELTA:</span>
+            <span style="color:#072e40;font-size:33px;line-height:1;font-family:${FUENTE_TITULOS};">${fechaLarga(vuelo.vuelta_fecha)}</span>
           </div>
-          <p style="font-size:13px;color:#333;margin:0 0 4px;"><b>SALE</b> de ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.vuelta_sale)} HS</b></p>
-          <p style="font-size:13px;color:#333;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
+          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>SALE</b> de ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.vuelta_sale)} HS</b></p>
+          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
           <div style="display:flex;align-items:center;margin-top:14px;width:90%;margin-left:auto;"><span style="color:${NAVY};font-size:16px;line-height:1;margin-right:4px;">←</span><div style="flex:1;border-top:2px solid ${NAVY};"></div></div>
         </div>
       </div>
@@ -168,41 +187,41 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
 function htmlPaginaHospedajes(grupo) {
   return `
   <div style="width:${ANCHO}px;height:${ALTO}px;background:${CREMA};font-family:${FUENTE_CUERPO};position:relative;box-sizing:border-box;">
-    <div style="background:${NAVY};padding:28px 48px;display:flex;align-items:center;gap:14px;">
-      ${ICONOS.palmera(22)}
-      <p style="font-family:${FUENTE_TITULOS};color:#fff;font-size:30px;margin:0;letter-spacing:1px;">HOSPEDAJES</p>
+    <div style="background:${NAVY};padding:22px 48px;display:flex;align-items:center;gap:14px;">
+      ${ICONOS.palmera(30)}
+      <p style="font-family:${FUENTE_TITULOS};color:#f0ece7;font-size:40px;line-height:1;margin:0;letter-spacing:1px;">HOSPEDAJES</p>
     </div>
-    <div style="padding:32px 48px;">
+    <div style="padding:22px 48px;">
       ${grupo.map((h, idx) => `
-        <div style="${idx > 0 ? `border-top:1.5px solid #0d243880;margin-top:26px;padding-top:26px;` : ''}">
-          <div style="display:flex;justify-content:space-between;gap:22px;margin-bottom:16px;">
+        <div style="${idx > 0 ? `border-top:1.5px solid #0d243880;margin-top:16px;padding-top:16px;` : ''}">
+          <div style="display:flex;justify-content:space-between;gap:22px;margin-bottom:10px;">
             <div style="flex:1;">
-              <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:23px;margin:0 0 2px;">${escapeHtml(h.nombre).toUpperCase()}</p>
-              <p style="font-family:${FUENTE_CUERPO};color:#888;font-size:12px;letter-spacing:1px;margin:0;text-transform:uppercase;">${escapeHtml(h.subtitulo)}</p>
+              <p style="font-family:${FUENTE_TITULOS};color:${NAVY};font-size:29px;line-height:1.05;margin:0 0 2px;">${escapeHtml(h.nombre).toUpperCase()}</p>
+              <p style="font-family:${FUENTE_CUERPO};color:${NAVY};font-size:15px;letter-spacing:0.5px;margin:0;text-transform:uppercase;">${escapeHtml(h.subtitulo)}</p>
             </div>
-            <div style="flex:1;font-family:${FUENTE_CUERPO};">
-              <p style="color:${NAVY};font-size:12px;font-weight:700;margin:0 0 2px;">${escapeHtml(h.noches)} NOCHES:</p>
-              <p style="color:${NAVY};font-size:16px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.moneda)}$ ${formatearNumero(h.precio)}</p>
-              <p style="color:#333;font-size:11px;margin:0 0 2px;">${escapeHtml(h.incluye)}</p>
-              <p style="color:#333;font-size:11px;font-weight:700;margin:0;">${escapeHtml(h.pension)}</p>
+            <div style="flex:1;font-family:${FUENTE_TITULOS};">
+              <p style="color:${NAVY};font-size:15px;letter-spacing:0.5px;margin:0 0 2px;">${escapeHtml(h.noches)} NOCHES:</p>
+              <p style="color:${NAVY};font-size:15px;letter-spacing:0.5px;margin:0 0 2px;">${escapeHtml(h.moneda)}$ ${formatearNumero(h.precio)}</p>
+              <p style="color:${NAVY};font-size:15px;letter-spacing:0.5px;margin:0 0 2px;">${escapeHtml(h.incluye)}</p>
+              <p style="color:${NAVY};font-size:15px;letter-spacing:0.5px;margin:0;">${escapeHtml(h.pension)}</p>
             </div>
           </div>
           <div style="display:flex;gap:22px;flex-direction:${idx % 2 === 0 ? 'row' : 'row-reverse'};">
             <div style="flex:1;">
               ${h.imagen ? `
                 <div style="position:relative;border-radius:10px;overflow:hidden;">
-                  <img src="${h.imagen}" style="width:100%;height:180px;object-fit:cover;display:block;" />
-                  ${h.link_video ? `<div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:6px 10px;box-sizing:border-box;"><p style="font-family:${FUENTE_CUERPO};color:#c9e34f;font-size:10px;font-weight:700;margin:0;letter-spacing:0.3px;">CLIC ACÁ PARA VER VIDEOS ↗</p></div>` : ''}
+                  <img src="${h.imagen}" style="width:100%;height:150px;object-fit:cover;display:block;" />
+                  ${h.link_video ? `<div style="position:absolute;bottom:0;left:0;width:100%;background:${NAVY};padding:6px 10px;box-sizing:border-box;"><p style="font-family:${FUENTE_CUERPO};color:#c9e34f;font-size:13px;font-weight:700;margin:0;letter-spacing:0.3px;">CLIC ACÁ PARA VER VIDEOS ↗</p></div>` : ''}
                 </div>
-              ` : (h.link_video ? `<p style="font-family:${FUENTE_CUERPO};color:#0a8a5f;font-size:11px;font-weight:700;margin:0;">CLIC ACÁ PARA VER VIDEOS ↗</p>` : '')}
+              ` : (h.link_video ? `<p style="font-family:${FUENTE_CUERPO};color:#0a8a5f;font-size:13px;font-weight:700;margin:0;">CLIC ACÁ PARA VER VIDEOS ↗</p>` : '')}
             </div>
             <div style="flex:1;font-family:${FUENTE_CUERPO};">
-              ${h.descripcion ? `<p style="color:#333;font-size:11px;font-weight:400;line-height:1.6;margin:0 0 10px;">${escapeHtml(h.descripcion)}</p>` : ''}
+              ${h.descripcion ? `<p style="color:${NAVY};font-size:13px;font-weight:400;line-height:1.5;margin:0 0 8px;">${escapeHtml(h.descripcion)}</p>` : ''}
               ${h.items.filter(Boolean).length ? `
-                <p style="color:${NAVY};font-size:11px;font-weight:700;margin:0 0 4px;">${escapeHtml(h.items_titulo)}</p>
-                ${h.items.filter(Boolean).map(it => `<p style="color:#333;font-size:11px;font-weight:400;margin:0 0 2px;">- ${escapeHtml(it)}</p>`).join('')}
+                <p style="color:${NAVY};font-size:13px;font-weight:700;margin:0 0 3px;">${escapeHtml(h.items_titulo)}</p>
+                ${h.items.filter(Boolean).map(it => `<p style="color:${NAVY};font-size:13px;font-weight:400;margin:0 0 2px;">- ${escapeHtml(it)}</p>`).join('')}
               ` : ''}
-              ${h.nota ? `<p style="color:#888;font-size:10px;font-style:italic;margin:8px 0 0;">${escapeHtml(h.nota)}</p>` : ''}
+              ${h.nota ? `<p style="color:#666;font-size:12px;font-style:italic;margin:6px 0 0;">${escapeHtml(h.nota)}</p>` : ''}
             </div>
           </div>
         </div>
@@ -229,6 +248,9 @@ export default function GeneradorPropuesta() {
   const [errorVuelo, setErrorVuelo] = useState('')
   const [hospedajes, setHospedajes] = useState([{ ...HOSPEDAJE_VACIO, items: [''] }])
   const [hospedajesDB, setHospedajesDB] = useState([])
+  // Tipos de habitacion disponibles por fila de hospedaje (se cargan solos al elegir
+  // un hospedaje del catalogo) — el admin elige una, precio y personas los carga a mano.
+  const [habitacionesPorIdx, setHabitacionesPorIdx] = useState({})
   const [subiendoIdx, setSubiendoIdx] = useState(null)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -258,13 +280,25 @@ export default function GeneradorPropuesta() {
   function elegirHospedajeDB(idx, hDB) {
     setHospedajes(prev => prev.map((h, i) => i === idx ? {
       ...h,
+      id: hDB.id,
       nombre: hDB.nombre,
       subtitulo: [hDB.tipo, hDB.destino].filter(Boolean).join(' · '),
       imagen: hDB.imagen || h.imagen,
       descripcion: hDB.descripcion || h.descripcion,
       items_titulo: (hDB.amenities || []).length ? 'Servicios:' : h.items_titulo,
       items: (hDB.amenities || []).length ? hDB.amenities : h.items,
+      habitacion_id: null,
     } : h))
+    setHabitacionesPorIdx(prev => ({ ...prev, [idx]: [] }))
+    habitacionesApi.getByHospedaje(hDB.id).then(({ data }) => {
+      setHabitacionesPorIdx(prev => ({ ...prev, [idx]: data || [] }))
+    })
+  }
+
+  // El admin elige el tipo de habitacion real (foto, servicios, m², camas — ya
+  // cargados en el sitio); precio y cantidad de personas los completa a mano.
+  function elegirHabitacion(idx, hab) {
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, habitacion_id: hab.id } : h))
   }
 
   function buscarCliente(texto) {
@@ -385,23 +419,40 @@ export default function GeneradorPropuesta() {
 
       const vueloParaPdf = { ...vuelo, banner_imagen: await imagenParaPdf(vuelo.banner_imagen) }
 
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'px', format: [ANCHO, ALTO] })
-
-      const canvasAereos = await renderPagina(htmlPaginaAereos({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo: vueloParaPdf }))
-      doc.addImage(canvasAereos.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
+      // Pagina de Aereos: se genera sobre el PDF de referencia real (texto vectorial,
+      // no una captura de pantalla), reemplazando solo los datos que cambian por cliente.
+      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo: vueloParaPdf })
+      const { width: anchoPt, height: altoPt } = doc.getPage(0).getSize()
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
       const hospedajesParaPdf = await Promise.all(
         hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
       )
-      for (let i = 0; i < hospedajesParaPdf.length; i += 2) {
-        doc.addPage([ANCHO, ALTO], 'portrait')
-        const grupo = hospedajesParaPdf.slice(i, i + 2)
-        const canvasHosp = await renderPagina(htmlPaginaHospedajes(grupo))
-        doc.addImage(canvasHosp.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, ANCHO, ALTO)
+
+      // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes
+      // por hoja, igual que el diseño original) con los datos tapados y reescritos.
+      if (hospedajesParaPdf.length) {
+        const plantillaHospBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+        const plantillaHospDoc = await PDFDocument.load(plantillaHospBytes)
+        const bebasBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
+        const bebasHosp = await doc.embedFont(bebasBytes)
+        const helvHosp = await doc.embedFont(StandardFonts.Helvetica)
+        for (let i = 0; i < hospedajesParaPdf.length; i += 2) {
+          const grupo = hospedajesParaPdf.slice(i, i + 2)
+          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo)
+        }
       }
 
-      doc.save(`Propuesta_${cliente.nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
+      const pdfBytes = await doc.save()
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = `Propuesta_${cliente.nombre.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(enlace)
+      enlace.click()
+      document.body.removeChild(enlace)
+      URL.revokeObjectURL(url)
 
       await propuestasApi.create({
         cliente_id: clienteSel?.id || null,
@@ -644,8 +695,39 @@ export default function GeneradorPropuesta() {
               </label>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-3">
+            {(habitacionesPorIdx[idx] || []).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-2">
+                  Tipo de habitación (foto y servicios ya cargados en el sitio)
+                </p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {habitacionesPorIdx[idx].map(hab => {
+                    const seleccionada = h.habitacion_id === hab.id
+                    return (
+                      <button key={hab.id} type="button" onClick={() => elegirHabitacion(idx, hab)}
+                        className={`flex gap-2.5 border rounded-xl p-2.5 text-left transition-colors ${
+                          seleccionada ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700 hover:border-brand-300'
+                        }`}>
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
+                          {hab.imagen && <img src={hab.imagen} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{hab.nombre}</p>
+                          <p className="text-xs text-gray-400 dark:text-zinc-500">
+                            {[hab.superficie ? `${hab.superficie} m²` : null, hab.capacidad ? `hasta ${hab.capacidad}` : null, hab.camas || null].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid sm:grid-cols-4 gap-3">
               <input type="number" value={h.noches} onChange={e => setHospedajeCampo(idx, 'noches', e.target.value)} placeholder="Noches"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input type="number" value={h.personas} onChange={e => setHospedajeCampo(idx, 'personas', e.target.value)} placeholder="Cantidad de personas"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <input type="number" value={h.precio} onChange={e => setHospedajeCampo(idx, 'precio', e.target.value)} placeholder="Precio"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

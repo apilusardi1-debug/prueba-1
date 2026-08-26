@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
@@ -22,6 +22,8 @@ function IconoCheck() {
 
 export default function HotelDetalle() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const habitacionParam = searchParams.get('habitacion')
   const { config } = useSiteConfig()
   const [h, setH] = useState(null)
   const [habitaciones, setHabitaciones] = useState([])
@@ -37,9 +39,15 @@ export default function HotelDetalle() {
     ]).then(([{ data: hospedaje }, { data: habs }]) => {
       setH(hospedaje || null)
       setHabitaciones(habs || [])
+      // Si el link trae una habitacion puntual (ej: desde una propuesta en PDF),
+      // arranca mostrando esa directamente en vez de las fotos generales del hotel.
+      if (habitacionParam) {
+        const hab = (habs || []).find(x => x.id === habitacionParam)
+        if (hab) setHabitacionActiva(hab)
+      }
       setLoading(false)
     })
-  }, [id])
+  }, [id, habitacionParam])
 
   const fotosHotel = h ? [h.imagen, ...(h.galeria || [])].filter(Boolean) : []
   const fotos = habitacionActiva ? [habitacionActiva.imagen, ...(habitacionActiva.galeria || [])].filter(Boolean) : fotosHotel

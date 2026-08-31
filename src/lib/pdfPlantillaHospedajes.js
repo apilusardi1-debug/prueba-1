@@ -118,13 +118,19 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     paginaPlantilla.drawText(texto, { x, y, size, font, color, ...opciones })
   }
 
+  // La plantilla real trae 2 hospedajes de muestra fijos (para el diseño de 2 por
+  // hoja original). Si esta pagina tiene menos de 4 hospedajes reales, las filas
+  // sobrantes nunca se dibujaban y quedaba asomando esa muestra de la plantilla
+  // (nombre, descripcion y foto de un hospedaje que nadie cargo). Por eso las 4
+  // filas se limpian SIEMPRE, haya o no contenido real para cada una.
+  for (const s of SLOTS) {
+    tapar(s.zonaLimpiarLeft, s.zonaLimpiarBottom, s.zonaLimpiarRight - s.zonaLimpiarLeft, s.zonaLimpiarTop - s.zonaLimpiarBottom, CREMA_BG)
+  }
+
   for (let idx = 0; idx < grupo.length; idx++) {
     const h = grupo[idx]
     const s = SLOTS[idx]
     const piso = s.zonaLimpiarBottom + 4
-    // Limpiamos toda la zona variable de este hospedaje (texto viejo de la referencia
-    // o del hospedaje anterior en este mismo slot) y la volvemos a dibujar entera.
-    tapar(s.zonaLimpiarLeft, s.zonaLimpiarBottom, s.zonaLimpiarRight - s.zonaLimpiarLeft, s.zonaLimpiarTop - s.zonaLimpiarBottom, CREMA_BG)
 
     // Nombre y subtitulo van en la columna de texto (a la derecha de la foto, que
     // ahora siempre esta a la izquierda) — sin descripcion, hay lugar de sobra para

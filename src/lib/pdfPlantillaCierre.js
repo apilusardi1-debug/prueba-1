@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { convertirImagenABase64 } from './supabase.js'
+import { embedImagenAuto } from './pdfImagen.js'
 
 // Mismos colores exactos que el resto de las plantillas (muestreados del PDF real).
 // Navy y crema sirven tanto de fondo como de texto segun la zona (texto claro sobre
@@ -77,9 +78,7 @@ async function bytesDeImagen(url) {
   try {
     const dataUri = url.startsWith('data:') ? url : (await convertirImagenABase64(url)).data?.dataUri
     if (!dataUri) return null
-    const bytes = await fetch(dataUri).then(r => r.arrayBuffer())
-    const esJpg = dataUri.startsWith('data:image/jpeg')
-    return { bytes, esJpg }
+    return await fetch(dataUri).then(r => r.arrayBuffer())
   } catch (_) {
     return null
   }
@@ -237,10 +236,10 @@ export async function generarPDFCierre(propuesta) {
   // Hospedajes.
   const fotoHospedaje = { x: 157.7, y: 366.5, width: 115.7, height: 115.7 }
   tapar(fotoHospedaje.x - 4, fotoHospedaje.y - 4, fotoHospedaje.width + 8, fotoHospedaje.height + 8, CREMA_BG)
-  const fotoHospedajeDatos = await bytesDeImagen(hospedaje.imagen)
-  if (fotoHospedajeDatos) {
+  const fotoHospedajeBytes = await bytesDeImagen(hospedaje.imagen)
+  if (fotoHospedajeBytes) {
     try {
-      const img = fotoHospedajeDatos.esJpg ? await doc.embedJpg(fotoHospedajeDatos.bytes) : await doc.embedPng(fotoHospedajeDatos.bytes)
+      const img = await embedImagenAuto(doc, fotoHospedajeBytes)
       dibujarImagenCover(page, img, fotoHospedaje)
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }
@@ -254,11 +253,11 @@ export async function generarPDFCierre(propuesta) {
   // explicito del usuario, no existia en la plantilla original. Mismo tamano que
   // la foto del hospedaje (115.7x115.7) y misma altura Y, mas a la derecha —
   // medido sobre una captura real que el usuario marco con un recuadro.
-  const fotoHabitacionDatos = await bytesDeImagen(hospedaje.habitacion_imagen)
-  if (fotoHabitacionDatos) {
+  const fotoHabitacionBytes = await bytesDeImagen(hospedaje.habitacion_imagen)
+  if (fotoHabitacionBytes) {
     const fotoHabitacion = { x: 434, y: 366.5, width: 115.7, height: 115.7 }
     try {
-      const img = fotoHabitacionDatos.esJpg ? await doc.embedJpg(fotoHabitacionDatos.bytes) : await doc.embedPng(fotoHabitacionDatos.bytes)
+      const img = await embedImagenAuto(doc, fotoHabitacionBytes)
       dibujarImagenCover(page, img, fotoHabitacion)
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }

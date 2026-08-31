@@ -1,4 +1,5 @@
 import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } from 'pdf-lib'
+import { embedImagenAuto } from './pdfImagen.js'
 
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
@@ -178,8 +179,7 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.imagen) {
       try {
         const bytes = await fetch(h.imagen).then(r => r.arrayBuffer())
-        const esJpg = h.imagen.toLowerCase().includes('.jpg') || h.imagen.toLowerCase().includes('.jpeg') || h.imagen.startsWith('data:image/jpeg')
-        const img = esJpg ? await doc.embedJpg(bytes) : await doc.embedPng(bytes)
+        const img = await embedImagenAuto(doc, bytes)
         dibujarImagenCover(paginaPlantilla, img, s.imagen)
       } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
     }

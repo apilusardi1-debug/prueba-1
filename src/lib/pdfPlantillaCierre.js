@@ -144,6 +144,21 @@ export async function generarPDFCierre(propuesta) {
     tapar(x, y, anchoMax + 8, size * 0.8 + 5, fondo)
     escribir(texto, x, y, tamano, color, font)
   }
+  // Pildora amarilla de la hora (sale/llega): a diferencia de reemplazar(), NO usa
+  // el tapar() generico (que suma +8 de relleno pensado para tapar texto viejo,
+  // no para una pildora chica) — dibuja un rectangulo de tamano fijo y ajustado
+  // (mismo ancho para las 4 horas, todas "HH:MM") con el texto centrado adentro,
+  // y bajo, para no pisar el nombre de la ciudad que va justo arriba.
+  function reemplazarHora(x, y, texto, size = SIZE_HORA) {
+    const ANCHO = 22
+    const ALTO = 8.5
+    // La pildora original de la plantilla tiene la punta redondeada un poco mas
+    // a la izquierda de x — sin este sangrado quedaba asomando ese borde.
+    const SANGRADO_IZQ = 6
+    page.drawRectangle({ x: x - SANGRADO_IZQ, y: y - 2, width: ANCHO + SANGRADO_IZQ, height: ALTO, color: AMARILLO_BG })
+    const anchoTexto = bebas.widthOfTextAtSize(String(texto ?? ''), size)
+    escribir(texto, x + (ANCHO - anchoTexto) / 2, y, size, NAVY_TXT, bebas)
+  }
   function partirEnLineas(texto, font, size, anchoMax) {
     const palabras = String(texto ?? '').split(/\s+/).filter(Boolean)
     const lineas = []
@@ -192,7 +207,7 @@ export async function generarPDFCierre(propuesta) {
   // traia esos valores asi de muestra, sin estar realmente alineados entre si).
   const SIZE_CODIGO = 14
   const SIZE_CIUDAD = 5
-  const SIZE_HORA = 10
+  const SIZE_HORA = 8
   // Bajado 4pt respecto al valor original (560.2/553.6): a tamano 14 el codigo
   // (IGU/REC) llegaba con el techo de la letra casi pegado a la etiqueta estatica
   // "Origen"/"Destino" de la plantilla, quedando superpuestos.
@@ -201,10 +216,10 @@ export async function generarPDFCierre(propuesta) {
   reemplazar(fechaLarga(vuelo.ida_fecha).toUpperCase(), 46.1, 549.4, 9.3, 100, CREMA_TXT, bebas, NAVY_BG)
   reemplazar((vuelo.origen_codigo || '').toUpperCase(), 97.9, Y_CODIGO, SIZE_CODIGO, 50, CREMA_TXT, bebas, NAVY_BG)
   reemplazarCiudad(vuelo.origen_ciudad || '', 98.5, Y_CIUDAD, SIZE_CIUDAD, 60, CREMA_TXT)
-  reemplazar(vuelo.ida_sale || '', 102.5, 541.9, SIZE_HORA, 30, NAVY_TXT, bebas, AMARILLO_BG)
+  reemplazarHora(102.5, 541.9, vuelo.ida_sale || '')
   reemplazar((vuelo.destino_codigo || '').toUpperCase(), 250.5, Y_CODIGO, SIZE_CODIGO, 20, CREMA_TXT, bebas, NAVY_BG)
   reemplazarCiudad(vuelo.destino_ciudad || '', 251.1, Y_CIUDAD, SIZE_CIUDAD, 20, CREMA_TXT)
-  reemplazar(vuelo.ida_llega || '', 254.4, 541.9, SIZE_HORA, 22, NAVY_TXT, bebas, AMARILLO_BG)
+  reemplazarHora(254.4, 541.9, vuelo.ida_llega || '')
   // "Directo" es texto fijo de la plantilla real — si se cargo una escala lo
   // tapamos y ponemos el dato real; si no, se deja el "Directo" original tal cual.
   if (vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo) {
@@ -215,13 +230,22 @@ export async function generarPDFCierre(propuesta) {
   reemplazar(fechaLarga(vuelo.vuelta_fecha).toUpperCase(), 324.2, 551.2, 9.3, 100, CREMA_TXT, bebas, NAVY_BG)
   reemplazar((vuelo.destino_codigo || '').toUpperCase(), 375.9, Y_CODIGO, SIZE_CODIGO, 50, CREMA_TXT, bebas, NAVY_BG)
   reemplazarCiudad(vuelo.destino_ciudad || '', 376.6, Y_CIUDAD, SIZE_CIUDAD, 60, CREMA_TXT)
-  reemplazar(vuelo.vuelta_sale || '', 379.9, 541.9, SIZE_HORA, 30, NAVY_TXT, bebas, AMARILLO_BG)
+  reemplazarHora(379.9, 541.9, vuelo.vuelta_sale || '')
   reemplazar((vuelo.origen_codigo || '').toUpperCase(), 522.2, Y_CODIGO, SIZE_CODIGO, 20, CREMA_TXT, bebas, NAVY_BG)
   reemplazarCiudad(vuelo.origen_ciudad || '', 523.0, Y_CIUDAD, SIZE_CIUDAD, 20, CREMA_TXT)
-  reemplazar(vuelo.vuelta_llega || '', 527.0, 541.9, SIZE_HORA, 22, NAVY_TXT, bebas, AMARILLO_BG)
+  reemplazarHora(527.0, 541.9, vuelo.vuelta_llega || '')
   if (vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo) {
     const codigoEscala = vuelo.vuelta_escala_codigo?.toUpperCase()
     reemplazarCiudad(`ESCALA ${codigoEscala || vuelo.vuelta_escala_ciudad?.toUpperCase() || ''}`, 451.9, 560.7, 6.5, 42, CREMA_TXT)
+  }
+
+  // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" con el
+  // horario IN/OUT — eso vale si al cerrar se confirmó que sí van incluidos
+  // (por default, si no se definió nada). Si se marcó que NO, se cambia el
+  // título y se tapa el horario (no hay nada que mostrar ahí).
+  if (propuesta.traslados_incluidos === false) {
+    reemplazarAjustado('TRASLADOS PRIVADOS NO INCLUIDOS', 32.66, 289.26, 25, 250, NAVY_TXT, bebas, CREMA_BG, 18)
+    tapar(305, 265, 150, 45, CREMA_BG)
   }
 
   // Hospedaje — la foto empieza en x=157.7 (medido del PDF real), asi que el nombre
@@ -268,15 +292,24 @@ export async function generarPDFCierre(propuesta) {
     agregarLink(page, doc, { x: 308, y: 368, width: 80, height: 16 }, url)
   }
 
-  // Saldo pendiente y desglose. "Traslados" se sacó del flujo de cierre — se
-  // tapa esa línea (la plantilla real trae "-Traslados R$ 300" de muestra ahí)
-  // en vez de dejarla con el dato viejo, y el detalle queda en una sola línea.
-  reemplazar(`${propuesta.moneda || 'ARS'}$ ${formatearNumero(saldo)}`, 308.7, 197.0, 25, 150)
-  reemplazar(`-Hospedaje ${propuesta.moneda || 'ARS'}$ ${formatearNumero(saldo)}`, 308.6, 172.8, 10, 200, NAVY_TXT, helv)
-  tapar(305.6, 161.8, 200, 13, CREMA_BG)
+  // Pie de pago: la plantilla real trae esto en dos columnas con etiquetas y
+  // bullets ("saldo pendiente" / "detalle" / "importante" en un recuadro
+  // aparte). Se reemplaza por un bloque redactado en prosa, tipo contrato,
+  // que destaca primero lo más importante (saldo, vencimiento, total) y
+  // despues explica las condiciones de pago en un parrafo, en vez de quedar
+  // repartido en varias etiquetas sueltas.
+  const moneda = propuesta.moneda || 'ARS'
+  tapar(28, 85, 540, 130, CREMA_BG)
+
+  reemplazar(`SALDO PENDIENTE: ${moneda}$ ${formatearNumero(saldo)}`, 31.5, 205, 21, 500, NAVY_TXT)
   if (propuesta.vencimiento_saldo) {
-    reemplazar(`VENCIMIENTO: ${fechaCorta(propuesta.vencimiento_saldo)}`, 32.4, 173.3, 25, 260)
+    reemplazar(`VENCIMIENTO: ${fechaCorta(propuesta.vencimiento_saldo)} (hasta 40 días antes del check-in)`, 31.5, 181, 14, 500, NAVY_TXT)
   }
+  reemplazar(`TOTAL DEL PAQUETE: ${moneda}$ ${formatearNumero(total)}`, 31.5, 160, 14, 500, NAVY_TXT)
+
+  const parrafoPago = 'El pago puede realizarse por transferencia en pesos argentinos o dólares, o en cuotas en dólares con el valor en reales congelado al tipo de cambio del día de la operación. El valor en reales se mantiene fijo: la única variación posible es en la conversión de pesos a reales al momento del pago.'
+  const lineasPago = partirEnLineas(parrafoPago, helv, 9.5, 530)
+  lineasPago.forEach((linea, i) => escribir(linea, 31.5, 138 - i * 12, 9.5, NAVY_TXT, helv))
 
   return doc
 }

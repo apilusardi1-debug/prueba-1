@@ -18,6 +18,11 @@ const ESTADO_COLOR = {
   rechazada: 'bg-red-400',
 }
 
+const TIPO_LABEL = {
+  simple: { label: 'Simple', color: 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
+  combinada: { label: 'Combinada', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' },
+}
+
 const ORDENES = {
   fecha_desc: { label: 'Más recientes primero', fn: (a, b) => new Date(b.created_at) - new Date(a.created_at) },
   fecha_asc: { label: 'Más antiguas primero', fn: (a, b) => new Date(a.created_at) - new Date(b.created_at) },
@@ -44,14 +49,38 @@ function resumenTramo(fecha, origenCiudad, origenCodigo, sale, destinoCiudad, de
   return `${fechaTxt ? `${fechaTxt} — ` : ''}${origenCiudad || '—'} (${origenCodigo || '—'}) ${sale || ''} → ${destinoCiudad || '—'} (${destinoCodigo || '—'}) ${llega || ''}`
 }
 
+// Destino real de la propuesta: si es combinada, los nombres cargados en la
+// sección Destinos (que es la fuente real ahi); si es simple, la ciudad de
+// destino del vuelo.
+function destinoPropuesta(p) {
+  if (p.tipo_propuesta === 'combinada' && (p.destinos_detalle || []).length) {
+    return p.destinos_detalle.map(d => d.nombre).filter(Boolean).join(' + ')
+  }
+  return p.vuelo?.destino_ciudad || ''
+}
+
+function fechasViaje(p) {
+  const ida = p.vuelo?.ida_fecha
+  const vuelta = p.vuelo?.vuelta_fecha
+  if (!ida) return null
+  const opts = { day: '2-digit', month: 'short' }
+  const idaTxt = new Date(ida + 'T00:00:00').toLocaleDateString('es-AR', opts)
+  if (!vuelta) return idaTxt
+  const vueltaTxt = new Date(vuelta + 'T00:00:00').toLocaleDateString('es-AR', opts)
+  return `${idaTxt} – ${vueltaTxt}`
+}
+
 export default function PropuestasLista({ estado }) {
   const [propuestas, setPropuestas] = useState([])
   const [loading, setLoading] = useState(true)
   const [procesandoId, setProcesandoId] = useState(null)
   const { titulo, vacio } = TITULOS[estado] || TITULOS.enviada
 
-  // Filtros: busqueda por cliente, rango de fechas y orden.
+  // Filtros: busqueda libre (cliente/whatsapp/destino), tipo de propuesta,
+  // destino puntual, rango de fechas de creacion y orden.
   const [busqueda, setBusqueda] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroDestino, setFiltroDestino] = useState('')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [orden, setOrden] = useState('fecha_desc')
@@ -75,17 +104,36 @@ export default function PropuestasLista({ estado }) {
     setLoading(false)
   }
 
+  // Lista de destinos unicos presentes en las propuestas cargadas, para el
+  // select de filtro — no hay un catalogo fijo de destinos como con las
+  // excursiones, se arma dinamicamente con lo que hay.
+  const destinosDisponibles = useMemo(() => {
+    const set = new Set()
+    for (const p of propuestas) {
+      const d = destinoPropuesta(p)
+      if (d) set.add(d)
+    }
+    return [...set].sort()
+  }, [propuestas])
+
   const propuestasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
     return propuestas
       .filter(p => {
-        if (texto && !p.cliente_nombre?.toLowerCase().includes(texto) && !p.cliente_whatsapp?.includes(texto)) return false
+        if (texto) {
+          const enDestino = destinoPropuesta(p).toLowerCase().includes(texto)
+          const enCliente = p.cliente_nombre?.toLowerCase().includes(texto)
+          const enWhatsapp = p.cliente_whatsapp?.includes(texto)
+          if (!enCliente && !enWhatsapp && !enDestino) return false
+        }
+        if (filtroTipo && (p.tipo_propuesta || 'simple') !== filtroTipo) return false
+        if (filtroDestino && destinoPropuesta(p) !== filtroDestino) return false
         if (desde && new Date(p.created_at) < new Date(desde)) return false
         if (hasta && new Date(p.created_at) > new Date(hasta + 'T23:59:59')) return false
         return true
       })
       .sort(ORDENES[orden].fn)
-  }, [propuestas, busqueda, desde, hasta, orden])
+  }, [propuestas, busqueda, filtroTipo, filtroDestino, desde, hasta, orden])
 
   async function cambiarEstado(id, nuevoEstado) {
     setProcesandoId(id)
@@ -154,12 +202,14 @@ export default function PropuestasLista({ estado }) {
 
   function limpiarFiltros() {
     setBusqueda('')
+    setFiltroTipo('')
+    setFiltroDestino('')
     setDesde('')
     setHasta('')
     setOrden('fecha_desc')
   }
 
-  const hayFiltrosActivos = busqueda || desde || hasta || orden !== 'fecha_desc'
+  const hayFiltrosActivos = busqueda || filtroTipo || filtroDestino || desde || hasta || orden !== 'fecha_desc'
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando...</div>
 
@@ -167,6 +217,7 @@ export default function PropuestasLista({ estado }) {
   const hospedajesOpciones = cerrandoPropuesta?.hospedajes_detalle || []
   const tramoIda = resumenTramo(vuelo.ida_fecha, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.ida_sale, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.ida_llega)
   const tramoVuelta = resumenTramo(vuelo.vuelta_fecha, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.vuelta_sale, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.vuelta_llega)
+  const puedeAbrir = estado === 'enviada' || estado === 'cerrada'
 
   return (
     <div className="space-y-6">
@@ -178,32 +229,60 @@ export default function PropuestasLista({ estado }) {
       </div>
 
       {propuestas.length > 0 && (
-        <div className="flex flex-wrap items-end gap-3 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-4">
-          <div className="flex-1 min-w-[180px]">
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Buscar cliente</label>
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre o WhatsApp..."
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Desde</label>
-            <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
-              className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Hasta</label>
-            <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
-              className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Ordenar por</label>
-            <select value={orden} onChange={e => setOrden(e.target.value)}
-              className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-              {Object.entries(ORDENES).map(([key, o]) => <option key={key} value={key}>{o.label}</option>)}
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar cliente, WhatsApp o destino..."
+            className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-400 min-w-[220px] flex-1 max-w-xs"
+          />
+
+          <span className="w-px h-5 bg-gray-200 dark:bg-zinc-700 mx-1" />
+
+          <button onClick={() => setFiltroTipo('')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${!filtroTipo ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'}`}>
+            Todas
+          </button>
+          {Object.entries(TIPO_LABEL).map(([k, v]) => (
+            <button key={k} onClick={() => setFiltroTipo(k)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${filtroTipo === k ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'}`}>
+              {v.label}
+            </button>
+          ))}
+
+          <span className="w-px h-5 bg-gray-200 dark:bg-zinc-700 mx-1" />
+
+          <select
+            value={filtroDestino}
+            onChange={e => setFiltroDestino(e.target.value)}
+            className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <option value="">Todos los destinos</option>
+            {destinosDisponibles.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+
+          <input
+            type="date"
+            value={desde}
+            onChange={e => setDesde(e.target.value)}
+            className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+          <span className="text-gray-300 dark:text-zinc-600 text-sm">–</span>
+          <input
+            type="date"
+            value={hasta}
+            onChange={e => setHasta(e.target.value)}
+            className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+
+          <select value={orden} onChange={e => setOrden(e.target.value)}
+            className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 rounded-full pl-4 pr-3 py-1.5 text-sm text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-400">
+            {Object.entries(ORDENES).map(([key, o]) => <option key={key} value={key}>{o.label}</option>)}
+          </select>
+
           {hayFiltrosActivos && (
-            <button onClick={limpiarFiltros} className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 font-medium px-2 py-2">
-              ✕ Limpiar filtros
+            <button onClick={limpiarFiltros} className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 underline">
+              Limpiar
             </button>
           )}
         </div>
@@ -214,54 +293,103 @@ export default function PropuestasLista({ estado }) {
       ) : propuestasFiltradas.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-zinc-500 text-sm">Ningún resultado con esos filtros.</div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {propuestasFiltradas.map(p => {
-            const nHospedajes = (p.hospedajes_detalle || []).length
-            return (
-              <div key={p.id}
-                onClick={() => (estado === 'enviada' || estado === 'cerrada') && abrirDetalle(p)}
-                className={`bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-4 transition-all ${
-                  estado === 'enviada' || estado === 'cerrada' ? 'cursor-pointer hover:border-brand-300 hover:shadow-md' : ''
-                }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="w-9 h-9 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm flex-shrink-0">
-                    {p.cliente_nombre?.[0]?.toUpperCase() || '?'}
-                  </div>
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 ${ESTADO_COLOR[estado] || 'bg-gray-300'}`} title={titulo} />
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-zinc-100 truncate">{p.cliente_nombre}</p>
-                {p.cliente_whatsapp && (
-                  <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                    className="text-xs text-green-600 dark:text-green-400 hover:underline">💬 {p.cliente_whatsapp}</a>
-                )}
-                <p className="text-lg font-bold text-brand-700 dark:text-brand-400 mt-2">{formatPrecio(p.total, p.moneda)}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">{fechaTexto(p)}</p>
-                  {nHospedajes > 0 && (
-                    <p className="text-xs text-gray-400 dark:text-zinc-500">{nHospedajes} hospedaje{nHospedajes !== 1 ? 's' : ''}</p>
-                  )}
-                </div>
-                {estado === 'enviada' && (
-                  <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-gray-50 dark:border-zinc-800">
-                    <button
-                      onClick={e => { e.stopPropagation(); cambiarEstado(p.id, 'rechazada') }}
-                      disabled={procesandoId === p.id}
-                      className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      ✕ Rechazada
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); abrirDetalle(p) }}
-                      disabled={procesandoId === p.id}
-                      className="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      ✓ Cerrar propuesta
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="px-5 py-3 text-left">Cliente</th>
+                <th className="px-5 py-3 text-left">Destino</th>
+                <th className="px-5 py-3 text-left">Fechas</th>
+                <th className="px-5 py-3 text-left">Pasajeros</th>
+                <th className="px-5 py-3 text-left">Tipo</th>
+                <th className="px-5 py-3 text-left">Hospedaje</th>
+                <th className="px-5 py-3 text-left">Total</th>
+                <th className="px-5 py-3 text-left">{estado === 'cerrada' ? 'Cerrada' : 'Enviada'}</th>
+                <th className="px-5 py-3 text-left"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+              {propuestasFiltradas.map(p => {
+                const hospedajes = p.hospedajes_detalle || []
+                const tipo = TIPO_LABEL[p.tipo_propuesta || 'simple']
+                const adultos = p.cantidad_adultos ?? (p.tipo_propuesta ? null : p.cantidad_pasajeros)
+                const menores = p.cantidad_menores || 0
+                return (
+                  <tr key={p.id}
+                    onClick={() => puedeAbrir && abrirDetalle(p)}
+                    className={`hover:bg-gray-50 dark:hover:bg-zinc-800/50 ${puedeAbrir ? 'cursor-pointer' : ''}`}>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ESTADO_COLOR[estado] || 'bg-gray-300'}`} />
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-zinc-100 text-sm truncate">{p.cliente_nombre || '–'}</p>
+                          {p.cliente_whatsapp && (
+                            <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                              className="text-green-600 dark:text-green-400 hover:underline text-xs">💬 {p.cliente_whatsapp}</a>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 max-w-[200px]">
+                      <p className="truncate">{destinoPropuesta(p) || '–'}</p>
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-zinc-400 text-xs whitespace-nowrap">
+                      {fechasViaje(p) || '–'}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs whitespace-nowrap">
+                      {adultos > 0 && <span>👤 {adultos} ad.</span>}
+                      {menores > 0 && <span className="ml-1">👶 {menores} men.</span>}
+                      {!adultos && !menores && '–'}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${tipo.color}`}>{tipo.label}</span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs max-w-[160px]">
+                      {hospedajes.length === 0 && '–'}
+                      {hospedajes.length === 1 && <span className="truncate block">{hospedajes[0].nombre}</span>}
+                      {hospedajes.length > 1 && <span>{hospedajes.length} opciones</span>}
+                    </td>
+                    <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs font-medium whitespace-nowrap">
+                      {formatPrecio(p.total, p.moneda)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-zinc-400 text-xs whitespace-nowrap">
+                      {fechaTexto(p)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-3">
+                        {estado === 'enviada' && (
+                          <>
+                            <button
+                              onClick={e => { e.stopPropagation(); cambiarEstado(p.id, 'rechazada') }}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Rechazar
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); abrirDetalle(p) }}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Cerrar
+                            </button>
+                          </>
+                        )}
+                        {estado === 'cerrada' && (
+                          <button
+                            onClick={e => { e.stopPropagation(); abrirDetalle(p) }}
+                            className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 whitespace-nowrap"
+                          >
+                            Ver detalle
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

@@ -51,6 +51,7 @@ export default function HotelDetalle() {
 
   const fotosHotel = h ? [h.imagen, ...(h.galeria || [])].filter(Boolean) : []
   const fotos = habitacionActiva ? [habitacionActiva.imagen, ...(habitacionActiva.galeria || [])].filter(Boolean) : fotosHotel
+  const videoActivo = habitacionActiva ? habitacionActiva.video : h?.video
   const [fotoActiva, setFotoActiva] = useState('')
   useEffect(() => { setFotoActiva(fotos[0] || '') }, [habitacionActiva, h?.id])
 
@@ -100,6 +101,8 @@ export default function HotelDetalle() {
             <div className="rounded-2xl overflow-hidden mb-2 bg-surface-variant h-72 md:h-96">
               {fotoActiva ? (
                 <img src={fotoActiva} alt={h.nombre} className="w-full h-full object-cover" />
+              ) : videoActivo ? (
+                <video key={videoActivo} src={videoActivo} controls playsInline className="w-full h-full object-cover bg-black" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-body-md text-body-md">Sin foto</div>
               )}
@@ -112,6 +115,11 @@ export default function HotelDetalle() {
                     <img src={f} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
+              </div>
+            )}
+            {fotoActiva && videoActivo && (
+              <div className="rounded-2xl overflow-hidden mt-3 bg-black">
+                <video key={videoActivo} src={videoActivo} controls playsInline className="w-full max-h-96" />
               </div>
             )}
           </div>
@@ -180,7 +188,11 @@ export default function HotelDetalle() {
                       seleccionada ? 'border-hero-navy bg-hero-cream/40' : 'border-hero-navy/10 hover:border-hero-navy/40 bg-white'
                     }`}>
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-surface-variant flex-shrink-0">
-                      {hab.imagen ? <img src={hab.imagen} alt="" className="w-full h-full object-cover" /> : null}
+                      {hab.imagen ? (
+                        <img src={hab.imagen} alt="" className="w-full h-full object-cover" />
+                      ) : hab.video ? (
+                        <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                      ) : null}
                       {totalFotos > 1 && (
                         <span className="absolute bottom-0.5 right-0.5 bg-hero-navy/80 text-white text-[10px] font-semibold px-1.5 rounded">
                           {totalFotos} fotos

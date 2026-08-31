@@ -110,9 +110,32 @@ export const hospedajesApi = {
   delete: (id) => supabase?.from('hospedajes').delete().eq('id', id),
 }
 
-// ── Habitaciones de un hospedaje (tipos: Estándar, Superior, etc.) ──────────────
+// ── Propietario de un hospedaje o de un tipo de habitación puntual (uso interno,
+//    tabla separada a propósito: el sitio público lee `hospedajes` y
+//    `hospedaje_habitaciones` con select('*') y esto nunca debe filtrarse ahí —
+//    ver supabase/migrations/20260830_hospedajes_propietarios.sql y
+//    20260830b_propietarios_por_habitacion.sql). Un complejo con departamentos
+//    de distintos dueños (ej: Cupe Beach Living) usa el dueño por habitación
+//    en vez de por hospedaje. ──
+export const propietariosApi = {
+  getByHospedaje: (hospedajeId) => supabase?.from('hospedajes_propietarios').select('*').eq('hospedaje_id', hospedajeId).maybeSingle(),
+  getByHabitacion: (habitacionId) => supabase?.from('hospedajes_propietarios').select('*').eq('habitacion_id', habitacionId).maybeSingle(),
+  upsertHospedaje: (hospedajeId, { nombre_dueno, contacto_dueno }) =>
+    supabase?.from('hospedajes_propietarios')
+      .upsert({ hospedaje_id: hospedajeId, habitacion_id: null, nombre_dueno, contacto_dueno }, { onConflict: 'hospedaje_id' })
+      .select().single(),
+  upsertHabitacion: (habitacionId, { nombre_dueno, contacto_dueno }) =>
+    supabase?.from('hospedajes_propietarios')
+      .upsert({ habitacion_id: habitacionId, hospedaje_id: null, nombre_dueno, contacto_dueno }, { onConflict: 'habitacion_id' })
+      .select().single(),
+}
+
+// ── Habitaciones de un hospedaje (tipos: Estándar, Superior, etc. — o, en un
+//    complejo de departamentos de distintos dueños, cada departamento) ─────────
 export const habitacionesApi = {
   getByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').select('*').eq('hospedaje_id', hospedajeId).order('nombre'),
+  create: (data) => supabase?.from('hospedaje_habitaciones').insert(data).select().single(),
+  update: (id, data) => supabase?.from('hospedaje_habitaciones').update(data).eq('id', id).select().single(),
   createMany: (filas) => supabase?.from('hospedaje_habitaciones').insert(filas).select(),
   delete: (id) => supabase?.from('hospedaje_habitaciones').delete().eq('id', id),
   deleteByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').delete().eq('hospedaje_id', hospedajeId),
@@ -318,3 +341,26 @@ export const propuestasApi = {
   }).eq('id', id).select().single(),
   delete: (id) => supabase?.from('propuestas').delete().eq('id', id),
 }
+
+// ── Videos de la agencia (sección reels de la Home) ──────────────────────────────
+export const agenciaVideosApi = {
+  getAll: () => supabase?.from('agencia_videos').select('*').eq('activo', true).order('orden'),
+  getAllAdmin: () => supabase?.from('agencia_videos').select('*').order('orden'),
+  create: (data) => supabase?.from('agencia_videos').insert(data).select().single(),
+  update: (id, data) => supabase?.from('agencia_videos').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('agencia_videos').delete().eq('id', id),
+}
+
+async function subirArchivoAgenciaVideo(archivo, carpeta) {
+  if (!supabase) return { url: null, error: 'Sin conexión' }
+  const ext = archivo.name.split('.').pop()
+  const path = `${carpeta}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('videos-agencia').upload(path, archivo)
+  if (error) return { url: null, error: error.message }
+  const { data } = supabase.storage.from('videos-agencia').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}
+
+export const subirVideoAgencia = (archivo) => subirArchivoAgenciaVideo(archivo, 'videos')
+export const subirThumbnailVideoAgencia = (archivo) => subirArchivoAgenciaVideo(archivo, 'thumbnails')
+export const subirVideoHospedaje = (archivo) => subirArchivoAgenciaVideo(archivo, 'hospedajes')

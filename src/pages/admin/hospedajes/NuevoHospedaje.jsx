@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { hospedajesApi } from '../../../lib/supabase.js'
+import { hospedajesApi, propietariosApi } from '../../../lib/supabase.js'
 import HospedajeForm, { EMPTY_HOSPEDAJE, datosDesdeForm } from '../../../components/admin/HospedajeForm.jsx'
 
 export default function NuevoHospedaje() {
@@ -17,8 +17,14 @@ export default function NuevoHospedaje() {
     setGuardando(true)
     setError(null)
     try {
-      const { error } = await hospedajesApi.create(datosDesdeForm(form))
+      const { data, error } = await hospedajesApi.create(datosDesdeForm(form))
       if (error) throw error
+      if (form.nombre_dueno.trim() || form.contacto_dueno.trim()) {
+        await propietariosApi.upsertHospedaje(data.id, {
+          nombre_dueno: form.nombre_dueno.trim(),
+          contacto_dueno: form.contacto_dueno.trim(),
+        })
+      }
       navigate('/admin/hospedajes')
     } catch (e) {
       setError('Error al guardar: ' + (e.message || 'intentá de nuevo'))

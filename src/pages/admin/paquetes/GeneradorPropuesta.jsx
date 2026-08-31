@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
 import { generarPaginaAereosPDF } from '../../../lib/pdfPlantillaAereos.js'
-import { agregarPaginaHospedajes } from '../../../lib/pdfPlantillaHospedajes.js'
+import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -337,8 +337,21 @@ export default function GeneradorPropuesta() {
 
   // El admin elige el tipo de habitacion real (foto, servicios, m², camas — ya
   // cargados en el sitio); precio y cantidad de personas los completa a mano.
+  // Al elegir, se traen la foto/descripcion/servicios de ESA habitacion puntual
+  // (util para complejos con departamentos de distintos duenos, ej: Cupe Beach
+  // Living) y se arma el link a la ficha publica filtrada a esa habitacion.
   function elegirHabitacion(idx, hab) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, habitacion_id: hab.id, habitacion_nombre: hab.nombre, habitacion_imagen: hab.imagen || '' } : h))
+    setHospedajes(prev => prev.map((h, i) => i === idx ? {
+      ...h,
+      habitacion_id: hab.id,
+      habitacion_nombre: hab.nombre,
+      habitacion_imagen: hab.imagen || '',
+      imagen: hab.imagen || h.imagen,
+      descripcion: hab.descripcion || h.descripcion,
+      items_titulo: (hab.amenities || []).length ? 'Servicios:' : h.items_titulo,
+      items: (hab.amenities || []).length ? hab.amenities : h.items,
+      link_video: hab.video ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}` : h.link_video,
+    } : h))
   }
 
   function buscarCliente(texto) {
@@ -977,7 +990,11 @@ export default function GeneradorPropuesta() {
                           seleccionada ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700 hover:border-brand-300'
                         }`}>
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
-                          {hab.imagen && <img src={hab.imagen} alt="" className="w-full h-full object-cover" />}
+                          {hab.imagen ? (
+                            <img src={hab.imagen} alt="" className="w-full h-full object-cover" />
+                          ) : hab.video ? (
+                            <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                          ) : null}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{hab.nombre}</p>

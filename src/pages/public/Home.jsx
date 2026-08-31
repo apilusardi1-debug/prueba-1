@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { destinos } from '../../data/mockData.js'
-import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
+import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
 
@@ -114,6 +114,8 @@ export default function Home() {
   const { config } = useSiteConfig()
   const [faqOpen, setFaqOpen] = useState(null)
   const [excursionesDestacadas, setExcursionesDestacadas] = useState([])
+  const [videosAgencia, setVideosAgencia] = useState([])
+  const [videoActivo, setVideoActivo] = useState(null)
 
   useEffect(() => {
     async function cargarExcursiones() {
@@ -126,7 +128,14 @@ export default function Home() {
         }
       } catch (_) {}
     }
+    async function cargarVideos() {
+      try {
+        const { data, error } = await agenciaVideosApi.getAll()
+        if (!error && data) setVideosAgencia(data)
+      } catch (_) {}
+    }
     cargarExcursiones()
+    cargarVideos()
   }, [])
 
   return (
@@ -437,6 +446,55 @@ export default function Home() {
           <img src="/viaje-a-medida.jpg" alt="Viajá con DreamTours" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: '50% 46%' }} />
         </div>
       </section>
+
+      {/* ── VIDEOS DE LA AGENCIA ──────────────────────────────── */}
+      {videosAgencia.length > 0 && (
+        <section className="py-16 md:py-20 bg-hero-navy overflow-hidden">
+          <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <h2 className="font-display-hero uppercase text-hero-cream mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
+              Viví Nuestros Viajes
+            </h2>
+            <p className="font-body-md text-body-md text-hero-cream/70">Momentos reales de nuestros pasajeros en el Nordeste Brasilero</p>
+          </div>
+          <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
+            <div className="flex gap-4" style={{ width: 'max-content' }}>
+              {videosAgencia.map(v => (
+                <button key={v.id} onClick={() => setVideoActivo(v)}
+                  className="group relative rounded-2xl overflow-hidden flex-shrink-0 text-left"
+                  style={{ width: 'clamp(180px, 20vw, 240px)', aspectRatio: '9/16' }}>
+                  {v.thumbnail_url ? (
+                    <img src={v.thumbnail_url} alt={v.titulo || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <video src={v.video_url + '#t=0.5'} preload="metadata" muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-14 h-14 rounded-full bg-hero-yellow/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg width="20" height="24" viewBox="0 0 20 24" fill="#072e40"><path d="M0 0l20 12L0 24z" /></svg>
+                    </span>
+                  </div>
+                  {v.titulo && (
+                    <p className="absolute bottom-0 left-0 right-0 p-3 font-label-lg text-label-sm text-hero-cream leading-tight">{v.titulo}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── LIGHTBOX DE VIDEO ─────────────────────────────────── */}
+      {videoActivo && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setVideoActivo(null)}>
+          <button onClick={() => setVideoActivo(null)}
+            className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-xl">
+            ×
+          </button>
+          <video src={videoActivo.video_url} controls autoPlay playsInline
+            className="max-h-[90vh] rounded-2xl bg-black" style={{ aspectRatio: '9/16' }}
+            onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
     </div>
   )

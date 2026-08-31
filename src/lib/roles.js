@@ -13,7 +13,7 @@ export const ROLES = {
     acceso: [
       '/admin', '/admin/clientes', '/admin/leads', '/admin/crm/whatsapp',
       '/admin/reservas', '/admin/excursiones', '/admin/agenda', '/admin/hospedajes',
-      '/admin/paquetes', '/admin/equipo',
+      '/admin/videos', '/admin/paquetes', '/admin/equipo',
     ],
   },
   lectura: {

@@ -580,11 +580,19 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
   const mapsUrl = direccionCompleta ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionCompleta)}` : null
 
   const [habitaciones, setHabitaciones] = useState([])
+  const [propietarioHospedaje, setPropietarioHospedaje] = useState(null)
+  const [propietariosPorHabitacion, setPropietariosPorHabitacion] = useState({})
   useEffect(() => {
     let activo = true
-    habitacionesApi.getByHospedaje(h.id).then(({ data }) => {
-      if (activo) setHabitaciones(data || [])
+    habitacionesApi.getByHospedaje(h.id).then(async ({ data }) => {
+      if (!activo) return
+      setHabitaciones(data || [])
+      const propietarios = await Promise.all(
+        (data || []).map(hab => propietariosApi.getByHabitacion(hab.id).then(({ data: p }) => [hab.id, p]))
+      )
+      if (activo) setPropietariosPorHabitacion(Object.fromEntries(propietarios.filter(([, p]) => p)))
     })
+    propietariosApi.getByHospedaje(h.id).then(({ data }) => { if (activo) setPropietarioHospedaje(data) })
     return () => { activo = false }
   }, [h.id])
 
@@ -661,6 +669,12 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
               {h.capacidad > 0 && (
                 <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">👥 Hasta {h.capacidad} personas</p>
               )}
+              {propietarioHospedaje?.nombre_dueno && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
+                  🔒 Dueño: {propietarioHospedaje.nombre_dueno}
+                  {propietarioHospedaje.contacto_dueno && ` · ${propietarioHospedaje.contacto_dueno}`}
+                </p>
+              )}
               {h.precio_min > 0 && (
                 <p className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">
                   Desde R$ {h.precio_min}<span className="text-xs font-normal text-gray-400 dark:text-zinc-500"> /noche</span>
@@ -716,7 +730,11 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
                           : 'border-gray-100 dark:border-zinc-800 hover:border-gray-200 dark:hover:border-zinc-700'
                       }`}>
                       <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
-                        {hab.imagen ? <img src={hab.imagen} alt="" className="w-full h-full object-cover" /> : null}
+                        {hab.imagen ? (
+                          <img src={hab.imagen} alt="" className="w-full h-full object-cover" />
+                        ) : hab.video ? (
+                          <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                        ) : null}
                         {totalFotos > 1 && (
                           <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[9px] font-semibold px-1 rounded">
                             {totalFotos}
@@ -733,6 +751,12 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
                           ].filter(Boolean).join(' · ')}
                         </p>
                         {hab.vista && <p className="text-xs text-gray-400 dark:text-zinc-500">{hab.vista}</p>}
+                        {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            🔒 {propietariosPorHabitacion[hab.id].nombre_dueno}
+                            {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
+                          </p>
+                        )}
                       </div>
                     </button>
                   )
@@ -875,7 +899,11 @@ function ModalGestionHabitaciones({ hospedaje, onCerrar }) {
                 {habitaciones.map(hab => (
                   <div key={hab.id} className="flex items-center gap-3 border border-gray-100 dark:border-zinc-800 rounded-xl p-3">
                     <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
-                      {hab.imagen && <img src={hab.imagen} alt="" className="w-full h-full object-cover" />}
+                      {hab.imagen ? (
+                        <img src={hab.imagen} alt="" className="w-full h-full object-cover" />
+                      ) : hab.video ? (
+                        <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                      ) : null}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm text-gray-900 dark:text-zinc-100 truncate">{hab.nombre}</p>
@@ -883,7 +911,10 @@ function ModalGestionHabitaciones({ hospedaje, onCerrar }) {
                         {[hab.capacidad ? `hasta ${hab.capacidad} huéspedes` : null, hab.camas || null].filter(Boolean).join(' · ') || '—'}
                       </p>
                       {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">🔒 Dueño: {propietariosPorHabitacion[hab.id].nombre_dueno}</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          🔒 Dueño: {propietariosPorHabitacion[hab.id].nombre_dueno}
+                          {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
+                        </p>
                       )}
                     </div>
                     <button onClick={() => abrirEditar(hab)}

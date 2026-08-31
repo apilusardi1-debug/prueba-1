@@ -720,7 +720,11 @@ export default function GeneradorPropuesta() {
                           seleccionada ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700 hover:border-brand-300'
                         }`}>
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
-                          {hab.imagen && <img src={hab.imagen} alt="" className="w-full h-full object-cover" />}
+                          {hab.imagen ? (
+                            <img src={hab.imagen} alt="" className="w-full h-full object-cover" />
+                          ) : hab.video ? (
+                            <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                          ) : null}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{hab.nombre}</p>

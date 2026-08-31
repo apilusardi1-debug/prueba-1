@@ -14,10 +14,11 @@ const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'ju
 
 const VUELO_VACIO = {
   origen_ciudad: '', origen_codigo: '', destino_ciudad: '', destino_codigo: '',
-  ida_fecha: '', ida_sale: '', ida_llega: '',
-  vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '',
+  ida_fecha: '', ida_sale: '', ida_llega: '', ida_escala_ciudad: '', ida_escala_codigo: '', ida_escala_llega: '', ida_escala_sale: '',
+  vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
-  equipaje: { mochila: true, carryOn: true, valija23: false, extra: false, extraDescripcion: '' },
+  equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
+  traslado_ida: true, traslado_vuelta: true,
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -27,12 +28,22 @@ const EQUIPAJE_OPCIONES = [
   { clave: 'extra', label: 'Equipaje extra' },
 ]
 
+const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
+
 const HOSPEDAJE_VACIO = {
   id: null, nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
   incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
   items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
-  habitacion_id: null, personas: '',
+  habitacion_id: null, habitacion_imagen: '', personas: '',
+  // Costo real (no el precio al cliente) — solo se pide/usa en propuesta combinada,
+  // es informacion interna para nosotros, nunca se exporta al PDF.
+  costo_interno: '',
 }
+
+// costo_vuelo/costo_traslado: costo interno del tramo de vuelo y del traslado de
+// ESE destino puntual — igual que costo_interno de hospedaje, solo para uso
+// interno en propuesta combinada, no se exporta al PDF.
+const DESTINO_VACIO = { nombre: '', traslado: '', costo_vuelo: '', costo_traslado: '' }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -40,6 +51,28 @@ function escapeHtml(str) {
 
 function formatearNumero(n) {
   return Number(n || 0).toLocaleString('es-AR')
+}
+
+// Los campos de monto guardan solo dígitos en el estado (compatible con
+// parseFloat/Number para el total y el guardado en BD); lo que se ve en el
+// input tiene los puntos de miles/millones puestos en el momento de mostrar.
+function soloDigitos(valor) {
+  return String(valor ?? '').replace(/\D/g, '')
+}
+function formatearMiles(valor) {
+  const digitos = soloDigitos(valor)
+  return digitos ? Number(digitos).toLocaleString('es-AR') : ''
+}
+
+// Campo de fecha en texto libre (DD/MM/AAAA): a medida que se escriben los
+// dígitos, las barras se van poniendo solas — se guarda siempre solo dígitos
+// en el estado y se re-formatea al mostrar, así funciona igual de bien
+// escribiendo para adelante que borrando con backspace.
+function formatearFechaEscrita(valor) {
+  const digitos = soloDigitos(valor).slice(0, 8)
+  if (digitos.length > 4) return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
+  if (digitos.length > 2) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`
+  return digitos
 }
 
 function fechaLarga(iso) {
@@ -240,9 +273,16 @@ export default function GeneradorPropuesta() {
   const [sugerencias, setSugerencias] = useState([])
   const [clienteSel, setClienteSel] = useState(null)
   const [clienteWhatsapp, setClienteWhatsapp] = useState('')
-  const [cantidadPasajeros, setCantidadPasajeros] = useState('')
-  const [periodo, setPeriodo] = useState('')
+  const [cantidadAdultos, setCantidadAdultos] = useState('')
+  const [cantidadMenores, setCantidadMenores] = useState('')
+  const [edadesMenores, setEdadesMenores] = useState([])
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
+  // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
+  // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
+  const [tipoPropuesta, setTipoPropuesta] = useState('simple')
+  const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
   const [vuelo, setVuelo] = useState(VUELO_VACIO)
   const [leyendoVuelo, setLeyendoVuelo] = useState(false)
   const [errorVuelo, setErrorVuelo] = useState('')
@@ -298,7 +338,7 @@ export default function GeneradorPropuesta() {
   // El admin elige el tipo de habitacion real (foto, servicios, m², camas — ya
   // cargados en el sitio); precio y cantidad de personas los completa a mano.
   function elegirHabitacion(idx, hab) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, habitacion_id: hab.id } : h))
+    setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, habitacion_id: hab.id, habitacion_nombre: hab.nombre, habitacion_imagen: hab.imagen || '' } : h))
   }
 
   function buscarCliente(texto) {
@@ -320,8 +360,16 @@ export default function GeneradorPropuesta() {
     setVuelo(v => ({ ...v, [campo]: valor }))
   }
 
-  function toggleEquipaje(clave) {
-    setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, [clave]: !v.equipaje?.[clave] } }))
+  function cambiarCantidadEquipaje(clave, delta) {
+    setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, [clave]: Math.max(0, (v.equipaje?.[clave] || 0) + delta) } }))
+  }
+
+  function setEdadMenor(idx, valor) {
+    setEdadesMenores(prev => {
+      const next = [...prev]
+      next[idx] = valor
+      return next
+    })
   }
 
   async function subirImagenBanner(archivo) {
@@ -332,12 +380,36 @@ export default function GeneradorPropuesta() {
     setSubiendoBanner(false)
   }
 
-  function archivoABase64(archivo) {
+  // Las capturas de itinerario (sobre todo de celular) llegan a varios MB y
+  // resolución muy alta sin necesidad — es solo texto. Redimensionar acá antes
+  // de mandarla acelera tanto la subida como la lectura de Gemini, que escala
+  // con el tamaño/resolución de la imagen.
+  function archivoAImagenComprimida(archivo, maxDim = 1600, calidad = 0.85) {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result.split(',')[1])
-      reader.onerror = reject
-      reader.readAsDataURL(archivo)
+      const img = new Image()
+      const url = URL.createObjectURL(archivo)
+      img.onload = () => {
+        let { width, height } = img
+        if (width > maxDim || height > maxDim) {
+          const escala = maxDim / Math.max(width, height)
+          width = Math.round(width * escala)
+          height = Math.round(height * escala)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        URL.revokeObjectURL(url)
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('No se pudo comprimir la imagen.'))
+          const reader = new FileReader()
+          reader.onload = () => resolve({ base64: reader.result.split(',')[1], mediaType: 'image/jpeg' })
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        }, 'image/jpeg', calidad)
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen.')) }
+      img.src = url
     })
   }
 
@@ -346,8 +418,8 @@ export default function GeneradorPropuesta() {
     setErrorVuelo('')
     setLeyendoVuelo(true)
     try {
-      const base64 = await archivoABase64(archivo)
-      const { data, error } = await extraerDatosVuelo(base64, archivo.type || 'image/png')
+      const { base64, mediaType } = await archivoAImagenComprimida(archivo)
+      const { data, error } = await extraerDatosVuelo(base64, mediaType)
       if (error || data?.error) {
         setErrorVuelo(data?.error || error?.message || 'No se pudo leer la imagen.')
       } else if (data?.vuelo) {
@@ -373,6 +445,18 @@ export default function GeneradorPropuesta() {
     setHospedajes(prev => prev.filter((_, i) => i !== idx))
   }
 
+  function agregarDestino() {
+    setDestinos(prev => [...prev, { ...DESTINO_VACIO }])
+  }
+
+  function quitarDestino(idx) {
+    setDestinos(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function setDestinoCampo(idx, campo, valor) {
+    setDestinos(prev => prev.map((d, i) => i === idx ? { ...d, [campo]: valor } : d))
+  }
+
   function setHospedajeCampo(idx, campo, valor) {
     setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, [campo]: valor } : h))
   }
@@ -388,6 +472,17 @@ export default function GeneradorPropuesta() {
   function setItemsHospedaje(idx, texto) {
     const items = texto.split(',').map(s => s.trim())
     setHospedajes(prev => prev.map((h, i) => i === idx ? { ...h, items } : h))
+  }
+
+  // Cajitas clickeables para los servicios mas comunes — tildar/destildar suma o
+  // saca ese texto de la misma lista de items que usa el campo libre de arriba.
+  function alternarServicioHospedaje(idx, servicio) {
+    setHospedajes(prev => prev.map((h, i) => {
+      if (i !== idx) return h
+      const actuales = h.items.filter(Boolean)
+      const items = actuales.includes(servicio) ? actuales.filter(it => it !== servicio) : [...actuales, servicio]
+      return { ...h, items: items.length ? items : [''] }
+    }))
   }
 
   const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
@@ -418,10 +513,13 @@ export default function GeneradorPropuesta() {
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
 
       const vueloParaPdf = { ...vuelo, banner_imagen: await imagenParaPdf(vuelo.banner_imagen) }
+      // Un campo de edad por menor (en vez de una lista en texto libre) -- se unen
+      // en un solo string para el PDF y el guardado, igual que antes.
+      const edadesMenoresTexto = edadesMenores.slice(0, parseInt(cantidadMenores) || 0).filter(Boolean).join(', ')
 
       // Pagina de Aereos: se genera sobre el PDF de referencia real (texto vectorial,
       // no una captura de pantalla), reemplazando solo los datos que cambian por cliente.
-      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadPasajeros, vuelo: vueloParaPdf })
+      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vueloParaPdf })
       const { width: anchoPt, height: altoPt } = doc.getPage(0).getSize()
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
@@ -437,8 +535,8 @@ export default function GeneradorPropuesta() {
         const bebasBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
         const bebasHosp = await doc.embedFont(bebasBytes)
         const helvHosp = await doc.embedFont(StandardFonts.Helvetica)
-        for (let i = 0; i < hospedajesParaPdf.length; i += 2) {
-          const grupo = hospedajesParaPdf.slice(i, i + 2)
+        for (let i = 0; i < hospedajesParaPdf.length; i += 4) {
+          const grupo = hospedajesParaPdf.slice(i, i + 4)
           await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo)
         }
       }
@@ -458,9 +556,14 @@ export default function GeneradorPropuesta() {
         cliente_id: clienteSel?.id || null,
         cliente_nombre: cliente.nombre,
         cliente_whatsapp: cliente.whatsapp || null,
-        cantidad_pasajeros: parseInt(cantidadPasajeros) || null,
-        periodo: periodo.trim() || null,
+        cantidad_pasajeros: (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0) || null,
+        cantidad_adultos: parseInt(cantidadAdultos) || null,
+        cantidad_menores: parseInt(cantidadMenores) || null,
+        edades_menores: edadesMenoresTexto || null,
+        periodo: [formatearFechaEscrita(fechaDesde), formatearFechaEscrita(fechaHasta)].filter(Boolean).join(' al ') || null,
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
+        tipo_propuesta: tipoPropuesta,
+        destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.nombre.trim()) : null,
         vuelo,
         hospedajes_detalle: hospedajesValidos,
         items: [],
@@ -473,9 +576,14 @@ export default function GeneradorPropuesta() {
       setBusqCliente('')
       setClienteWhatsapp('')
       setClienteSel(null)
-      setCantidadPasajeros('')
-      setPeriodo('')
+      setCantidadAdultos('')
+      setCantidadMenores('')
+      setEdadesMenores([])
+      setFechaDesde('')
+      setFechaHasta('')
       setPresupuestoLimite('')
+      setTipoPropuesta('simple')
+      setDestinos([{ ...DESTINO_VACIO }])
       setVuelo(VUELO_VACIO)
       setHospedajes([{ ...HOSPEDAJE_VACIO, items: [''] }])
     } catch (e) {
@@ -525,30 +633,124 @@ export default function GeneradorPropuesta() {
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-4 gap-3">
           <input
             type="number"
-            min="1"
-            value={cantidadPasajeros}
-            onChange={e => setCantidadPasajeros(e.target.value)}
-            placeholder="Cantidad de pasajeros"
+            min="0"
+            value={cantidadAdultos}
+            onChange={e => setCantidadAdultos(e.target.value)}
+            placeholder="Cantidad de adultos"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+          <input
+            type="number"
+            min="0"
+            value={cantidadMenores}
+            onChange={e => setCantidadMenores(e.target.value)}
+            placeholder="Cantidad de menores"
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
           <input
             type="text"
-            value={periodo}
-            onChange={e => setPeriodo(e.target.value)}
-            placeholder="Período (Ej: 15 al 22 de agosto)"
+            inputMode="numeric"
+            value={formatearFechaEscrita(fechaDesde)}
+            onChange={e => setFechaDesde(soloDigitos(e.target.value))}
+            placeholder="Fecha desde (DD/MM/AAAA)"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={formatearFechaEscrita(fechaHasta)}
+            onChange={e => setFechaHasta(soloDigitos(e.target.value))}
+            placeholder="Fecha hasta (DD/MM/AAAA)"
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
+        {parseInt(cantidadMenores) > 0 && (
+          <div className="grid sm:grid-cols-4 gap-3">
+            {Array.from({ length: parseInt(cantidadMenores) }).map((_, i) => (
+              <input
+                key={i}
+                type="number"
+                min="0"
+                value={edadesMenores[i] || ''}
+                onChange={e => setEdadMenor(i, e.target.value)}
+                placeholder={`Edad menor ${i + 1}`}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            ))}
+          </div>
+        )}
         <input
-          type="number"
-          value={presupuestoLimite}
-          onChange={e => setPresupuestoLimite(e.target.value)}
+          type="text"
+          inputMode="numeric"
+          value={formatearMiles(presupuestoLimite)}
+          onChange={e => setPresupuestoLimite(soloDigitos(e.target.value))}
           placeholder="Presupuesto límite (R$)"
           className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
+      </div>
+
+      {/* Tipo de propuesta */}
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Tipo de propuesta</h3>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setTipoPropuesta('simple')}
+            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+              tipoPropuesta === 'simple'
+                ? 'bg-brand-600 border-brand-600 text-white'
+                : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+            }`}>
+            Propuesta simple
+          </button>
+          <button type="button" onClick={() => setTipoPropuesta('combinada')}
+            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+              tipoPropuesta === 'combinada'
+                ? 'bg-brand-600 border-brand-600 text-white'
+                : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+            }`}>
+            Propuesta combinada
+          </button>
+        </div>
+
+        {tipoPropuesta === 'combinada' && (
+          <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between pt-3">
+              <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Destinos</p>
+              <button onClick={agregarDestino} type="button" className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+                + Agregar destino
+              </button>
+            </div>
+            {destinos.map((d, idx) => (
+              <div key={idx} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Destino {idx + 1}</p>
+                  {destinos.length > 1 && (
+                    <button onClick={() => quitarDestino(idx)} type="button" className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
+                      ✕ Quitar
+                    </button>
+                  )}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <input value={d.nombre} onChange={e => setDestinoCampo(idx, 'nombre', e.target.value)} placeholder="Nombre del destino (Ej: Buzios)"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <input value={d.traslado} onChange={e => setDestinoCampo(idx, 'traslado', e.target.value)} placeholder="Traslado por destino (Ej: Traslado privado aeropuerto-hotel)"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costos internos de este destino — uso interno, no se exportan al PDF</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.costo_vuelo)} onChange={e => setDestinoCampo(idx, 'costo_vuelo', soloDigitos(e.target.value))} placeholder="Costo interno del vuelo"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.costo_traslado)} onChange={e => setDestinoCampo(idx, 'costo_traslado', soloDigitos(e.target.value))} placeholder="Costo interno del traslado"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Vuelo */}
@@ -589,6 +791,27 @@ export default function GeneradorPropuesta() {
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           </div>
         </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (ida) — opcional, dejalo vacío si es directo</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <input value={vuelo.ida_escala_ciudad} onChange={e => setVueloCampo('ida_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <input value={vuelo.ida_escala_codigo} onChange={e => setVueloCampo('ida_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
+              <input type="time" value={vuelo.ida_escala_llega} onChange={e => setVueloCampo('ida_escala_llega', e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
+              <input type="time" value={vuelo.ida_escala_sale} onChange={e => setVueloCampo('ida_escala_sale', e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
             <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha vuelta</label>
@@ -607,21 +830,66 @@ export default function GeneradorPropuesta() {
           </div>
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (vuelta) — opcional, dejalo vacío si es directo</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <input value={vuelo.vuelta_escala_ciudad} onChange={e => setVueloCampo('vuelta_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <input value={vuelo.vuelta_escala_codigo} onChange={e => setVueloCampo('vuelta_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
+              <input type="time" value={vuelo.vuelta_escala_llega} onChange={e => setVueloCampo('vuelta_escala_llega', e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
+              <input type="time" value={vuelo.vuelta_escala_sale} onChange={e => setVueloCampo('vuelta_escala_sale', e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
           <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             {EQUIPAJE_OPCIONES.map(op => (
-              <label key={op.clave} className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
-                <input type="checkbox" checked={!!vuelo.equipaje?.[op.clave]} onChange={() => toggleEquipaje(op.clave)}
-                  className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                {op.label}
-              </label>
+              <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
+                <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{vuelo.equipaje?.[op.clave] || 0}</span>
+                <div className="flex flex-col gap-0.5">
+                  <button type="button" onClick={() => cambiarCantidadEquipaje(op.clave, 1)}
+                    className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 5L5 1L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                  <button type="button" onClick={() => cambiarCantidadEquipaje(op.clave, -1)}
+                    className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
-          {vuelo.equipaje?.extra && (
+          {(vuelo.equipaje?.extra || 0) > 0 && (
             <input value={vuelo.equipaje?.extraDescripcion || ''} onChange={e => setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, extraDescripcion: e.target.value } }))}
               placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
               className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           )}
+        </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+              <input type="checkbox" checked={!!vuelo.traslado_ida} onChange={() => setVueloCampo('traslado_ida', !vuelo.traslado_ida)}
+                className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+              Traslado ida (aeropuerto → hotel)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+              <input type="checkbox" checked={!!vuelo.traslado_vuelta} onChange={() => setVueloCampo('traslado_vuelta', !vuelo.traslado_vuelta)}
+                className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+              Traslado vuelta (hotel → aeropuerto)
+            </label>
+          </div>
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
           <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Banner "ver actividades" (opcional — si lo dejás vacío, no aparece en el PDF)</p>
@@ -729,7 +997,7 @@ export default function GeneradorPropuesta() {
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <input type="number" value={h.personas} onChange={e => setHospedajeCampo(idx, 'personas', e.target.value)} placeholder="Cantidad de personas"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              <input type="number" value={h.precio} onChange={e => setHospedajeCampo(idx, 'precio', e.target.value)} placeholder="Precio"
+              <input type="text" inputMode="numeric" value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Precio"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
@@ -738,6 +1006,14 @@ export default function GeneradorPropuesta() {
                 <option value="USD">U$D</option>
               </select>
             </div>
+
+            {tipoPropuesta === 'combinada' && (
+              <div>
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
+                <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Costo interno de este hospedaje"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            )}
 
             <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
@@ -756,6 +1032,25 @@ export default function GeneradorPropuesta() {
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <input value={h.link_video} onChange={e => setHospedajeCampo(idx, 'link_video', e.target.value)} placeholder="Link de video (opcional)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Servicios</p>
+              <div className="flex flex-wrap gap-2">
+                {SERVICIOS_HOSPEDAJE.map(servicio => {
+                  const activo = h.items.includes(servicio)
+                  return (
+                    <button key={servicio} type="button" onClick={() => alternarServicioHospedaje(idx, servicio)}
+                      className={`text-sm px-3 py-1.5 rounded-xl border transition-colors ${
+                        activo
+                          ? 'bg-brand-600 border-brand-600 text-white'
+                          : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+                      }`}>
+                      {servicio}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         ))}

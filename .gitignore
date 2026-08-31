@@ -3,3 +3,6 @@ dist
 .env
 .DS_Store
 .vercel
+
+# Proyecto nuevo y separado (marketplace Porto de Galinhas) — repo propio, no se commitea acá
+/VS CODE ARCH

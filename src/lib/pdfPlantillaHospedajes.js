@@ -3,9 +3,6 @@ import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState,
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const CREMA_BG = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
-// Relacion cap-height/tamano de Bebas Neue, para alinear por el tope dos lineas de
-// distinto tamano en la misma fuente (calibrado a ojo, se ajusta si hace falta).
-const CAP_RATIO = 0.75
 
 function formatearNumero(n) {
   return Number(n || 0).toLocaleString('es-AR')
@@ -73,31 +70,42 @@ function partirEnLineas(texto, font, size, anchoMax) {
   return lineas
 }
 
-// Coordenadas de la plantilla (extraidas del PDF de referencia real, pagina 2).
-// Cada slot es una de las dos posiciones de hospedaje en la pagina; se alternan
-// imagen izquierda/derecha igual que el diseño original.
-const SLOTS = [
-  {
-    nombre: { x: 30.90, y: 723.77, size: 29 },
-    subtitulo: { x: 30.90, y: 700.12, size: 14.5 },
-    infoX: 315.86, infoYTop: 737.91, infoSize: 15, infoGap: 14,
-    imagen: { x: 30.90, y: 440.32, width: 265.72, height: 264.67 },
-    descX: 314.69, descYTop: 673.15, descSize: 10, descGap: 13, descAncho: 250,
-    itemsX: 315.50, itemsYTop: 559.45, itemsSize: 10, itemsGap: 13,
-    videoX: 119.18, videoY: 469.02,
-    zonaLimpiarTop: 750, zonaLimpiarBottom: 440, zonaLimpiarLeft: 20, zonaLimpiarRight: 570,
-  },
-  {
-    nombre: { x: 30.75, y: 347.02, size: 29 },
-    subtitulo: { x: 30.75, y: 323.37, size: 14.5 },
-    infoX: 296.68, infoYTop: 361.74, infoSize: 15, infoGap: 14,
-    imagen: { x: 296.68, y: 84.63, width: 264.54, height: 264.54 },
-    descX: 31.53, descYTop: 292.46, descSize: 10, descGap: 13, descAncho: 250,
-    itemsX: 30.53, itemsYTop: 223.85, itemsSize: 10, itemsGap: 12,
-    videoX: 386.65, videoY: 89.84,
-    zonaLimpiarTop: 373, zonaLimpiarBottom: 60, zonaLimpiarLeft: 20, zonaLimpiarRight: 570,
-  },
-]
+// Layout nuevo: 4 hospedajes por pagina (antes 2), sin descripcion, con la foto
+// siempre a la izquierda y un cartelito clickable "VER INFORMACIÓN Y FOTOS"
+// pegado debajo de la foto. No hay plantilla real de referencia para este
+// layout (el original solo traia 2 por hoja) — las coordenadas se calculan
+// dividiendo en 4 filas iguales la misma zona de contenido que antes usaba el
+// grupo de 2 (entre el encabezado "HOSPEDAJES" y el pie de pagina).
+const CONTENIDO_TOP = 750
+const CONTENIDO_BOTTOM = 60
+const FILAS = 4
+const ALTO_FILA = (CONTENIDO_TOP - CONTENIDO_BOTTOM) / FILAS
+const IMG_LADO = 145
+const BANDA_ALTO = 16
+const GAP_BANDA_IMG = 3
+
+function crearSlot(fila) {
+  const top = CONTENIDO_TOP - fila * ALTO_FILA
+  // Sin "+8" acá: el tapado tiene que cubrir el slice completo, sin dejar hueco
+  // entre filas — un hueco sin tapar dejaba asomar la foto vieja de la plantilla
+  // original (de 2 por hoja) que quedaba justo ahí debajo. El aire visual entre
+  // filas se logra dejando margen en la posicion de la banda/foto, no en el tapado.
+  const bottom = top - ALTO_FILA
+  const bandaY = bottom + 6
+  const imagenY = bandaY + BANDA_ALTO + GAP_BANDA_IMG
+  const textoX = 30 + IMG_LADO + 18
+  return {
+    nombre: { x: textoX, y: top - 15, size: 16 },
+    subtitulo: { x: textoX, y: top - 32, size: 9.5 },
+    infoX: textoX, infoYTop: top - 50, infoSize: 10, infoGap: 12.5,
+    itemsX: textoX, itemsSize: 9, itemsGap: 10.5,
+    imagen: { x: 30, y: imagenY, width: IMG_LADO, height: IMG_LADO },
+    bandaY,
+    zonaLimpiarTop: top, zonaLimpiarBottom: bottom, zonaLimpiarLeft: 20, zonaLimpiarRight: 570,
+  }
+}
+
+const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
 export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
@@ -113,112 +121,76 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
   for (let idx = 0; idx < grupo.length; idx++) {
     const h = grupo[idx]
     const s = SLOTS[idx]
-    // Limpiamos toda la zona variable de este hospedaje (texto viejo de la referencia)
-    // y la volvemos a dibujar entera con los datos reales.
+    const piso = s.zonaLimpiarBottom + 4
+    // Limpiamos toda la zona variable de este hospedaje (texto viejo de la referencia
+    // o del hospedaje anterior en este mismo slot) y la volvemos a dibujar entera.
     tapar(s.zonaLimpiarLeft, s.zonaLimpiarBottom, s.zonaLimpiarRight - s.zonaLimpiarLeft, s.zonaLimpiarTop - s.zonaLimpiarBottom, CREMA_BG)
 
-    // Nombre y subtitulo se ajustan a un ancho maximo (no invaden la columna del
-    // precio a la derecha) y el subtitulo baja si el nombre ocupo mas de una linea.
-    const anchoColumnaIzq = 270
-    const lineasNombre = partirEnLineas((h.nombre || '').toUpperCase(), bebas, s.nombre.size, anchoColumnaIzq).slice(0, 2)
+    // Nombre y subtitulo van en la columna de texto (a la derecha de la foto, que
+    // ahora siempre esta a la izquierda) — sin descripcion, hay lugar de sobra para
+    // 2 lineas de nombre sin invadir nada.
+    const anchoColumnaTexto = 570 - s.nombre.x
+    const lineasNombre = partirEnLineas((h.nombre || '').toUpperCase(), bebas, s.nombre.size, anchoColumnaTexto).slice(0, 2)
     lineasNombre.forEach((linea, i) => {
       escribir(linea, s.nombre.x, s.nombre.y - i * (s.nombre.size * 0.95), s.nombre.size, NAVY_TXT, bebas)
     })
     const ySubtitulo = s.subtitulo.y - (lineasNombre.length - 1) * (s.nombre.size * 0.95)
-    // Guardamos donde termino realmente el subtitulo (puede ser 1 o 2 lineas) para
-    // correr la descripcion hacia abajo si hizo falta mas espacio del previsto.
     let yFinEncabezado = ySubtitulo
     if (h.subtitulo) {
-      const lineasSub = partirEnLineas(h.subtitulo.toUpperCase(), helv, s.subtitulo.size, anchoColumnaIzq).slice(0, 2)
+      const lineasSub = partirEnLineas(h.subtitulo.toUpperCase(), helv, s.subtitulo.size, anchoColumnaTexto).slice(0, 2)
       lineasSub.forEach((linea, i) => {
         escribir(linea, s.subtitulo.x, ySubtitulo - i * (s.subtitulo.size * 1.1), s.subtitulo.size, NAVY_TXT, helv)
       })
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
-    const descYTop = Math.min(s.descYTop, yFinEncabezado - 22)
 
-    // El bloque de precio siempre se alinea por el TOPE con la primera linea del
-    // titulo (misma fuente, asi que la diferencia de tamano define el offset exacto
-    // entre lineas base) — independiente de si el nombre ocupo 1 o 2 lineas.
-    let y = s.nombre.y + (s.nombre.size - s.infoSize) * CAP_RATIO
+    // Bloque de precio, empieza siempre despues del subtitulo real (baja si el
+    // nombre o el subtitulo ocuparon 2 lineas) y nunca invade la fila de abajo.
+    let y = Math.min(s.infoYTop, yFinEncabezado - 14)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (h.incluye) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
-    if (h.pension) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
-    // La foto nunca puede invadir el espacio del titulo/subtitulo que esta arriba de
-    // ella: si el borde superior original queda muy cerca, se achica la imagen (no se
-    // mueve el texto) para dejar un margen de seguridad limpio.
-    const imagenTopMax = yFinEncabezado - 14
-    const imagenTopOriginal = s.imagen.y + s.imagen.height
-    const imagen = imagenTopOriginal > imagenTopMax
-      ? { ...s.imagen, height: imagenTopMax - s.imagen.y }
-      : s.imagen
+    // Servicios: lista corta (la fila es chica, no hay lugar para mucho mas que
+    // precio + un puñado de items) — se corta en el piso de la fila, nunca invade
+    // la siguiente.
+    const items = (h.items || []).filter(Boolean)
+    if (items.length && y - s.itemsGap >= piso) {
+      escribir(h.items_titulo || 'SERVICIOS:', s.itemsX, y, s.itemsSize, NAVY_TXT, bebas); y -= s.itemsGap
+      for (const it of items) {
+        if (y < piso) break
+        escribir(`- ${it}`, s.itemsX, y, s.itemsSize, NAVY_TXT, helv)
+        y -= s.itemsGap
+      }
+    }
 
-    // Tapamos la foto vieja de la plantilla (con margen de seguridad) ANTES de poner
-    // la nueva: si no, quedan restos de la imagen original asomando en los bordes.
-    // Ojo: el margen de arriba NO se agranda (queda pegado al borde real de la imagen),
-    // porque el subtitulo puede estar justo encima y un margen de mas lo tapa.
-    tapar(imagen.x - 4, imagen.y - 4, imagen.width + 8, imagen.height + 4, CREMA_BG)
+    // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y
+    // FOTOS" pegada debajo (no encima como en la version de 2 por hoja, para que
+    // se lea "al lado de la foto" y no tape parte de la imagen).
+    tapar(s.imagen.x - 4, s.imagen.y - 4, s.imagen.width + 8, s.imagen.height + 8, CREMA_BG)
     if (h.imagen) {
       try {
         const bytes = await fetch(h.imagen).then(r => r.arrayBuffer())
         const esJpg = h.imagen.toLowerCase().includes('.jpg') || h.imagen.toLowerCase().includes('.jpeg') || h.imagen.startsWith('data:image/jpeg')
         const img = esJpg ? await doc.embedJpg(bytes) : await doc.embedPng(bytes)
-        dibujarImagenCover(paginaPlantilla, img, imagen)
+        dibujarImagenCover(paginaPlantilla, img, s.imagen)
       } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
     }
 
-    // La foto es clickeable y lleva a la ficha de ese hospedaje en el sitio publico
-    // (con la galeria de fotos del cuarto/habitacion elegida), si sabemos su id real.
-    // Se agrega ademas un boton "VER FOTOS" visible, propio (no el de la plantilla
-    // vieja), para que quede bien pegado al borde real de la imagen aunque se haya
-    // achicado por falta de espacio.
+    // La foto y el cartelito son clickeables y llevan a la ficha de ese hospedaje
+    // en el sitio publico (con la galeria de fotos del cuarto/habitacion elegida),
+    // si sabemos su id real.
     if (h.id) {
       const urlHotel = h.habitacion_id
         ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}`
         : `${SITIO_URL}/hoteles/${h.id}`
-      agregarLink(paginaPlantilla, doc, imagen, urlHotel)
+      agregarLink(paginaPlantilla, doc, s.imagen, urlHotel)
 
-      const bandaAlto = 18
-      tapar(imagen.x, imagen.y, imagen.width, bandaAlto, NAVY_BG)
-      escribir('VER FOTOS >', imagen.x + 8, imagen.y + 5, 10, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-      agregarLink(paginaPlantilla, doc, { x: imagen.x, y: imagen.y, width: imagen.width, height: bandaAlto }, urlHotel)
-    }
-
-    // La descripcion puede ser mucho mas larga que la de la referencia: la dibujamos
-    // completa y despues corremos el bloque de servicios hacia abajo si hizo falta,
-    // para que nunca se pisen (antes quedaba todo superpuesto con textos largos).
-    // Nunca dibujamos por debajo del piso de la zona de este hospedaje: si el
-    // contenido es muy largo, se corta ahi en vez de invadir el otro hospedaje.
-    const piso = s.zonaLimpiarBottom + 6
-    let finDescripcion = s.itemsYTop + s.itemsGap
-    if (h.descripcion) {
-      const lineas = partirEnLineas(h.descripcion, helv, s.descSize, s.descAncho)
-      let yd = descYTop
-      for (const linea of lineas) {
-        if (yd < piso) break
-        escribir(linea, s.descX, yd, s.descSize, NAVY_TXT, helv)
-        yd -= s.descGap
-      }
-      finDescripcion = yd
-    }
-
-    const items = (h.items || []).filter(Boolean)
-    if (items.length) {
-      let yi = Math.min(s.itemsYTop, finDescripcion - 10)
-      if (yi >= piso) {
-        escribir(h.items_titulo || 'SERVICIOS:', s.itemsX, yi, s.itemsSize, NAVY_TXT, bebas); yi -= s.itemsGap
-        for (const it of items) {
-          if (yi < piso) break
-          escribir(`- ${it}`, s.itemsX, yi, s.itemsSize, NAVY_TXT, helv)
-          yi -= s.itemsGap
-        }
-      }
-    }
-
-    if (h.link_video) {
-      escribir('CLIC ACÁ PARA VER VIDEOS >', s.videoX, s.videoY, 10, rgb(0xc9/255, 0xe3/255, 0x4f/255), helv)
+      const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
+      tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
+      escribir('VER INFO Y FOTOS >', banda.x + 6, banda.y + 5, 8, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+      agregarLink(paginaPlantilla, doc, banda, urlHotel)
     }
   }
 

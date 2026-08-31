@@ -114,6 +114,11 @@ export default function HotelDetalle() {
                 ))}
               </div>
             )}
+            {(habitacionActiva ? habitacionActiva.video : h.video) && (
+              <div className="rounded-2xl overflow-hidden mt-3 bg-black">
+                <video key={habitacionActiva ? habitacionActiva.video : h.video} src={habitacionActiva ? habitacionActiva.video : h.video} controls playsInline className="w-full max-h-96" />
+              </div>
+            )}
           </div>
 
           {/* Info */}

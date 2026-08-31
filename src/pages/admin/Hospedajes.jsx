@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
-import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
+import { hospedajesApi, habitacionesApi, propietariosApi } from '../../lib/supabase.js'
 import HospedajeForm, { TIPOS, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
+import HabitacionForm, { EMPTY_HABITACION, datosDesdeFormHabitacion } from '../../components/admin/HabitacionForm.jsx'
 
 const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
 
@@ -255,6 +256,7 @@ export default function Hospedajes() {
   const [error, setError] = useState(null)
   const [aBorrar, setABorrar] = useState(null)
   const [verDetalle, setVerDetalle] = useState(null)
+  const [gestionandoHabitaciones, setGestionandoHabitaciones] = useState(null) // null | hospedaje
 
   useEffect(() => { cargar() }, [])
 
@@ -308,16 +310,21 @@ export default function Hospedajes() {
     }
   }
 
-  function abrirEditar(h) {
+  async function abrirEditar(h) {
     setForm({
       nombre: h.nombre || '', tipo: h.tipo || 'Resort', destino: h.destino || '',
       ubicacion: h.ubicacion || '', direccion: h.direccion || '', descripcion: h.descripcion || '',
-      imagen: h.imagen || '', galeria: h.galeria || [], amenities: (h.amenities || []).length ? h.amenities : [''],
+      imagen: h.imagen || '', galeria: h.galeria || [], video: h.video || '', amenities: (h.amenities || []).length ? h.amenities : [''],
       estrellas: h.estrellas ? String(h.estrellas) : '', capacidad: h.capacidad ? String(h.capacidad) : '',
       precio_min: h.precio_min ? String(h.precio_min) : '', contacto: h.contacto || '', whatsapp: h.whatsapp || '',
+      nombre_dueno: '', contacto_dueno: '',
     })
     setError(null)
     setEditando(h.id)
+    const { data: propietario } = await propietariosApi.getByHospedaje(h.id)
+    if (propietario) {
+      setForm(p => ({ ...p, nombre_dueno: propietario.nombre_dueno || '', contacto_dueno: propietario.contacto_dueno || '' }))
+    }
   }
 
   async function guardar() {
@@ -330,6 +337,12 @@ export default function Hospedajes() {
     try {
       const { data, error } = await hospedajesApi.update(editando, datosDesdeForm(form))
       if (error) throw error
+      if (form.nombre_dueno.trim() || form.contacto_dueno.trim()) {
+        await propietariosApi.upsertHospedaje(editando, {
+          nombre_dueno: form.nombre_dueno.trim(),
+          contacto_dueno: form.contacto_dueno.trim(),
+        })
+      }
       if (data) setHospedajes(prev => prev.map(h => h.id === editando ? data : h))
       setEditando(null)
     } catch (e) {
@@ -478,6 +491,10 @@ export default function Hospedajes() {
                         className="text-xs font-medium py-2 px-3 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
                         Editar
                       </button>
+                      <button onClick={() => setGestionandoHabitaciones(h)}
+                        className="text-xs font-medium py-2 px-3 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                        Habitaciones
+                      </button>
                       <button onClick={() => setABorrar(h)}
                         className="text-xs py-2 px-2.5 rounded-lg border border-red-100 dark:border-red-900 text-red-400 dark:text-red-500 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
                         ✕
@@ -539,6 +556,11 @@ export default function Hospedajes() {
       {/* Detalle del hospedaje */}
       {verDetalle && (
         <ModalDetalleHospedaje hospedaje={verDetalle} onCerrar={() => setVerDetalle(null)} />
+      )}
+
+      {/* Gestión de tipos de habitación / departamentos */}
+      {gestionandoHabitaciones && (
+        <ModalGestionHabitaciones hospedaje={gestionandoHabitaciones} onCerrar={() => setGestionandoHabitaciones(null)} />
       )}
     </div>
   )
@@ -719,6 +741,187 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ModalGestionHabitaciones({ hospedaje, onCerrar }) {
+  const [habitaciones, setHabitaciones] = useState([])
+  const [propietariosPorHabitacion, setPropietariosPorHabitacion] = useState({})
+  const [cargando, setCargando] = useState(true)
+  const [editando, setEditando] = useState(null) // null | 'nueva' | id
+  const [form, setForm] = useState(EMPTY_HABITACION)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+  const [aBorrar, setABorrar] = useState(null)
+
+  useEffect(() => { cargar() }, [hospedaje.id])
+
+  async function cargar() {
+    setCargando(true)
+    const { data } = await habitacionesApi.getByHospedaje(hospedaje.id)
+    setHabitaciones(data || [])
+    // Solo para mostrar en este panel admin (nunca en el sitio público) — así se
+    // puede identificar de quién es cada unidad sin abrir "Editar" una por una.
+    const propietarios = await Promise.all(
+      (data || []).map(hab => propietariosApi.getByHabitacion(hab.id).then(({ data: p }) => [hab.id, p]))
+    )
+    setPropietariosPorHabitacion(Object.fromEntries(propietarios.filter(([, p]) => p)))
+    setCargando(false)
+  }
+
+  function abrirNueva() {
+    setForm(EMPTY_HABITACION)
+    setError(null)
+    setEditando('nueva')
+  }
+
+  async function abrirEditar(hab) {
+    setForm({
+      nombre: hab.nombre || '', superficie: hab.superficie ? String(hab.superficie) : '',
+      capacidad: hab.capacidad ? String(hab.capacidad) : '', cantidad: hab.cantidad ? String(hab.cantidad) : '',
+      camas: hab.camas || '', vista: hab.vista || '', descripcion: hab.descripcion || '',
+      imagen: hab.imagen || '', galeria: hab.galeria || [], video: hab.video || '',
+      amenities: (hab.amenities || []).length ? hab.amenities : [''],
+      nombre_dueno: '', contacto_dueno: '',
+    })
+    setError(null)
+    setEditando(hab.id)
+    const { data: propietario } = await propietariosApi.getByHabitacion(hab.id)
+    if (propietario) {
+      setForm(p => ({ ...p, nombre_dueno: propietario.nombre_dueno || '', contacto_dueno: propietario.contacto_dueno || '' }))
+    }
+  }
+
+  async function guardar() {
+    if (!form.nombre.trim()) {
+      setError('El nombre es obligatorio.')
+      return
+    }
+    setGuardando(true)
+    setError(null)
+    try {
+      const datos = datosDesdeFormHabitacion(form, hospedaje.id)
+      let habitacionId = editando
+      if (editando === 'nueva') {
+        const { data, error } = await habitacionesApi.create(datos)
+        if (error) throw error
+        habitacionId = data.id
+      } else {
+        const { error } = await habitacionesApi.update(editando, datos)
+        if (error) throw error
+      }
+      if (form.nombre_dueno.trim() || form.contacto_dueno.trim()) {
+        await propietariosApi.upsertHabitacion(habitacionId, {
+          nombre_dueno: form.nombre_dueno.trim(),
+          contacto_dueno: form.contacto_dueno.trim(),
+        })
+      }
+      setEditando(null)
+      await cargar()
+    } catch (e) {
+      setError('Error al guardar: ' + (e.message || 'intentá de nuevo'))
+    }
+    setGuardando(false)
+  }
+
+  async function eliminar() {
+    if (!aBorrar) return
+    await habitacionesApi.delete(aBorrar.id)
+    setABorrar(null)
+    await cargar()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+        {editando ? (
+          <>
+            <h2 className="font-bold text-lg mb-1 text-gray-900 dark:text-zinc-100">
+              {editando === 'nueva' ? 'Nuevo tipo de habitación / departamento' : 'Editar habitación / departamento'}
+            </h2>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mb-4">{hospedaje.nombre}</p>
+            <HabitacionForm form={form} setForm={setForm} error={error} />
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditando(null)} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardar} disabled={guardando} className="flex-1 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                {guardando ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Tipos de habitación / departamentos</h2>
+                <p className="text-xs text-gray-400 dark:text-zinc-500">{hospedaje.nombre}</p>
+              </div>
+              <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg flex-shrink-0 transition-colors">×</button>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mb-4">
+              Usalo cuando un mismo hospedaje tiene varias unidades distintas (ej: departamentos de distintos dueños en un mismo condominio) — cada una con sus propias fotos, video y dueño.
+            </p>
+
+            {cargando ? (
+              <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando...</p>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {habitaciones.length === 0 && (
+                  <p className="text-sm text-gray-400 dark:text-zinc-500">Todavía no hay tipos de habitación cargados.</p>
+                )}
+                {habitaciones.map(hab => (
+                  <div key={hab.id} className="flex items-center gap-3 border border-gray-100 dark:border-zinc-800 rounded-xl p-3">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
+                      {hab.imagen && <img src={hab.imagen} alt="" className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm text-gray-900 dark:text-zinc-100 truncate">{hab.nombre}</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400">
+                        {[hab.capacidad ? `hasta ${hab.capacidad} huéspedes` : null, hab.camas || null].filter(Boolean).join(' · ') || '—'}
+                      </p>
+                      {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">🔒 Dueño: {propietariosPorHabitacion[hab.id].nombre_dueno}</p>
+                      )}
+                    </div>
+                    <button onClick={() => abrirEditar(hab)}
+                      className="text-xs font-medium py-1.5 px-3 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                      Editar
+                    </button>
+                    <button onClick={() => setABorrar(hab)}
+                      className="text-xs py-1.5 px-2 rounded-lg border border-red-100 dark:border-red-900 text-red-400 dark:text-red-500 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={abrirNueva}
+              className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-3 text-sm text-gray-500 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+              + Agregar tipo de habitación / departamento
+            </button>
+          </>
+        )}
+
+        {aBorrar && (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center px-4" onClick={() => setABorrar(null)}>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+              <h3 className="text-center font-bold text-base text-gray-900 dark:text-zinc-100 mb-1">¿Eliminar "{aBorrar.nombre}"?</h3>
+              <p className="text-center text-sm text-gray-400 dark:text-zinc-500 mb-6">No se puede deshacer.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setABorrar(null)} className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={eliminar} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

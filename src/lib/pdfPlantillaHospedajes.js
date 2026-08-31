@@ -28,7 +28,7 @@ function agregarLink(page, doc, { x, y, width, height }, url) {
   page.node.set(PDFName.of('Annots'), annots)
 }
 
-const SITIO_URL = 'https://prueba-1-rose.vercel.app'
+export const SITIO_URL = 'https://prueba-1-rose.vercel.app'
 
 // Dibuja la imagen manteniendo su proporcion real, recortando lo que sobre para
 // llenar la caja completa (equivalente a object-fit:cover en CSS) — sin esto,
@@ -218,7 +218,10 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     }
 
     if (h.link_video) {
-      escribir('CLIC ACÁ PARA VER VIDEOS >', s.videoX, s.videoY, 10, rgb(0xc9/255, 0xe3/255, 0x4f/255), helv)
+      const textoVideo = 'CLIC ACÁ PARA VER VIDEOS >'
+      const anchoVideo = helv.widthOfTextAtSize(textoVideo, 10)
+      escribir(textoVideo, s.videoX, s.videoY, 10, rgb(0xc9/255, 0xe3/255, 0x4f/255), helv)
+      agregarLink(paginaPlantilla, doc, { x: s.videoX - 2, y: s.videoY - 2, width: anchoVideo + 4, height: 14 }, h.link_video)
     }
   }
 

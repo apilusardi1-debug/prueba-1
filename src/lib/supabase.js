@@ -268,6 +268,17 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
     body: { imagenBase64, mediaType },
   })
+  // Cuando la Edge Function responde con un status distinto de 2xx (ej: 429 de
+  // Gemini saturado), el cliente de Supabase descarta el cuerpo de la respuesta
+  // y solo deja un mensaje generico ("Edge Function returned a non-2xx status
+  // code") en error.message — el mensaje real que mandamos desde el servidor
+  // queda en error.context, que es la Response cruda sin leer todavia.
+  if (error?.context?.json) {
+    try {
+      const cuerpo = await error.context.clone().json()
+      if (cuerpo?.error) return { data: { error: cuerpo.error }, error }
+    } catch (_) { /* si no se pudo leer, seguimos con el mensaje generico */ }
+  }
   return { data, error }
 }
 

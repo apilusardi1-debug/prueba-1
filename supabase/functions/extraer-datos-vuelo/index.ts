@@ -82,32 +82,50 @@ serve(async (req) => {
 
     const properties = Object.fromEntries(CAMPOS.map((c) => [c, { type: 'string' }]))
 
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '' },
-      body: JSON.stringify({
-        model: GEMINI_MODEL,
-        input: [
-          { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
-          { type: 'text', text: construirPrompt() },
-        ],
-        response_format: {
-          type: 'text',
-          mime_type: 'application/json',
-          schema: { type: 'object', properties, required: CAMPOS },
-        },
-        // Por default el modelo "piensa" con nivel medio/alto antes de responder,
-        // pensado para tareas que requieren razonamiento — acá solo hace falta
-        // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
-        // y evita varios segundos de latencia que no aportan nada a este caso.
-        generation_config: { thinking_level: 'low' },
-      }),
-    })
+    // La capa gratuita de Gemini tiene un limite bajo de pedidos por minuto (free
+    // tier) -- si dos personas de la agencia cargan una imagen casi al mismo
+    // tiempo es facil pisarlo. Reintentamos un par de veces con espera antes de
+    // darnos por vencidos, en vez de que el usuario vea un error por algo que se
+    // resuelve solo en unos segundos.
+    let res: Response | null = null
+    for (let intento = 0; intento < 3; intento++) {
+      if (intento > 0) await new Promise((r) => setTimeout(r, 3000 * intento))
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '' },
+        body: JSON.stringify({
+          model: GEMINI_MODEL,
+          input: [
+            { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
+            { type: 'text', text: construirPrompt() },
+          ],
+          response_format: {
+            type: 'text',
+            mime_type: 'application/json',
+            schema: { type: 'object', properties, required: CAMPOS },
+          },
+          // Por default el modelo "piensa" con nivel medio/alto antes de responder,
+          // pensado para tareas que requieren razonamiento — acá solo hace falta
+          // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
+          // y evita varios segundos de latencia que no aportan nada a este caso.
+          generation_config: { thinking_level: 'low' },
+        }),
+      })
+      if (res.ok) break
+      console.error('Gemini error:', res.status, await res.text())
+      if (res.status !== 429) break
+    }
 
-    if (!res.ok) {
-      const detalle = await res.text()
-      console.error('Gemini error:', res.status, detalle)
-      throw new Error(`Gemini respondió ${res.status}`)
+    if (!res || !res.ok) {
+      const esRateLimit = res?.status === 429
+      return new Response(JSON.stringify({
+        error: esRateLimit
+          ? 'El lector de imágenes está saturado en este momento (límite de la capa gratuita) — esperá unos segundos y probá de nuevo.'
+          : 'No se pudo leer la imagen del vuelo.',
+      }), {
+        status: esRateLimit ? 429 : 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
     }
 
     const data = await res.json()

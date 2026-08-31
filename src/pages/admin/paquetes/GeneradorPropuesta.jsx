@@ -64,17 +64,6 @@ function formatearMiles(valor) {
   return digitos ? Number(digitos).toLocaleString('es-AR') : ''
 }
 
-// Campo de fecha en texto libre (DD/MM/AAAA): a medida que se escriben los
-// dígitos, las barras se van poniendo solas — se guarda siempre solo dígitos
-// en el estado y se re-formatea al mostrar, así funciona igual de bien
-// escribiendo para adelante que borrando con backspace.
-function formatearFechaEscrita(valor) {
-  const digitos = soloDigitos(valor).slice(0, 8)
-  if (digitos.length > 4) return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
-  if (digitos.length > 2) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`
-  return digitos
-}
-
 function fechaLarga(iso) {
   if (!iso) return ''
   const [y, m, d] = iso.split('-').map(Number)
@@ -276,8 +265,6 @@ export default function GeneradorPropuesta() {
   const [cantidadAdultos, setCantidadAdultos] = useState('')
   const [cantidadMenores, setCantidadMenores] = useState('')
   const [edadesMenores, setEdadesMenores] = useState([])
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
   // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
@@ -397,7 +384,7 @@ export default function GeneradorPropuesta() {
   // resolución muy alta sin necesidad — es solo texto. Redimensionar acá antes
   // de mandarla acelera tanto la subida como la lectura de Gemini, que escala
   // con el tamaño/resolución de la imagen.
-  function archivoAImagenComprimida(archivo, maxDim = 1600, calidad = 0.85) {
+  function archivoAImagenComprimida(archivo, maxDim = 1280, calidad = 0.8) {
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(archivo)
@@ -573,7 +560,6 @@ export default function GeneradorPropuesta() {
         cantidad_adultos: parseInt(cantidadAdultos) || null,
         cantidad_menores: parseInt(cantidadMenores) || null,
         edades_menores: edadesMenoresTexto || null,
-        periodo: [formatearFechaEscrita(fechaDesde), formatearFechaEscrita(fechaHasta)].filter(Boolean).join(' al ') || null,
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
         tipo_propuesta: tipoPropuesta,
         destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.nombre.trim()) : null,
@@ -592,8 +578,6 @@ export default function GeneradorPropuesta() {
       setCantidadAdultos('')
       setCantidadMenores('')
       setEdadesMenores([])
-      setFechaDesde('')
-      setFechaHasta('')
       setPresupuestoLimite('')
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
@@ -646,7 +630,7 @@ export default function GeneradorPropuesta() {
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           <input
             type="number"
             min="0"
@@ -661,22 +645,6 @@ export default function GeneradorPropuesta() {
             value={cantidadMenores}
             onChange={e => setCantidadMenores(e.target.value)}
             placeholder="Cantidad de menores"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            value={formatearFechaEscrita(fechaDesde)}
-            onChange={e => setFechaDesde(soloDigitos(e.target.value))}
-            placeholder="Fecha desde (DD/MM/AAAA)"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            value={formatearFechaEscrita(fechaHasta)}
-            onChange={e => setFechaHasta(soloDigitos(e.target.value))}
-            placeholder="Fecha hasta (DD/MM/AAAA)"
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>

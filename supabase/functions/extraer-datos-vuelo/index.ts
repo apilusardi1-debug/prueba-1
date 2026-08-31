@@ -96,6 +96,11 @@ serve(async (req) => {
           mime_type: 'application/json',
           schema: { type: 'object', properties, required: CAMPOS },
         },
+        // Por default el modelo "piensa" con nivel medio/alto antes de responder,
+        // pensado para tareas que requieren razonamiento — acá solo hace falta
+        // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
+        // y evita varios segundos de latencia que no aportan nada a este caso.
+        generation_config: { thinking_level: 'low' },
       }),
     })
 

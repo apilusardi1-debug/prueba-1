@@ -173,7 +173,7 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   // que el icono original sigue ahi solo (no hace falta redibujarlo).
   let y = REF_EQUIPAJE_TOP
   for (const linea of equipajeSeleccionado) {
-    escribir(linea, 56.07, y, 20, NAVY_TXT)
+    escribir(linea, 61.19, y, 20, NAVY_TXT)
     y -= GAP_LINEA
   }
   // Y de la ULTIMA linea de equipaje realmente dibujada (no una de mas) — asi el
@@ -229,19 +229,19 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   const yTraslados = finVuelo - GAP_SECCION
   if (vuelo.traslado_ida && vuelo.traslado_vuelta) {
     dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADOS PRIVADOS INCLUIDOS:', 59.90, yTraslados, 25, NAVY_TXT)
-    escribir('AEROPUERTO / HOTEL', 59.90, yTraslados - 24, 20, NAVY_TXT)
-    escribir('IN - OUT', 59.90, yTraslados - 48, 20, NAVY_TXT)
+    escribir('TRASLADOS PRIVADOS INCLUIDOS:', 61.19, yTraslados, 25, NAVY_TXT)
+    escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
+    escribir('IN - OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
   } else if (vuelo.traslado_ida) {
     dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADO PRIVADO INCLUIDO:', 59.90, yTraslados, 25, NAVY_TXT)
-    escribir('AEROPUERTO / HOTEL', 59.90, yTraslados - 24, 20, NAVY_TXT)
-    escribir('IN', 59.90, yTraslados - 48, 20, NAVY_TXT)
+    escribir('TRASLADO PRIVADO INCLUIDO:', 61.19, yTraslados, 25, NAVY_TXT)
+    escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
+    escribir('IN', 61.19, yTraslados - 48, 20, NAVY_TXT)
   } else if (vuelo.traslado_vuelta) {
     dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADO PRIVADO INCLUIDO:', 59.90, yTraslados, 25, NAVY_TXT)
-    escribir('HOTEL / AEROPUERTO', 59.90, yTraslados - 24, 20, NAVY_TXT)
-    escribir('OUT', 59.90, yTraslados - 48, 20, NAVY_TXT)
+    escribir('TRASLADO PRIVADO INCLUIDO:', 61.19, yTraslados, 25, NAVY_TXT)
+    escribir('HOTEL / AEROPUERTO', 61.19, yTraslados - 24, 20, NAVY_TXT)
+    escribir('OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
   }
 
   // Recuadro "SI TE INTERESA VER LAS ACTIVIDADES..." clickeable, si el vuelo tiene

@@ -5,6 +5,28 @@ import { generarPDFCierre } from '../../../lib/pdfPlantillaCierre.js'
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
 }
+function formatearNumero(n) {
+  return Number(n || 0).toLocaleString('es-AR')
+}
+// El campo de seña guarda solo dígitos en el estado (compatible con parseFloat
+// para el saldo); lo que se ve en el input tiene los puntos de miles puestos
+// en el momento de mostrar — mismo patrón que el Generador de propuesta.
+function soloDigitos(valor) {
+  return String(valor ?? '').replace(/\D/g, '')
+}
+function formatearMiles(valor) {
+  const digitos = soloDigitos(valor)
+  return digitos ? Number(digitos).toLocaleString('es-AR') : ''
+}
+const MONEDA_LABEL = { ars: 'ARS$', brl: 'R$', usd: 'U$D' }
+// Texto "ARS$ X · R$ Y" con las monedas del vuelo que tengan monto cargado —
+// se usa tal cual en el vuelo (vuelo.precios) y en el traslado por destino.
+function preciosTexto(precios) {
+  return Object.entries(precios || {})
+    .filter(([, v]) => v?.monto)
+    .map(([clave, v]) => `${MONEDA_LABEL[clave] || clave} ${formatearNumero(v.monto)}`)
+    .join(' · ')
+}
 
 const TITULOS = {
   enviada: { titulo: 'Propuestas enviadas', vacio: 'No hay propuestas enviadas todavía.' },
@@ -95,6 +117,7 @@ export default function PropuestasLista({ estado }) {
   const [hospedajeIdx, setHospedajeIdx] = useState(0)
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
   const [vencimiento, setVencimiento] = useState('')
+  const [sena, setSena] = useState('')
   const [generandoCierre, setGenerandoCierre] = useState(false)
   const [errorCierre, setErrorCierre] = useState('')
 
@@ -151,6 +174,7 @@ export default function PropuestasLista({ estado }) {
     setHospedajeIdx(0)
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
     setVencimiento(p.vencimiento_saldo || '')
+    setSena(p.sena != null ? String(p.sena) : '')
     setErrorCierre('')
   }
 
@@ -162,6 +186,7 @@ export default function PropuestasLista({ estado }) {
       const datosActualizados = {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
+        sena: parseFloat(sena) || 0,
         // Guardamos solo el hospedaje que el cliente eligio (si habia mas de uno
         // ofrecido) — asi el PDF de cierre y la propuesta ya cerrada quedan con
         // el dato correcto, sin ambiguedad.
@@ -227,6 +252,18 @@ export default function PropuestasLista({ estado }) {
   const esCombinada = cerrandoPropuesta?.tipo_propuesta === 'combinada'
   const trayectosTransfer = esCombinada ? (cerrandoPropuesta?.destinos_detalle || []).filter(d => d.traslado?.trim()) : []
   const puedeAbrir = estado === 'enviada' || estado === 'cerrada'
+
+  // Pago: mismo criterio que el Generador — en simple los hospedajes cargados
+  // son opciones alternativas (se toma el elegido), en combinada se suman.
+  const hospedajeElegidoPago = hospedajesOpciones[hospedajeIdx]
+  const totalPago = esCombinada
+    ? hospedajesOpciones.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
+    : (parseFloat(hospedajeElegidoPago?.precio) || 0)
+  const saldoPago = Math.max(totalPago - (parseFloat(sena) || 0), 0)
+  const monedaPago = cerrandoPropuesta?.moneda || 'BRL'
+  // Costo/venta del vuelo, para chequear el margen de un vistazo junto con el
+  // resto de la info del vuelo.
+  const preciosVueloTexto = preciosTexto(vuelo.precios)
 
   return (
     <div className="space-y-6">
@@ -433,6 +470,16 @@ export default function PropuestasLista({ estado }) {
                   <span>VUELTA: {tramoVuelta}</span>
                 </div>
               )}
+              {(vuelo.costo_pasajes || preciosVueloTexto) && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
+                  <span className="text-green-600 dark:text-green-400">✓</span>
+                  <span>
+                    {vuelo.costo_pasajes && `Costo: ${formatearNumero(vuelo.costo_pasajes)}`}
+                    {vuelo.costo_pasajes && preciosVueloTexto && ' · '}
+                    {preciosVueloTexto && `Venta: ${preciosVueloTexto}`}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Hospedaje elegido por el cliente — seleccionable si todavia esta enviada,
@@ -457,7 +504,10 @@ export default function PropuestasLista({ estado }) {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{h.nombre}</p>
-                          <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}</p>
+                          <p className="text-xs text-gray-400 dark:text-zinc-500">
+                            Venta: {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}
+                            {h.costo_interno ? ` · Costo: ${formatearNumero(h.costo_interno)}` : ''}
+                          </p>
                         </div>
                         {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                       </Elemento>
@@ -502,11 +552,47 @@ export default function PropuestasLista({ estado }) {
                 {trayectosTransfer.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-zinc-300">
                     <span className="text-green-600 dark:text-green-400">✓</span>
-                    <span><span className="font-medium">{d.nombre || `Destino ${i + 1}`}:</span> {d.traslado}</span>
+                    <span>
+                      <span className="font-medium">{d.nombre || `Destino ${i + 1}`}:</span> {d.traslado}
+                      {(d.valor_agencia_traslado || d.valor_cliente_traslado) && (
+                        <span className="text-gray-400 dark:text-zinc-500">
+                          {' — '}
+                          {d.valor_agencia_traslado && `Costo: ${formatearNumero(d.valor_agencia_traslado)}`}
+                          {d.valor_agencia_traslado && d.valor_cliente_traslado && ' · '}
+                          {d.valor_cliente_traslado && `Venta: ${formatearNumero(d.valor_cliente_traslado)}`}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Pago: el total sale solo (precio del hospedaje elegido, o la suma en
+                combinada) — lo unico que se carga a mano es cuanto ya pagó el
+                cliente, el saldo se calcula solo. */}
+            <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Pago</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(totalPago, monedaPago)}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Ya pagó (seña)</label>
+                  {estado === 'enviada' ? (
+                    <input type="text" inputMode="numeric" value={formatearMiles(sena)} onChange={e => setSena(soloDigitos(e.target.value))} placeholder="0"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  ) : (
+                    <p className="text-sm text-gray-700 dark:text-zinc-300">{formatPrecio(sena, monedaPago)}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Saldo a pagar</label>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(saldoPago, monedaPago)}</p>
+                </div>
+              </div>
+            </div>
 
             <div>
               <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Vencimiento del saldo</label>

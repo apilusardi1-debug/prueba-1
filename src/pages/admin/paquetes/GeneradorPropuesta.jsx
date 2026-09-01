@@ -928,6 +928,11 @@ export default function GeneradorPropuesta() {
               </div>
             ))}
           </div>
+          <div className="mt-3">
+            <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
+            <input type="text" inputMode="numeric" value={formatearMiles(vuelo.costo_pasajes)} onChange={e => setVueloCampo('costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          </div>
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
           <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
@@ -956,11 +961,6 @@ export default function GeneradorPropuesta() {
             {subiendoBanner ? 'Subiendo...' : vuelo.banner_imagen ? '✓ Imagen del banner cargada — cambiar' : '+ Imagen del banner'}
             <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenBanner(e.target.files[0])} />
           </label>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
-          <input type="text" inputMode="numeric" value={formatearMiles(vuelo.costo_pasajes)} onChange={e => setVueloCampo('costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
         </div>
       </div>
 

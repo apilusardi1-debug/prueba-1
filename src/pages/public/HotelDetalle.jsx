@@ -175,7 +175,7 @@ export default function HotelDetalle() {
         </div>
 
         {/* Habitaciones */}
-        {habitaciones.length > 0 && (
+        {!standalone && habitaciones.length > 0 && (
           <div className="mt-14 pt-10 border-t border-surface-variant">
             <h2 className="font-display-hero uppercase text-hero-navy mb-6"
               style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', letterSpacing: '0.01em' }}>

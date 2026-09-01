@@ -43,10 +43,13 @@ const HOSPEDAJE_VACIO = {
   costo_interno: '',
 }
 
-// costo_vuelo/costo_traslado: costo interno del tramo de vuelo y del traslado de
-// ESE destino puntual — igual que costo_interno de hospedaje, solo para uso
-// interno en propuesta combinada, no se exporta al PDF.
-const DESTINO_VACIO = { nombre: '', traslado: '', costo_vuelo: '', costo_traslado: '' }
+// valor_agencia_vuelo/valor_cliente_vuelo: lo que paga la agencia por ese tramo
+// de vuelo vs. lo que se le cobraria al cliente por ese mismo tramo — para
+// poder ver el margen de ESE vuelo puntual, no solo el total del paquete.
+// costo_traslado: costo interno del traslado de ESE destino. Los tres, igual
+// que costo_interno de hospedaje, son de uso interno en propuesta combinada,
+// no se exportan al PDF.
+const DESTINO_VACIO = { nombre: '', traslado: '', valor_agencia_vuelo: '', valor_cliente_vuelo: '', costo_traslado: '' }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -757,8 +760,10 @@ export default function GeneradorPropuesta() {
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costos internos de este destino — uso interno, no se exportan al PDF</p>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <input type="text" inputMode="numeric" value={formatearMiles(d.costo_vuelo)} onChange={e => setDestinoCampo(idx, 'costo_vuelo', soloDigitos(e.target.value))} placeholder="Costo interno del vuelo"
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_agencia_vuelo)} onChange={e => setDestinoCampo(idx, 'valor_agencia_vuelo', soloDigitos(e.target.value))} placeholder="Valor agencia (vuelo)"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_cliente_vuelo)} onChange={e => setDestinoCampo(idx, 'valor_cliente_vuelo', soloDigitos(e.target.value))} placeholder="Valor cliente (vuelo)"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                     <input type="text" inputMode="numeric" value={formatearMiles(d.costo_traslado)} onChange={e => setDestinoCampo(idx, 'costo_traslado', soloDigitos(e.target.value))} placeholder="Costo interno del traslado"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

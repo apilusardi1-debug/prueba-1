@@ -315,9 +315,12 @@ export async function generarPDFCierre(propuesta) {
   // "AEROPUERTO / HOTEL, IN-OUT", que no hay que tocar — pasarse la borra
   // tambien, como paso en un intento anterior).
   tapar(32.66, 278, 260, 38, CREMA_BG)
+  // Bajado de y=292 a y=278: a la altura vieja quedaba muy arriba respecto del
+  // bloque "AEROPUERTO / HOTEL" + "IN - OUT" de al lado (que ocupa de y=268.87
+  // a y=292.87) — asi queda mas centrado verticalmente contra ese bloque.
   reemplazarAjustado(
     propuesta.traslados_incluidos === false ? 'TRASLADOS PRIVADOS NO INCLUIDOS' : 'TRASLADOS PRIVADOS INCLUIDOS',
-    32.66, 292, 18, 260, NAVY_TXT, bebas, CREMA_BG, 14
+    32.66, 278, 18, 260, NAVY_TXT, bebas, CREMA_BG, 14
   )
   if (propuesta.traslados_incluidos === false) {
     tapar(305, 265, 150, 45, CREMA_BG)
@@ -386,7 +389,10 @@ export async function generarPDFCierre(propuesta) {
   // despues explica las condiciones de pago en un parrafo, en vez de quedar
   // repartido en varias etiquetas sueltas.
   const moneda = propuesta.moneda || 'ARS'
-  tapar(28, 85, 540, 190, CREMA_BG)
+  // Alto tope en 178 (no mas: "IN - OUT" de la columna de al lado empieza en
+  // y=268.87 — con un tapado mas alto el borde de arriba de este rectangulo le
+  // pisaba el renglon de abajo a esas letras, medido con el PDF real).
+  tapar(28, 85, 540, 178, CREMA_BG)
 
   // Titulo "DETALLE" — misma tipografia/estilo (Bebas, mayuscula) que el resto
   // de los titulos de sección (AÉREOS, HOSPEDAJE, TRASLADOS...) para que este

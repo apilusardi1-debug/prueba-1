@@ -272,6 +272,7 @@ export default function GeneradorPropuesta() {
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
   const [vuelo, setVuelo] = useState(VUELO_VACIO)
   const [leyendoVuelo, setLeyendoVuelo] = useState(false)
+  const [reintentandoVuelo, setReintentandoVuelo] = useState(false)
   const [errorVuelo, setErrorVuelo] = useState('')
   const [hospedajes, setHospedajes] = useState([{ ...HOSPEDAJE_VACIO, items: [''] }])
   const [hospedajesDB, setHospedajesDB] = useState([])
@@ -413,13 +414,29 @@ export default function GeneradorPropuesta() {
     })
   }
 
+  // El lector usa la capa gratuita de Gemini, que a veces devuelve un 429
+  // (rate limit) o un 5xx pasajero (mucha demanda) — la Edge Function falla
+  // rápido en ese caso (no reintenta internamente, se probó y terminaba
+  // muriendo por falta de recursos). Reintentamos ACA, llamando de nuevo con
+  // una invocación fresca cada vez, antes de rendirnos — la agencia no
+  // debería tener que reintentar a mano para algo que se resuelve solo en
+  // unos segundos.
   async function leerImagenVuelo(archivo) {
     if (!archivo) return
     setErrorVuelo('')
+    setReintentandoVuelo(false)
     setLeyendoVuelo(true)
     try {
       const { base64, mediaType } = await archivoAImagenComprimida(archivo)
-      const { data, error } = await extraerDatosVuelo(base64, mediaType)
+      let data, error
+      for (let intento = 0; intento < 8; intento++) {
+        if (intento > 0) {
+          setReintentandoVuelo(true)
+          await new Promise(r => setTimeout(r, 10000))
+        }
+        ;({ data, error } = await extraerDatosVuelo(base64, mediaType))
+        if (!data?.rateLimited) break
+      }
       if (error || data?.error) {
         setErrorVuelo(data?.error || error?.message || 'No se pudo leer la imagen.')
       } else if (data?.vuelo) {
@@ -434,6 +451,7 @@ export default function GeneradorPropuesta() {
     } catch (_) {
       setErrorVuelo('No se pudo leer la imagen.')
     }
+    setReintentandoVuelo(false)
     setLeyendoVuelo(false)
   }
 
@@ -739,7 +757,7 @@ export default function GeneradorPropuesta() {
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
           <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer whitespace-nowrap">
-            {leyendoVuelo ? 'Leyendo imagen...' : '+ Cargar desde imagen'}
+            {leyendoVuelo ? (reintentandoVuelo ? 'Reintentando...' : 'Leyendo imagen...') : '+ Cargar desde imagen'}
             <input type="file" accept="image/*" className="hidden" disabled={leyendoVuelo}
               onChange={e => leerImagenVuelo(e.target.files[0])} />
           </label>

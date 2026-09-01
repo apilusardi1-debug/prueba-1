@@ -276,7 +276,7 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   if (error?.context?.json) {
     try {
       const cuerpo = await error.context.clone().json()
-      if (cuerpo?.error) return { data: { error: cuerpo.error }, error }
+      if (cuerpo?.error) return { data: { error: cuerpo.error, rateLimited: error.context.status === 429 }, error }
     } catch (_) { /* si no se pudo leer, seguimos con el mensaje generico */ }
   }
   return { data, error }

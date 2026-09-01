@@ -27,7 +27,18 @@ const CAMPOS = [
   'vuelta_escala_ciudad', 'vuelta_escala_codigo', 'vuelta_escala_llega', 'vuelta_escala_sale',
 ]
 
-const GEMINI_MODEL = 'gemini-3.6-flash'
+// OJO: la cuenta/API key de Google que usa esta funcion tiene una cuota
+// gratuita muy chica -- confirmado con el error real de Google: "Quota
+// exceeded ... limit: 20 ... Please retry in ~35-60s". Se probo con
+// gemini-3.6-flash, 3.5-flash y 2.5-flash (este ultimo ni disponible, dado
+// de baja) y el mismo limite de 20 aparece con cualquiera -- no es un
+// problema del modelo elegido, es la cuota del proyecto/API key en Google
+// AI Studio. Para sostener un uso real (15+ lecturas por dia) hace falta
+// habilitar facturacion en ese proyecto de Google (el uso real es muy barato,
+// pero el nivel gratis sin facturacion habilitada es demasiado chico).
+// Mientras tanto, el codigo reintenta del lado del cliente (ver
+// GeneradorPropuesta.jsx) para absorber picos cortos de uso.
+const GEMINI_MODEL = 'gemini-3.5-flash'
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 
 // El prompt describe explicitamente los formatos reales que llegan a la agencia
@@ -82,48 +93,44 @@ serve(async (req) => {
 
     const properties = Object.fromEntries(CAMPOS.map((c) => [c, { type: 'string' }]))
 
-    // La capa gratuita de Gemini tiene un limite bajo de pedidos por minuto (free
-    // tier) -- si dos personas de la agencia cargan una imagen casi al mismo
-    // tiempo es facil pisarlo. Reintentamos un par de veces con espera antes de
-    // darnos por vencidos, en vez de que el usuario vea un error por algo que se
-    // resuelve solo en unos segundos.
-    let res: Response | null = null
-    for (let intento = 0; intento < 3; intento++) {
-      if (intento > 0) await new Promise((r) => setTimeout(r, 3000 * intento))
-      res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '' },
-        body: JSON.stringify({
-          model: GEMINI_MODEL,
-          input: [
-            { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
-            { type: 'text', text: construirPrompt() },
-          ],
-          response_format: {
-            type: 'text',
-            mime_type: 'application/json',
-            schema: { type: 'object', properties, required: CAMPOS },
-          },
-          // Por default el modelo "piensa" con nivel medio/alto antes de responder,
-          // pensado para tareas que requieren razonamiento — acá solo hace falta
-          // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
-          // y evita varios segundos de latencia que no aportan nada a este caso.
-          generation_config: { thinking_level: 'low' },
-        }),
-      })
-      if (res.ok) break
-      console.error('Gemini error:', res.status, await res.text())
-      if (res.status !== 429) break
-    }
+    // Un solo intento acá adentro (nada de reintentar-con-espera dentro de la
+    // misma invocación): se probó con un loop de reintentos con backoff y la
+    // Edge Function terminaba muriendo con WORKER_RESOURCE_LIMIT (se queda sin
+    // recursos), aunque cada llamada individual a Gemini responde rápido
+    // (~1-2s incluso cuando falla). La paciencia ante un 429/5xx pasajero la
+    // pone el cliente, llamando de nuevo a esta función con una invocación
+    // fresca cada vez — más liviano y más confiable que reintentar acá.
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '' },
+      body: JSON.stringify({
+        model: GEMINI_MODEL,
+        input: [
+          { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
+          { type: 'text', text: construirPrompt() },
+        ],
+        response_format: {
+          type: 'text',
+          mime_type: 'application/json',
+          schema: { type: 'object', properties, required: CAMPOS },
+        },
+        // Por default el modelo "piensa" con nivel medio/alto antes de responder,
+        // pensado para tareas que requieren razonamiento — acá solo hace falta
+        // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
+        // y evita varios segundos de latencia que no aportan nada a este caso.
+        generation_config: { thinking_level: 'low' },
+      }),
+    })
 
-    if (!res || !res.ok) {
-      const esRateLimit = res?.status === 429
+    if (!res.ok) {
+      console.error('Gemini error:', res.status, await res.text())
+      const esTransitorio = res.status === 429 || res.status >= 500
       return new Response(JSON.stringify({
-        error: esRateLimit
-          ? 'El lector de imágenes está saturado en este momento (límite de la capa gratuita) — esperá unos segundos y probá de nuevo.'
+        error: esTransitorio
+          ? 'El lector de imágenes está saturado en este momento — esperá unos segundos y probá de nuevo.'
           : 'No se pudo leer la imagen del vuelo.',
       }), {
-        status: esRateLimit ? 429 : 500,
+        status: esTransitorio ? 429 : 500,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }

@@ -377,8 +377,8 @@ export async function generarPDFCierre(propuesta) {
   }
   if (hospedaje.id) {
     const url = hospedaje.habitacion_id
-      ? `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}`
-      : `${SITIO_URL}/hoteles/${hospedaje.id}`
+      ? `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
+      : `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
     agregarLink(page, doc, { x: 308, y: 368, width: 80, height: 16 }, url)
   }
 

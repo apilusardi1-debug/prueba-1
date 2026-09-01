@@ -150,14 +150,22 @@ export async function generarPDFCierre(propuesta) {
   // (mismo ancho para las 4 horas, todas "HH:MM") con el texto centrado adentro,
   // y bajo, para no pisar el nombre de la ciudad que va justo arriba.
   function reemplazarHora(x, y, texto, size = SIZE_HORA) {
-    const ANCHO = 22
-    const ALTO = 8.5
+    const ANCHO = 25
+    const ALTO = 10
     // La pildora original de la plantilla tiene la punta redondeada un poco mas
-    // a la izquierda de x — sin este sangrado quedaba asomando ese borde.
+    // a la izquierda de x — sin este sangrado quedaba asomando ese borde. El
+    // centrado del texto tiene que calcularse sobre el ancho TOTAL ya sangrado
+    // (no solo ANCHO), si no el texto queda corrido hacia la derecha respecto
+    // de lo que realmente se ve pintado.
     const SANGRADO_IZQ = 6
-    page.drawRectangle({ x: x - SANGRADO_IZQ, y: y - 2, width: ANCHO + SANGRADO_IZQ, height: ALTO, color: AMARILLO_BG })
+    const anchoTotal = ANCHO + SANGRADO_IZQ
+    // Con letra mas grande hace falta un pelo mas de aire hasta el renglon de
+    // la ciudad de arriba — se baja el renglon 2pt en vez de agrandar mas la
+    // pildora hacia arriba.
+    const baseline = y - 2
+    page.drawRectangle({ x: x - SANGRADO_IZQ, y: baseline - 2, width: anchoTotal, height: ALTO, color: AMARILLO_BG })
     const anchoTexto = bebas.widthOfTextAtSize(String(texto ?? ''), size)
-    escribir(texto, x + (ANCHO - anchoTexto) / 2, y, size, NAVY_TXT, bebas)
+    escribir(texto, x - SANGRADO_IZQ + (anchoTotal - anchoTexto) / 2, baseline, size, NAVY_TXT, bebas)
   }
   function partirEnLineas(texto, font, size, anchoMax) {
     const palabras = String(texto ?? '').split(/\s+/).filter(Boolean)
@@ -207,7 +215,7 @@ export async function generarPDFCierre(propuesta) {
   // traia esos valores asi de muestra, sin estar realmente alineados entre si).
   const SIZE_CODIGO = 14
   const SIZE_CIUDAD = 5
-  const SIZE_HORA = 8
+  const SIZE_HORA = 9.5
   // Bajado 4pt respecto al valor original (560.2/553.6): a tamano 14 el codigo
   // (IGU/REC) llegaba con el techo de la letra casi pegado a la etiqueta estatica
   // "Origen"/"Destino" de la plantilla, quedando superpuestos.

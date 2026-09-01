@@ -268,6 +268,7 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
     body: { imagenBase64, mediaType },
   })
+  if (!error) return { data, error }
   // Cuando la Edge Function responde con un status distinto de 2xx (ej: 429 de
   // Gemini saturado), el cliente de Supabase descarta el cuerpo de la respuesta
   // y solo deja un mensaje generico ("Edge Function returned a non-2xx status
@@ -277,9 +278,14 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
     try {
       const cuerpo = await error.context.clone().json()
       if (cuerpo?.error) return { data: { error: cuerpo.error, rateLimited: error.context.status === 429 }, error }
-    } catch (_) { /* si no se pudo leer, seguimos con el mensaje generico */ }
+    } catch (_) { /* sin cuerpo legible, seguimos abajo */ }
   }
-  return { data, error }
+  // Si no se pudo leer un cuerpo con un mensaje propio (ej: la invocacion se
+  // cortó por un timeout de infraestructura antes de llegar a nuestro código,
+  // Gemini puede demorar bastante bajo carga), lo tratamos igual que un
+  // 429 -- reintentable -- en vez de rendirnos y mostrarle al usuario el
+  // mensaje generico en inglés del SDK.
+  return { data: { error: 'El lector de imágenes está saturado en este momento — esperá unos segundos y probá de nuevo.', rateLimited: true }, error }
 }
 
 // ── Sincronizar conversaciones históricas desde Evolution API ──────────────────

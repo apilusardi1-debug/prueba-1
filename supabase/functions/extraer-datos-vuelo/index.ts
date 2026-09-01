@@ -102,7 +102,11 @@ serve(async (req) => {
     // fresca cada vez — más liviano y más confiable que reintentar acá.
     const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '' },
+      // Sin el header Api-Revision, Google parece no aplicar bien "thinking_level"
+      // (probado: la misma llamada tardaba entre 9 y 60 segundos, muy variable —
+      // consistente con el modelo pensando en nivel default/alto en vez de "low").
+      // Documentado como obligatorio en la doc actual de la Interactions API.
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '', 'Api-Revision': '2026-05-20' },
       body: JSON.stringify({
         model: GEMINI_MODEL,
         input: [

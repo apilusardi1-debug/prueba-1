@@ -97,8 +97,9 @@ export default function HotelDetalle() {
                 <p className="font-label-lg text-label-sm uppercase text-on-surface-variant">
                   Fotos: <span className="text-hero-navy">{habitacionActiva.nombre}</span>
                 </p>
-                <button onClick={() => setHabitacionActiva(null)} className="font-label-lg text-label-sm uppercase text-hero-navy underline">
-                  Ver fotos del hotel
+                <button onClick={() => setHabitacionActiva(null)}
+                  className="font-label-lg text-label-sm uppercase text-hero-navy border-2 border-hero-navy px-4 py-1.5 rounded-full hover:bg-hero-navy hover:text-white transition-colors">
+                  ← Ver fotos del hotel
                 </button>
               </div>
             )}

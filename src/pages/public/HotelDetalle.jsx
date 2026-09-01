@@ -54,6 +54,9 @@ export default function HotelDetalle() {
   const fotosHotel = h ? [h.imagen, ...(h.galeria || [])].filter(Boolean) : []
   const fotos = habitacionActiva ? [habitacionActiva.imagen, ...(habitacionActiva.galeria || [])].filter(Boolean) : fotosHotel
   const videoActivo = habitacionActiva ? habitacionActiva.video : h?.video
+  const descripcionActiva = habitacionActiva?.descripcion || h?.descripcion
+  const amenitiesActivas = (habitacionActiva?.amenities || []).length ? habitacionActiva.amenities : (h?.amenities || [])
+  const capacidadActiva = habitacionActiva?.capacidad || h?.capacidad || 0
   const [fotoActiva, setFotoActiva] = useState('')
   useEffect(() => { setFotoActiva(fotos[0] || '') }, [habitacionActiva, h?.id])
 
@@ -134,6 +137,9 @@ export default function HotelDetalle() {
               style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', letterSpacing: '0.01em' }}>
               {h.nombre}
             </h1>
+            {habitacionActiva && (
+              <p className="font-label-lg text-label-md uppercase text-hero-navy/70 mb-1">{habitacionActiva.nombre}</p>
+            )}
             <Estrellas n={h.estrellas} />
             {direccionCompleta && (
               <p className="font-body-md text-body-md text-on-surface-variant flex items-center flex-wrap gap-x-1.5 mt-2 mb-5">
@@ -145,17 +151,17 @@ export default function HotelDetalle() {
                 )}
               </p>
             )}
-            {h.descripcion && (
-              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed whitespace-pre-line mb-5">{h.descripcion}</p>
+            {descripcionActiva && (
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed whitespace-pre-line mb-5">{descripcionActiva}</p>
             )}
-            {h.capacidad > 0 && (
-              <p className="font-body-md text-body-md text-on-surface-variant mb-4">👥 Hasta {h.capacidad} personas</p>
+            {capacidadActiva > 0 && (
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">👥 Hasta {capacidadActiva} personas</p>
             )}
-            {(h.amenities || []).length > 0 && (
+            {amenitiesActivas.length > 0 && (
               <div className="mb-6">
                 <p className="font-label-lg text-label-sm uppercase text-on-surface-variant mb-3">Servicios del hotel</p>
                 <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
-                  {h.amenities.map((a, i) => (
+                  {amenitiesActivas.map((a, i) => (
                     <div key={i} className="flex items-center gap-2 font-body-md text-body-md text-deep-ocean">
                       <IconoCheck /> {a}
                     </div>

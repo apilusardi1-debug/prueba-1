@@ -908,6 +908,28 @@ export default function GeneradorPropuesta() {
           )}
         </div>
         <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Precio del vuelo por moneda (opcional, se carga a mano)</p>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { clave: 'ars', label: 'Pesos argentinos (ARS$)' },
+              { clave: 'brl', label: 'Reales (R$)' },
+              { clave: 'usd', label: 'Dólares (U$D)' },
+            ].map(m => (
+              <div key={m.clave} className="space-y-1.5">
+                <input type="text" inputMode="numeric" value={formatearMiles(vuelo.precios[m.clave].monto)}
+                  onChange={e => setPrecioVuelo(m.clave, 'monto', soloDigitos(e.target.value))} placeholder={m.label}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                  <input type="checkbox" checked={!!vuelo.precios[m.clave].publica}
+                    onChange={() => setPrecioVuelo(m.clave, 'publica', !vuelo.precios[m.clave].publica)}
+                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                  {vuelo.precios[m.clave].publica ? 'Pública' : 'Privada'}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
           <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
           <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
@@ -939,28 +961,6 @@ export default function GeneradorPropuesta() {
           <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
           <input type="text" inputMode="numeric" value={formatearMiles(vuelo.costo_pasajes)} onChange={e => setVueloCampo('costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Precio del vuelo por moneda (opcional, se carga a mano)</p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              { clave: 'ars', label: 'Pesos argentinos (ARS$)' },
-              { clave: 'brl', label: 'Reales (R$)' },
-              { clave: 'usd', label: 'Dólares (U$D)' },
-            ].map(m => (
-              <div key={m.clave} className="space-y-1.5">
-                <input type="text" inputMode="numeric" value={formatearMiles(vuelo.precios[m.clave].monto)}
-                  onChange={e => setPrecioVuelo(m.clave, 'monto', soloDigitos(e.target.value))} placeholder={m.label}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
-                  <input type="checkbox" checked={!!vuelo.precios[m.clave].publica}
-                    onChange={() => setPrecioVuelo(m.clave, 'publica', !vuelo.precios[m.clave].publica)}
-                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  {vuelo.precios[m.clave].publica ? 'Pública' : 'Privada'}
-                </label>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 

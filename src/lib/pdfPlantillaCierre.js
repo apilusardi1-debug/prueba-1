@@ -204,6 +204,9 @@ export async function generarPDFCierre(propuesta) {
         cursorX += p.font.widthOfTextAtSize(p.texto, size) + ESPACIO
       })
     })
+    // Devuelve cuantas lineas ocupo — el llamador lo usa para ubicar lo que va
+    // justo debajo pegado a este bloque, sin importar si salieron 1, 2 o 3 lineas.
+    return lineas.length
   }
   function partirEnLineas(texto, font, size, anchoMax) {
     const palabras = String(texto ?? '').split(/\s+/).filter(Boolean)
@@ -400,11 +403,20 @@ export async function generarPDFCierre(propuesta) {
       { texto: '(hasta 40 días antes del check-in).' },
     )
   }
-  dibujarParrafoRico(segmentosPago, 31.5, 218, 13, 530, 17, NAVY_TXT)
+  const SIZE_PAGO = 15
+  const GAP_PAGO = 19
+  const lineasPagoUsadas = dibujarParrafoRico(segmentosPago, 31.5, 218, SIZE_PAGO, 530, GAP_PAGO, NAVY_TXT)
 
+  // El parrafo de condiciones va pegado justo debajo del bloque de pago (antes
+  // arrancaba en un y fijo, muy lejos si el bloque de arriba salía corto) —
+  // se calcula la posicion segun cuantas lineas ocupo realmente ese bloque.
+  const finBloquePago = 218 - (lineasPagoUsadas - 1) * GAP_PAGO
+  const SIZE_COND = 10.5
+  const GAP_COND = 13.5
+  const yParrafoPago = finBloquePago - SIZE_COND - 14
   const parrafoPago = 'El pago puede realizarse por transferencia en pesos argentinos o dólares, o en cuotas en dólares con el valor en reales congelado al tipo de cambio del día de la operación. El valor en reales se mantiene fijo: la única variación posible es en la conversión de pesos a reales al momento del pago.'
-  const lineasPago = partirEnLineas(parrafoPago, helv, 9.5, 530)
-  lineasPago.forEach((linea, i) => escribir(linea, 31.5, 138 - i * 12, 9.5, NAVY_TXT, helv))
+  const lineasPago = partirEnLineas(parrafoPago, helv, SIZE_COND, 530)
+  lineasPago.forEach((linea, i) => escribir(linea, 31.5, yParrafoPago - i * GAP_COND, SIZE_COND, NAVY_TXT, helv))
 
   return doc
 }

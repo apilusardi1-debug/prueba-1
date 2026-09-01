@@ -200,16 +200,6 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       escribir('VER INFO Y FOTOS >', banda.x + 6, banda.y + 5, 8, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
       agregarLink(paginaPlantilla, doc, banda, urlHotel)
     }
-
-    // Link a los videos del hospedaje (si tiene), en la misma columna de texto que
-    // los servicios, respetando el piso de la fila para no invadir la siguiente.
-    if (h.link_video && y - s.itemsGap >= piso) {
-      const textoVideo = 'CLIC ACÁ PARA VER VIDEOS >'
-      escribir(textoVideo, s.itemsX, y, 9, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-      const anchoVideo = helv.widthOfTextAtSize(textoVideo, 9)
-      agregarLink(paginaPlantilla, doc, { x: s.itemsX - 2, y: y - 2, width: anchoVideo + 4, height: 12 }, h.link_video)
-      y -= s.itemsGap
-    }
   }
 
   return paginaPlantilla

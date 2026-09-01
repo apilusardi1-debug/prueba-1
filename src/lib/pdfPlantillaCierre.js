@@ -334,9 +334,15 @@ export async function generarPDFCierre(propuesta) {
   // respecto del saldo (17pt no alcanzaba: el tapado que dibuja el saldo
   // encima le comia el renglon de abajo a "pagado").
   reemplazar(`PAGADO: ${moneda}$ ${formatearNumero(sena)}`, 31.5, 230, 14, 500, NAVY_TXT)
-  reemplazar(`SALDO PENDIENTE: ${moneda}$ ${formatearNumero(saldo)}`, 31.5, 205, 21, 500, NAVY_TXT)
+  const textoSaldo = `SALDO PENDIENTE: ${moneda}$ ${formatearNumero(saldo)}`
+  reemplazar(textoSaldo, 31.5, 205, 21, 500, NAVY_TXT)
+  // El vencimiento va a continuación del valor del saldo, en el mismo renglon
+  // (no en una linea aparte abajo) — shrink-to-fit porque el ancho que le
+  // queda libre depende de cuanto ocupe el monto del saldo, que varia.
   if (propuesta.vencimiento_saldo) {
-    reemplazar(`VENCIMIENTO: ${fechaCorta(propuesta.vencimiento_saldo)} (hasta 40 días antes del check-in)`, 31.5, 181, 14, 500, NAVY_TXT)
+    const xVencimiento = 31.5 + bebas.widthOfTextAtSize(textoSaldo, 21) + 12
+    const anchoDisponible = Math.max(568 - xVencimiento, 60)
+    reemplazarAjustado(`vencimiento: ${fechaCorta(propuesta.vencimiento_saldo)} (hasta 40 días antes del check-in)`, xVencimiento, 205, 12, anchoDisponible, NAVY_TXT, bebas, CREMA_BG, 7)
   }
   reemplazar(`TOTAL DEL PAQUETE: ${moneda}$ ${formatearNumero(total)}`, 31.5, 160, 14, 500, NAVY_TXT)
 

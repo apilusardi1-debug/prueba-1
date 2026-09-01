@@ -43,10 +43,13 @@ function descargarPdf(bytes, nombreArchivo) {
 }
 
 // Resumen de una pata del vuelo (ej: "10 dic — Buenos Aires (EZE) 08:15 → Recife (REC) 14:40").
-function resumenTramo(fecha, origenCiudad, origenCodigo, sale, destinoCiudad, destinoCodigo, llega) {
+function resumenTramo(fecha, origenCiudad, origenCodigo, sale, destinoCiudad, destinoCodigo, llega, escalaCiudad, escalaCodigo, escalaLlega, escalaSale) {
   if (!fecha && !origenCiudad && !destinoCiudad) return null
   const fechaTxt = fecha ? new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : ''
-  return `${fechaTxt ? `${fechaTxt} — ` : ''}${origenCiudad || '—'} (${origenCodigo || '—'}) ${sale || ''} → ${destinoCiudad || '—'} (${destinoCodigo || '—'}) ${llega || ''}`
+  const hayEscala = escalaCiudad || escalaCodigo
+  const horaEscala = (escalaLlega || escalaSale) ? ` ${escalaLlega || '--:--'}-${escalaSale || '--:--'}` : ''
+  const tramoEscala = hayEscala ? ` → escala ${escalaCiudad || '—'} (${escalaCodigo || '—'})${horaEscala}` : ''
+  return `${fechaTxt ? `${fechaTxt} — ` : ''}${origenCiudad || '—'} (${origenCodigo || '—'}) ${sale || ''}${tramoEscala} → ${destinoCiudad || '—'} (${destinoCodigo || '—'}) ${llega || ''}`
 }
 
 // Destino real de la propuesta: si es combinada, los nombres cargados en la
@@ -215,8 +218,14 @@ export default function PropuestasLista({ estado }) {
 
   const vuelo = cerrandoPropuesta?.vuelo || {}
   const hospedajesOpciones = cerrandoPropuesta?.hospedajes_detalle || []
-  const tramoIda = resumenTramo(vuelo.ida_fecha, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.ida_sale, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.ida_llega)
-  const tramoVuelta = resumenTramo(vuelo.vuelta_fecha, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.vuelta_sale, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.vuelta_llega)
+  const tramoIda = resumenTramo(vuelo.ida_fecha, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.ida_sale, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.ida_llega, vuelo.ida_escala_ciudad, vuelo.ida_escala_codigo, vuelo.ida_escala_llega, vuelo.ida_escala_sale)
+  const tramoVuelta = resumenTramo(vuelo.vuelta_fecha, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.vuelta_sale, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.vuelta_llega, vuelo.vuelta_escala_ciudad, vuelo.vuelta_escala_codigo, vuelo.vuelta_escala_llega, vuelo.vuelta_escala_sale)
+  // Ruta fija de los traslados en propuesta simple (aeropuerto-hotel) — se
+  // muestra junto al Sí/No para que quede claro que trayecto se esta
+  // confirmando, no solo si hay o no traslados.
+  const trasladoRuta = [vuelo.traslado_ida && 'Aeropuerto → Hotel', vuelo.traslado_vuelta && 'Hotel → Aeropuerto'].filter(Boolean).join(' · ')
+  const esCombinada = cerrandoPropuesta?.tipo_propuesta === 'combinada'
+  const trayectosTransfer = esCombinada ? (cerrandoPropuesta?.destinos_detalle || []).filter(d => d.traslado?.trim()) : []
   const puedeAbrir = estado === 'enviada' || estado === 'cerrada'
 
   return (
@@ -460,7 +469,10 @@ export default function PropuestasLista({ estado }) {
 
             {/* Traslados */}
             <div>
-              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">¿Incluye traslados?</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">
+                ¿Incluye traslados?
+                {trasladoRuta && <span className="font-normal text-gray-400 dark:text-zinc-500"> ({trasladoRuta})</span>}
+              </p>
               {estado === 'enviada' ? (
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setTrasladosIncluidos(true)}
@@ -480,6 +492,21 @@ export default function PropuestasLista({ estado }) {
                 <p className="text-sm text-gray-700 dark:text-zinc-300">{trasladosIncluidos ? 'Sí' : 'No'}</p>
               )}
             </div>
+
+            {/* Combinada: cada destino puede tener su propio trayecto de traslado
+                (distinto al fijo aeropuerto-hotel de la simple) — se listan todos
+                juntos como chequeo general antes de cerrar. */}
+            {trayectosTransfer.length > 0 && (
+              <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Trayectos de traslado por destino</p>
+                {trayectosTransfer.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-zinc-300">
+                    <span className="text-green-600 dark:text-green-400">✓</span>
+                    <span><span className="font-medium">{d.nombre || `Destino ${i + 1}`}:</span> {d.traslado}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div>
               <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Vencimiento del saldo</label>

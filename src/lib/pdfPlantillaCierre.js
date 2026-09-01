@@ -110,6 +110,13 @@ export async function generarPDFCierre(propuesta) {
 
   const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
   const bebas = await doc.embedFont(fontBytes)
+  // Se probó extraer del PDF real la fuente que usa "Observaciones importantes"
+  // (misma familia, "Helvetica"/"Helvetica-Bold" segun el nombre interno) para
+  // que el bloque de pago combine exacto — pero esa copia embebida en la
+  // plantilla nunca necesitó números, "$" ni "/" en esa página, y esos glifos
+  // vienen directamente vacíos en el archivo (no es un bug nuestro, el dato no
+  // está). Se usa la Helvetica estandar en su lugar: mismo nombre de familia,
+  // con todos los glifos que necesitamos garantizados.
   const helv = await doc.embedFont(StandardFonts.Helvetica)
   const helvBold = await doc.embedFont(StandardFonts.HelveticaBold)
 
@@ -383,8 +390,11 @@ export async function generarPDFCierre(propuesta) {
 
   // Titulo "DETALLE" — misma tipografia/estilo (Bebas, mayuscula) que el resto
   // de los titulos de sección (AÉREOS, HOSPEDAJE, TRASLADOS...) para que este
-  // bloque se lea como una sección mas, no como texto suelto aparte.
-  escribir('DETALLE', 31.5, 227, 20, NAVY_TXT, bebas)
+  // bloque se lea como una sección mas, no como texto suelto aparte. Centrado
+  // en el ancho de la columna (28 a 568, igual que el tapar de todo el bloque).
+  const SIZE_DETALLE = 20
+  const anchoDetalle = bebas.widthOfTextAtSize('DETALLE', SIZE_DETALLE)
+  escribir('DETALLE', 28 + (540 - anchoDetalle) / 2, 227, SIZE_DETALLE, NAVY_TXT, bebas)
 
   // Circulo relleno a la izquierda de un parrafo, alineado con la altura x del
   // texto (no la linea de base) para que quede centrado con el renglón.

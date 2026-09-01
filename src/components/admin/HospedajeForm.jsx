@@ -1,22 +1,27 @@
-import { useRef, useState } from 'react'
-import { subirImagen, subirVideoHospedaje } from '../../lib/supabase.js'
+import { useEffect, useRef, useState } from 'react'
+import { subirImagen, subirVideoHospedaje, hospedajesApi } from '../../lib/supabase.js'
 
-export const TIPOS = ['Resort', 'Hotel', 'Pousada', 'Departamento']
+export const TIPOS = ['Hotel', 'Posada', 'Departamento']
+export const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
 
 export const EMPTY_HOSPEDAJE = {
-  nombre: '', tipo: 'Resort', destino: '', ubicacion: '', direccion: '',
+  nombre: '', tipo: 'Hotel', destino: '', ubicacion: '', direccion: '',
   descripcion: '', imagen: '', galeria: [], video: '', amenities: [''],
   estrellas: '', capacidad: '', precio_min: '', contacto: '', whatsapp: '',
-  nombre_dueno: '', contacto_dueno: '',
+  origen: 'Dueño directo', nombre_dueno: '', contacto_dueno: '',
 }
 
 export default function HospedajeForm({ form, setForm, error }) {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [subiendoGaleria, setSubiendoGaleria] = useState(false)
   const [subiendoVideo, setSubiendoVideo] = useState(false)
+  const [destinos, setDestinos] = useState([])
+  const [destinoManual, setDestinoManual] = useState(false)
   const fileRef = useRef()
   const galeriaFileRef = useRef()
   const videoFileRef = useRef()
+
+  useEffect(() => { hospedajesApi.getDestinos().then(setDestinos) }, [])
 
   async function handleVideo(e) {
     const archivo = e.target.files?.[0]
@@ -142,9 +147,30 @@ export default function HospedajeForm({ form, setForm, error }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Destino (ej: Porto de Galinhas, PE)</label>
-          <input type="text" value={form.destino} onChange={e => setForm(p => ({ ...p, destino: e.target.value }))}
-            className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Destino</label>
+          {destinoManual || (form.destino && !destinos.includes(form.destino)) ? (
+            <div className="flex gap-2">
+              <input type="text" value={form.destino} onChange={e => setForm(p => ({ ...p, destino: e.target.value }))}
+                placeholder="Ej: Porto de Galinhas" autoFocus
+                className="flex-1 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              {destinos.length > 0 && (
+                <button type="button" onClick={() => setDestinoManual(false)}
+                  className="text-xs text-gray-500 dark:text-zinc-400 hover:text-brand-600 dark:hover:text-brand-400 px-2 whitespace-nowrap">
+                  Elegir de la lista
+                </button>
+              )}
+            </div>
+          ) : (
+            <select value={form.destino} onChange={e => {
+              if (e.target.value === '__nuevo__') { setDestinoManual(true); setForm(p => ({ ...p, destino: '' })) }
+              else setForm(p => ({ ...p, destino: e.target.value }))
+            }}
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+              <option value="">Seleccionar...</option>
+              {destinos.map(d => <option key={d} value={d}>{d}</option>)}
+              <option value="__nuevo__">+ Nuevo destino</option>
+            </select>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Ubicación (para filtrar)</label>
@@ -153,10 +179,19 @@ export default function HospedajeForm({ form, setForm, error }) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Dirección</label>
-        <input type="text" value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))}
-          className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Dirección</label>
+          <input type="text" value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))}
+            className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Origen (proveedor)</label>
+          <select value={form.origen} onChange={e => setForm(p => ({ ...p, origen: e.target.value }))}
+            className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+            {ORIGENES.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -251,6 +286,7 @@ export function datosDesdeForm(form) {
     precio_min: parseFloat(form.precio_min) || null,
     contacto: form.contacto.trim(),
     whatsapp: form.whatsapp.trim(),
+    origen: form.origen,
     activa: true,
   }
 }

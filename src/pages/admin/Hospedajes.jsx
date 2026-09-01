@@ -1,10 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { jsPDF } from 'jspdf'
 import { hospedajesApi, habitacionesApi, propietariosApi } from '../../lib/supabase.js'
-import HospedajeForm, { TIPOS, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
+import HospedajeForm, { TIPOS, ORIGENES, EMPTY_HOSPEDAJE, datosDesdeForm } from '../../components/admin/HospedajeForm.jsx'
 import HabitacionForm, { EMPTY_HABITACION, datosDesdeFormHabitacion } from '../../components/admin/HabitacionForm.jsx'
-
-const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
 
 async function loadImgDataUrl(url) {
   return new Promise(resolve => {
@@ -312,12 +310,12 @@ export default function Hospedajes() {
 
   async function abrirEditar(h) {
     setForm({
-      nombre: h.nombre || '', tipo: h.tipo || 'Resort', destino: h.destino || '',
+      nombre: h.nombre || '', tipo: h.tipo || 'Hotel', destino: h.destino || '',
       ubicacion: h.ubicacion || '', direccion: h.direccion || '', descripcion: h.descripcion || '',
       imagen: h.imagen || '', galeria: h.galeria || [], video: h.video || '', amenities: (h.amenities || []).length ? h.amenities : [''],
       estrellas: h.estrellas ? String(h.estrellas) : '', capacidad: h.capacidad ? String(h.capacidad) : '',
       precio_min: h.precio_min ? String(h.precio_min) : '', contacto: h.contacto || '', whatsapp: h.whatsapp || '',
-      nombre_dueno: '', contacto_dueno: '',
+      origen: h.origen || 'Dueño directo', nombre_dueno: '', contacto_dueno: '',
     })
     setError(null)
     setEditando(h.id)

@@ -108,6 +108,13 @@ export const hospedajesApi = {
   create: (data) => supabase?.from('hospedajes').insert(data).select().single(),
   update: (id, data) => supabase?.from('hospedajes').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('hospedajes').delete().eq('id', id),
+  // Destinos ya usados en el catálogo, para el combo "elegir o agregar nuevo"
+  // del formulario de alta.
+  getDestinos: async () => {
+    const { data, error } = await supabase?.from('hospedajes').select('destino') || {}
+    if (error || !data) return []
+    return Array.from(new Set(data.map(h => h.destino).filter(Boolean))).sort()
+  },
 }
 
 // ── Propietario de un hospedaje o de un tipo de habitación puntual (uso interno,
@@ -120,14 +127,24 @@ export const hospedajesApi = {
 export const propietariosApi = {
   getByHospedaje: (hospedajeId) => supabase?.from('hospedajes_propietarios').select('*').eq('hospedaje_id', hospedajeId).maybeSingle(),
   getByHabitacion: (habitacionId) => supabase?.from('hospedajes_propietarios').select('*').eq('habitacion_id', habitacionId).maybeSingle(),
-  upsertHospedaje: (hospedajeId, { nombre_dueno, contacto_dueno }) =>
-    supabase?.from('hospedajes_propietarios')
-      .upsert({ hospedaje_id: hospedajeId, habitacion_id: null, nombre_dueno, contacto_dueno }, { onConflict: 'hospedaje_id' })
-      .select().single(),
-  upsertHabitacion: (habitacionId, { nombre_dueno, contacto_dueno }) =>
-    supabase?.from('hospedajes_propietarios')
-      .upsert({ habitacion_id: habitacionId, hospedaje_id: null, nombre_dueno, contacto_dueno }, { onConflict: 'habitacion_id' })
-      .select().single(),
+  // No usamos .upsert(): el índice único de esta tabla es parcial (hospedaje_id
+  // O habitacion_id, nunca los dos) y PostgREST no puede resolver el ON CONFLICT
+  // contra un índice parcial ("no unique or exclusion constraint matching").
+  // Por eso primero buscamos y después update/insert a mano.
+  upsertHospedaje: async (hospedajeId, { nombre_dueno, contacto_dueno }) => {
+    const { data: existente } = await supabase.from('hospedajes_propietarios').select('id').eq('hospedaje_id', hospedajeId).maybeSingle()
+    if (existente) {
+      return supabase.from('hospedajes_propietarios').update({ nombre_dueno, contacto_dueno }).eq('id', existente.id).select().single()
+    }
+    return supabase.from('hospedajes_propietarios').insert({ hospedaje_id: hospedajeId, habitacion_id: null, nombre_dueno, contacto_dueno }).select().single()
+  },
+  upsertHabitacion: async (habitacionId, { nombre_dueno, contacto_dueno }) => {
+    const { data: existente } = await supabase.from('hospedajes_propietarios').select('id').eq('habitacion_id', habitacionId).maybeSingle()
+    if (existente) {
+      return supabase.from('hospedajes_propietarios').update({ nombre_dueno, contacto_dueno }).eq('id', existente.id).select().single()
+    }
+    return supabase.from('hospedajes_propietarios').insert({ habitacion_id: habitacionId, hospedaje_id: null, nombre_dueno, contacto_dueno }).select().single()
+  },
 }
 
 // ── Habitaciones de un hospedaje (tipos: Estándar, Superior, etc. — o, en un

@@ -111,6 +111,7 @@ export async function generarPDFCierre(propuesta) {
   const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
   const bebas = await doc.embedFont(fontBytes)
   const helv = await doc.embedFont(StandardFonts.Helvetica)
+  const helvBold = await doc.embedFont(StandardFonts.HelveticaBold)
 
   function tapar(x, y, w, h, color = CREMA_BG) {
     page.drawRectangle({ x: x - 3, y: y - 3, width: w + 8, height: h, color })
@@ -166,6 +167,43 @@ export async function generarPDFCierre(propuesta) {
     page.drawRectangle({ x: x - SANGRADO_IZQ, y: baseline - 2, width: anchoTotal, height: ALTO, color: AMARILLO_BG })
     const anchoTexto = bebas.widthOfTextAtSize(String(texto ?? ''), size)
     escribir(texto, x - SANGRADO_IZQ + (anchoTotal - anchoTexto) / 2, baseline, size, NAVY_TXT, bebas)
+  }
+  // Parrafo con partes en negrita (bloque de pago) — mismo tono que la pagina
+  // "Observaciones importantes" de la plantilla real: texto corrido con los
+  // datos clave resaltados, en vez de renglones sueltos tipo ficha tecnica.
+  // Cada segmento es {texto, bold}; la puntuacion que deba pegarse a una
+  // palabra (coma, punto) va incluida en el texto de ESE segmento, nunca
+  // suelta en uno propio — si no, el word-wrap le mete un espacio antes.
+  function dibujarParrafoRico(segmentos, x, y, size, anchoMax, gapLinea, color) {
+    const ESPACIO = helv.widthOfTextAtSize(' ', size)
+    const palabras = []
+    for (const { texto, bold } of segmentos) {
+      const font = bold ? helvBold : helv
+      for (const palabra of String(texto).split(/\s+/).filter(Boolean)) palabras.push({ texto: palabra, font })
+    }
+    const lineas = [[]]
+    let anchoLinea = 0
+    for (const p of palabras) {
+      const anchoPalabra = p.font.widthOfTextAtSize(p.texto, size)
+      const lineaActual = lineas[lineas.length - 1]
+      const anchoConEspacio = lineaActual.length ? anchoLinea + ESPACIO + anchoPalabra : anchoPalabra
+      if (anchoConEspacio > anchoMax && lineaActual.length) {
+        lineas.push([p])
+        anchoLinea = anchoPalabra
+      } else {
+        lineaActual.push(p)
+        anchoLinea = anchoConEspacio
+      }
+    }
+    tapar(x, y - (lineas.length - 1) * gapLinea - 4, anchoMax + 8, lineas.length * gapLinea + 8, CREMA_BG)
+    lineas.forEach((linea, i) => {
+      let cursorX = x
+      const yLinea = y - i * gapLinea
+      linea.forEach(p => {
+        escribir(p.texto, cursorX, yLinea, size, color, p.font)
+        cursorX += p.font.widthOfTextAtSize(p.texto, size) + ESPACIO
+      })
+    })
   }
   function partirEnLineas(texto, font, size, anchoMax) {
     const palabras = String(texto ?? '').split(/\s+/).filter(Boolean)
@@ -255,12 +293,23 @@ export async function generarPDFCierre(propuesta) {
     reemplazarCiudad(`ESCALA ${codigoEscala || vuelo.vuelta_escala_ciudad?.toUpperCase() || ''}`, 451.9, 560.7, 6.5, 42, CREMA_TXT)
   }
 
-  // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" con el
-  // horario IN/OUT — eso vale si al cerrar se confirmó que sí van incluidos
-  // (por default, si no se definió nada). Si se marcó que NO, se cambia el
-  // título y se tapa el horario (no hay nada que mostrar ahí).
+  // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" a
+  // tamaño 25, igual que AÉREOS/HOSPEDAJE — pero al ser una frase larga (no una
+  // palabra sola) queda con muchísimo mas peso visual que el resto de los
+  // títulos de sección. Se redibuja siempre (no solo cuando NO hay traslados)
+  // a un tamaño mas chico para que quede proporcionado al resto. Tapado previo
+  // generoso: a tamaño 25 el texto original es bastante mas ancho que la
+  // version chica, y el tapado propio de reemplazarAjustado (ajustado al
+  // tamaño nuevo) no llegaba a cubrirlo entero — quedaba asomando la cola.
+  // Ancho tope en 260 (no mas: a partir de x=305 empieza la columna real
+  // "AEROPUERTO / HOTEL, IN-OUT", que no hay que tocar — pasarse la borra
+  // tambien, como paso en un intento anterior).
+  tapar(32.66, 278, 260, 38, CREMA_BG)
+  reemplazarAjustado(
+    propuesta.traslados_incluidos === false ? 'TRASLADOS PRIVADOS NO INCLUIDOS' : 'TRASLADOS PRIVADOS INCLUIDOS',
+    32.66, 292, 18, 260, NAVY_TXT, bebas, CREMA_BG, 14
+  )
   if (propuesta.traslados_incluidos === false) {
-    reemplazarAjustado('TRASLADOS PRIVADOS NO INCLUIDOS', 32.66, 289.26, 25, 250, NAVY_TXT, bebas, CREMA_BG, 18)
     tapar(305, 265, 150, 45, CREMA_BG)
   }
 
@@ -329,22 +378,29 @@ export async function generarPDFCierre(propuesta) {
   const moneda = propuesta.moneda || 'ARS'
   tapar(28, 85, 540, 170, CREMA_BG)
 
-  // Pagado (seña) va arriba de todo, antes del saldo pendiente — asi se lee
-  // en orden logico: lo que ya se cobró, lo que falta. Mas aire que antes
-  // respecto del saldo (17pt no alcanzaba: el tapado que dibuja el saldo
-  // encima le comia el renglon de abajo a "pagado").
-  reemplazar(`PAGADO: ${moneda}$ ${formatearNumero(sena)}`, 31.5, 230, 14, 500, NAVY_TXT)
-  const textoSaldo = `SALDO PENDIENTE: ${moneda}$ ${formatearNumero(saldo)}`
-  reemplazar(textoSaldo, 31.5, 205, 21, 500, NAVY_TXT)
-  // El vencimiento va a continuación del valor del saldo, en el mismo renglon
-  // (no en una linea aparte abajo) — shrink-to-fit porque el ancho que le
-  // queda libre depende de cuanto ocupe el monto del saldo, que varia.
-  if (propuesta.vencimiento_saldo) {
-    const xVencimiento = 31.5 + bebas.widthOfTextAtSize(textoSaldo, 21) + 12
-    const anchoDisponible = Math.max(568 - xVencimiento, 60)
-    reemplazarAjustado(`vencimiento: ${fechaCorta(propuesta.vencimiento_saldo)} (hasta 40 días antes del check-in)`, xVencimiento, 205, 12, anchoDisponible, NAVY_TXT, bebas, CREMA_BG, 7)
+  // Bloque de pago en prosa (total, pagado, saldo, vencimiento) con los montos
+  // y la fecha resaltados en negrita — mismo formato que "Observaciones
+  // importantes" en vez de renglones sueltos tipo ficha tecnica.
+  const totalTxt = `${moneda}$ ${formatearNumero(total)}`
+  const saldoTxt = `${moneda}$ ${formatearNumero(saldo)}`
+  const senaTxt = `${moneda}$ ${formatearNumero(sena)}`
+  const segmentosPago = [{ texto: 'El valor total del paquete es de' }, { texto: `${totalTxt}${sena > 0 ? '.' : ','}`, bold: true }]
+  if (sena > 0) {
+    segmentosPago.push(
+      { texto: 'Ya se registra un pago de' }, { texto: `${senaTxt},`, bold: true },
+      { texto: 'quedando un saldo pendiente de' },
+    )
+  } else {
+    segmentosPago.push({ texto: 'con un saldo pendiente de' })
   }
-  reemplazar(`TOTAL DEL PAQUETE: ${moneda}$ ${formatearNumero(total)}`, 31.5, 160, 14, 500, NAVY_TXT)
+  segmentosPago.push({ texto: `${saldoTxt}${propuesta.vencimiento_saldo ? ',' : '.'}`, bold: true })
+  if (propuesta.vencimiento_saldo) {
+    segmentosPago.push(
+      { texto: 'con vencimiento el' }, { texto: fechaCorta(propuesta.vencimiento_saldo), bold: true },
+      { texto: '(hasta 40 días antes del check-in).' },
+    )
+  }
+  dibujarParrafoRico(segmentosPago, 31.5, 218, 13, 530, 17, NAVY_TXT)
 
   const parrafoPago = 'El pago puede realizarse por transferencia en pesos argentinos o dólares, o en cuotas en dólares con el valor en reales congelado al tipo de cambio del día de la operación. El valor en reales se mantiene fijo: la única variación posible es en la conversión de pesos a reales al momento del pago.'
   const lineasPago = partirEnLineas(parrafoPago, helv, 9.5, 530)

@@ -19,6 +19,9 @@ const VUELO_VACIO = {
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
   equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
   traslado_ida: true, traslado_vuelta: true,
+  // Costo real de los pasajes (no el precio al cliente) — informacion interna
+  // para nosotros, nunca se exporta al PDF.
+  costo_pasajes: '',
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -35,8 +38,8 @@ const HOSPEDAJE_VACIO = {
   incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
   items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
   habitacion_id: null, habitacion_imagen: '', personas: '',
-  // Costo real (no el precio al cliente) — solo se pide/usa en propuesta combinada,
-  // es informacion interna para nosotros, nunca se exporta al PDF.
+  // Costo real (no el precio al cliente) — informacion interna para nosotros,
+  // nunca se exporta al PDF.
   costo_interno: '',
 }
 
@@ -510,7 +513,13 @@ export default function GeneradorPropuesta() {
     }))
   }
 
-  const total = hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
+  // En propuesta simple los hospedajes cargados son OPCIONES alternativas para
+  // una misma estadía (el cliente elige una al cerrar) — sumarlas daría un total
+  // inflado. En combinada cada hospedaje es una etapa distinta del viaje, así
+  // que sí se suman entre sí.
+  const total = tipoPropuesta === 'combinada'
+    ? hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
+    : (parseFloat(hospedajes[0]?.precio) || 0)
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
   // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
@@ -912,6 +921,11 @@ export default function GeneradorPropuesta() {
             <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenBanner(e.target.files[0])} />
           </label>
         </div>
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
+          <input type="text" inputMode="numeric" value={formatearMiles(vuelo.costo_pasajes)} onChange={e => setVueloCampo('costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        </div>
       </div>
 
       {/* Hospedajes */}
@@ -1019,13 +1033,11 @@ export default function GeneradorPropuesta() {
               </select>
             </div>
 
-            {tipoPropuesta === 'combinada' && (
-              <div>
-                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
-                <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Costo interno de este hospedaje"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              </div>
-            )}
+            <div>
+              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
+              <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Costo interno de este hospedaje"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
 
             <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

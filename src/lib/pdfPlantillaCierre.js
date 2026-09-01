@@ -379,11 +379,24 @@ export async function generarPDFCierre(propuesta) {
   // despues explica las condiciones de pago en un parrafo, en vez de quedar
   // repartido en varias etiquetas sueltas.
   const moneda = propuesta.moneda || 'ARS'
-  tapar(28, 85, 540, 170, CREMA_BG)
+  tapar(28, 85, 540, 190, CREMA_BG)
+
+  // Titulo "DETALLE" — misma tipografia/estilo (Bebas, mayuscula) que el resto
+  // de los titulos de sección (AÉREOS, HOSPEDAJE, TRASLADOS...) para que este
+  // bloque se lea como una sección mas, no como texto suelto aparte.
+  escribir('DETALLE', 31.5, 227, 20, NAVY_TXT, bebas)
+
+  // Circulo relleno a la izquierda de un parrafo, alineado con la altura x del
+  // texto (no la linea de base) para que quede centrado con el renglón.
+  function bullet(x, yTexto, size) {
+    page.drawEllipse({ x, y: yTexto + size * 0.32, xScale: 1.8, yScale: 1.8, color: NAVY_TXT })
+  }
 
   // Bloque de pago en prosa (total, pagado, saldo, vencimiento) con los montos
   // y la fecha resaltados en negrita — mismo formato que "Observaciones
-  // importantes" en vez de renglones sueltos tipo ficha tecnica.
+  // importantes" en vez de renglones sueltos tipo ficha tecnica. Los dos
+  // parrafos de esta sección van unificados en tamaño y cada uno con su
+  // propio punto, como los items de esa misma pagina de observaciones.
   const totalTxt = `${moneda}$ ${formatearNumero(total)}`
   const saldoTxt = `${moneda}$ ${formatearNumero(saldo)}`
   const senaTxt = `${moneda}$ ${formatearNumero(sena)}`
@@ -403,20 +416,21 @@ export async function generarPDFCierre(propuesta) {
       { texto: '(hasta 40 días antes del check-in).' },
     )
   }
-  const SIZE_PAGO = 15
-  const GAP_PAGO = 19
-  const lineasPagoUsadas = dibujarParrafoRico(segmentosPago, 31.5, 218, SIZE_PAGO, 530, GAP_PAGO, NAVY_TXT)
+  const SIZE_ITEM = 12
+  const GAP_ITEM = 15
+  const X_TEXTO = 39
+  const Y_PAGO = 200
+  bullet(28, Y_PAGO, SIZE_ITEM)
+  const lineasPagoUsadas = dibujarParrafoRico(segmentosPago, X_TEXTO, Y_PAGO, SIZE_ITEM, 520, GAP_ITEM, NAVY_TXT)
 
   // El parrafo de condiciones va pegado justo debajo del bloque de pago (antes
   // arrancaba en un y fijo, muy lejos si el bloque de arriba salía corto) —
   // se calcula la posicion segun cuantas lineas ocupo realmente ese bloque.
-  const finBloquePago = 218 - (lineasPagoUsadas - 1) * GAP_PAGO
-  const SIZE_COND = 10.5
-  const GAP_COND = 13.5
-  const yParrafoPago = finBloquePago - SIZE_COND - 14
+  const yCondiciones = Y_PAGO - (lineasPagoUsadas - 1) * GAP_ITEM - GAP_ITEM - 5
+  bullet(28, yCondiciones, SIZE_ITEM)
   const parrafoPago = 'El pago puede realizarse por transferencia en pesos argentinos o dólares, o en cuotas en dólares con el valor en reales congelado al tipo de cambio del día de la operación. El valor en reales se mantiene fijo: la única variación posible es en la conversión de pesos a reales al momento del pago.'
-  const lineasPago = partirEnLineas(parrafoPago, helv, SIZE_COND, 530)
-  lineasPago.forEach((linea, i) => escribir(linea, 31.5, yParrafoPago - i * GAP_COND, SIZE_COND, NAVY_TXT, helv))
+  const lineasPago = partirEnLineas(parrafoPago, helv, SIZE_ITEM, 520)
+  lineasPago.forEach((linea, i) => escribir(linea, X_TEXTO, yCondiciones - i * GAP_ITEM, SIZE_ITEM, NAVY_TXT, helv))
 
   return doc
 }

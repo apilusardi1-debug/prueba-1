@@ -188,9 +188,11 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     // en el sitio publico (con la galeria de fotos del cuarto/habitacion elegida),
     // si sabemos su id real.
     if (h.id) {
+      // standalone=1: el cliente ve SOLO esta ficha (sin menu/footer/nav del
+      // sitio) — no puede navegar a otros hospedajes desde el link del PDF.
       const urlHotel = h.habitacion_id
-        ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}`
-        : `${SITIO_URL}/hoteles/${h.id}`
+        ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
+        : `${SITIO_URL}/hoteles/${h.id}?standalone=1`
       agregarLink(paginaPlantilla, doc, s.imagen, urlHotel)
 
       const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }

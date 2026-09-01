@@ -338,7 +338,7 @@ export default function GeneradorPropuesta() {
       descripcion: hab.descripcion || h.descripcion,
       items_titulo: (hab.amenities || []).length ? 'Servicios:' : h.items_titulo,
       items: (hab.amenities || []).length ? hab.amenities : h.items,
-      link_video: hab.video ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}` : h.link_video,
+      link_video: hab.video ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1` : h.link_video,
     } : h))
   }
 

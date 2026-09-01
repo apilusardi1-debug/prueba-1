@@ -24,6 +24,10 @@ export default function HotelDetalle() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const habitacionParam = searchParams.get('habitacion')
+  // Links del generador de propuestas agregan esto para que el cliente vea
+  // SOLO esta ficha (sin poder navegar a otros hospedajes del sitio) — el
+  // resto de la navegación se oculta acá y en PublicLayout.
+  const standalone = searchParams.get('standalone') === '1'
   const { config } = useSiteConfig()
   const [h, setH] = useState(null)
   const [habitaciones, setHabitaciones] = useState([])
@@ -81,9 +85,11 @@ export default function HotelDetalle() {
   return (
     <div className="bg-surface min-h-screen">
       <div className="pt-24 md:pt-28 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <Link to="/hoteles" className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/70 hover:text-hero-navy mb-6">
-          ← Volver a hoteles
-        </Link>
+        {!standalone && (
+          <Link to="/hoteles" className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/70 hover:text-hero-navy mb-6">
+            ← Volver a hoteles
+          </Link>
+        )}
 
         <div className="grid md:grid-cols-2 gap-10">
           {/* Fotos */}

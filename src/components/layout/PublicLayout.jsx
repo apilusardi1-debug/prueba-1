@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
@@ -30,6 +30,11 @@ export default function PublicLayout() {
   const [langDropdownOpen, setLangDropdownOpen] = useState(false)
   const langDropdownRef = useRef(null)
   const { pathname } = useLocation()
+  const [searchParams] = useSearchParams()
+  // Links del generador de propuestas agregan ?standalone=1 a la ficha de un
+  // hospedaje puntual, para que el cliente la vea como una landing sola —
+  // sin poder navegar al resto del sitio desde el menú, footer o nav mobile.
+  const standalone = searchParams.get('standalone') === '1'
 
   useEffect(() => {
     const onScroll = () => setScrolledPorScroll(window.scrollY > 60)
@@ -65,24 +70,46 @@ export default function PublicLayout() {
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 backdrop-blur-md ${scrolled ? 'bg-white/95 shadow-md' : 'bg-transparent'}`}>
         <div className="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-5">
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <Link to="/" aria-label="Inicio" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
-                <path d="M9 21V12h6v9"/>
-              </svg>
-            </Link>
-            <button onClick={() => setDrawerOpen(true)} aria-label="Menú" style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
-              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
-            </button>
+            {standalone ? (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
+                  <path d="M9 21V12h6v9"/>
+                </svg>
+              </span>
+            ) : (
+              <Link to="/" aria-label="Inicio" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
+                  <path d="M9 21V12h6v9"/>
+                </svg>
+              </Link>
+            )}
+            {!standalone && (
+              <button onClick={() => setDrawerOpen(true)} aria-label="Menú" style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
+                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
+              </button>
+            )}
           </div>
-          <Link to="/" aria-label="Inicio" className="flex-shrink-0">
-            <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
-              style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
-              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
-            <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
-              DreamTours
+          {standalone ? (
+            <span className="flex-shrink-0">
+              <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
+                style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
+                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
+              <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
+                DreamTours
+              </span>
             </span>
-          </Link>
+          ) : (
+            <Link to="/" aria-label="Inicio" className="flex-shrink-0">
+              <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
+                style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
+                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
+              <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
+                DreamTours
+              </span>
+            </Link>
+          )}
           <div className="flex items-center gap-2">
             {/* Language selector */}
             <div className="relative" ref={langDropdownRef}>
@@ -115,17 +142,19 @@ export default function PublicLayout() {
               Contactanos
             </a>
             {/* Mis Reservas */}
-            <Link to="/mis-reservas"
-              className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
-              style={{ backgroundColor: scrolled ? '#002147' : 'rgba(32, 67, 97, 0.9)' }}>
-              Mis Reservas
-            </Link>
+            {!standalone && (
+              <Link to="/mis-reservas"
+                className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
+                style={{ backgroundColor: scrolled ? '#002147' : 'rgba(32, 67, 97, 0.9)' }}>
+                Mis Reservas
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
       {/* Drawer */}
-      {drawerOpen && (
+      {drawerOpen && !standalone && (
         <div className="fixed inset-0 z-[100] flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
           <div className="relative w-72 bg-white shadow-2xl flex flex-col h-full">
@@ -166,7 +195,7 @@ export default function PublicLayout() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           {/* Nav links */}
           <nav className="flex flex-col items-center md:items-start gap-4">
-            {FOOTER_LINKS.map(({ to, label }) => {
+            {!standalone && FOOTER_LINKS.map(({ to, label }) => {
               const active = pathname === to
               return (
                 <Link key={to} to={to}
@@ -221,28 +250,30 @@ export default function PublicLayout() {
       </footer>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-surface-variant/30 md:hidden">
-        <div className="flex justify-around items-center h-16 px-2">
-          <Link to="/" className="flex flex-col items-center justify-center w-full h-full text-deep-ocean">
-            <span className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
-            <span className="text-[10px] font-semibold">Inicio</span>
-          </Link>
-          <Link to="/destinos" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-            <span className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
-            <span className="text-[10px]">Destinos</span>
-          </Link>
-          <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-            <span className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
-            <span className="text-[10px]">Tours</span>
-          </Link>
-          <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
-            target="_blank" rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-            <span className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
-            <span className="text-[10px]">Contacto</span>
-          </a>
-        </div>
-      </nav>
+      {!standalone && (
+        <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-surface-variant/30 md:hidden">
+          <div className="flex justify-around items-center h-16 px-2">
+            <Link to="/" className="flex flex-col items-center justify-center w-full h-full text-deep-ocean">
+              <span className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
+              <span className="text-[10px] font-semibold">Inicio</span>
+            </Link>
+            <Link to="/destinos" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
+              <span className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
+              <span className="text-[10px]">Destinos</span>
+            </Link>
+            <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
+              <span className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
+              <span className="text-[10px]">Tours</span>
+            </Link>
+            <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
+              <span className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
+              <span className="text-[10px]">Contacto</span>
+            </a>
+          </div>
+        </nav>
+      )}
 
     </div>
   )

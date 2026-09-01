@@ -251,7 +251,7 @@ function Sidebar() {
         {visible ? (
           <div>
             <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">Panel interno</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-zinc-100">DREAMSTOUR</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-zinc-100">DREAMTOURS</p>
           </div>
         ) : (
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">

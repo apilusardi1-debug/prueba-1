@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
-import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -28,7 +27,6 @@ export default function HotelDetalle() {
   // SOLO esta ficha (sin poder navegar a otros hospedajes del sitio) — el
   // resto de la navegación se oculta acá y en PublicLayout.
   const standalone = searchParams.get('standalone') === '1'
-  const { config } = useSiteConfig()
   const [h, setH] = useState(null)
   const [habitaciones, setHabitaciones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -78,9 +76,6 @@ export default function HotelDetalle() {
 
   const direccionCompleta = [h.direccion, h.destino].filter(Boolean).join(', ')
   const mapsUrl = direccionCompleta ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionCompleta)}` : null
-  const whatsapp = h.whatsapp || config?.whatsapp || ''
-  const mensaje = `Hola! Me interesa el hospedaje ${h.nombre}${h.destino ? ` en ${h.destino}` : ''}`
-  const whatsappUrl = `https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`
 
   return (
     <div className="bg-surface min-h-screen">
@@ -169,11 +164,6 @@ export default function HotelDetalle() {
               </div>
             )}
 
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-lg px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
-              Consultar disponibilidad
-              <span className="material-symbols-outlined text-hero-yellow text-xl">chat</span>
-            </a>
           </div>
         </div>
 

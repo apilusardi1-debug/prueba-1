@@ -200,6 +200,14 @@ export async function generarPDFCierre(propuesta) {
   // cantidad_pasajeros guardado — se usa como fallback tomandolos como adultos.
   const adultosParaTexto = propuesta.cantidad_adultos != null ? propuesta.cantidad_adultos : propuesta.cantidad_pasajeros
   reemplazar(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 31.2, 680.6, 20, 220, CREMA_TXT, bebas, NAVY_BG)
+
+  // "AÉREOS" traía un botón fijo "VER DETALLES" debajo que no llevaba a
+  // ningún lado real — se saca, y el título baja un poco para quedar
+  // centrado en el aire que deja libre (antes quedaba pegado arriba, con
+  // el botón pisándole el espacio de abajo).
+  tapar(28, 600, 250, 65, CREMA_BG)
+  escribir('AÉREOS', 31.96, 620, 25, NAVY_TXT)
+
   // El campo "código de reserva" se sacó del flujo de cierre (ya no se pide al
   // cerrar la propuesta) — se tapa siempre, con o sin valor guardado, porque la
   // plantilla real tiene ahí texto de muestra ("e3p9hy") que si no se tapa queda
@@ -275,11 +283,23 @@ export async function generarPDFCierre(propuesta) {
       dibujarImagenCover(page, img, fotoHospedaje)
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }
+  // Ancho real disponible antes de la foto de la habitacion (que arranca en
+  // x=434) — con 200 (el ancho viejo) el texto largo quedaba pisado por la
+  // foto en vez de cortarse antes. "pension" achica letra si hace falta;
+  // "habitacion_nombre" puede ser bastante mas largo (nombre real del tipo de
+  // cuarto, no una palabra corta), asi que ademas se parte en hasta 2 lineas.
+  const ANCHO_COL_HABITACION = 118
+  // Tapado previo generoso de toda la columna: la plantilla real trae texto de
+  // muestra ahi ("Media Pensión" / "Cuarto Superior") a un tamaño mas grande
+  // que el que se usa ahora — el tapado propio de reemplazarAjustado/
+  // reemplazarMultilinea (ajustado al tamaño final, mas chico) no llegaba a
+  // cubrirlo entero y quedaba asomando arriba.
+  tapar(308.5, 400, ANCHO_COL_HABITACION + 10, 70, CREMA_BG)
   if (hospedaje.pension) {
-    reemplazar(hospedaje.pension, 308.5, 444.1, 25, 200)
+    reemplazarAjustado(hospedaje.pension, 308.5, 444.1, 18, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 10)
   }
   if (hospedaje.habitacion_nombre) {
-    reemplazar(hospedaje.habitacion_nombre, 308.5, 414.1, 25, 200)
+    reemplazarMultilinea(hospedaje.habitacion_nombre.toUpperCase(), 308.5, 414.1, 14, ANCHO_COL_HABITACION, 13, NAVY_TXT, bebas, CREMA_BG, 2)
   }
   // Foto chica de la habitacion elegida (no del hospedaje en general) — pedido
   // explicito del usuario, no existia en la plantilla original. Mismo tamano que
@@ -307,8 +327,13 @@ export async function generarPDFCierre(propuesta) {
   // despues explica las condiciones de pago en un parrafo, en vez de quedar
   // repartido en varias etiquetas sueltas.
   const moneda = propuesta.moneda || 'ARS'
-  tapar(28, 85, 540, 130, CREMA_BG)
+  tapar(28, 85, 540, 170, CREMA_BG)
 
+  // Pagado (seña) va arriba de todo, antes del saldo pendiente — asi se lee
+  // en orden logico: lo que ya se cobró, lo que falta. Mas aire que antes
+  // respecto del saldo (17pt no alcanzaba: el tapado que dibuja el saldo
+  // encima le comia el renglon de abajo a "pagado").
+  reemplazar(`PAGADO: ${moneda}$ ${formatearNumero(sena)}`, 31.5, 230, 14, 500, NAVY_TXT)
   reemplazar(`SALDO PENDIENTE: ${moneda}$ ${formatearNumero(saldo)}`, 31.5, 205, 21, 500, NAVY_TXT)
   if (propuesta.vencimiento_saldo) {
     reemplazar(`VENCIMIENTO: ${fechaCorta(propuesta.vencimiento_saldo)} (hasta 40 días antes del check-in)`, 31.5, 181, 14, 500, NAVY_TXT)

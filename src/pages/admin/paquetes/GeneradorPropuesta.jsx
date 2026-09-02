@@ -480,8 +480,18 @@ export default function GeneradorPropuesta() {
   }
 
   function agregarHospedaje() {
-    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''] }])
+    const totalPersonas = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
+    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''], personas: totalPersonas ? String(totalPersonas) : '' }])
   }
+
+  // "Cantidad de personas" de cada hospedaje se llena sola con el total de
+  // Cliente (adultos + menores) — no se carga a mano, para no tener que
+  // repetir el mismo numero en cada hospedaje y que se desincronice.
+  useEffect(() => {
+    const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
+    if (!total) return
+    setHospedajes(prev => prev.map(h => ({ ...h, personas: String(total) })))
+  }, [cantidadAdultos, cantidadMenores])
 
   function quitarHospedaje(idx) {
     setHospedajes(prev => prev.filter((_, i) => i !== idx))
@@ -1057,8 +1067,10 @@ export default function GeneradorPropuesta() {
             <div className="grid sm:grid-cols-4 gap-3">
               <input type="number" value={h.noches} onChange={e => setHospedajeCampo(idx, 'noches', e.target.value)} placeholder="Noches"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              <input type="number" value={h.personas} onChange={e => setHospedajeCampo(idx, 'personas', e.target.value)} placeholder="Cantidad de personas"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <p title="Se completa solo con la cantidad de adultos + menores del Cliente"
+                className="w-full border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">
+                {h.personas || 0} personas
+              </p>
               <input type="text" inputMode="numeric" value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Precio"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}

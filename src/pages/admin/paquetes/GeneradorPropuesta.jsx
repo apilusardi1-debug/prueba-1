@@ -533,7 +533,10 @@ export default function GeneradorPropuesta() {
       if (i !== idx) return h
       const actuales = h.items.filter(Boolean)
       const items = actuales.includes(servicio) ? actuales.filter(it => it !== servicio) : [...actuales, servicio]
-      return { ...h, items: items.length ? items : [''] }
+      // "Pensión" ya no es un campo de texto libre aparte — sale sola de estas
+      // mismas cajitas (Pensión Completa gana si están las dos tildadas).
+      const pension = items.includes('Pensión Completa') ? 'Pensión Completa' : (items.includes('Media Pensión') ? 'Media Pensión' : '')
+      return { ...h, items: items.length ? items : [''], pension }
     }))
   }
 
@@ -1088,8 +1091,6 @@ export default function GeneradorPropuesta() {
             </div>
 
             <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <input value={h.pension} onChange={e => setHospedajeCampo(idx, 'pension', e.target.value)} placeholder="Pensión (Ej: Media pensión incluida (desayuno y cena))"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             <textarea value={h.descripcion} onChange={e => setHospedajeCampo(idx, 'descripcion', e.target.value)} rows={3} placeholder="Descripción"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />

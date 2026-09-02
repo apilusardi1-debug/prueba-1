@@ -294,9 +294,11 @@ export default function GeneradorPropuesta() {
   // hospedajes) y el saldo se calcula solo, lo unico que se carga a mano es
   // esto.
   const [sena, setSena] = useState('')
-  // Tipos de habitacion disponibles por fila de hospedaje (se cargan solos al elegir
-  // un hospedaje del catalogo) — el admin elige una, precio y personas los carga a mano.
-  const [habitacionesPorIdx, setHabitacionesPorIdx] = useState({})
+  // Tipos de habitacion disponibles por hospedaje del catalogo (se cargan solos
+  // al elegirlo) — clave el id del hospedaje, no la posicion en la lista: al
+  // elegir varias habitaciones del mismo hotel se clonan tarjetas y las
+  // posiciones se corren, un mapa por indice quedaria desalineado.
+  const [habitacionesPorHospedaje, setHabitacionesPorHospedaje] = useState({})
   const [subiendoIdx, setSubiendoIdx] = useState(null)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -335,10 +337,11 @@ export default function GeneradorPropuesta() {
       items: (hDB.amenities || []).length ? hDB.amenities : h.items,
       habitacion_id: null,
     } : h))
-    setHabitacionesPorIdx(prev => ({ ...prev, [idx]: [] }))
-    habitacionesApi.getByHospedaje(hDB.id).then(({ data }) => {
-      setHabitacionesPorIdx(prev => ({ ...prev, [idx]: data || [] }))
-    })
+    if (!habitacionesPorHospedaje[hDB.id]) {
+      habitacionesApi.getByHospedaje(hDB.id).then(({ data }) => {
+        setHabitacionesPorHospedaje(prev => ({ ...prev, [hDB.id]: data || [] }))
+      })
+    }
   }
 
   // El admin elige el tipo de habitacion real (foto, servicios, m², camas — ya
@@ -346,8 +349,8 @@ export default function GeneradorPropuesta() {
   // Al elegir, se traen la foto/descripcion/servicios de ESA habitacion puntual
   // (util para complejos con departamentos de distintos duenos, ej: Cupe Beach
   // Living) y se arma el link a la ficha publica filtrada a esa habitacion.
-  function elegirHabitacion(idx, hab) {
-    setHospedajes(prev => prev.map((h, i) => i === idx ? {
+  function aplicarHabitacion(h, hab) {
+    return {
       ...h,
       habitacion_id: hab.id,
       habitacion_nombre: hab.nombre,
@@ -360,7 +363,34 @@ export default function GeneradorPropuesta() {
       items_titulo: (hab.amenities || []).length ? 'Servicios:' : h.items_titulo,
       items: (hab.amenities || []).length ? hab.amenities : h.items,
       link_video: hab.video ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1` : h.link_video,
-    } : h))
+    }
+  }
+
+  // Hasta 4 tipos de habitacion por hospedaje: la primera se elige sobre la
+  // misma tarjeta, cada una despues clona la tarjeta como una opcion mas del
+  // mismo hotel (mismo mecanismo que "hospedaje que eligió el cliente" al
+  // cerrar, pero para elegir entre habitaciones en vez de entre hoteles).
+  // Tocar una ya elegida la saca (o limpia la tarjeta si es la unica).
+  const MAX_HABITACIONES = 4
+  function alternarHabitacion(idx, hab) {
+    setHospedajes(prev => {
+      const actual = prev[idx]
+      if (actual.habitacion_id === hab.id) {
+        const hermanos = prev.filter(h => h.id === actual.id)
+        if (hermanos.length <= 1) {
+          return prev.map((h, i) => i === idx ? { ...h, habitacion_id: null, habitacion_nombre: '', habitacion_imagen: '' } : h)
+        }
+        return prev.filter((_, i) => i !== idx)
+      }
+      if (!actual.habitacion_id) {
+        return prev.map((h, i) => i === idx ? aplicarHabitacion(h, hab) : h)
+      }
+      const cantidadElegidas = prev.filter(h => h.id === actual.id && h.habitacion_id).length
+      if (cantidadElegidas >= MAX_HABITACIONES) return prev
+      const copia = [...prev]
+      copia.splice(idx + 1, 0, aplicarHabitacion({ ...actual, habitacion_id: null }, hab))
+      return copia
+    })
   }
 
   function buscarCliente(texto) {
@@ -1034,18 +1064,25 @@ export default function GeneradorPropuesta() {
               </label>
             </div>
 
-            {(habitacionesPorIdx[idx] || []).length > 0 && (
+            {(habitacionesPorHospedaje[h.id] || []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-2">
-                  Tipo de habitación (foto y servicios ya cargados en el sitio)
+                  Tipo de habitación (foto y servicios ya cargados en el sitio) — hasta {MAX_HABITACIONES} opciones para que elija el cliente
+                  {' '}({hospedajes.filter(x => x.id === h.id && x.habitacion_id).length}/{MAX_HABITACIONES})
                 </p>
                 <div className="grid sm:grid-cols-2 gap-2">
-                  {habitacionesPorIdx[idx].map(hab => {
+                  {habitacionesPorHospedaje[h.id].map(hab => {
                     const seleccionada = h.habitacion_id === hab.id
+                    const cantidadElegidas = hospedajes.filter(x => x.id === h.id && x.habitacion_id).length
+                    const deshabilitada = !seleccionada && !!h.habitacion_id && cantidadElegidas >= MAX_HABITACIONES
                     return (
-                      <button key={hab.id} type="button" onClick={() => elegirHabitacion(idx, hab)}
+                      <button key={hab.id} type="button" disabled={deshabilitada} onClick={() => alternarHabitacion(idx, hab)}
                         className={`flex gap-2.5 border rounded-xl p-2.5 text-left transition-colors ${
-                          seleccionada ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700 hover:border-brand-300'
+                          seleccionada
+                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                            : deshabilitada
+                              ? 'border-gray-100 dark:border-zinc-800 opacity-40 cursor-not-allowed'
+                              : 'border-gray-200 dark:border-zinc-700 hover:border-brand-300'
                         }`}>
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
                           {hab.imagen ? (
@@ -1054,12 +1091,13 @@ export default function GeneradorPropuesta() {
                             <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
                           ) : null}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{hab.nombre}</p>
                           <p className="text-xs text-gray-400 dark:text-zinc-500">
                             {[hab.superficie ? `${hab.superficie} m²` : null, hab.capacidad ? `hasta ${hab.capacidad}` : null, hab.camas || null].filter(Boolean).join(' · ')}
                           </p>
                         </div>
+                        {seleccionada && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                       </button>
                     )
                   })}

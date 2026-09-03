@@ -295,6 +295,9 @@ export default function GeneradorPropuesta() {
   const [errorVuelo, setErrorVuelo] = useState('')
   const [hospedajes, setHospedajes] = useState([{ ...HOSPEDAJE_VACIO, items: [''] }])
   const [hospedajesDB, setHospedajesDB] = useState([])
+  // Filtro de localizacion por tarjeta de hospedaje (combinada) — clave el
+  // indice de la tarjeta, valor el destino elegido ('' = todos).
+  const [filtroDestinoPorIdx, setFiltroDestinoPorIdx] = useState({})
   // Lo que ya pagó el cliente (seña) — el total sale solo (suma de los
   // hospedajes) y el saldo se calcula solo, lo unico que se carga a mano es
   // esto.
@@ -323,11 +326,18 @@ export default function GeneradorPropuesta() {
   }, [])
 
   // Sugerencias de hospedajes ya cargados en el modulo Hospedajes, para
-  // autocompletar nombre/foto/descripcion/amenities al armar la propuesta.
-  function sugerenciasHospedaje(texto) {
+  // autocompletar nombre/foto/descripcion/amenities al armar la propuesta. En
+  // combinada, cada tarjeta puede filtrar por localizacion (Maragogi, Porto de
+  // Galinhas, Pipa, etc.) — util cuando el combinado visita varios destinos y
+  // hay que buscar el hospedaje de CADA uno sin que se mezclen los resultados.
+  function sugerenciasHospedaje(idx, texto) {
     if (!texto || texto.trim().length < 2) return []
     const lower = texto.trim().toLowerCase()
-    return hospedajesDB.filter(h => h.nombre.toLowerCase().includes(lower) && h.nombre.toLowerCase() !== lower).slice(0, 5)
+    const destinoFiltro = filtroDestinoPorIdx[idx]
+    return hospedajesDB
+      .filter(h => h.nombre.toLowerCase().includes(lower) && h.nombre.toLowerCase() !== lower)
+      .filter(h => !destinoFiltro || h.destino === destinoFiltro)
+      .slice(0, 5)
   }
 
   function elegirHospedajeDB(idx, hDB) {
@@ -532,6 +542,17 @@ export default function GeneradorPropuesta() {
 
   function quitarHospedaje(idx) {
     setHospedajes(prev => prev.filter((_, i) => i !== idx))
+    // El filtro de localizacion esta indexado por posicion de tarjeta — al
+    // sacar una, hay que correr las claves de las que quedan despues.
+    setFiltroDestinoPorIdx(prev => {
+      const siguiente = {}
+      Object.entries(prev).forEach(([key, val]) => {
+        const i = Number(key)
+        if (i < idx) siguiente[i] = val
+        else if (i > idx) siguiente[i - 1] = val
+      })
+      return siguiente
+    })
   }
 
   function agregarDestino() {
@@ -690,6 +711,8 @@ export default function GeneradorPropuesta() {
   }
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando...</div>
+
+  const destinosDisponibles = [...new Set(hospedajesDB.map(h => h.destino).filter(Boolean))].sort()
 
   return (
     <div className="space-y-6">
@@ -1026,14 +1049,25 @@ export default function GeneradorPropuesta() {
               )}
             </div>
 
+            {tipoPropuesta === 'combinada' && (
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Filtrar búsqueda por localización</label>
+                <select value={filtroDestinoPorIdx[idx] || ''} onChange={e => setFiltroDestinoPorIdx(prev => ({ ...prev, [idx]: e.target.value }))}
+                  className="w-full sm:w-64 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                  <option value="">Todas las localizaciones</option>
+                  {destinosDisponibles.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="relative">
                 <input value={h.nombre} onChange={e => setHospedajeCampo(idx, 'nombre', e.target.value)} placeholder="Nombre (Ej: Condominio Marulhos)"
                   autoComplete="off"
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                {sugerenciasHospedaje(h.nombre).length > 0 && (
+                {sugerenciasHospedaje(idx, h.nombre).length > 0 && (
                   <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
-                    {sugerenciasHospedaje(h.nombre).map(hDB => (
+                    {sugerenciasHospedaje(idx, h.nombre).map(hDB => (
                       <button key={hDB.id} type="button" onClick={() => elegirHospedajeDB(idx, hDB)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-2.5">
                         {hDB.imagen ? (

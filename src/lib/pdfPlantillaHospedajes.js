@@ -159,19 +159,6 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
-    // Servicios: lista corta (la fila es chica, no hay lugar para mucho mas que
-    // precio + un puñado de items) — se corta en el piso de la fila, nunca invade
-    // la siguiente.
-    const items = (h.items || []).filter(Boolean)
-    if (items.length && y - s.itemsGap >= piso) {
-      escribir(h.items_titulo || 'SERVICIOS:', s.itemsX, y, s.itemsSize, NAVY_TXT, bebas); y -= s.itemsGap
-      for (const it of items) {
-        if (y < piso) break
-        escribir(`- ${it}`, s.itemsX, y, s.itemsSize, NAVY_TXT, helv)
-        y -= s.itemsGap
-      }
-    }
-
     // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y
     // FOTOS" pegada debajo (no encima como en la version de 2 por hoja, para que
     // se lea "al lado de la foto" y no tape parte de la imagen).
@@ -184,21 +171,48 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
     }
 
-    // La foto y el cartelito son clickeables y llevan a la ficha de ese hospedaje
-    // en el sitio publico (con la galeria de fotos del cuarto/habitacion elegida),
-    // si sabemos su id real.
+    // La foto y los botones son clickeables y llevan a la ficha de ese hospedaje
+    // en el sitio publico, si sabemos su id real. standalone=1: el cliente ve
+    // SOLO esa ficha (sin menu/footer/nav ni lista de otras habitaciones) — no
+    // puede navegar a otros hospedajes ni otras unidades desde el link del PDF.
     if (h.id) {
-      // standalone=1: el cliente ve SOLO esta ficha (sin menu/footer/nav del
-      // sitio) — no puede navegar a otros hospedajes desde el link del PDF.
-      const urlHotel = h.habitacion_id
+      // Areas externas: fotos generales del hospedaje/complejo (pileta, canchas,
+      // areas comunes) — la ficha sin habitacion puntual seleccionada.
+      const urlExternas = `${SITIO_URL}/hoteles/${h.id}?standalone=1`
+      // Areas internas: fotos/videos de la habitacion o departamento puntual de
+      // esta propuesta (solo si hay una unidad especifica cargada).
+      const urlInternas = h.habitacion_id
         ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
-        : `${SITIO_URL}/hoteles/${h.id}?standalone=1`
-      agregarLink(paginaPlantilla, doc, s.imagen, urlHotel)
+        : null
 
-      const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
-      tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
-      escribir('VER INFO Y FOTOS >', banda.x + 6, banda.y + 5, 8, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-      agregarLink(paginaPlantilla, doc, banda, urlHotel)
+      agregarLink(paginaPlantilla, doc, s.imagen, urlInternas || urlExternas)
+
+      if (urlInternas) {
+        // Dos botones lado a lado, mismo alto que antes tenia el unico cartelito
+        // (no se toca la altura de fila): izquierda "areas externas" (complejo),
+        // derecha "areas internas" (la unidad puntual).
+        const gapBotones = 4
+        const anchoBoton = (s.imagen.width - gapBotones) / 2
+        const bandaExt = { x: s.imagen.x, y: s.bandaY, width: anchoBoton, height: BANDA_ALTO }
+        const bandaInt = { x: s.imagen.x + anchoBoton + gapBotones, y: s.bandaY, width: anchoBoton, height: BANDA_ALTO }
+
+        tapar(bandaExt.x, bandaExt.y, bandaExt.width, bandaExt.height, NAVY_BG)
+        escribir('VER ÁREAS', bandaExt.x + 5, bandaExt.y + 8.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+        escribir('EXTERNAS >', bandaExt.x + 5, bandaExt.y + 2.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+        agregarLink(paginaPlantilla, doc, bandaExt, urlExternas)
+
+        tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
+        escribir('VER ÁREAS', bandaInt.x + 5, bandaInt.y + 8.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+        escribir('INTERNAS >', bandaInt.x + 5, bandaInt.y + 2.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+        agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
+      } else {
+        // Sin habitacion puntual cargada: un unico boton a ancho completo, como
+        // antes, llevando a las fotos generales del hospedaje.
+        const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
+        tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
+        escribir('VER INFO Y FOTOS >', banda.x + 6, banda.y + 5, 8, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+        agregarLink(paginaPlantilla, doc, banda, urlExternas)
+      }
     }
   }
 

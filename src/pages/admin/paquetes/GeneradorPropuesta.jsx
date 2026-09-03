@@ -701,34 +701,25 @@ export default function GeneradorPropuesta() {
       {/* Cliente */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Cliente</h3>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="relative">
-            <input
-              type="text"
-              value={busqCliente}
-              onChange={e => buscarCliente(e.target.value)}
-              placeholder="Buscar cliente existente o escribir nombre..."
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
-            {sugerencias.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
-                {sugerencias.map(c => (
-                  <button key={c.id} type="button" onClick={() => elegirCliente(c)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2">
-                    <span className="font-medium text-gray-800 dark:text-zinc-200">{c.nombre}</span>
-                    <span className="text-xs text-gray-400 dark:text-zinc-500 font-mono">{c.whatsapp}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="relative">
           <input
             type="text"
-            value={clienteWhatsapp}
-            onChange={e => setClienteWhatsapp(e.target.value)}
-            placeholder="WhatsApp (5581999999999)"
+            value={busqCliente}
+            onChange={e => buscarCliente(e.target.value)}
+            placeholder="Buscar cliente existente o escribir nombre..."
             className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
+          {sugerencias.length > 0 && (
+            <div className="absolute top-full left-0 right-0 z-10 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 mt-1 overflow-hidden">
+              {sugerencias.map(c => (
+                <button key={c.id} type="button" onClick={() => elegirCliente(c)}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2">
+                  <span className="font-medium text-gray-800 dark:text-zinc-200">{c.nombre}</span>
+                  <span className="text-xs text-gray-400 dark:text-zinc-500 font-mono">{c.whatsapp}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
           <input

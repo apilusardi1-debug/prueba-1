@@ -282,8 +282,14 @@ export async function importarHospedajesDeLink(url) {
 // ── Extraer datos de vuelo desde una imagen (captura, e-ticket, etc.) ──────────
 export async function extraerDatosVuelo(imagenBase64, mediaType) {
   if (!supabase) return { error: 'Sin conexión' }
+  // Probado en vivo: Gemini a veces se cuelga mucho mas de lo normal (un caso
+  // real tardó 150s, el limite de idle-timeout de la Edge Function, antes de
+  // devolver el error) — sin este timeout el cliente se quedaba esperando esos
+  // 150s enteros antes de poder reintentar. Con 30s, un intento colgado corta
+  // rápido y el reintento (ver GeneradorPropuesta.jsx) prueba de nuevo antes.
   const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
     body: { imagenBase64, mediaType },
+    timeout: 30000,
   })
   if (!error) return { data, error }
   // Cuando la Edge Function responde con un status distinto de 2xx (ej: 429 de

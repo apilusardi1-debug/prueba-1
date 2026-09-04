@@ -27,18 +27,17 @@ const CAMPOS = [
   'vuelta_escala_ciudad', 'vuelta_escala_codigo', 'vuelta_escala_llega', 'vuelta_escala_sale',
 ]
 
-// OJO: la cuenta/API key de Google que usa esta funcion tiene una cuota
-// gratuita muy chica -- confirmado con el error real de Google: "Quota
-// exceeded ... limit: 20 ... Please retry in ~35-60s". Se probo con
-// gemini-3.6-flash, 3.5-flash y 2.5-flash (este ultimo ni disponible, dado
-// de baja) y el mismo limite de 20 aparece con cualquiera -- no es un
-// problema del modelo elegido, es la cuota del proyecto/API key en Google
-// AI Studio. Para sostener un uso real (15+ lecturas por dia) hace falta
-// habilitar facturacion en ese proyecto de Google (el uso real es muy barato,
-// pero el nivel gratis sin facturacion habilitada es demasiado chico).
-// Mientras tanto, el codigo reintenta del lado del cliente (ver
-// GeneradorPropuesta.jsx) para absorber picos cortos de uso.
-const GEMINI_MODEL = 'gemini-3.5-flash'
+// La cuota gratuita del proyecto (era el problema original: "Quota exceeded
+// ... limit: 20") ya se resolvió habilitando facturación en Google Cloud.
+// El problema actual es otro: gemini-3.5-flash devuelve seguido un error de
+// Google real (no de nuestro código) tipo "is currently experiencing high
+// demand, spikes in demand are usually temporary" -- capacidad del lado de
+// Google para ESE modelo puntual, no de nuestra cuenta. Probado en vivo:
+// 1 de 2 llamadas a 3.5-flash fallaron por esto mismo, mientras que
+// gemini-3.6-flash (mismo dia, misma cuenta) dio 5 de 5 exitosas. El
+// reintento del lado del cliente (ver GeneradorPropuesta.jsx) sigue estando
+// para absorber lo que quede de este tipo de picos pasajeros.
+const GEMINI_MODEL = 'gemini-3.6-flash'
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 
 // El prompt describe explicitamente los formatos reales que llegan a la agencia

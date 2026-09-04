@@ -19,6 +19,14 @@ const VUELO_VACIO = {
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
   equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
   traslado_ida: true, traslado_vuelta: true,
+  // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
+  // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
+  // cliente o queda solo de uso interno. El neto nunca se exporta al PDF.
+  costo_neto: '', venta: '', venta_publica: true,
+  // Mismo criterio para el traslado (aeropuerto-hotel / hotel-aeropuerto) de
+  // esta propuesta simple — en combinada el equivalente vive por destino
+  // (destinos[].valor_agencia_traslado / valor_cliente_traslado).
+  traslado_costo_neto: '', traslado_venta: '', traslado_venta_publica: true,
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -43,14 +51,19 @@ const HOSPEDAJE_VACIO = {
   // Costo real (no el precio al cliente) — informacion interna para nosotros,
   // nunca se exporta al PDF.
   costo_interno: '',
+  // Si el precio (valor de venta) de este hospedaje se le muestra al cliente
+  // o queda de uso interno — por defecto público, que es como se comportaba
+  // siempre (el precio se imprime en el PDF sin excepción, ver
+  // pdfPlantillaHospedajes.js).
+  precio_publico: true,
 }
 
-// valor_agencia_traslado/valor_cliente_traslado: lo que paga la agencia por el
-// traslado de ESE destino vs. lo que se le cobraria al cliente por ese mismo
-// traslado — para ver el margen de ese trayecto puntual (cada destino puede
-// tener un traslado distinto). Igual que costo_interno de hospedaje, es de uso
-// interno en propuesta combinada, no se exporta al PDF.
-const DESTINO_VACIO = { nombre: '', traslado: '', valor_agencia_traslado: '', valor_cliente_traslado: '' }
+// valor_agencia_traslado/valor_cliente_traslado: valor neto (lo que paga la
+// agencia) vs. de venta (lo que se le cobraria al cliente) del traslado de ESE
+// destino — para ver el margen de ese trayecto puntual (cada destino puede
+// tener un traslado distinto). valor_cliente_traslado_publica decide si ese
+// valor de venta se le muestra al cliente. El neto nunca se exporta al PDF.
+const DESTINO_VACIO = { nombre: '', traslado: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: true }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -857,12 +870,17 @@ export default function GeneradorPropuesta() {
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Traslado de este destino — uso interno, no se exporta al PDF</p>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor agencia (transfer)"
+                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado de este destino — el neto es uso interno, nunca se exporta al PDF</p>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_cliente_traslado)} onChange={e => setDestinoCampo(idx, 'valor_cliente_traslado', soloDigitos(e.target.value))} placeholder="Valor cliente (transfer)"
+                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_cliente_traslado)} onChange={e => setDestinoCampo(idx, 'valor_cliente_traslado', soloDigitos(e.target.value))} placeholder="Valor de venta"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                      <input type="checkbox" checked={!!d.valor_cliente_traslado_publica} onChange={() => setDestinoCampo(idx, 'valor_cliente_traslado_publica', !d.valor_cliente_traslado_publica)}
+                        className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                      {d.valor_cliente_traslado_publica ? 'Pública' : 'Privada'}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1010,6 +1028,20 @@ export default function GeneradorPropuesta() {
               )}
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del vuelo — el neto es uso interno, nunca se exporta al PDF</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <input type="text" inputMode="numeric" value={formatearMiles(v.costo_neto)} onChange={e => setVueloCampo(idx, 'costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <input type="text" inputMode="numeric" value={formatearMiles(v.venta)} onChange={e => setVueloCampo(idx, 'venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                  <input type="checkbox" checked={!!v.venta_publica} onChange={() => setVueloCampo(idx, 'venta_publica', !v.venta_publica)}
+                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                  {v.venta_publica ? 'Pública' : 'Privada'}
+                </label>
+              </div>
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
@@ -1022,6 +1054,20 @@ export default function GeneradorPropuesta() {
                     className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
                   Traslado vuelta (hotel → aeropuerto)
                 </label>
+              </div>
+              <div className="mt-3">
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado — el neto es uso interno, nunca se exporta al PDF</p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_costo_neto)} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_venta)} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                    <input type="checkbox" checked={!!v.traslado_venta_publica} onChange={() => setVueloCampo(idx, 'traslado_venta_publica', !v.traslado_venta_publica)}
+                      className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                    {v.traslado_venta_publica ? 'Pública' : 'Privada'}
+                  </label>
+                </div>
               </div>
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
@@ -1159,27 +1205,34 @@ export default function GeneradorPropuesta() {
               </div>
             )}
 
-            <div className="grid sm:grid-cols-4 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               <input type="number" value={h.noches} onChange={e => setHospedajeCampo(idx, 'noches', e.target.value)} placeholder="Noches"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <p title="Se completa solo con la cantidad de adultos + menores del Cliente"
                 className="w-full border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">
                 {h.personas || 0} personas
               </p>
-              <input type="text" inputMode="numeric" value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Precio"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                <option value="ARS">ARS$</option>
-                <option value="BRL">R$</option>
-                <option value="USD">U$D</option>
-              </select>
             </div>
 
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
-              <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Costo interno de este hospedaje"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta — el neto es uso interno, nunca se exporta al PDF</p>
+              <div className="grid sm:grid-cols-4 gap-3">
+                <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <input type="text" inputMode="numeric" value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                  <option value="ARS">ARS$</option>
+                  <option value="BRL">R$</option>
+                  <option value="USD">U$D</option>
+                </select>
+                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                  <input type="checkbox" checked={!!h.precio_publico} onChange={() => setHospedajeCampo(idx, 'precio_publico', !h.precio_publico)}
+                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                  {h.precio_publico ? 'Pública' : 'Privada'}
+                </label>
+              </div>
             </div>
 
             <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"

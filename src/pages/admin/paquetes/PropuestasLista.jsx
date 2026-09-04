@@ -18,16 +18,6 @@ function formatearMiles(valor) {
   const digitos = soloDigitos(valor)
   return digitos ? Number(digitos).toLocaleString('es-AR') : ''
 }
-const MONEDA_LABEL = { ars: 'ARS$', brl: 'R$', usd: 'U$D' }
-// Texto "ARS$ X · R$ Y" con las monedas del vuelo que tengan monto cargado —
-// se usa tal cual en el vuelo (vuelo.precios) y en el traslado por destino.
-function preciosTexto(precios) {
-  return Object.entries(precios || {})
-    .filter(([, v]) => v?.monto)
-    .map(([clave, v]) => `${MONEDA_LABEL[clave] || clave} ${formatearNumero(v.monto)}`)
-    .join(' · ')
-}
-
 const TITULOS = {
   enviada: { titulo: 'Propuestas enviadas', vacio: 'No hay propuestas enviadas todavía.' },
   cerrada: { titulo: 'Propuestas cerradas', vacio: 'Todavía no se cerró ninguna propuesta.' },
@@ -261,9 +251,6 @@ export default function PropuestasLista({ estado }) {
     : (parseFloat(hospedajeElegidoPago?.precio) || 0)
   const saldoPago = Math.max(totalPago - (parseFloat(sena) || 0), 0)
   const monedaPago = cerrandoPropuesta?.moneda || 'BRL'
-  // Costo/venta del vuelo, para chequear el margen de un vistazo junto con el
-  // resto de la info del vuelo.
-  const preciosVueloTexto = preciosTexto(vuelo.precios)
 
   return (
     <div className="space-y-6">
@@ -470,13 +457,23 @@ export default function PropuestasLista({ estado }) {
                   <span>VUELTA: {tramoVuelta}</span>
                 </div>
               )}
-              {(vuelo.costo_pasajes || preciosVueloTexto) && (
+              {(vuelo.costo_neto || vuelo.venta) && (
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
                   <span className="text-green-600 dark:text-green-400">✓</span>
                   <span>
-                    {vuelo.costo_pasajes && `Costo: ${formatearNumero(vuelo.costo_pasajes)}`}
-                    {vuelo.costo_pasajes && preciosVueloTexto && ' · '}
-                    {preciosVueloTexto && `Venta: ${preciosVueloTexto}`}
+                    {vuelo.costo_neto && `Neto: ${formatearNumero(vuelo.costo_neto)}`}
+                    {vuelo.costo_neto && vuelo.venta && ' · '}
+                    {vuelo.venta && `Venta: ${formatearNumero(vuelo.venta)}${vuelo.venta_publica === false ? ' (privada)' : ''}`}
+                  </span>
+                </div>
+              )}
+              {(vuelo.traslado_costo_neto || vuelo.traslado_venta) && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
+                  <span className="text-green-600 dark:text-green-400">✓</span>
+                  <span>
+                    Traslado — {vuelo.traslado_costo_neto && `Neto: ${formatearNumero(vuelo.traslado_costo_neto)}`}
+                    {vuelo.traslado_costo_neto && vuelo.traslado_venta && ' · '}
+                    {vuelo.traslado_venta && `Venta: ${formatearNumero(vuelo.traslado_venta)}${vuelo.traslado_venta_publica === false ? ' (privada)' : ''}`}
                   </span>
                 </div>
               )}
@@ -505,8 +502,8 @@ export default function PropuestasLista({ estado }) {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{h.nombre}</p>
                           <p className="text-xs text-gray-400 dark:text-zinc-500">
-                            Venta: {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}
-                            {h.costo_interno ? ` · Costo: ${formatearNumero(h.costo_interno)}` : ''}
+                            Venta: {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}{h.precio_publico === false ? ' (privada)' : ''}
+                            {h.costo_interno ? ` · Neto: ${formatearNumero(h.costo_interno)}` : ''}
                           </p>
                         </div>
                         {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
@@ -557,9 +554,9 @@ export default function PropuestasLista({ estado }) {
                       {(d.valor_agencia_traslado || d.valor_cliente_traslado) && (
                         <span className="text-gray-400 dark:text-zinc-500">
                           {' — '}
-                          {d.valor_agencia_traslado && `Costo: ${formatearNumero(d.valor_agencia_traslado)}`}
+                          {d.valor_agencia_traslado && `Neto: ${formatearNumero(d.valor_agencia_traslado)}`}
                           {d.valor_agencia_traslado && d.valor_cliente_traslado && ' · '}
-                          {d.valor_cliente_traslado && `Venta: ${formatearNumero(d.valor_cliente_traslado)}`}
+                          {d.valor_cliente_traslado && `Venta: ${formatearNumero(d.valor_cliente_traslado)}${d.valor_cliente_traslado_publica === false ? ' (privada)' : ''}`}
                         </span>
                       )}
                     </span>

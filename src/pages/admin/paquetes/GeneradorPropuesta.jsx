@@ -1269,20 +1269,20 @@ export default function GeneradorPropuesta() {
         <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Pago</h3>
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
-            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">
-              {formatearNumero(total)}
+            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Saldo</label>
+            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm font-medium">
+              {formatearNumero(Math.max(total - (parseFloat(sena) || 0), 0))}
             </p>
           </div>
           <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Ya pagó (seña)</label>
+            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Pago inicial</label>
             <input type="text" inputMode="numeric" value={formatearMiles(sena)} onChange={e => setSena(soloDigitos(e.target.value))} placeholder="0"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
           </div>
           <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Saldo a pagar</label>
-            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm font-medium">
-              {formatearNumero(Math.max(total - (parseFloat(sena) || 0), 0))}
+            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
+            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">
+              {formatearNumero(total)}
             </p>
           </div>
         </div>

@@ -575,11 +575,11 @@ export default function PropuestasLista({ estado }) {
               <p className="text-xs text-gray-500 dark:text-zinc-400">Pago</p>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
-                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(totalPago, monedaPago)}</p>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Saldo</label>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(saldoPago, monedaPago)}</p>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Ya pagó (seña)</label>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Pago inicial</label>
                   {estado === 'enviada' ? (
                     <input type="text" inputMode="numeric" value={formatearMiles(sena)} onChange={e => setSena(soloDigitos(e.target.value))} placeholder="0"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
@@ -588,8 +588,8 @@ export default function PropuestasLista({ estado }) {
                   )}
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Saldo a pagar</label>
-                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(saldoPago, monedaPago)}</p>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{formatPrecio(totalPago, monedaPago)}</p>
                 </div>
               </div>
             </div>

@@ -64,6 +64,7 @@ const HOSPEDAJE_VACIO = {
 // tener un traslado distinto). valor_cliente_traslado_publica decide si ese
 // valor de venta se le muestra al cliente. El neto nunca se exporta al PDF.
 const DESTINO_VACIO = { nombre: '', traslado: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: true }
+const DESTINOS_PRECARGADOS = ['Recife', 'Maragogi', 'Maceió', 'Porto de Galinhas', 'Pipa', 'Tamandaré']
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -853,6 +854,9 @@ export default function GeneradorPropuesta() {
                 + Agregar destino
               </button>
             </div>
+            <datalist id="destinos-precargados">
+              {DESTINOS_PRECARGADOS.map(d => <option key={d} value={d} />)}
+            </datalist>
             {destinos.map((d, idx) => (
               <div key={idx} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -864,7 +868,7 @@ export default function GeneradorPropuesta() {
                   )}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <input value={d.nombre} onChange={e => setDestinoCampo(idx, 'nombre', e.target.value)} placeholder="Nombre del destino (Ej: Buzios)"
+                  <input value={d.nombre} onChange={e => setDestinoCampo(idx, 'nombre', e.target.value)} placeholder="Nombre del destino (Ej: Buzios)" list="destinos-precargados"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                   <input value={d.traslado} onChange={e => setDestinoCampo(idx, 'traslado', e.target.value)} placeholder="Traslado por destino (Ej: Traslado privado aeropuerto-hotel)"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

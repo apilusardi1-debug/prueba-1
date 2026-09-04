@@ -19,18 +19,6 @@ const VUELO_VACIO = {
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
   equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
   traslado_ida: true, traslado_vuelta: true,
-  // Costo real de los pasajes (no el precio al cliente) — informacion interna
-  // para nosotros, nunca se exporta al PDF.
-  costo_pasajes: '',
-  // Precio del vuelo en cada moneda, cargado a mano (no se calcula solo).
-  // "publica" marca si ese monto puede mostrarse al cliente o es solo para
-  // uso interno — por ahora solo se guarda el dato, no hay ningun lugar del
-  // PDF que lo muestre todavia.
-  precios: {
-    ars: { monto: '', publica: false },
-    brl: { monto: '', publica: false },
-    usd: { monto: '', publica: false },
-  },
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -435,10 +423,6 @@ export default function GeneradorPropuesta() {
   function setVueloCampo(idx, campo, valor) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, [campo]: valor } : v))
   }
-  function setPrecioVuelo(idx, moneda, campo, valor) {
-    setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, precios: { ...v.precios, [moneda]: { ...v.precios[moneda], [campo]: valor } } } : v))
-  }
-
   function cambiarCantidadEquipaje(idx, clave, delta) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, equipaje: { ...v.equipaje, [clave]: Math.max(0, (v.equipaje?.[clave] || 0) + delta) } } : v))
   }
@@ -1024,33 +1008,6 @@ export default function GeneradorPropuesta() {
                   placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
                   className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               )}
-            </div>
-            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Precio del vuelo por moneda (opcional, se carga a mano)</p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {[
-                  { clave: 'ars', label: 'Pesos argentinos (ARS$)' },
-                  { clave: 'brl', label: 'Reales (R$)' },
-                  { clave: 'usd', label: 'Dólares (U$D)' },
-                ].map(m => (
-                  <div key={m.clave} className="space-y-1.5">
-                    <input type="text" inputMode="numeric" value={formatearMiles(v.precios[m.clave].monto)}
-                      onChange={e => setPrecioVuelo(idx, m.clave, 'monto', soloDigitos(e.target.value))} placeholder={m.label}
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
-                      <input type="checkbox" checked={!!v.precios[m.clave].publica}
-                        onChange={() => setPrecioVuelo(idx, m.clave, 'publica', !v.precios[m.clave].publica)}
-                        className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                      {v.precios[m.clave].publica ? 'Pública' : 'Privada'}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3">
-                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
-                <input type="text" inputMode="numeric" value={formatearMiles(v.costo_pasajes)} onChange={e => setVueloCampo(idx, 'costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              </div>
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>

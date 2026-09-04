@@ -18,7 +18,7 @@ const VUELO_VACIO = {
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
   equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
-  traslado_ida: true, traslado_vuelta: true,
+  traslado_ida: true, traslado_vuelta: true, traslado_activo: true,
   // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
   // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
   // cliente o queda solo de uso interno. El neto nunca se exporta al PDF.
@@ -436,6 +436,13 @@ export default function GeneradorPropuesta() {
 
   function setVueloCampo(idx, campo, valor) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, [campo]: valor } : v))
+  }
+  function alternarTrasladoVuelo(idx) {
+    setVuelos(prev => prev.map((v, i) => {
+      if (i !== idx) return v
+      const activar = v.traslado_activo === false
+      return { ...v, traslado_activo: activar, traslado_ida: activar, traslado_vuelta: activar }
+    }))
   }
   function cambiarCantidadEquipaje(idx, clave, delta) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, equipaje: { ...v.equipaje, [clave]: Math.max(0, (v.equipaje?.[clave] || 0) + delta) } } : v))
@@ -1046,31 +1053,39 @@ export default function GeneradorPropuesta() {
               </div>
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
-                  <input type="checkbox" checked={!!v.traslado_ida} onChange={() => setVueloCampo(idx, 'traslado_ida', !v.traslado_ida)}
-                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  Traslado ida (aeropuerto → hotel)
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
-                  <input type="checkbox" checked={!!v.traslado_vuelta} onChange={() => setVueloCampo(idx, 'traslado_vuelta', !v.traslado_vuelta)}
-                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  Traslado vuelta (hotel → aeropuerto)
-                </label>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-400 dark:text-zinc-500">Traslados privados</p>
+                <button type="button" onClick={() => alternarTrasladoVuelo(idx)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${v.traslado_activo === false ? 'bg-gray-300 dark:bg-zinc-600' : 'bg-brand-600'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v.traslado_activo === false ? 'translate-x-0.5' : 'translate-x-4'}`} />
+                </button>
               </div>
-              <div className="mt-3">
-                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado — el neto es uso interno, nunca se exporta al PDF</p>
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_costo_neto)} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_venta)} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
-                    <input type="checkbox" checked={!!v.traslado_venta_publica} onChange={() => setVueloCampo(idx, 'traslado_venta_publica', !v.traslado_venta_publica)}
+              <div className={`transition-opacity ${v.traslado_activo === false ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+                    <input type="checkbox" checked={!!v.traslado_ida} disabled={v.traslado_activo === false} onChange={() => setVueloCampo(idx, 'traslado_ida', !v.traslado_ida)}
                       className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                    {v.traslado_venta_publica ? 'Pública' : 'Privada'}
+                    Traslado ida (aeropuerto → hotel)
                   </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+                    <input type="checkbox" checked={!!v.traslado_vuelta} disabled={v.traslado_activo === false} onChange={() => setVueloCampo(idx, 'traslado_vuelta', !v.traslado_vuelta)}
+                      className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                    Traslado vuelta (hotel → aeropuerto)
+                  </label>
+                </div>
+                <div className="mt-3">
+                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado — el neto es uso interno, nunca se exporta al PDF</p>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_costo_neto)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-100 dark:disabled:bg-zinc-900" />
+                    <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_venta)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-100 dark:disabled:bg-zinc-900" />
+                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                      <input type="checkbox" checked={!!v.traslado_venta_publica} disabled={v.traslado_activo === false} onChange={() => setVueloCampo(idx, 'traslado_venta_publica', !v.traslado_venta_publica)}
+                        className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                      {v.traslado_venta_publica ? 'Pública' : 'Privada'}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

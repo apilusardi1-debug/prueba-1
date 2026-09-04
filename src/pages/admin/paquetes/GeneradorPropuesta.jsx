@@ -289,8 +289,10 @@ export default function GeneradorPropuesta() {
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
   const [tipoPropuesta, setTipoPropuesta] = useState('simple')
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
-  // Un solo vuelo en propuesta simple (como siempre); combinada permite
-  // agregar mas de uno (ej: un vuelo interno entre destinos del combinado).
+  // Se puede agregar mas de un vuelo en cualquiera de los dos tipos de
+  // propuesta: en simple son opciones alternativas (igual que con hospedaje),
+  // en combinada son tramos distintos del viaje. Lo que distingue a
+  // "combinada" es que visita mas de un destino, no la cantidad de opciones.
   const [vuelos, setVuelos] = useState([{ ...VUELO_VACIO }])
   // "Cargar desde imagen" es una operacion a la vez — leyendoVueloIdx dice
   // cual tarjeta esta leyendo, para mostrarle el estado solo a esa.
@@ -647,9 +649,10 @@ export default function GeneradorPropuesta() {
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
 
       // El primer vuelo se genera siempre (igual que antes, aunque haya quedado
-      // vacío); los que se hayan agregado despues (combinada) solo entran si se
-      // les cargó al menos origen o destino — evita paginas en blanco por una
-      // tarjeta que se agregó y no se llegó a completar.
+      // vacío); los que se hayan agregado despues (opciones de vuelo en simple,
+      // tramos distintos en combinada) solo entran si se les cargó al menos
+      // origen o destino — evita paginas en blanco por una tarjeta que se
+      // agregó y no se llegó a completar.
       const vuelosConDatos = vuelos.filter((v, i) => i === 0 || v.origen_ciudad?.trim() || v.destino_ciudad?.trim())
       const vuelosParaPdf = await Promise.all(
         vuelosConDatos.map(async v => ({ ...v, banner_imagen: await imagenParaPdf(v.banner_imagen) }))
@@ -888,11 +891,9 @@ export default function GeneradorPropuesta() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
-          {tipoPropuesta === 'combinada' && (
-            <button onClick={agregarVuelo} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
-              + Agregar vuelo
-            </button>
-          )}
+          <button onClick={agregarVuelo} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+            + Agregar vuelo
+          </button>
         </div>
         {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}
         {vuelos.map((v, idx) => (
@@ -905,7 +906,7 @@ export default function GeneradorPropuesta() {
                   <input type="file" accept="image/*" className="hidden" disabled={leyendoVuelo}
                     onChange={e => leerImagenVuelo(idx, e.target.files[0])} />
                 </label>
-                {tipoPropuesta === 'combinada' && vuelos.length > 1 && (
+                {vuelos.length > 1 && (
                   <button onClick={() => quitarVuelo(idx)} type="button" className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
                     ✕ Quitar
                   </button>

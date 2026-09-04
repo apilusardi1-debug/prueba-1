@@ -265,11 +265,12 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   return doc
 }
 
-// Vuelos 2do a Nmo de una propuesta combinada: copia la pagina de Aereos de
-// `plantillaDoc` (un load aparte de /plantilla-aereos.pdf, igual que ya se
-// hace con la pagina de hospedaje en agregarPaginaHospedajes) y la agrega al
-// final de `doc`, ya dibujada — mismo patron que hospedajes, pero una pagina
-// por vuelo en vez de agrupar varios.
+// Vuelo 2do en adelante de la propuesta (opciones alternativas en simple,
+// tramos distintos en combinada): copia la pagina de Aereos de `plantillaDoc`
+// (un load aparte de /plantilla-aereos.pdf, igual que ya se hace con la
+// pagina de hospedaje en agregarPaginaHospedajes) y la agrega al final de
+// `doc`, ya dibujada — mismo patron que hospedajes, pero una pagina por
+// vuelo en vez de agrupar varios.
 export async function agregarPaginaAereos(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [0])
   doc.addPage(paginaPlantilla)

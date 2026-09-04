@@ -64,12 +64,17 @@ function resumenTramo(fecha, origenCiudad, origenCodigo, sale, destinoCiudad, de
   return `${fechaTxt ? `${fechaTxt} — ` : ''}${origenCiudad || '—'} (${origenCodigo || '—'}) ${sale || ''}${tramoEscala} → ${destinoCiudad || '—'} (${destinoCodigo || '—'}) ${llega || ''}`
 }
 
-// Destino real de la propuesta: si es combinada, los nombres cargados en la
-// sección Destinos (que es la fuente real ahi); si es simple, la ciudad de
-// destino del vuelo.
+// Destino real de la propuesta: si es combinada, la secuencia de lugares que
+// arman los transfers cargados (salida -> destino de cada tramo, sin repetir
+// consecutivos); si es simple, la ciudad de destino del vuelo.
 function destinoPropuesta(p) {
   if (p.tipo_propuesta === 'combinada' && (p.destinos_detalle || []).length) {
-    return p.destinos_detalle.map(d => d.nombre).filter(Boolean).join(' + ')
+    const lugares = []
+    p.destinos_detalle.forEach(d => {
+      if (d.salida && lugares[lugares.length - 1] !== d.salida) lugares.push(d.salida)
+      if (d.destino && lugares[lugares.length - 1] !== d.destino) lugares.push(d.destino)
+    })
+    return lugares.join(' + ')
   }
   return p.vuelo?.destino_ciudad || ''
 }
@@ -240,7 +245,7 @@ export default function PropuestasLista({ estado }) {
   // confirmando, no solo si hay o no traslados.
   const trasladoRuta = [vuelo.traslado_ida && 'Aeropuerto → Hotel', vuelo.traslado_vuelta && 'Hotel → Aeropuerto'].filter(Boolean).join(' · ')
   const esCombinada = cerrandoPropuesta?.tipo_propuesta === 'combinada'
-  const trayectosTransfer = esCombinada ? (cerrandoPropuesta?.destinos_detalle || []).filter(d => d.traslado?.trim()) : []
+  const trayectosTransfer = esCombinada ? (cerrandoPropuesta?.destinos_detalle || []).filter(d => d.salida?.trim() || d.destino?.trim()) : []
   const puedeAbrir = estado === 'enviada' || estado === 'cerrada'
 
   // Pago: mismo criterio que el Generador — en simple los hospedajes cargados
@@ -540,17 +545,17 @@ export default function PropuestasLista({ estado }) {
               )}
             </div>
 
-            {/* Combinada: cada destino puede tener su propio trayecto de traslado
+            {/* Combinada: cada transfer tiene su propio tramo salida -> destino
                 (distinto al fijo aeropuerto-hotel de la simple) — se listan todos
                 juntos como chequeo general antes de cerrar. */}
             {trayectosTransfer.length > 0 && (
               <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-1.5">
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Trayectos de traslado por destino</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Transfers</p>
                 {trayectosTransfer.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-zinc-300">
                     <span className="text-green-600 dark:text-green-400">✓</span>
                     <span>
-                      <span className="font-medium">{d.nombre || `Destino ${i + 1}`}:</span> {d.traslado}
+                      <span className="font-medium">{d.salida || '—'} → {d.destino || '—'}</span>
                       {(d.valor_agencia_traslado || d.valor_cliente_traslado) && (
                         <span className="text-gray-400 dark:text-zinc-500">
                           {' — '}

@@ -63,7 +63,7 @@ const HOSPEDAJE_VACIO = {
 // destino — para ver el margen de ese trayecto puntual (cada destino puede
 // tener un traslado distinto). valor_cliente_traslado_publica decide si ese
 // valor de venta se le muestra al cliente. El neto nunca se exporta al PDF.
-const DESTINO_VACIO = { nombre: '', traslado: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: true }
+const DESTINO_VACIO = { salida: '', destino: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: true }
 const DESTINOS_PRECARGADOS = ['Recife', 'Maragogi', 'Maceió', 'Porto de Galinhas', 'Pipa', 'Tamandaré']
 
 function escapeHtml(str) {
@@ -722,7 +722,7 @@ export default function GeneradorPropuesta() {
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
         sena: parseFloat(sena) || 0,
         tipo_propuesta: tipoPropuesta,
-        destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.nombre.trim()) : null,
+        destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
         // "vuelo" queda como el primero, para todo lo que ya lee ese campo
         // (modal de cierre, PDF de cierre) sin cambios. "vuelos" es el array
         // completo — en combinada puede haber mas de uno.
@@ -856,9 +856,9 @@ export default function GeneradorPropuesta() {
         {tipoPropuesta === 'combinada' && (
           <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-zinc-800">
             <div className="flex items-center justify-between pt-3">
-              <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Destinos</p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Transfers</p>
               <button onClick={agregarDestino} type="button" className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
-                + Agregar destino
+                + Agregar transfer
               </button>
             </div>
             <datalist id="destinos-precargados">
@@ -867,7 +867,7 @@ export default function GeneradorPropuesta() {
             {destinos.map((d, idx) => (
               <div key={idx} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Destino {idx + 1}</p>
+                  <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Transfer {idx + 1}</p>
                   {destinos.length > 1 && (
                     <button onClick={() => quitarDestino(idx)} type="button" className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
                       ✕ Quitar
@@ -875,13 +875,13 @@ export default function GeneradorPropuesta() {
                   )}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <input value={d.nombre} onChange={e => setDestinoCampo(idx, 'nombre', e.target.value)} placeholder="Nombre del destino (Ej: Buzios)" list="destinos-precargados"
+                  <input value={d.salida} onChange={e => setDestinoCampo(idx, 'salida', e.target.value)} placeholder="Salida (Ej: Recife)" list="destinos-precargados"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <input value={d.traslado} onChange={e => setDestinoCampo(idx, 'traslado', e.target.value)} placeholder="Traslado por destino (Ej: Traslado privado aeropuerto-hotel)"
+                  <input value={d.destino} onChange={e => setDestinoCampo(idx, 'destino', e.target.value)} placeholder="Destino (Ej: Maragogi)" list="destinos-precargados"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado de este destino — el neto es uso interno, nunca se exporta al PDF</p>
+                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta de este transfer — el neto es uso interno, nunca se exporta al PDF</p>
                   <div className="grid sm:grid-cols-3 gap-3">
                     <input type="text" inputMode="numeric" value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

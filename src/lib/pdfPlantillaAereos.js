@@ -62,18 +62,11 @@ function textoPasajeros(adultos, menores, edades) {
 
 // Todas las coordenadas vienen de leer el PDF de referencia real con pdfjs-dist
 // (texto embebido, no una imagen) — son puntos PDF exactos, no aproximaciones.
-export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
-  const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
-  const doc = await PDFDocument.load(plantillaBytes)
-  doc.registerFontkit(fontkit)
-
-  // Nos quedamos solo con la pagina 1 (Aereos); la 2 era el hospedaje de muestra del template.
-  while (doc.getPageCount() > 1) doc.removePage(1)
-  const page = doc.getPage(0)
-
-  const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
-  const bebas = await doc.embedFont(fontBytes)
-
+// Dibuja UNA pagina de Aereos ya insertada en `doc` (la deja lista para
+// guardar) — separado de generarPaginaAereosPDF/agregarPaginaAereos para que
+// una propuesta combinada, con mas de un vuelo, pueda repetir esto por cada
+// uno agregando paginas en vez de reescribir la logica.
+async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
   function tapar(x, y, w, h, color) {
     page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
   }
@@ -249,6 +242,36 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   if (vuelo.banner_link) {
     agregarLinkBanner(page, doc, vuelo.banner_link)
   }
+}
+
+// Primer vuelo de la propuesta: arma el documento entero desde la plantilla
+// real (pagina de Aereos + una de hospedaje de muestra, que se descarta) y
+// devuelve `doc` ya con esa primera pagina dibujada — mismo comportamiento de
+// siempre para propuesta simple (un solo vuelo).
+export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
+  const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+  const doc = await PDFDocument.load(plantillaBytes)
+  doc.registerFontkit(fontkit)
+
+  // Nos quedamos solo con la pagina 1 (Aereos); la 2 era el hospedaje de muestra del template.
+  while (doc.getPageCount() > 1) doc.removePage(1)
+  const page = doc.getPage(0)
+
+  const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
+  const bebas = await doc.embedFont(fontBytes)
+
+  await dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo })
 
   return doc
+}
+
+// Vuelos 2do a Nmo de una propuesta combinada: copia la pagina de Aereos de
+// `plantillaDoc` (un load aparte de /plantilla-aereos.pdf, igual que ya se
+// hace con la pagina de hospedaje en agregarPaginaHospedajes) y la agrega al
+// final de `doc`, ya dibujada — mismo patron que hospedajes, pero una pagina
+// por vuelo en vez de agrupar varios.
+export async function agregarPaginaAereos(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
+  const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [0])
+  doc.addPage(paginaPlantilla)
+  await dibujarPaginaAereos(doc, paginaPlantilla, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo })
 }

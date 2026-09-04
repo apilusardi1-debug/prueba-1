@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
-import { generarPaginaAereosPDF } from '../../../lib/pdfPlantillaAereos.js'
+import { generarPaginaAereosPDF, agregarPaginaAereos } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
@@ -289,7 +289,12 @@ export default function GeneradorPropuesta() {
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
   const [tipoPropuesta, setTipoPropuesta] = useState('simple')
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
-  const [vuelo, setVuelo] = useState(VUELO_VACIO)
+  // Un solo vuelo en propuesta simple (como siempre); combinada permite
+  // agregar mas de uno (ej: un vuelo interno entre destinos del combinado).
+  const [vuelos, setVuelos] = useState([{ ...VUELO_VACIO }])
+  // "Cargar desde imagen" es una operacion a la vez — leyendoVueloIdx dice
+  // cual tarjeta esta leyendo, para mostrarle el estado solo a esa.
+  const [leyendoVueloIdx, setLeyendoVueloIdx] = useState(null)
   const [leyendoVuelo, setLeyendoVuelo] = useState(false)
   const [reintentandoVuelo, setReintentandoVuelo] = useState(false)
   const [errorVuelo, setErrorVuelo] = useState('')
@@ -425,15 +430,22 @@ export default function GeneradorPropuesta() {
     setSugerencias([])
   }
 
-  function setVueloCampo(campo, valor) {
-    setVuelo(v => ({ ...v, [campo]: valor }))
+  function setVueloCampo(idx, campo, valor) {
+    setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, [campo]: valor } : v))
   }
-  function setPrecioVuelo(moneda, campo, valor) {
-    setVuelo(v => ({ ...v, precios: { ...v.precios, [moneda]: { ...v.precios[moneda], [campo]: valor } } }))
+  function setPrecioVuelo(idx, moneda, campo, valor) {
+    setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, precios: { ...v.precios, [moneda]: { ...v.precios[moneda], [campo]: valor } } } : v))
   }
 
-  function cambiarCantidadEquipaje(clave, delta) {
-    setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, [clave]: Math.max(0, (v.equipaje?.[clave] || 0) + delta) } }))
+  function cambiarCantidadEquipaje(idx, clave, delta) {
+    setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, equipaje: { ...v.equipaje, [clave]: Math.max(0, (v.equipaje?.[clave] || 0) + delta) } } : v))
+  }
+
+  function agregarVuelo() {
+    setVuelos(prev => [...prev, { ...VUELO_VACIO }])
+  }
+  function quitarVuelo(idx) {
+    setVuelos(prev => prev.filter((_, i) => i !== idx))
   }
 
   function setEdadMenor(idx, valor) {
@@ -444,11 +456,11 @@ export default function GeneradorPropuesta() {
     })
   }
 
-  async function subirImagenBanner(archivo) {
+  async function subirImagenBanner(idx, archivo) {
     if (!archivo) return
     setSubiendoBanner(true)
     const { url } = await subirImagen(archivo)
-    if (url) setVueloCampo('banner_imagen', url)
+    if (url) setVueloCampo(idx, 'banner_imagen', url)
     setSubiendoBanner(false)
   }
 
@@ -492,11 +504,12 @@ export default function GeneradorPropuesta() {
   // una invocación fresca cada vez, antes de rendirnos — la agencia no
   // debería tener que reintentar a mano para algo que se resuelve solo en
   // unos segundos.
-  async function leerImagenVuelo(archivo) {
+  async function leerImagenVuelo(idx, archivo) {
     if (!archivo) return
     setErrorVuelo('')
     setReintentandoVuelo(false)
     setLeyendoVuelo(true)
+    setLeyendoVueloIdx(idx)
     try {
       const { base64, mediaType } = await archivoAImagenComprimida(archivo)
       let data, error
@@ -511,19 +524,21 @@ export default function GeneradorPropuesta() {
       if (error || data?.error) {
         setErrorVuelo(data?.error || error?.message || 'No se pudo leer la imagen.')
       } else if (data?.vuelo) {
-        setVuelo(v => {
+        setVuelos(prev => prev.map((v, i) => {
+          if (i !== idx) return v
           const next = { ...v }
           for (const campo of Object.keys(data.vuelo)) {
             if (data.vuelo[campo]) next[campo] = data.vuelo[campo]
           }
           return next
-        })
+        }))
       }
     } catch (_) {
       setErrorVuelo('No se pudo leer la imagen.')
     }
     setReintentandoVuelo(false)
     setLeyendoVuelo(false)
+    setLeyendoVueloIdx(null)
   }
 
   function agregarHospedaje() {
@@ -631,15 +646,32 @@ export default function GeneradorPropuesta() {
       await cargarFuente()
       const cliente = { nombre: busqCliente.trim(), whatsapp: clienteWhatsapp.trim() }
 
-      const vueloParaPdf = { ...vuelo, banner_imagen: await imagenParaPdf(vuelo.banner_imagen) }
+      // El primer vuelo se genera siempre (igual que antes, aunque haya quedado
+      // vacío); los que se hayan agregado despues (combinada) solo entran si se
+      // les cargó al menos origen o destino — evita paginas en blanco por una
+      // tarjeta que se agregó y no se llegó a completar.
+      const vuelosConDatos = vuelos.filter((v, i) => i === 0 || v.origen_ciudad?.trim() || v.destino_ciudad?.trim())
+      const vuelosParaPdf = await Promise.all(
+        vuelosConDatos.map(async v => ({ ...v, banner_imagen: await imagenParaPdf(v.banner_imagen) }))
+      )
       // Un campo de edad por menor (en vez de una lista en texto libre) -- se unen
       // en un solo string para el PDF y el guardado, igual que antes.
       const edadesMenoresTexto = edadesMenores.slice(0, parseInt(cantidadMenores) || 0).filter(Boolean).join(', ')
 
-      // Pagina de Aereos: se genera sobre el PDF de referencia real (texto vectorial,
-      // no una captura de pantalla), reemplazando solo los datos que cambian por cliente.
-      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vueloParaPdf })
-      const { width: anchoPt, height: altoPt } = doc.getPage(0).getSize()
+      // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
+      // vectorial, no una captura de pantalla) — la primera arma el documento
+      // entero (como siempre), el resto se agrega al final, una pagina por
+      // vuelo, mismo patron que las paginas de Hospedajes.
+      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0] })
+      if (vuelosParaPdf.length > 1) {
+        const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+        const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
+        const bebasAereosBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
+        const bebasAereos = await doc.embedFont(bebasAereosBytes)
+        for (let i = 1; i < vuelosParaPdf.length; i++) {
+          await agregarPaginaAereos(doc, plantillaAereosDoc, bebasAereos, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[i] })
+        }
+      }
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
       const hospedajesParaPdf = await Promise.all(
@@ -683,7 +715,11 @@ export default function GeneradorPropuesta() {
         sena: parseFloat(sena) || 0,
         tipo_propuesta: tipoPropuesta,
         destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.nombre.trim()) : null,
-        vuelo,
+        // "vuelo" queda como el primero, para todo lo que ya lee ese campo
+        // (modal de cierre, PDF de cierre) sin cambios. "vuelos" es el array
+        // completo — en combinada puede haber mas de uno.
+        vuelo: vuelosConDatos[0] || VUELO_VACIO,
+        vuelos: vuelosConDatos,
         hospedajes_detalle: hospedajesValidos,
         items: [],
         total,
@@ -702,7 +738,7 @@ export default function GeneradorPropuesta() {
       setSena('')
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
-      setVuelo(VUELO_VACIO)
+      setVuelos([{ ...VUELO_VACIO }])
       setHospedajes([{ ...HOSPEDAJE_VACIO, items: [''] }])
     } catch (e) {
       setError('Error al generar la propuesta: ' + (e.message || 'intentá de nuevo'))
@@ -849,183 +885,202 @@ export default function GeneradorPropuesta() {
       </div>
 
       {/* Vuelo */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-        <div className="flex items-center justify-between gap-3">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
-          <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer whitespace-nowrap">
-            {leyendoVuelo ? (reintentandoVuelo ? 'Reintentando...' : 'Leyendo imagen...') : '+ Cargar desde imagen'}
-            <input type="file" accept="image/*" className="hidden" disabled={leyendoVuelo}
-              onChange={e => leerImagenVuelo(e.target.files[0])} />
-          </label>
-        </div>
-        {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}
-        <div className="grid sm:grid-cols-2 gap-3">
-          <input value={vuelo.origen_ciudad} onChange={e => setVueloCampo('origen_ciudad', e.target.value)} placeholder="Ciudad de origen (Ej: Ezeiza)"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          <input value={vuelo.origen_codigo} onChange={e => setVueloCampo('origen_codigo', e.target.value.toUpperCase())} placeholder="Código origen (Ej: EZE)"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          <input value={vuelo.destino_ciudad} onChange={e => setVueloCampo('destino_ciudad', e.target.value)} placeholder="Ciudad de destino (Ej: Recife)"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          <input value={vuelo.destino_codigo} onChange={e => setVueloCampo('destino_codigo', e.target.value.toUpperCase())} placeholder="Código destino (Ej: REC)"
-            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-        </div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha ida</label>
-            <input type="date" value={vuelo.ida_fecha} onChange={e => setVueloCampo('ida_fecha', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (ida)</label>
-            <input type="time" value={vuelo.ida_sale} onChange={e => setVueloCampo('ida_sale', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (ida)</label>
-            <input type="time" value={vuelo.ida_llega} onChange={e => setVueloCampo('ida_llega', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (ida) — opcional, dejalo vacío si es directo</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <input value={vuelo.ida_escala_ciudad} onChange={e => setVueloCampo('ida_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <input value={vuelo.ida_escala_codigo} onChange={e => setVueloCampo('ida_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
-              <input type="time" value={vuelo.ida_escala_llega} onChange={e => setVueloCampo('ida_escala_llega', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
-              <input type="time" value={vuelo.ida_escala_sale} onChange={e => setVueloCampo('ida_escala_sale', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-          </div>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha vuelta</label>
-            <input type="date" value={vuelo.vuelta_fecha} onChange={e => setVueloCampo('vuelta_fecha', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (vuelta)</label>
-            <input type="time" value={vuelo.vuelta_sale} onChange={e => setVueloCampo('vuelta_sale', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (vuelta)</label>
-            <input type="time" value={vuelo.vuelta_llega} onChange={e => setVueloCampo('vuelta_llega', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (vuelta) — opcional, dejalo vacío si es directo</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <input value={vuelo.vuelta_escala_ciudad} onChange={e => setVueloCampo('vuelta_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <input value={vuelo.vuelta_escala_codigo} onChange={e => setVueloCampo('vuelta_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
-              <input type="time" value={vuelo.vuelta_escala_llega} onChange={e => setVueloCampo('vuelta_escala_llega', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
-              <input type="time" value={vuelo.vuelta_escala_sale} onChange={e => setVueloCampo('vuelta_escala_sale', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
-          <div className="flex flex-wrap gap-3">
-            {EQUIPAJE_OPCIONES.map(op => (
-              <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
-                <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{vuelo.equipaje?.[op.clave] || 0}</span>
-                <div className="flex flex-col gap-0.5">
-                  <button type="button" onClick={() => cambiarCantidadEquipaje(op.clave, 1)}
-                    className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 5L5 1L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </button>
-                  <button type="button" onClick={() => cambiarCantidadEquipaje(op.clave, -1)}
-                    className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {(vuelo.equipaje?.extra || 0) > 0 && (
-            <input value={vuelo.equipaje?.extraDescripcion || ''} onChange={e => setVuelo(v => ({ ...v, equipaje: { ...v.equipaje, extraDescripcion: e.target.value } }))}
-              placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
-              className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          {tipoPropuesta === 'combinada' && (
+            <button onClick={agregarVuelo} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
+              + Agregar vuelo
+            </button>
           )}
         </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Precio del vuelo por moneda (opcional, se carga a mano)</p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              { clave: 'ars', label: 'Pesos argentinos (ARS$)' },
-              { clave: 'brl', label: 'Reales (R$)' },
-              { clave: 'usd', label: 'Dólares (U$D)' },
-            ].map(m => (
-              <div key={m.clave} className="space-y-1.5">
-                <input type="text" inputMode="numeric" value={formatearMiles(vuelo.precios[m.clave].monto)}
-                  onChange={e => setPrecioVuelo(m.clave, 'monto', soloDigitos(e.target.value))} placeholder={m.label}
+        {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}
+        {vuelos.map((v, idx) => (
+          <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Vuelo {idx + 1}</p>
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer whitespace-nowrap">
+                  {leyendoVuelo && leyendoVueloIdx === idx ? (reintentandoVuelo ? 'Reintentando...' : 'Leyendo imagen...') : '+ Cargar desde imagen'}
+                  <input type="file" accept="image/*" className="hidden" disabled={leyendoVuelo}
+                    onChange={e => leerImagenVuelo(idx, e.target.files[0])} />
+                </label>
+                {tipoPropuesta === 'combinada' && vuelos.length > 1 && (
+                  <button onClick={() => quitarVuelo(idx)} type="button" className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
+                    ✕ Quitar
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input value={v.origen_ciudad} onChange={e => setVueloCampo(idx, 'origen_ciudad', e.target.value)} placeholder="Ciudad de origen (Ej: Ezeiza)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={v.origen_codigo} onChange={e => setVueloCampo(idx, 'origen_codigo', e.target.value.toUpperCase())} placeholder="Código origen (Ej: EZE)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={v.destino_ciudad} onChange={e => setVueloCampo(idx, 'destino_ciudad', e.target.value)} placeholder="Ciudad de destino (Ej: Recife)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={v.destino_codigo} onChange={e => setVueloCampo(idx, 'destino_codigo', e.target.value.toUpperCase())} placeholder="Código destino (Ej: REC)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha ida</label>
+                <input type="date" value={v.ida_fecha} onChange={e => setVueloCampo(idx, 'ida_fecha', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (ida)</label>
+                <input type="time" value={v.ida_sale} onChange={e => setVueloCampo(idx, 'ida_sale', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (ida)</label>
+                <input type="time" value={v.ida_llega} onChange={e => setVueloCampo(idx, 'ida_llega', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (ida) — opcional, dejalo vacío si es directo</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <input value={v.ida_escala_ciudad} onChange={e => setVueloCampo(idx, 'ida_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
-                  <input type="checkbox" checked={!!vuelo.precios[m.clave].publica}
-                    onChange={() => setPrecioVuelo(m.clave, 'publica', !vuelo.precios[m.clave].publica)}
+                <input value={v.ida_escala_codigo} onChange={e => setVueloCampo(idx, 'ida_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
+                  <input type="time" value={v.ida_escala_llega} onChange={e => setVueloCampo(idx, 'ida_escala_llega', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
+                  <input type="time" value={v.ida_escala_sale} onChange={e => setVueloCampo(idx, 'ida_escala_sale', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                </div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Fecha vuelta</label>
+                <input type="date" value={v.vuelta_fecha} onChange={e => setVueloCampo(idx, 'vuelta_fecha', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale (vuelta)</label>
+                <input type="time" value={v.vuelta_sale} onChange={e => setVueloCampo(idx, 'vuelta_sale', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega (vuelta)</label>
+                <input type="time" value={v.vuelta_llega} onChange={e => setVueloCampo(idx, 'vuelta_llega', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Escala (vuelta) — opcional, dejalo vacío si es directo</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <input value={v.vuelta_escala_ciudad} onChange={e => setVueloCampo(idx, 'vuelta_escala_ciudad', e.target.value)} placeholder="Ciudad de escala (Ej: San Pablo)"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <input value={v.vuelta_escala_codigo} onChange={e => setVueloCampo(idx, 'vuelta_escala_codigo', e.target.value.toUpperCase())} placeholder="Código de escala (Ej: GRU)"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Llega a la escala</label>
+                  <input type="time" value={v.vuelta_escala_llega} onChange={e => setVueloCampo(idx, 'vuelta_escala_llega', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 dark:text-zinc-500 block mb-1">Sale de la escala</label>
+                  <input type="time" value={v.vuelta_escala_sale} onChange={e => setVueloCampo(idx, 'vuelta_escala_sale', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
+              <div className="flex flex-wrap gap-3">
+                {EQUIPAJE_OPCIONES.map(op => (
+                  <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
+                    <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{v.equipaje?.[op.clave] || 0}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <button type="button" onClick={() => cambiarCantidadEquipaje(idx, op.clave, 1)}
+                        className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 5L5 1L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </button>
+                      <button type="button" onClick={() => cambiarCantidadEquipaje(idx, op.clave, -1)}
+                        className="text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 leading-none p-0.5">
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(v.equipaje?.extra || 0) > 0 && (
+                <input value={v.equipaje?.extraDescripcion || ''} onChange={e => setVuelos(prev => prev.map((vv, i) => i === idx ? { ...vv, equipaje: { ...vv.equipaje, extraDescripcion: e.target.value } } : vv))}
+                  placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
+                  className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              )}
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Precio del vuelo por moneda (opcional, se carga a mano)</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {[
+                  { clave: 'ars', label: 'Pesos argentinos (ARS$)' },
+                  { clave: 'brl', label: 'Reales (R$)' },
+                  { clave: 'usd', label: 'Dólares (U$D)' },
+                ].map(m => (
+                  <div key={m.clave} className="space-y-1.5">
+                    <input type="text" inputMode="numeric" value={formatearMiles(v.precios[m.clave].monto)}
+                      onChange={e => setPrecioVuelo(idx, m.clave, 'monto', soloDigitos(e.target.value))} placeholder={m.label}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                      <input type="checkbox" checked={!!v.precios[m.clave].publica}
+                        onChange={() => setPrecioVuelo(idx, m.clave, 'publica', !v.precios[m.clave].publica)}
+                        className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                      {v.precios[m.clave].publica ? 'Pública' : 'Privada'}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
+                <input type="text" inputMode="numeric" value={formatearMiles(v.costo_pasajes)} onChange={e => setVueloCampo(idx, 'costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+                  <input type="checkbox" checked={!!v.traslado_ida} onChange={() => setVueloCampo(idx, 'traslado_ida', !v.traslado_ida)}
                     className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  {vuelo.precios[m.clave].publica ? 'Pública' : 'Privada'}
+                  Traslado ida (aeropuerto → hotel)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
+                  <input type="checkbox" checked={!!v.traslado_vuelta} onChange={() => setVueloCampo(idx, 'traslado_vuelta', !v.traslado_vuelta)}
+                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                  Traslado vuelta (hotel → aeropuerto)
                 </label>
               </div>
-            ))}
+            </div>
+            <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Banner "ver actividades" (opcional — si lo dejás vacío, no aparece en el PDF)</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <input value={v.banner_destino} onChange={e => setVueloCampo(idx, 'banner_destino', e.target.value)} placeholder="Destino a mostrar (Ej: Porto)"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <input value={v.banner_link} onChange={e => setVueloCampo(idx, 'banner_link', e.target.value)} placeholder="Link de actividades"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <label className="mt-2 inline-block text-xs text-brand-600 dark:text-brand-400 cursor-pointer">
+                {subiendoBanner ? 'Subiendo...' : v.banner_imagen ? '✓ Imagen del banner cargada — cambiar' : '+ Imagen del banner'}
+                <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenBanner(idx, e.target.files[0])} />
+              </label>
+            </div>
           </div>
-          <div className="mt-3">
-            <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Costo interno — uso interno, no se exporta al PDF</p>
-            <input type="text" inputMode="numeric" value={formatearMiles(vuelo.costo_pasajes)} onChange={e => setVueloCampo('costo_pasajes', soloDigitos(e.target.value))} placeholder="Costo interno de los pasajes"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Traslados privados incluidos</p>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
-              <input type="checkbox" checked={!!vuelo.traslado_ida} onChange={() => setVueloCampo('traslado_ida', !vuelo.traslado_ida)}
-                className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-              Traslado ida (aeropuerto → hotel)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">
-              <input type="checkbox" checked={!!vuelo.traslado_vuelta} onChange={() => setVueloCampo('traslado_vuelta', !vuelo.traslado_vuelta)}
-                className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-              Traslado vuelta (hotel → aeropuerto)
-            </label>
-          </div>
-        </div>
-        <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Banner "ver actividades" (opcional — si lo dejás vacío, no aparece en el PDF)</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <input value={vuelo.banner_destino} onChange={e => setVueloCampo('banner_destino', e.target.value)} placeholder="Destino a mostrar (Ej: Porto)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <input value={vuelo.banner_link} onChange={e => setVueloCampo('banner_link', e.target.value)} placeholder="Link de actividades"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <label className="mt-2 inline-block text-xs text-brand-600 dark:text-brand-400 cursor-pointer">
-            {subiendoBanner ? 'Subiendo...' : vuelo.banner_imagen ? '✓ Imagen del banner cargada — cambiar' : '+ Imagen del banner'}
-            <input type="file" accept="image/*" className="hidden" onChange={e => subirImagenBanner(e.target.files[0])} />
-          </label>
-        </div>
+        ))}
       </div>
 
       {/* Hospedajes */}

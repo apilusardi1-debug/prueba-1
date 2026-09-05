@@ -122,6 +122,10 @@ export default function PropuestasLista({ estado }) {
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
   const [vencimiento, setVencimiento] = useState('')
   const [sena, setSena] = useState('')
+  // Valor equivalente en reales (BRL) "congelado" a un tipo de cambio fijado ese
+  // dia — dato manual (no hay conversion automatica), opcional: si se deja
+  // vacio, esa linea no aparece en el PDF de cierre.
+  const [valorCongeladoBrl, setValorCongeladoBrl] = useState('')
   const [generandoCierre, setGenerandoCierre] = useState(false)
   const [errorCierre, setErrorCierre] = useState('')
 
@@ -194,6 +198,7 @@ export default function PropuestasLista({ estado }) {
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
     setVencimiento(p.vencimiento_saldo || '')
     setSena(p.sena != null ? String(p.sena) : '')
+    setValorCongeladoBrl(p.valor_congelado_brl != null ? String(p.valor_congelado_brl) : '')
     setErrorCierre('')
   }
 
@@ -208,6 +213,7 @@ export default function PropuestasLista({ estado }) {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
         sena: parseFloat(sena) || 0,
+        valor_congelado_brl: valorCongeladoBrl ? parseFloat(valorCongeladoBrl) : null,
         // Guardamos solo el vuelo y el hospedaje que el cliente eligio (si habia
         // mas de una opcion ofrecida) — asi el PDF de cierre y la propuesta ya
         // cerrada quedan con el dato correcto, sin ambiguedad.
@@ -755,14 +761,25 @@ export default function PropuestasLista({ estado }) {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Vencimiento del saldo</label>
-              {estado === 'enviada' ? (
-                <input type="date" value={vencimiento} onChange={e => setVencimiento(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-              ) : (
-                <p className="text-sm text-gray-700 dark:text-zinc-300">{vencimiento ? new Date(vencimiento + 'T00:00:00').toLocaleDateString('es-AR') : 'No definido'}</p>
-              )}
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Vencimiento del saldo</label>
+                {estado === 'enviada' ? (
+                  <input type="date" value={vencimiento} onChange={e => setVencimiento(e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                ) : (
+                  <p className="text-sm text-gray-700 dark:text-zinc-300">{vencimiento ? new Date(vencimiento + 'T00:00:00').toLocaleDateString('es-AR') : 'No definido'}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Valor congelado en reales (opcional)</label>
+                {estado === 'enviada' ? (
+                  <input type="text" inputMode="numeric" value={formatearMiles(valorCongeladoBrl)} onChange={e => setValorCongeladoBrl(soloDigitos(e.target.value))} placeholder="R$"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                ) : (
+                  <p className="text-sm text-gray-700 dark:text-zinc-300">{valorCongeladoBrl ? `R$ ${formatearNumero(valorCongeladoBrl)}` : 'No definido'}</p>
+                )}
+              </div>
             </div>
 
             {errorCierre && <p className="text-xs text-red-500">{errorCierre}</p>}

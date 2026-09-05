@@ -408,45 +408,93 @@ export async function generarPDFCierre(propuesta) {
     page.drawEllipse({ x, y: yTexto + size * 0.32, xScale: 1.8, yScale: 1.8, color: NAVY_TXT })
   }
 
-  // Bloque de pago en prosa (total, pagado, saldo, vencimiento) con los montos
-  // y la fecha resaltados en negrita — mismo formato que "Observaciones
-  // importantes" en vez de renglones sueltos tipo ficha tecnica. Los dos
-  // parrafos de esta sección van unificados en tamaño y cada uno con su
-  // propio punto, como los items de esa misma pagina de observaciones.
+  // Checklist con TODO lo que se le resume al cliente en esta segunda propuesta
+  // (paquete ya elegido) — mismo contenido que se le manda armado a mano por
+  // WhatsApp, pero acá sale directo de los campos reales de la propuesta en
+  // vez de tipearse de nuevo. Cada item es un parrafo propio (bullet + texto
+  // con los valores en negrita), apilados uno debajo del otro segun las lineas
+  // que ocupe cada uno — mismo mecanismo que ya usaba el bloque de pago viejo.
   const totalTxt = `${moneda}$ ${formatearNumero(total)}`
   const saldoTxt = `${moneda}$ ${formatearNumero(saldo)}`
   const senaTxt = `${moneda}$ ${formatearNumero(sena)}`
-  const segmentosPago = [{ texto: 'El valor total del paquete es de' }, { texto: `${totalTxt}${sena > 0 ? '.' : ','}`, bold: true }]
-  if (sena > 0) {
-    segmentosPago.push(
-      { texto: 'Ya se registra un pago de' }, { texto: `${senaTxt},`, bold: true },
-      { texto: 'quedando un saldo pendiente de' },
-    )
-  } else {
-    segmentosPago.push({ texto: 'con un saldo pendiente de' })
-  }
-  segmentosPago.push({ texto: `${saldoTxt}${propuesta.vencimiento_saldo ? ',' : '.'}`, bold: true })
-  if (propuesta.vencimiento_saldo) {
-    segmentosPago.push(
-      { texto: 'con vencimiento el' }, { texto: fechaCorta(propuesta.vencimiento_saldo), bold: true },
-      { texto: '(hasta 40 días antes del check-in).' },
-    )
-  }
-  const SIZE_ITEM = 12
-  const GAP_ITEM = 15
-  const X_TEXTO = 39
-  const Y_PAGO = 200
-  bullet(28, Y_PAGO, SIZE_ITEM)
-  const lineasPagoUsadas = dibujarParrafoRico(segmentosPago, X_TEXTO, Y_PAGO, SIZE_ITEM, 520, GAP_ITEM, NAVY_TXT)
+  const nombreMoneda = moneda === 'ARS' ? 'pesos argentinos' : (moneda === 'BRL' ? 'reales' : moneda)
 
-  // El parrafo de condiciones va pegado justo debajo del bloque de pago (antes
-  // arrancaba en un y fijo, muy lejos si el bloque de arriba salía corto) —
-  // se calcula la posicion segun cuantas lineas ocupo realmente ese bloque.
-  const yCondiciones = Y_PAGO - (lineasPagoUsadas - 1) * GAP_ITEM - GAP_ITEM - 5
-  bullet(28, yCondiciones, SIZE_ITEM)
-  const parrafoPago = 'El pago puede realizarse por transferencia en pesos argentinos o dólares, o en cuotas en dólares con el valor en reales congelado al tipo de cambio del día de la operación. El valor en reales se mantiene fijo: la única variación posible es en la conversión de pesos a reales al momento del pago.'
-  const lineasPago = partirEnLineas(parrafoPago, helv, SIZE_ITEM, 520)
-  lineasPago.forEach((linea, i) => escribir(linea, X_TEXTO, yCondiciones - i * GAP_ITEM, SIZE_ITEM, NAVY_TXT, helv))
+  const itemsDetalle = []
+
+  // Vuelo: trayecto + fechas + directo/con escala, todo en un mismo renglon.
+  const hayEscala = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo || vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
+  const trayecto = (vuelo.origen_ciudad || vuelo.destino_ciudad)
+    ? `${vuelo.origen_ciudad || '—'} - ${vuelo.destino_ciudad || '—'}`
+    : ''
+  const fechasVuelo = (vuelo.ida_fecha || vuelo.vuelta_fecha)
+    ? `, del ${fechaCorta(vuelo.ida_fecha) || '—'} al ${fechaCorta(vuelo.vuelta_fecha) || '—'}`
+    : ''
+  if (trayecto) {
+    itemsDetalle.push([
+      { texto: 'Vuelos ida y vuelta:' },
+      { texto: `${trayecto}${fechasVuelo} (${hayEscala ? 'con escala' : 'ida directa'}).`, bold: true },
+    ])
+  }
+
+  // Alojamiento: noches + hospedaje + tipo de habitacion/pension elegidos.
+  if (hospedaje.nombre) {
+    const nochesTxt = hospedaje.noches ? `${hospedaje.noches} noches` : 'estadía'
+    const tipoHabitacion = hospedaje.habitacion_nombre || hospedaje.pension
+    itemsDetalle.push([
+      { texto: 'Alojamiento:' },
+      { texto: `${nochesTxt} en ${hospedaje.nombre}${tipoHabitacion ? ` (${tipoHabitacion})` : ''}.`, bold: true },
+    ])
+  }
+
+  // Traslados: mismo dato (traslados_incluidos) que ya se muestra arriba como
+  // titulo de sección, repetido acá como parte del resumen completo.
+  itemsDetalle.push([
+    { texto: 'Traslados aeropuerto-hotel (ida y vuelta):' },
+    { texto: propuesta.traslados_incluidos === false ? 'no incluidos.' : 'incluidos.', bold: true },
+  ])
+
+  // Monto total.
+  itemsDetalle.push([
+    { texto: 'Monto total del paquete:' },
+    { texto: `${totalTxt}.`, bold: true },
+  ])
+
+  // Pago inicial — solo si ya se registro (si no, el saldo de abajo ya es el total).
+  if (sena > 0) {
+    itemsDetalle.push([
+      { texto: 'Pago inicial (para confirmar la reserva):' },
+      { texto: `${senaTxt}.`, bold: true },
+    ])
+  }
+
+  // Saldo pendiente + vencimiento + equivalente en reales (si se cargó).
+  const segmentoSaldo = [
+    propuesta.vencimiento_saldo
+      ? { texto: `Saldo pendiente (vencimiento ${fechaCorta(propuesta.vencimiento_saldo)}):` }
+      : { texto: 'Saldo pendiente:' },
+    { texto: `${saldoTxt}.`, bold: true },
+  ]
+  if (propuesta.valor_congelado_brl && moneda !== 'BRL') {
+    segmentoSaldo.push({ texto: `(equivalente a R$ ${formatearNumero(propuesta.valor_congelado_brl)} valor congelado).` })
+  }
+  itemsDetalle.push(segmentoSaldo)
+
+  // Opciones para abonar el saldo — texto fijo (politica de pago de la agencia,
+  // no un dato por propuesta), pero con la moneda real de esta propuesta.
+  itemsDetalle.push([
+    { texto: `Opciones para abonar el saldo: transferencia en ${nombreMoneda}, transferencia mediante PIX, o en cuotas manteniendo el valor en reales congelado al tipo de cambio del día de cada pago.` },
+  ])
+
+  const SIZE_ITEM = 9.3
+  const GAP_ITEM = 11.2
+  const GAP_ENTRE_ITEMS = 4
+  const X_TEXTO = 39
+  let yItem = 207
+  itemsDetalle.forEach(segmentos => {
+    bullet(28, yItem, SIZE_ITEM)
+    const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, 520, GAP_ITEM, NAVY_TXT)
+    yItem -= (lineas - 1) * GAP_ITEM + GAP_ITEM + GAP_ENTRE_ITEMS
+  })
 
   return doc
 }

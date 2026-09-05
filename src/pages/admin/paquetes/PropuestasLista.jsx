@@ -447,12 +447,21 @@ export default function PropuestasLista({ estado }) {
                           </>
                         )}
                         {estado === 'cerrada' && (
-                          <button
-                            onClick={e => { e.stopPropagation(); abrirDetalle(p) }}
-                            className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 whitespace-nowrap"
-                          >
-                            Ver detalle
-                          </button>
+                          <>
+                            <button
+                              onClick={e => { e.stopPropagation(); cambiarEstado(p.id, 'enviada') }}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Volver a enviada
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); abrirDetalle(p) }}
+                              className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 whitespace-nowrap"
+                            >
+                              Ver detalle
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

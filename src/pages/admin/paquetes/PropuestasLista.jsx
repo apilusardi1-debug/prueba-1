@@ -176,10 +176,13 @@ export default function PropuestasLista({ estado }) {
 
   async function cambiarEstado(id, nuevoEstado) {
     setProcesandoId(id)
-    const { error } = await propuestasApi.actualizarEstado(id, nuevoEstado)
+    const { data, error } = await propuestasApi.actualizarEstado(id, nuevoEstado)
     setProcesandoId(null)
     if (error) { alert('No se pudo actualizar la propuesta: ' + error.message); return }
-    setPropuestas(prev => prev.filter(p => p.id !== id))
+    // Si el nuevo estado es el que esta lista muestra (ej: archivada -> enviada
+    // en la misma pagina de "enviadas"), la agregamos de vuelta en vez de solo
+    // sacarla, para que aparezca al toque sin recargar la pagina.
+    setPropuestas(prev => nuevoEstado === estado ? [data, ...prev.filter(p => p.id !== id)] : prev.filter(p => p.id !== id))
     setArchivadas(prev => prev.filter(p => p.id !== id))
     setCerrandoPropuesta(null)
   }
@@ -539,6 +542,13 @@ export default function PropuestasLista({ estado }) {
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => cambiarEstado(p.id, 'enviada')}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Volver a enviada
+                            </button>
                             <button
                               onClick={() => cambiarEstado(p.id, 'rechazada')}
                               disabled={procesandoId === p.id}

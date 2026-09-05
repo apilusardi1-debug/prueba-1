@@ -707,7 +707,11 @@ export default function GeneradorPropuesta() {
       document.body.removeChild(enlace)
       URL.revokeObjectURL(url)
 
-      await propuestasApi.create({
+      // Supabase-js no lanza excepcion si el insert falla (constraint, columna
+      // invalida, etc.) — devuelve { data: null, error }. Sin este chequeo el
+      // catch de abajo nunca se disparaba y quedaba "guardado" en pantalla
+      // aunque no se haya guardado nada en la base.
+      const { error: errorGuardado } = await propuestasApi.create({
         cliente_id: clienteSel?.id || null,
         cliente_nombre: cliente.nombre,
         cliente_whatsapp: cliente.whatsapp || null,
@@ -730,6 +734,7 @@ export default function GeneradorPropuesta() {
         moneda: hospedajesValidos[0]?.moneda === 'ARS' ? 'ARS' : (hospedajesValidos[0]?.moneda || 'BRL'),
         estado: 'enviada',
       })
+      if (errorGuardado) throw errorGuardado
 
       setExito(true)
       setBusqCliente('')

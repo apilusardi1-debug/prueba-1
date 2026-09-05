@@ -158,9 +158,10 @@ export default function PropuestasLista({ estado }) {
 
   async function cambiarEstado(id, nuevoEstado) {
     setProcesandoId(id)
-    await propuestasApi.actualizarEstado(id, nuevoEstado)
-    setPropuestas(prev => prev.filter(p => p.id !== id))
+    const { error } = await propuestasApi.actualizarEstado(id, nuevoEstado)
     setProcesandoId(null)
+    if (error) { alert('No se pudo actualizar la propuesta: ' + error.message); return }
+    setPropuestas(prev => prev.filter(p => p.id !== id))
     setCerrandoPropuesta(null)
   }
 
@@ -187,11 +188,13 @@ export default function PropuestasLista({ estado }) {
         // el dato correcto, sin ambiguedad.
         hospedajes_detalle: hospedajeElegido ? [hospedajeElegido] : cerrandoPropuesta.hospedajes_detalle,
       }
-      const { data: propuestaActualizada } = await propuestasApi.update(cerrandoPropuesta.id, datosActualizados)
+      const { data: propuestaActualizada, error: errorUpdate } = await propuestasApi.update(cerrandoPropuesta.id, datosActualizados)
+      if (errorUpdate) throw errorUpdate
       const doc = await generarPDFCierre(propuestaActualizada || { ...cerrandoPropuesta, ...datosActualizados })
       const bytes = await doc.save()
       descargarPdf(bytes, `Cierre_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
-      await propuestasApi.actualizarEstado(cerrandoPropuesta.id, 'cerrada')
+      const { error: errorEstado } = await propuestasApi.actualizarEstado(cerrandoPropuesta.id, 'cerrada')
+      if (errorEstado) throw errorEstado
       setPropuestas(prev => prev.filter(p => p.id !== cerrandoPropuesta.id))
       setCerrandoPropuesta(null)
     } catch (e) {

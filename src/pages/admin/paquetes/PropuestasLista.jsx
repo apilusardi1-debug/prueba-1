@@ -22,12 +22,14 @@ const TITULOS = {
   enviada: { titulo: 'Propuestas enviadas', vacio: 'No hay propuestas enviadas todavía.' },
   cerrada: { titulo: 'Propuestas cerradas', vacio: 'Todavía no se cerró ninguna propuesta.' },
   rechazada: { titulo: 'Propuestas rechazadas', vacio: 'No hay propuestas rechazadas.' },
+  archivada: { titulo: 'Propuestas archivadas (esperando respuesta)', vacio: 'No hay propuestas esperando respuesta.' },
 }
 
 const ESTADO_COLOR = {
   enviada: 'bg-yellow-400',
   cerrada: 'bg-green-500',
   rechazada: 'bg-red-400',
+  archivada: 'bg-blue-400',
 }
 
 const TIPO_LABEL = {
@@ -92,6 +94,11 @@ function fechasViaje(p) {
 
 export default function PropuestasLista({ estado }) {
   const [propuestas, setPropuestas] = useState([])
+  // Solo se usa en la pagina de "enviadas": las propuestas a las que ya se les
+  // eligió vuelo/hospedaje (se generó el PDF de cierre) pero todavia no se
+  // confirmaron ni rechazaron — quedan en una segunda seccion debajo, esperando
+  // la respuesta final del cliente.
+  const [archivadas, setArchivadas] = useState([])
   const [loading, setLoading] = useState(true)
   const [procesandoId, setProcesandoId] = useState(null)
   const { titulo, vacio } = TITULOS[estado] || TITULOS.enviada
@@ -124,6 +131,10 @@ export default function PropuestasLista({ estado }) {
     setLoading(true)
     const { data } = await propuestasApi.getByEstado(estado)
     setPropuestas(data || [])
+    if (estado === 'enviada') {
+      const { data: dataArchivadas } = await propuestasApi.getByEstado('archivada')
+      setArchivadas(dataArchivadas || [])
+    }
     setLoading(false)
   }
 
@@ -132,16 +143,18 @@ export default function PropuestasLista({ estado }) {
   // excursiones, se arma dinamicamente con lo que hay.
   const destinosDisponibles = useMemo(() => {
     const set = new Set()
-    for (const p of propuestas) {
+    for (const p of [...propuestas, ...archivadas]) {
       const d = destinoPropuesta(p)
       if (d) set.add(d)
     }
     return [...set].sort()
-  }, [propuestas])
+  }, [propuestas, archivadas])
 
-  const propuestasFiltradas = useMemo(() => {
+  // Mismo criterio de busqueda/filtro/orden para la lista principal y la de
+  // archivadas (comparten la misma barra de filtros arriba de la pagina).
+  function aplicarFiltros(lista) {
     const texto = busqueda.trim().toLowerCase()
-    return propuestas
+    return lista
       .filter(p => {
         if (texto) {
           const enDestino = destinoPropuesta(p).toLowerCase().includes(texto)
@@ -156,7 +169,10 @@ export default function PropuestasLista({ estado }) {
         return true
       })
       .sort(ORDENES[orden].fn)
-  }, [propuestas, busqueda, filtroTipo, filtroDestino, desde, hasta, orden])
+  }
+
+  const propuestasFiltradas = useMemo(() => aplicarFiltros(propuestas), [propuestas, busqueda, filtroTipo, filtroDestino, desde, hasta, orden])
+  const archivadasFiltradas = useMemo(() => aplicarFiltros(archivadas), [archivadas, busqueda, filtroTipo, filtroDestino, desde, hasta, orden])
 
   async function cambiarEstado(id, nuevoEstado) {
     setProcesandoId(id)
@@ -164,6 +180,7 @@ export default function PropuestasLista({ estado }) {
     setProcesandoId(null)
     if (error) { alert('No se pudo actualizar la propuesta: ' + error.message); return }
     setPropuestas(prev => prev.filter(p => p.id !== id))
+    setArchivadas(prev => prev.filter(p => p.id !== id))
     setCerrandoPropuesta(null)
   }
 
@@ -200,9 +217,12 @@ export default function PropuestasLista({ estado }) {
       const doc = await generarPDFCierre(propuestaActualizada || { ...cerrandoPropuesta, ...datosActualizados })
       const bytes = await doc.save()
       descargarPdf(bytes, `Cierre_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
-      const { error: errorEstado } = await propuestasApi.actualizarEstado(cerrandoPropuesta.id, 'cerrada')
+      // No queda cerrada todavia — pasa a "archivada" (esperando respuesta) hasta
+      // que el cliente confirme o rechace desde esa segunda seccion.
+      const { data: propuestaArchivada, error: errorEstado } = await propuestasApi.actualizarEstado(cerrandoPropuesta.id, 'archivada')
       if (errorEstado) throw errorEstado
       setPropuestas(prev => prev.filter(p => p.id !== cerrandoPropuesta.id))
+      setArchivadas(prev => [propuestaArchivada || { ...cerrandoPropuesta, ...datosActualizados, estado: 'archivada' }, ...prev])
       setCerrandoPropuesta(null)
     } catch (e) {
       setErrorCierre('No se pudo generar el cierre: ' + e.message)
@@ -422,7 +442,7 @@ export default function PropuestasLista({ estado }) {
                               disabled={procesandoId === p.id}
                               className="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 whitespace-nowrap"
                             >
-                              Cerrar
+                              Elegir
                             </button>
                           </>
                         )}
@@ -444,15 +464,107 @@ export default function PropuestasLista({ estado }) {
         </div>
       )}
 
+      {/* Segunda seccion, solo en la pagina de "enviadas": propuestas a las que
+          ya se les eligió vuelo/hospedaje y se generó el PDF de cierre, pero
+          todavia esperan que el cliente confirme o rechace. */}
+      {estado === 'enviada' && (
+        <div className="pt-6 border-t border-gray-100 dark:border-zinc-800 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Propuestas archivadas (esperando respuesta)</h2>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+              {archivadasFiltradas.length} de {archivadas.length} propuesta{archivadas.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {archivadas.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 dark:text-zinc-500 text-sm">No hay propuestas esperando respuesta.</div>
+          ) : archivadasFiltradas.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 dark:text-zinc-500 text-sm">Ningún resultado con esos filtros.</div>
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3 text-left">Cliente</th>
+                    <th className="px-5 py-3 text-left">Destino</th>
+                    <th className="px-5 py-3 text-left">Fechas</th>
+                    <th className="px-5 py-3 text-left">Tipo</th>
+                    <th className="px-5 py-3 text-left">Hospedaje</th>
+                    <th className="px-5 py-3 text-left">Total</th>
+                    <th className="px-5 py-3 text-left"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+                  {archivadasFiltradas.map(p => {
+                    const hospedajes = p.hospedajes_detalle || []
+                    const tipo = TIPO_LABEL[p.tipo_propuesta || 'simple']
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ESTADO_COLOR.archivada}`} />
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 dark:text-zinc-100 text-sm truncate">{p.cliente_nombre || '–'}</p>
+                              {p.cliente_whatsapp && (
+                                <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer"
+                                  className="text-green-600 dark:text-green-400 hover:underline text-xs">💬 {p.cliente_whatsapp}</a>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 max-w-[200px]">
+                          <p className="truncate">{destinoPropuesta(p) || '–'}</p>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 dark:text-zinc-400 text-xs whitespace-nowrap">
+                          {fechasViaje(p) || '–'}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${tipo.color}`}>{tipo.label}</span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs max-w-[160px]">
+                          {hospedajes.length === 0 && '–'}
+                          {hospedajes.length >= 1 && <span className="truncate block">{hospedajes[0].nombre}</span>}
+                        </td>
+                        <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs font-medium whitespace-nowrap">
+                          {formatPrecio(p.total, p.moneda)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => cambiarEstado(p.id, 'rechazada')}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Rechazada
+                            </button>
+                            <button
+                              onClick={() => cambiarEstado(p.id, 'cerrada')}
+                              disabled={procesandoId === p.id}
+                              className="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Confirmada
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {cerrandoPropuesta && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !generandoCierre && setCerrandoPropuesta(null)}>
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div>
               <h3 className="font-bold text-gray-900 dark:text-zinc-100">
-                {estado === 'enviada' ? `Cerrar propuesta de ${cerrandoPropuesta.cliente_nombre}` : `Propuesta de ${cerrandoPropuesta.cliente_nombre}`}
+                {estado === 'enviada' ? `Confirmar selección de ${cerrandoPropuesta.cliente_nombre}` : `Propuesta de ${cerrandoPropuesta.cliente_nombre}`}
               </h3>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
-                {estado === 'enviada' ? 'Confirmá lo que eligió el cliente para generar el PDF de cierre.' : 'Datos con los que quedó cerrada esta propuesta.'}
+                {estado === 'enviada' ? 'Confirmá lo que eligió el cliente para generar el PDF de cierre y pasarla a archivadas, esperando su respuesta final.' : 'Datos con los que quedó cerrada esta propuesta.'}
               </p>
             </div>
 
@@ -644,7 +756,7 @@ export default function PropuestasLista({ estado }) {
               {estado === 'enviada' ? (
                 <button onClick={confirmarCierre} disabled={generandoCierre}
                   className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-                  {generandoCierre ? 'Generando...' : 'Generar y cerrar'}
+                  {generandoCierre ? 'Generando...' : 'Generar y archivar'}
                 </button>
               ) : (
                 <button onClick={redescargarCierre} disabled={generandoCierre}

@@ -377,7 +377,7 @@ export const propuestasApi = {
   update: (id, data) => supabase?.from('propuestas').update(data).eq('id', id).select().single(),
   actualizarEstado: (id, estado) => supabase?.from('propuestas').update({
     estado,
-    cerrada_at: estado === 'enviada' ? null : new Date().toISOString(),
+    cerrada_at: (estado === 'cerrada' || estado === 'rechazada') ? new Date().toISOString() : null,
   }).eq('id', id).select().single(),
   delete: (id) => supabase?.from('propuestas').delete().eq('id', id),
 }

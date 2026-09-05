@@ -105,10 +105,12 @@ export default function PropuestasLista({ estado }) {
   const [hasta, setHasta] = useState('')
   const [orden, setOrden] = useState('fecha_desc')
 
-  // Modal de detalle/cierre: vuelo y cliente se muestran confirmados (no hay
-  // nada que elegir ahi), pero el hospedaje elegido por el cliente y si quiere
-  // o no los traslados si son decisiones que hay que tomar al cerrar.
+  // Modal de detalle/cierre: el cliente se muestra confirmado (no hay nada que
+  // elegir ahi), pero el vuelo y el hospedaje elegidos por el cliente (cuando
+  // se cargó mas de una opción) y si quiere o no los traslados si son
+  // decisiones que hay que tomar al cerrar.
   const [cerrandoPropuesta, setCerrandoPropuesta] = useState(null)
+  const [vueloIdx, setVueloIdx] = useState(0)
   const [hospedajeIdx, setHospedajeIdx] = useState(0)
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
   const [vencimiento, setVencimiento] = useState('')
@@ -167,6 +169,7 @@ export default function PropuestasLista({ estado }) {
 
   function abrirDetalle(p) {
     setCerrandoPropuesta(p)
+    setVueloIdx(0)
     setHospedajeIdx(0)
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
     setVencimiento(p.vencimiento_saldo || '')
@@ -179,13 +182,17 @@ export default function PropuestasLista({ estado }) {
     setErrorCierre('')
     try {
       const hospedajeElegido = (cerrandoPropuesta.hospedajes_detalle || [])[hospedajeIdx]
+      const vuelosDisponibles = cerrandoPropuesta.vuelos?.length ? cerrandoPropuesta.vuelos : (cerrandoPropuesta.vuelo ? [cerrandoPropuesta.vuelo] : [])
+      const vueloElegido = vuelosDisponibles[vueloIdx]
       const datosActualizados = {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
         sena: parseFloat(sena) || 0,
-        // Guardamos solo el hospedaje que el cliente eligio (si habia mas de uno
-        // ofrecido) — asi el PDF de cierre y la propuesta ya cerrada quedan con
-        // el dato correcto, sin ambiguedad.
+        // Guardamos solo el vuelo y el hospedaje que el cliente eligio (si habia
+        // mas de una opcion ofrecida) — asi el PDF de cierre y la propuesta ya
+        // cerrada quedan con el dato correcto, sin ambiguedad.
+        vuelo: vueloElegido || cerrandoPropuesta.vuelo,
+        vuelos: vueloElegido ? [vueloElegido] : cerrandoPropuesta.vuelos,
         hospedajes_detalle: hospedajeElegido ? [hospedajeElegido] : cerrandoPropuesta.hospedajes_detalle,
       }
       const { data: propuestaActualizada, error: errorUpdate } = await propuestasApi.update(cerrandoPropuesta.id, datosActualizados)
@@ -239,7 +246,10 @@ export default function PropuestasLista({ estado }) {
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando...</div>
 
-  const vuelo = cerrandoPropuesta?.vuelo || {}
+  // "vuelos" es el array completo cargado en el Generador; si la propuesta es
+  // vieja y no lo tiene, cae al "vuelo" singular de siempre.
+  const vuelosOpciones = cerrandoPropuesta?.vuelos?.length ? cerrandoPropuesta.vuelos : (cerrandoPropuesta?.vuelo ? [cerrandoPropuesta.vuelo] : [])
+  const vuelo = vuelosOpciones[vueloIdx] || cerrandoPropuesta?.vuelo || {}
   const hospedajesOpciones = cerrandoPropuesta?.hospedajes_detalle || []
   const tramoIda = resumenTramo(vuelo.ida_fecha, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.ida_sale, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.ida_llega, vuelo.ida_escala_ciudad, vuelo.ida_escala_codigo, vuelo.ida_escala_llega, vuelo.ida_escala_sale)
   const tramoVuelta = resumenTramo(vuelo.vuelta_fecha, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.vuelta_sale, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.vuelta_llega, vuelo.vuelta_escala_ciudad, vuelo.vuelta_escala_codigo, vuelo.vuelta_escala_llega, vuelo.vuelta_escala_sale)
@@ -446,46 +456,61 @@ export default function PropuestasLista({ estado }) {
               </p>
             </div>
 
-            {/* Cliente y vuelo: no hay nada que elegir, se muestran ya confirmados */}
-            <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-1.5">
+            {/* Cliente: no hay nada que elegir, se muestra ya confirmado */}
+            <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3">
               <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300">
                 <span className="text-green-600 dark:text-green-400">✓</span>
                 <span className="font-medium">{cerrandoPropuesta.cliente_nombre}</span>
                 {cerrandoPropuesta.cliente_whatsapp && <span className="text-xs text-gray-400 dark:text-zinc-500">· {cerrandoPropuesta.cliente_whatsapp}</span>}
               </div>
-              {tramoIda && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
-                  <span className="text-green-600 dark:text-green-400">✓</span>
-                  <span>IDA: {tramoIda}</span>
-                </div>
-              )}
-              {tramoVuelta && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
-                  <span className="text-green-600 dark:text-green-400">✓</span>
-                  <span>VUELTA: {tramoVuelta}</span>
-                </div>
-              )}
-              {(vuelo.costo_neto || vuelo.venta) && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
-                  <span className="text-green-600 dark:text-green-400">✓</span>
-                  <span>
-                    {vuelo.costo_neto && `Neto: ${formatearNumero(vuelo.costo_neto)}`}
-                    {vuelo.costo_neto && vuelo.venta && ' · '}
-                    {vuelo.venta && `Venta: ${formatearNumero(vuelo.venta)}${vuelo.venta_publica === false ? ' (privada)' : ''}`}
-                  </span>
-                </div>
-              )}
-              {(vuelo.traslado_costo_neto || vuelo.traslado_venta) && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
-                  <span className="text-green-600 dark:text-green-400">✓</span>
-                  <span>
-                    Traslado — {vuelo.traslado_costo_neto && `Neto: ${formatearNumero(vuelo.traslado_costo_neto)}`}
-                    {vuelo.traslado_costo_neto && vuelo.traslado_venta && ' · '}
-                    {vuelo.traslado_venta && `Venta: ${formatearNumero(vuelo.traslado_venta)}${vuelo.traslado_venta_publica === false ? ' (privada)' : ''}`}
-                  </span>
-                </div>
-              )}
             </div>
+
+            {/* Vuelo elegido por el cliente — seleccionable si se cargó mas de una
+                opción (igual que el hospedaje), de lo contrario solo se muestra. */}
+            {vuelosOpciones.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">
+                  {estado === 'enviada' && vuelosOpciones.length > 1 ? 'Vuelo que eligió el cliente' : 'Vuelo'}
+                </p>
+                <div className="space-y-2">
+                  {vuelosOpciones.map((v, i) => {
+                    const seleccionado = vueloIdx === i
+                    const Elemento = estado === 'enviada' ? 'button' : 'div'
+                    const ida = resumenTramo(v.ida_fecha, v.origen_ciudad, v.origen_codigo, v.ida_sale, v.destino_ciudad, v.destino_codigo, v.ida_llega, v.ida_escala_ciudad, v.ida_escala_codigo, v.ida_escala_llega, v.ida_escala_sale)
+                    const vuelta = resumenTramo(v.vuelta_fecha, v.destino_ciudad, v.destino_codigo, v.vuelta_sale, v.origen_ciudad, v.origen_codigo, v.vuelta_llega, v.vuelta_escala_ciudad, v.vuelta_escala_codigo, v.vuelta_escala_llega, v.vuelta_escala_sale)
+                    return (
+                      <Elemento key={i} type={estado === 'enviada' ? 'button' : undefined}
+                        onClick={estado === 'enviada' ? () => setVueloIdx(i) : undefined}
+                        className={`w-full border rounded-xl p-2.5 text-left transition-colors space-y-1 ${
+                          seleccionado ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700'
+                        } ${estado === 'enviada' ? 'hover:border-brand-300' : ''}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            {ida && <p className="text-xs text-gray-600 dark:text-zinc-300">IDA: {ida}</p>}
+                            {vuelta && <p className="text-xs text-gray-600 dark:text-zinc-300">VUELTA: {vuelta}</p>}
+                            {(v.costo_neto || v.venta) && (
+                              <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                {v.costo_neto && `Neto: ${formatearNumero(v.costo_neto)}`}
+                                {v.costo_neto && v.venta && ' · '}
+                                {v.venta && `Venta: ${formatearNumero(v.venta)}${v.venta_publica === false ? ' (privada)' : ''}`}
+                              </p>
+                            )}
+                            {(v.traslado_costo_neto || v.traslado_venta) && (
+                              <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                Traslado — {v.traslado_costo_neto && `Neto: ${formatearNumero(v.traslado_costo_neto)}`}
+                                {v.traslado_costo_neto && v.traslado_venta && ' · '}
+                                {v.traslado_venta && `Venta: ${formatearNumero(v.traslado_venta)}${v.traslado_venta_publica === false ? ' (privada)' : ''}`}
+                              </p>
+                            )}
+                          </div>
+                          {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
+                        </div>
+                      </Elemento>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Hospedaje elegido por el cliente — seleccionable si todavia esta enviada,
                 de lo contrario solo se muestra el que quedo elegido. */}

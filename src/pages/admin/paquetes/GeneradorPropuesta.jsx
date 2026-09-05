@@ -307,10 +307,6 @@ export default function GeneradorPropuesta() {
   // Filtro de localizacion por tarjeta de hospedaje (combinada) — clave el
   // indice de la tarjeta, valor el destino elegido ('' = todos).
   const [filtroDestinoPorIdx, setFiltroDestinoPorIdx] = useState({})
-  // Lo que ya pagó el cliente (seña) — el total sale solo (suma de los
-  // hospedajes) y el saldo se calcula solo, lo unico que se carga a mano es
-  // esto.
-  const [sena, setSena] = useState('')
   // Tipos de habitacion disponibles por hospedaje del catalogo (se cargan solos
   // al elegirlo) — clave el id del hospedaje, no la posicion en la lista: al
   // elegir varias habitaciones del mismo hotel se clonan tarjetas y las
@@ -720,7 +716,7 @@ export default function GeneradorPropuesta() {
         cantidad_menores: parseInt(cantidadMenores) || null,
         edades_menores: edadesMenoresTexto || null,
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
-        sena: parseFloat(sena) || 0,
+        sena: 0,
         tipo_propuesta: tipoPropuesta,
         destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
         // "vuelo" queda como el primero, para todo lo que ya lee ese campo
@@ -743,7 +739,6 @@ export default function GeneradorPropuesta() {
       setCantidadMenores('')
       setEdadesMenores([])
       setPresupuestoLimite('')
-      setSena('')
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
       setVuelos([{ ...VUELO_VACIO }])
@@ -1291,31 +1286,6 @@ export default function GeneradorPropuesta() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Pago: el total sale solo (suma de los hospedajes), lo unico que se
-          carga a mano es cuanto ya pago el cliente — el saldo se calcula solo. */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Pago</h3>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Saldo</label>
-            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm font-medium">
-              {formatearNumero(Math.max(total - (parseFloat(sena) || 0), 0))}
-            </p>
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Pago inicial</label>
-            <input type="text" inputMode="numeric" value={formatearMiles(sena)} onChange={e => setSena(soloDigitos(e.target.value))} placeholder="0"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 dark:text-zinc-500 mb-1 block">Valor total</label>
-            <p className="border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">
-              {formatearNumero(total)}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Generar */}

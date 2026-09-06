@@ -623,7 +623,7 @@ export default function PropuestasLista({ estado }) {
 
       {cerrandoPropuesta && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !generandoCierre && setCerrandoPropuesta(null)}>
-          <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full ${estado === 'cerrada' ? 'max-w-4xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full ${estado === 'cerrada' ? 'max-w-6xl' : 'max-w-lg'} max-h-[97vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
            <div className="space-y-4">
             <div>
               <h3 className="font-bold text-gray-900 dark:text-zinc-100">

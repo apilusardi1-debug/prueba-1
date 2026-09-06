@@ -120,6 +120,7 @@ export default function PropuestasLista({ estado }) {
   const [vueloIdx, setVueloIdx] = useState(0)
   const [hospedajeIdx, setHospedajeIdx] = useState(0)
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
+  const [seguroViaje, setSeguroViaje] = useState(false)
   const [vencimiento, setVencimiento] = useState('')
   const [sena, setSena] = useState('')
   // Valor equivalente en reales (BRL) "congelado" a un tipo de cambio fijado ese
@@ -196,6 +197,7 @@ export default function PropuestasLista({ estado }) {
     setVueloIdx(0)
     setHospedajeIdx(0)
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
+    setSeguroViaje(p.seguro_viaje ?? false)
     setVencimiento(p.vencimiento_saldo || '')
     setSena(p.sena != null ? String(p.sena) : '')
     setValorCongeladoBrl(p.valor_congelado_brl != null ? String(p.valor_congelado_brl) : '')
@@ -212,6 +214,7 @@ export default function PropuestasLista({ estado }) {
       const datosActualizados = {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
+        seguro_viaje: seguroViaje,
         sena: parseFloat(sena) || 0,
         valor_congelado_brl: valorCongeladoBrl ? parseFloat(valorCongeladoBrl) : null,
         // Guardamos solo el vuelo y el hospedaje que el cliente eligio (si habia
@@ -734,6 +737,29 @@ export default function PropuestasLista({ estado }) {
                 ))}
               </div>
             )}
+
+            {/* Seguro de viaje */}
+            <div>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">¿Incluye seguro de viaje?</p>
+              {estado === 'enviada' ? (
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setSeguroViaje(true)}
+                    className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+                      seguroViaje ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+                    }`}>
+                    Sí
+                  </button>
+                  <button type="button" onClick={() => setSeguroViaje(false)}
+                    className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+                      !seguroViaje ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+                    }`}>
+                    No
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-700 dark:text-zinc-300">{seguroViaje ? 'Sí' : 'No'}</p>
+              )}
+            </div>
 
             {/* Pago: el total sale solo (precio del hospedaje elegido, o la suma en
                 combinada) — lo unico que se carga a mano es cuanto ya pagó el

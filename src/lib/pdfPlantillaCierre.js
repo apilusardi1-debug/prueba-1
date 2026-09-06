@@ -453,6 +453,13 @@ export async function generarPDFCierre(propuesta) {
     { texto: propuesta.traslados_incluidos === false ? 'no incluidos.' : 'incluidos.', bold: true },
   ])
 
+  // Seguro de viaje — mismo criterio que traslados_incluidos (decision que se
+  // toma al cerrar, default false: no se asume incluido salvo que se marque).
+  itemsDetalle.push([
+    { texto: 'Seguro de viaje:' },
+    { texto: propuesta.seguro_viaje ? 'incluido.' : 'no incluido.', bold: true },
+  ])
+
   // Monto total.
   itemsDetalle.push([
     { texto: 'Monto total del paquete:' },

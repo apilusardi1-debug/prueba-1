@@ -824,6 +824,47 @@ export default function PropuestasLista({ estado }) {
               </div>
             </div>
 
+            {/* Documentos: dato publico (el link/archivo termina siendo lo que
+                el cliente usa para el check-in), va del lado izquierdo con el
+                resto de lo que recibe — no es informacion interna. */}
+            {estado === 'cerrada' && (
+              <>
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Aéreos</p>
+                  <input value={aereoLink} onChange={e => setAereoLink(e.target.value)} onBlur={() => guardarCampoDocumento('aereo_link', aereoLink)}
+                    placeholder="Link a la reserva/aerolínea"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
+                      {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? 'Cambiar PDF' : '+ Subir PDF')}
+                      <input type="file" accept="application/pdf" className="hidden" disabled={subiendoDocumento === 'aereo'}
+                        onChange={e => subirDocumento('aereo', e.target.files[0])} />
+                    </label>
+                    {aereoPdfUrl && (
+                      <a href={aereoPdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver PDF</a>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Hospedaje</p>
+                  <input value={hospedajeLink} onChange={e => setHospedajeLink(e.target.value)} onBlur={() => guardarCampoDocumento('hospedaje_link', hospedajeLink)}
+                    placeholder="Link a la reserva del hospedaje"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
+                      {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? 'Cambiar voucher' : '+ Subir voucher')}
+                      <input type="file" accept="application/pdf,image/*" className="hidden" disabled={subiendoDocumento === 'voucher'}
+                        onChange={e => subirDocumento('voucher', e.target.files[0])} />
+                    </label>
+                    {hospedajeVoucherUrl && (
+                      <a href={hospedajeVoucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver voucher</a>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             {errorCierre && <p className="text-xs text-red-500">{errorCierre}</p>}
 
             </div>
@@ -893,40 +934,6 @@ export default function PropuestasLista({ estado }) {
                     <p className="text-sm text-gray-700 dark:text-zinc-300 px-3 py-2">
                       {cerrandoPropuesta.cerrada_at ? new Date(cerrandoPropuesta.cerrada_at).toLocaleDateString('es-AR') : '—'}
                     </p>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Aéreos</p>
-                  <input value={aereoLink} onChange={e => setAereoLink(e.target.value)} onBlur={() => guardarCampoDocumento('aereo_link', aereoLink)}
-                    placeholder="Link a la reserva/aerolínea"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
-                      {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? 'Cambiar PDF' : '+ Subir PDF')}
-                      <input type="file" accept="application/pdf" className="hidden" disabled={subiendoDocumento === 'aereo'}
-                        onChange={e => subirDocumento('aereo', e.target.files[0])} />
-                    </label>
-                    {aereoPdfUrl && (
-                      <a href={aereoPdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver PDF</a>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Hospedaje</p>
-                  <input value={hospedajeLink} onChange={e => setHospedajeLink(e.target.value)} onBlur={() => guardarCampoDocumento('hospedaje_link', hospedajeLink)}
-                    placeholder="Link a la reserva del hospedaje"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
-                      {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? 'Cambiar voucher' : '+ Subir voucher')}
-                      <input type="file" accept="application/pdf,image/*" className="hidden" disabled={subiendoDocumento === 'voucher'}
-                        onChange={e => subirDocumento('voucher', e.target.files[0])} />
-                    </label>
-                    {hospedajeVoucherUrl && (
-                      <a href={hospedajeVoucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver voucher</a>
-                    )}
                   </div>
                 </div>
               </div>

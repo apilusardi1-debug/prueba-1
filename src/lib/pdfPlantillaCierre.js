@@ -430,48 +430,61 @@ export async function generarPDFCierre(propuesta) {
     ? `, del ${fechaCorta(vuelo.ida_fecha) || '—'} al ${fechaCorta(vuelo.vuelta_fecha) || '—'}`
     : ''
   if (trayecto) {
-    itemsDetalle.push([
+    itemsDetalle.push({ segmentos: [
       { texto: 'Vuelos ida y vuelta:' },
       { texto: `${trayecto}${fechasVuelo} (${hayEscala ? 'con escala' : 'ida directa'}).`, bold: true },
-    ])
+    ] })
+  }
+  // E-ticket del aereo: el link cargado (o, a falta de eso, el PDF subido) —
+  // uso interno hasta ahora, se agrega como renglon clickeable (toda la linea
+  // es el area del link, no una palabra suelta) para que quede accesible
+  // tambien desde el PDF que se descarga.
+  const linkAereo = propuesta.aereo_link || propuesta.aereo_pdf_url
+  if (linkAereo) {
+    itemsDetalle.push({ segmentos: [{ texto: 'E-ticket del vuelo: ver documento.', bold: true }], link: linkAereo })
   }
 
   // Alojamiento: noches + hospedaje + tipo de habitacion/pension elegidos.
   if (hospedaje.nombre) {
     const nochesTxt = hospedaje.noches ? `${hospedaje.noches} noches` : 'estadía'
     const tipoHabitacion = hospedaje.habitacion_nombre || hospedaje.pension
-    itemsDetalle.push([
+    itemsDetalle.push({ segmentos: [
       { texto: 'Alojamiento:' },
       { texto: `${nochesTxt} en ${hospedaje.nombre}${tipoHabitacion ? ` (${tipoHabitacion})` : ''}.`, bold: true },
-    ])
+    ] })
+  }
+  // Voucher del hospedaje: mismo criterio que el e-ticket del aereo.
+  const linkHospedaje = propuesta.hospedaje_link || propuesta.hospedaje_voucher_url
+  if (linkHospedaje) {
+    itemsDetalle.push({ segmentos: [{ texto: 'Voucher del hospedaje: ver documento.', bold: true }], link: linkHospedaje })
   }
 
   // Traslados: mismo dato (traslados_incluidos) que ya se muestra arriba como
   // titulo de sección, repetido acá como parte del resumen completo.
-  itemsDetalle.push([
+  itemsDetalle.push({ segmentos: [
     { texto: 'Traslados aeropuerto-hotel (ida y vuelta):' },
     { texto: propuesta.traslados_incluidos === false ? 'no incluidos.' : 'incluidos.', bold: true },
-  ])
+  ] })
 
   // Seguro de viaje — mismo criterio que traslados_incluidos (decision que se
   // toma al cerrar, default false: no se asume incluido salvo que se marque).
-  itemsDetalle.push([
+  itemsDetalle.push({ segmentos: [
     { texto: 'Seguro de viaje:' },
     { texto: propuesta.seguro_viaje ? 'incluido.' : 'no incluido.', bold: true },
-  ])
+  ] })
 
   // Monto total.
-  itemsDetalle.push([
+  itemsDetalle.push({ segmentos: [
     { texto: 'Monto total del paquete:' },
     { texto: `${totalTxt}.`, bold: true },
-  ])
+  ] })
 
   // Pago inicial — solo si ya se registro (si no, el saldo de abajo ya es el total).
   if (sena > 0) {
-    itemsDetalle.push([
+    itemsDetalle.push({ segmentos: [
       { texto: 'Pago inicial (para confirmar la reserva):' },
       { texto: `${senaTxt}.`, bold: true },
-    ])
+    ] })
   }
 
   // Saldo pendiente + vencimiento + equivalente en reales (si se cargó).
@@ -484,22 +497,30 @@ export async function generarPDFCierre(propuesta) {
   if (propuesta.valor_congelado_brl && moneda !== 'BRL') {
     segmentoSaldo.push({ texto: `(equivalente a R$ ${formatearNumero(propuesta.valor_congelado_brl)} valor congelado).` })
   }
-  itemsDetalle.push(segmentoSaldo)
+  itemsDetalle.push({ segmentos: segmentoSaldo })
 
   // Opciones para abonar el saldo — texto fijo (politica de pago de la agencia,
   // no un dato por propuesta), pero con la moneda real de esta propuesta.
-  itemsDetalle.push([
+  itemsDetalle.push({ segmentos: [
     { texto: `Opciones para abonar el saldo: transferencia en ${nombreMoneda}, transferencia mediante PIX, o en cuotas manteniendo el valor en reales congelado al tipo de cambio del día de cada pago.` },
-  ])
+  ] })
 
-  const SIZE_ITEM = 9.3
-  const GAP_ITEM = 11.2
-  const GAP_ENTRE_ITEMS = 4
+  // Achicado respecto al primer intento: con e-ticket/voucher sumados puede
+  // haber hasta 10 items — a tamaño 9.3 no entraban todos sin pisar el pie de
+  // pagina (medido renderizando el PDF real, no a ojo).
+  const SIZE_ITEM = 8.4
+  const GAP_ITEM = 9.8
+  const GAP_ENTRE_ITEMS = 2.6
   const X_TEXTO = 39
-  let yItem = 207
-  itemsDetalle.forEach(segmentos => {
+  let yItem = 211
+  itemsDetalle.forEach(({ segmentos, link }) => {
     bullet(28, yItem, SIZE_ITEM)
     const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, 520, GAP_ITEM, NAVY_TXT)
+    // Toda la linea (no solo el texto "ver documento") es el area clickeable
+    // del link, mismo criterio que el link de "VER DETALLES" del hospedaje.
+    if (link) {
+      agregarLink(page, doc, { x: 28, y: yItem - (lineas - 1) * GAP_ITEM - 4, width: 520, height: lineas * GAP_ITEM }, link)
+    }
     yItem -= (lineas - 1) * GAP_ITEM + GAP_ITEM + GAP_ENTRE_ITEMS
   })
 

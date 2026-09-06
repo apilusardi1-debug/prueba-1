@@ -169,6 +169,19 @@ export async function subirImagen(archivo) {
   return { url: data.publicUrl, error: null }
 }
 
+// Documentos operativos de una propuesta cerrada (e-ticket del aereo, voucher
+// del hospedaje) — misma logica que subirImagen pero en su propia carpeta,
+// separada de las fotos de excursiones.
+export async function subirDocumentoPropuesta(archivo, carpeta) {
+  if (!supabase) return { url: null, error: 'Sin conexión' }
+  const ext = archivo.name.split('.').pop()
+  const path = `propuestas/${carpeta}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('imagenes').upload(path, archivo)
+  if (error) return { url: null, error: error.message }
+  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}
+
 // ── Choferes ───────────────────────────────────────────────────────────────────
 export const choferesApi = {
   getAll: () => supabase?.from('choferes').select('*').order('nombre'),

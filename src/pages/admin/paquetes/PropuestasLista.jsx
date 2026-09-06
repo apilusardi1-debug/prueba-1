@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { propuestasApi } from '../../../lib/supabase.js'
+import { propuestasApi, subirDocumentoPropuesta } from '../../../lib/supabase.js'
 import { generarPDFCierre } from '../../../lib/pdfPlantillaCierre.js'
 
 function formatPrecio(n, moneda = 'BRL') {
@@ -129,6 +129,14 @@ export default function PropuestasLista({ estado }) {
   const [valorCongeladoBrl, setValorCongeladoBrl] = useState('')
   const [generandoCierre, setGenerandoCierre] = useState(false)
   const [errorCierre, setErrorCierre] = useState('')
+  // Documentos operativos de una propuesta ya cerrada (e-ticket del aereo,
+  // voucher del hospedaje) — se cargan aparte, despues de cerrada, no forman
+  // parte del flujo de confirmarCierre.
+  const [aereoLink, setAereoLink] = useState('')
+  const [aereoPdfUrl, setAereoPdfUrl] = useState('')
+  const [hospedajeLink, setHospedajeLink] = useState('')
+  const [hospedajeVoucherUrl, setHospedajeVoucherUrl] = useState('')
+  const [subiendoDocumento, setSubiendoDocumento] = useState('')
 
   useEffect(() => { cargar() }, [estado])
 
@@ -201,7 +209,30 @@ export default function PropuestasLista({ estado }) {
     setVencimiento(p.vencimiento_saldo || '')
     setSena(p.sena != null ? String(p.sena) : '')
     setValorCongeladoBrl(p.valor_congelado_brl != null ? String(p.valor_congelado_brl) : '')
+    setAereoLink(p.aereo_link || '')
+    setAereoPdfUrl(p.aereo_pdf_url || '')
+    setHospedajeLink(p.hospedaje_link || '')
+    setHospedajeVoucherUrl(p.hospedaje_voucher_url || '')
     setErrorCierre('')
+  }
+
+  // Documentos operativos (aereo/voucher) de una propuesta cerrada: se guardan
+  // aparte del flujo de cierre, al toque de subir el archivo o de sacar el
+  // foco del link — no hay un boton "Guardar" general para esto.
+  async function guardarCampoDocumento(campo, valor) {
+    if (!cerrandoPropuesta) return
+    const { error } = await propuestasApi.update(cerrandoPropuesta.id, { [campo]: valor })
+    if (error) alert('No se pudo guardar: ' + error.message)
+  }
+  async function subirDocumento(tipo, archivo) {
+    if (!archivo) return
+    setSubiendoDocumento(tipo)
+    const { url, error } = await subirDocumentoPropuesta(archivo, tipo)
+    setSubiendoDocumento('')
+    if (error) { alert('No se pudo subir el archivo: ' + error); return }
+    if (tipo === 'aereo') setAereoPdfUrl(url)
+    else setHospedajeVoucherUrl(url)
+    await guardarCampoDocumento(tipo === 'aereo' ? 'aereo_pdf_url' : 'hospedaje_voucher_url', url)
   }
 
   async function confirmarCierre() {
@@ -586,7 +617,8 @@ export default function PropuestasLista({ estado }) {
 
       {cerrandoPropuesta && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !generandoCierre && setCerrandoPropuesta(null)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full ${estado === 'cerrada' ? 'max-w-4xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+           <div className="space-y-4">
             <div>
               <h3 className="font-bold text-gray-900 dark:text-zinc-100">
                 {estado === 'enviada' ? `Confirmar selección de ${cerrandoPropuesta.cliente_nombre}` : `Propuesta de ${cerrandoPropuesta.cliente_nombre}`}
@@ -595,6 +627,9 @@ export default function PropuestasLista({ estado }) {
                 {estado === 'enviada' ? 'Confirmá lo que eligió el cliente para generar el PDF de cierre y pasarla a archivadas, esperando su respuesta final.' : 'Datos con los que quedó cerrada esta propuesta.'}
               </p>
             </div>
+
+            <div className={estado === 'cerrada' ? 'flex gap-6' : ''}>
+            <div className={`space-y-4 ${estado === 'cerrada' ? 'flex-1 min-w-0' : ''}`}>
 
             {/* Cliente: no hay nada que elegir, se muestra ya confirmado */}
             <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3">
@@ -810,6 +845,53 @@ export default function PropuestasLista({ estado }) {
 
             {errorCierre && <p className="text-xs text-red-500">{errorCierre}</p>}
 
+            </div>
+
+            {estado === 'cerrada' && (
+              <div className="flex-1 min-w-0 space-y-4 border-l border-gray-100 dark:border-zinc-800 pl-6">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Documentos</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Uso interno — no se le envían al cliente en el PDF de cierre.</p>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Aéreos</p>
+                  <input value={aereoLink} onChange={e => setAereoLink(e.target.value)} onBlur={() => guardarCampoDocumento('aereo_link', aereoLink)}
+                    placeholder="Link a la reserva/aerolínea"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
+                      {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? 'Cambiar PDF' : '+ Subir PDF')}
+                      <input type="file" accept="application/pdf" className="hidden" disabled={subiendoDocumento === 'aereo'}
+                        onChange={e => subirDocumento('aereo', e.target.files[0])} />
+                    </label>
+                    {aereoPdfUrl && (
+                      <a href={aereoPdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver PDF</a>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Hospedaje</p>
+                  <input value={hospedajeLink} onChange={e => setHospedajeLink(e.target.value)} onBlur={() => guardarCampoDocumento('hospedaje_link', hospedajeLink)}
+                    placeholder="Link a la reserva del hospedaje"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
+                      {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? 'Cambiar voucher' : '+ Subir voucher')}
+                      <input type="file" accept="application/pdf,image/*" className="hidden" disabled={subiendoDocumento === 'voucher'}
+                        onChange={e => subirDocumento('voucher', e.target.files[0])} />
+                    </label>
+                    {hospedajeVoucherUrl && (
+                      <a href={hospedajeVoucherUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 dark:text-zinc-400 hover:underline">Ver voucher</a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            </div>
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <button onClick={() => setCerrandoPropuesta(null)} disabled={generandoCierre}
                 className="text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 disabled:opacity-50">
@@ -827,6 +909,7 @@ export default function PropuestasLista({ estado }) {
                 </button>
               )}
             </div>
+           </div>
           </div>
         </div>
       )}

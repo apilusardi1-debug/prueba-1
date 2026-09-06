@@ -874,16 +874,16 @@ export default function PropuestasLista({ estado }) {
             </div>
 
             {estado === 'cerrada' && (
-              <div className="min-w-0 space-y-4 border-l border-gray-100 dark:border-zinc-800 pl-6">
+              <div className="min-w-0 space-y-4 bg-blue-50/70 dark:bg-blue-500/[0.06] border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Datos internos</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Uso interno — no se le envían al cliente en el PDF de cierre.</p>
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Datos internos</p>
+                  <p className="text-xs text-blue-700/70 dark:text-blue-400/70 mt-0.5">Uso interno — no se le envían al cliente en el PDF de cierre.</p>
                 </div>
 
                 {/* Costos: neto vs. venta de cada item — el mismo dato que ya
                     se carga en el Generador/cierre, movido aca para no
                     mezclarlo con lo que se le muestra al cliente del otro lado. */}
-                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-1.5">
+                <div className="bg-white/70 dark:bg-zinc-900/40 rounded-xl p-3 space-y-1.5">
                   <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium mb-1">Costos (neto / venta)</p>
                   {(vuelo.costo_neto || vuelo.venta) && (
                     <p className="text-xs text-gray-600 dark:text-zinc-300">

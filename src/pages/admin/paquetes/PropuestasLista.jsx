@@ -137,6 +137,10 @@ export default function PropuestasLista({ estado }) {
   const [hospedajeLink, setHospedajeLink] = useState('')
   const [hospedajeVoucherUrl, setHospedajeVoucherUrl] = useState('')
   const [subiendoDocumento, setSubiendoDocumento] = useState('')
+  // Otros datos internos: notas de paseos/excursiones y un telefono operativo
+  // (chofer, guia, hotel) distinto del whatsapp del cliente.
+  const [paseosNotas, setPaseosNotas] = useState('')
+  const [telefonoInterno, setTelefonoInterno] = useState('')
 
   useEffect(() => { cargar() }, [estado])
 
@@ -213,12 +217,14 @@ export default function PropuestasLista({ estado }) {
     setAereoPdfUrl(p.aereo_pdf_url || '')
     setHospedajeLink(p.hospedaje_link || '')
     setHospedajeVoucherUrl(p.hospedaje_voucher_url || '')
+    setPaseosNotas(p.paseos_notas || '')
+    setTelefonoInterno(p.telefono_interno || '')
     setErrorCierre('')
   }
 
-  // Documentos operativos (aereo/voucher) de una propuesta cerrada: se guardan
-  // aparte del flujo de cierre, al toque de subir el archivo o de sacar el
-  // foco del link — no hay un boton "Guardar" general para esto.
+  // Datos internos de una propuesta cerrada (documentos, paseos, telefono
+  // operativo): se guardan aparte del flujo de cierre, al toque de subir un
+  // archivo o de sacar el foco del campo — no hay un boton "Guardar" general.
   async function guardarCampoDocumento(campo, valor) {
     if (!cerrandoPropuesta) return
     const { error } = await propuestasApi.update(cerrandoPropuesta.id, { [campo]: valor })
@@ -663,20 +669,6 @@ export default function PropuestasLista({ estado }) {
                           <div className="min-w-0 flex-1 space-y-0.5">
                             {ida && <p className="text-xs text-gray-600 dark:text-zinc-300">IDA: {ida}</p>}
                             {vuelta && <p className="text-xs text-gray-600 dark:text-zinc-300">VUELTA: {vuelta}</p>}
-                            {(v.costo_neto || v.venta) && (
-                              <p className="text-xs text-gray-400 dark:text-zinc-500">
-                                {v.costo_neto && `Neto: ${formatearNumero(v.costo_neto)}`}
-                                {v.costo_neto && v.venta && ' · '}
-                                {v.venta && `Venta: ${formatearNumero(v.venta)}${v.venta_publica === false ? ' (privada)' : ''}`}
-                              </p>
-                            )}
-                            {(v.traslado_costo_neto || v.traslado_venta) && (
-                              <p className="text-xs text-gray-400 dark:text-zinc-500">
-                                Traslado — {v.traslado_costo_neto && `Neto: ${formatearNumero(v.traslado_costo_neto)}`}
-                                {v.traslado_costo_neto && v.traslado_venta && ' · '}
-                                {v.traslado_venta && `Venta: ${formatearNumero(v.traslado_venta)}${v.traslado_venta_publica === false ? ' (privada)' : ''}`}
-                              </p>
-                            )}
                           </div>
                           {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                         </div>
@@ -710,8 +702,7 @@ export default function PropuestasLista({ estado }) {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{h.nombre}</p>
                           <p className="text-xs text-gray-400 dark:text-zinc-500">
-                            Venta: {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}{h.precio_publico === false ? ' (privada)' : ''}
-                            {h.costo_interno ? ` · Neto: ${formatearNumero(h.costo_interno)}` : ''}
+                            {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}{h.precio_publico === false ? ' (privada)' : ''}
                           </p>
                         </div>
                         {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
@@ -757,17 +748,7 @@ export default function PropuestasLista({ estado }) {
                 {trayectosTransfer.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-zinc-300">
                     <span className="text-green-600 dark:text-green-400">✓</span>
-                    <span>
-                      <span className="font-medium">{d.salida || '—'} → {d.destino || '—'}</span>
-                      {(d.valor_agencia_traslado || d.valor_cliente_traslado) && (
-                        <span className="text-gray-400 dark:text-zinc-500">
-                          {' — '}
-                          {d.valor_agencia_traslado && `Neto: ${formatearNumero(d.valor_agencia_traslado)}`}
-                          {d.valor_agencia_traslado && d.valor_cliente_traslado && ' · '}
-                          {d.valor_cliente_traslado && `Venta: ${formatearNumero(d.valor_cliente_traslado)}${d.valor_cliente_traslado_publica === false ? ' (privada)' : ''}`}
-                        </span>
-                      )}
-                    </span>
+                    <span className="font-medium">{d.salida || '—'} → {d.destino || '—'}</span>
                   </div>
                 ))}
               </div>
@@ -850,8 +831,69 @@ export default function PropuestasLista({ estado }) {
             {estado === 'cerrada' && (
               <div className="flex-1 min-w-0 space-y-4 border-l border-gray-100 dark:border-zinc-800 pl-6">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Documentos</p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Datos internos</p>
                   <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Uso interno — no se le envían al cliente en el PDF de cierre.</p>
+                </div>
+
+                {/* Costos: neto vs. venta de cada item — el mismo dato que ya
+                    se carga en el Generador/cierre, movido aca para no
+                    mezclarlo con lo que se le muestra al cliente del otro lado. */}
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-1.5">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium mb-1">Costos (neto / venta)</p>
+                  {(vuelo.costo_neto || vuelo.venta) && (
+                    <p className="text-xs text-gray-600 dark:text-zinc-300">
+                      Vuelo — {vuelo.costo_neto && `Neto: ${formatearNumero(vuelo.costo_neto)}`}
+                      {vuelo.costo_neto && vuelo.venta && ' · '}
+                      {vuelo.venta && `Venta: ${formatearNumero(vuelo.venta)}`}
+                    </p>
+                  )}
+                  {(vuelo.traslado_costo_neto || vuelo.traslado_venta) && (
+                    <p className="text-xs text-gray-600 dark:text-zinc-300">
+                      Traslado — {vuelo.traslado_costo_neto && `Neto: ${formatearNumero(vuelo.traslado_costo_neto)}`}
+                      {vuelo.traslado_costo_neto && vuelo.traslado_venta && ' · '}
+                      {vuelo.traslado_venta && `Venta: ${formatearNumero(vuelo.traslado_venta)}`}
+                    </p>
+                  )}
+                  {hospedajeElegidoPago && (hospedajeElegidoPago.costo_interno || hospedajeElegidoPago.precio) && (
+                    <p className="text-xs text-gray-600 dark:text-zinc-300">
+                      Hospedaje — {hospedajeElegidoPago.costo_interno && `Neto: ${formatearNumero(hospedajeElegidoPago.costo_interno)}`}
+                      {hospedajeElegidoPago.costo_interno && hospedajeElegidoPago.precio && ' · '}
+                      {hospedajeElegidoPago.precio && `Venta: ${formatearNumero(hospedajeElegidoPago.precio)}`}
+                    </p>
+                  )}
+                  {trayectosTransfer.map((d, i) => (
+                    (d.valor_agencia_traslado || d.valor_cliente_traslado) && (
+                      <p key={i} className="text-xs text-gray-600 dark:text-zinc-300">
+                        {d.salida || '—'} → {d.destino || '—'} — {d.valor_agencia_traslado && `Neto: ${formatearNumero(d.valor_agencia_traslado)}`}
+                        {d.valor_agencia_traslado && d.valor_cliente_traslado && ' · '}
+                        {d.valor_cliente_traslado && `Venta: ${formatearNumero(d.valor_cliente_traslado)}`}
+                      </p>
+                    )
+                  ))}
+                </div>
+
+                {/* Paseos y contacto operativo: campos nuevos, se cargan solo
+                    aca (no existen en el Generador ni se le envian al cliente). */}
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Paseos / excursiones incluidos</label>
+                  <textarea value={paseosNotas} onChange={e => setPaseosNotas(e.target.value)} onBlur={() => guardarCampoDocumento('paseos_notas', paseosNotas)}
+                    placeholder="Ej: City tour Recife, paseo de buggy en Maragogi..." rows={2}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Teléfono operativo</label>
+                    <input value={telefonoInterno} onChange={e => setTelefonoInterno(e.target.value)} onBlur={() => guardarCampoDocumento('telefono_interno', telefonoInterno)}
+                      placeholder="Chofer, guía, hotel..."
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Fecha de cierre</label>
+                    <p className="text-sm text-gray-700 dark:text-zinc-300 px-3 py-2">
+                      {cerrandoPropuesta.cerrada_at ? new Date(cerrandoPropuesta.cerrada_at).toLocaleDateString('es-AR') : '—'}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">

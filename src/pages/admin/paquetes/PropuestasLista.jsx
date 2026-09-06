@@ -623,7 +623,7 @@ export default function PropuestasLista({ estado }) {
 
       {cerrandoPropuesta && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !generandoCierre && setCerrandoPropuesta(null)}>
-          <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full ${estado === 'cerrada' ? 'max-w-6xl' : 'max-w-lg'} max-h-[97vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full ${estado === 'cerrada' ? 'max-w-[1600px]' : 'max-w-lg'} max-h-[95vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
            <div className="space-y-4">
             <div>
               <h3 className="font-bold text-gray-900 dark:text-zinc-100">
@@ -634,8 +634,8 @@ export default function PropuestasLista({ estado }) {
               </p>
             </div>
 
-            <div className={estado === 'cerrada' ? 'flex gap-6' : ''}>
-            <div className={`space-y-4 ${estado === 'cerrada' ? 'flex-1 min-w-0' : ''}`}>
+            <div className={estado === 'cerrada' ? 'grid grid-cols-3 gap-6' : 'space-y-4'}>
+            <div className={`space-y-4 ${estado === 'cerrada' ? 'min-w-0' : ''}`}>
 
             {/* Cliente: no hay nada que elegir, se muestra ya confirmado */}
             <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3">
@@ -754,6 +754,10 @@ export default function PropuestasLista({ estado }) {
               </div>
             )}
 
+            </div>
+
+            <div className={`space-y-4 ${estado === 'cerrada' ? 'min-w-0' : ''}`}>
+
             {/* Seguro de viaje */}
             <div>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">¿Incluye seguro de viaje?</p>
@@ -870,7 +874,7 @@ export default function PropuestasLista({ estado }) {
             </div>
 
             {estado === 'cerrada' && (
-              <div className="flex-1 min-w-0 space-y-4 border-l border-gray-100 dark:border-zinc-800 pl-6">
+              <div className="min-w-0 space-y-4 border-l border-gray-100 dark:border-zinc-800 pl-6">
                 <div>
                   <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Datos internos</p>
                   <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Uso interno — no se le envían al cliente en el PDF de cierre.</p>

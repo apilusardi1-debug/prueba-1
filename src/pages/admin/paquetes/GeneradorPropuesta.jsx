@@ -330,6 +330,15 @@ export default function GeneradorPropuesta() {
     excursionesApi.getAll()
   }, [])
 
+  // En combinada el traslado se carga por tramo en Destinos (destinos[].valor_agencia_traslado/
+  // valor_cliente_traslado) — el de cada vuelo queda desactivado para no duplicar el dato.
+  useEffect(() => {
+    if (tipoPropuesta !== 'combinada') return
+    setVuelos(prev => prev.map(v => (
+      v.traslado_activo === false ? v : { ...v, traslado_activo: false, traslado_ida: false, traslado_vuelta: false }
+    )))
+  }, [tipoPropuesta])
+
   // Sugerencias de hospedajes ya cargados en el modulo Hospedajes, para
   // autocompletar nombre/foto/descripcion/amenities al armar la propuesta. En
   // combinada, cada tarjeta puede filtrar por localizacion (Maragogi, Porto de
@@ -445,7 +454,10 @@ export default function GeneradorPropuesta() {
   }
 
   function agregarVuelo() {
-    setVuelos(prev => [...prev, { ...VUELO_VACIO }])
+    setVuelos(prev => [...prev, {
+      ...VUELO_VACIO,
+      ...(tipoPropuesta === 'combinada' ? { traslado_activo: false, traslado_ida: false, traslado_vuelta: false } : {}),
+    }])
   }
   function quitarVuelo(idx) {
     setVuelos(prev => prev.filter((_, i) => i !== idx))
@@ -1061,11 +1073,14 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-gray-400 dark:text-zinc-500">Traslados privados</p>
-                <button type="button" onClick={() => alternarTrasladoVuelo(idx)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${v.traslado_activo === false ? 'bg-gray-300 dark:bg-zinc-600' : 'bg-brand-600'}`}>
+                <button type="button" disabled={tipoPropuesta === 'combinada'} onClick={() => alternarTrasladoVuelo(idx)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${v.traslado_activo === false ? 'bg-gray-300 dark:bg-zinc-600' : 'bg-brand-600'} ${tipoPropuesta === 'combinada' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v.traslado_activo === false ? 'translate-x-0.5' : 'translate-x-4'}`} />
                 </button>
               </div>
+              {tipoPropuesta === 'combinada' && (
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-2">Se maneja por tramo en la sección Destinos, más abajo — acá queda desactivado.</p>
+              )}
               <div className={`transition-opacity ${v.traslado_activo === false ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer">

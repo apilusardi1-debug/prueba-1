@@ -256,6 +256,21 @@ export async function generarPDFCierre(propuesta) {
   tapar(28, 600, 250, 65, CREMA_BG)
   escribir('AÉREOS', 31.96, 620, 25, NAVY_TXT)
 
+  // Boton chico (navy + texto lima, mismo estilo que el resto de los carteles
+  // clickeables de la app) al lado del titulo — el link al e-ticket/voucher
+  // del vuelo, cargado en el panel de Documentos, antes no tenia ningun lugar
+  // donde aparecer en este PDF (solo quedaba en el checklist de DETALLE, mas
+  // chico y facil de pasar por alto).
+  const linkAereoBoton = propuesta.aereo_link || propuesta.aereo_pdf_url
+  if (linkAereoBoton) {
+    const textoBotonAereo = 'VER E-TICKET / VOUCHER'
+    const anchoBotonAereo = helv.widthOfTextAtSize(textoBotonAereo, 7.5)
+    const botonAereo = { x: 150, y: 613, width: anchoBotonAereo + 12, height: 16 }
+    page.drawRectangle({ ...botonAereo, color: NAVY_BG })
+    escribir(textoBotonAereo, botonAereo.x + 6, botonAereo.y + 5, 7.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
+    agregarLink(page, doc, botonAereo, linkAereoBoton)
+  }
+
   // El campo "código de reserva" se sacó del flujo de cierre (ya no se pide al
   // cerrar la propuesta) — se tapa siempre, con o sin valor guardado, porque la
   // plantilla real tiene ahí texto de muestra ("e3p9hy") que si no se tapa queda
@@ -380,6 +395,20 @@ export async function generarPDFCierre(propuesta) {
       ? `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
       : `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
     agregarLink(page, doc, { x: 308, y: 368, width: 80, height: 16 }, url)
+  }
+
+  // Link al voucher del hospedaje (cargado en el panel de Documentos) — poco
+  // aire libre en esta columna (el botón fijo "VER DETALLES" y la foto de la
+  // habitación ya ocupan casi todo), asi que va como texto chico clickeable
+  // en vez de un botón navy completo, en el hueco justo debajo de "VER
+  // DETALLES" y arriba del separador con la sección de Traslados.
+  const linkHospedajeBoton = propuesta.hospedaje_voucher_url || propuesta.hospedaje_link
+  if (linkHospedajeBoton) {
+    const textoVoucher = 'VER VOUCHER ›'
+    const tamanoVoucher = 8
+    escribir(textoVoucher, 308.5, 353, tamanoVoucher, NAVY_TXT, helvBold)
+    const anchoVoucher = helvBold.widthOfTextAtSize(textoVoucher, tamanoVoucher)
+    agregarLink(page, doc, { x: 306, y: 350, width: anchoVoucher + 4, height: tamanoVoucher + 5 }, linkHospedajeBoton)
   }
 
   // Pie de pago: la plantilla real trae esto en dos columnas con etiquetas y

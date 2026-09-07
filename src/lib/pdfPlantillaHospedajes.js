@@ -159,6 +159,28 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
+    // Si se eligieron varias habitaciones de este hospedaje (hasta 4), cada
+    // una es clickeable por separado acá — antes solo se podia entrar a la
+    // primera, desde el boton "VER ÁREAS INTERNAS" de abajo de la foto (que
+    // sigue igual, sin tocar). Justo debajo de "incluye"/pension, en la misma
+    // columna de texto.
+    if (h.habitaciones?.length && y >= piso) {
+      const anchoItem = anchoColumnaTexto
+      for (const hab of h.habitaciones) {
+        if (y < piso) break
+        const texto = `• ${(hab.nombre || 'Habitación').toUpperCase()} ›`
+        let tamano = s.itemsSize
+        while (tamano > 6 && helv.widthOfTextAtSize(texto, tamano) > anchoItem) tamano -= 0.5
+        escribir(texto, s.itemsX, y, tamano, NAVY_TXT, helv)
+        if (h.id) {
+          const ancho = helv.widthOfTextAtSize(texto, tamano)
+          const url = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
+          agregarLink(paginaPlantilla, doc, { x: s.itemsX - 2, y: y - 2.5, width: ancho + 4, height: tamano + 4.5 }, url)
+        }
+        y -= s.itemsGap
+      }
+    }
+
     // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y
     // FOTOS" pegada debajo (no encima como en la version de 2 por hoja, para que
     // se lea "al lado de la foto" y no tape parte de la imagen).

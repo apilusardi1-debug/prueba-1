@@ -272,8 +272,8 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
 // solo vuelo (equipaje+vuelo+traslados+banner). Se usa SOLO cuando hay 2 o
 // mas vuelos; con uno solo se sigue usando la pagina completa de arriba, que
 // ya esta bien aprovechada.
-const ZONA_GRUPO_TOP = 610 // por debajo del titulo fijo "AÉREOS:" de la plantilla, por encima de "EQUIPAJE INCLUIDO:" (ajustado a ojo sobre el PDF real, ver comentario en el tapar de abajo)
-const ZONA_GRUPO_BOTTOM = 40 // baja hasta el margen inferior real de la hoja: el banner fijo de la plantilla se tapa, cada vuelo puede tener su propio link/destino
+const ZONA_GRUPO_TOP = 648 // debajo del titulo "AÉREOS:" (redibujado mas arriba al achicar el encabezado, ver dibujarPaginaAereosGrupo)
+const ZONA_GRUPO_BOTTOM = 50 // medido en el PDF real: el pie de pagina fijo empieza en y=34 — 50 deja margen de sobra sin arriesgar a tocarlo
 const FILAS_VUELO = 4
 const ALTO_FILA_VUELO = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / FILAS_VUELO
 const COL_IZQ_X = 44
@@ -370,13 +370,22 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     y -= 11
   }
 
+  // Cartel de actividades: siempre presente si el vuelo tiene link cargado
+  // (todos lo traen por defecto, el catalogo general) — como boton navy con
+  // texto lima, igual que el resto de los carteles clickeables de la app, no
+  // como una linea de texto suelta que se pierde entre el resto de la
+  // informacion de la tarjeta compacta.
   if (vuelo.banner_link) {
     const destino = vuelo.banner_destino?.trim() || vuelo.destino_ciudad?.trim() || 'destino'
     const texto = `VER ACTIVIDADES EN ${destino.toUpperCase()} >`
-    const tamano = medirTamanoAjustado(texto, 515, 9)
-    escribir(texto, COL_IZQ_X, y, tamano, NAVY_TXT)
+    const tamano = medirTamanoAjustado(texto, 495, 9)
     const ancho = bebas.widthOfTextAtSize(texto, tamano)
-    agregarLink(page, doc, { x: COL_IZQ_X - 2, y: y - 3, width: ancho + 4, height: tamano + 5 }, vuelo.banner_link)
+    const alto = 16
+    const pillBottom = y - 11
+    const rectBanner = { x: COL_IZQ_X - 6, y: pillBottom, width: ancho + 16, height: alto }
+    page.drawRectangle({ ...rectBanner, color: NAVY_BG })
+    escribir(texto, COL_IZQ_X + 2, pillBottom + 4.5, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
+    agregarLink(page, doc, rectBanner, vuelo.banner_link)
   }
 
   // Separador fino entre vuelos, apoyado en el piso de la franja.
@@ -387,13 +396,32 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   function tapar(x, y, w, h, color) {
     page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
   }
-  function reemplazarLinea({ x, y, anchoMax, alto, texto, size, color, bg }) {
-    tapar(x, y, Math.max(anchoMax, bebas.widthOfTextAtSize(texto, size)), alto, bg)
+  function escribir(texto, x, y, size, color) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
 
-  reemplazarLinea({ x: 31.38, y: 730.82, anchoMax: 220, alto: 26, texto: clienteNombre.toUpperCase(), size: 20, color: CREMA_TXT, bg: NAVY_BG })
-  reemplazarLinea({ x: 31.36, y: 681.22, anchoMax: 220, alto: 26, texto: textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores), size: 20, color: CREMA_TXT, bg: NAVY_BG })
+  // Encabezado compacto — SOLO en esta grilla (la pagina de un solo vuelo no
+  // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
+  // "Cotización personalizada para" (que en la plantilla real son 2 renglones
+  // cada uno, etiqueta + valor) se funden en 1 renglon cada uno — mismo dato,
+  // menos alto. Todo con rectangulos calculados a mano (sin el +8/-6 que le
+  // suma el helper tapar(), pensado para parches de texto sueltos, no para
+  // estos bloques grandes) para que el limite entre el navy que queda y el
+  // crema que se gana coincida exacto, sin tiras sueltas de un color o el
+  // otro. Limite navy/crema medido en el PDF real: y=665 antes, y=703 ahora
+  // (38pt menos de azul).
+  const LIMITE_NUEVO = 703
+  page.drawRectangle({ x: 17, y: 665, width: 561, height: 110, color: NAVY_BG }) // reescribe toda la vieja franja de 4 renglones
+  escribir(`NOMBRE DEL CLIENTE: ${clienteNombre.toUpperCase()}`, 31.38, 748, 15, CREMA_TXT)
+  escribir(`COTIZACIÓN PARA: ${textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores)}`, 31.38, 720, 15, CREMA_TXT)
+  page.drawRectangle({ x: 17, y: 665, width: 561, height: LIMITE_NUEVO - 665, color: CREMA_BG }) // misma base (665): sin hueco ni superposicion
+
+  // "AÉREOS:" (con su icono de avion, fijos en la plantilla) sube la misma
+  // distancia que se le achico al azul, para no dejar un hueco vacio entre
+  // el encabezado y el resto — se redibuja sin el icono (vector propio de la
+  // plantilla, no hay forma de reubicarlo sin el asset original).
+  page.drawRectangle({ x: 17, y: 598, width: 300, height: 34, color: CREMA_BG })
+  escribir('AÉREOS:', 63, LIMITE_NUEVO - 51.5, 30, NAVY_TXT)
 
   // Limpia de una sola vez toda la zona dinamica (incluido el banner fijo de
   // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las

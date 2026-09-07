@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
-import { generarPaginaAereosPDF, agregarPaginaAereos } from '../../../lib/pdfPlantillaAereos.js'
+import { generarPaginaAereosPDF, generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
@@ -663,17 +663,22 @@ export default function GeneradorPropuesta() {
       const edadesMenoresTexto = edadesMenores.slice(0, parseInt(cantidadMenores) || 0).filter(Boolean).join(', ')
 
       // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
-      // vectorial, no una captura de pantalla) — la primera arma el documento
-      // entero (como siempre), el resto se agrega al final, una pagina por
-      // vuelo, mismo patron que las paginas de Hospedajes.
-      const doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0] })
-      if (vuelosParaPdf.length > 1) {
-        const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
-        const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
-        const bebasAereosBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
-        const bebasAereos = await doc.embedFont(bebasAereosBytes)
-        for (let i = 1; i < vuelosParaPdf.length; i++) {
-          await agregarPaginaAereos(doc, plantillaAereosDoc, bebasAereos, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[i] })
+      // vectorial, no una captura de pantalla). Con UN solo vuelo se usa la
+      // pagina completa de siempre; con 2 o mas, una grilla compacta de hasta
+      // 4 vuelos por hoja (mismo criterio que Hospedajes) en vez de una
+      // pagina entera por cada uno.
+      let doc
+      if (vuelosParaPdf.length <= 1) {
+        doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0] })
+      } else {
+        const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf })
+        doc = primerGrupo.doc
+        if (vuelosParaPdf.length > 4) {
+          const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+          const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
+          for (let i = 4; i < vuelosParaPdf.length; i += 4) {
+            await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4) })
+          }
         }
       }
 

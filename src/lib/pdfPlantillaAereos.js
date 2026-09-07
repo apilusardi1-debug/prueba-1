@@ -1,27 +1,28 @@
 import { PDFDocument, rgb, PDFName, PDFArray, PDFString } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 
-// Convierte todo el recuadro del banner "SI TE INTERESA VER LAS ACTIVIDADES..." en un
-// area clickeable que abre `url` (coordenadas medidas en la referencia real, en puntos PDF).
-function agregarLinkBanner(page, doc, url) {
-  const rect = [140, 85, 455, 166]
+// Convierte un rectangulo cualquiera de la pagina en un area clickeable que
+// abre `url` — mismo mecanismo que en pdfPlantillaHospedajes.js/Cierre.js.
+function agregarLink(page, doc, { x, y, width, height }, url) {
   const annotRef = doc.context.register(
     doc.context.obj({
       Type: 'Annot',
       Subtype: 'Link',
-      Rect: rect,
+      Rect: [x, y, x + width, y + height],
       Border: [0, 0, 0],
-      A: {
-        Type: 'Action',
-        S: 'URI',
-        URI: PDFString.of(url),
-      },
+      A: { Type: 'Action', S: 'URI', URI: PDFString.of(url) },
     })
   )
   const existentes = page.node.lookup(PDFName.of('Annots'), PDFArray)
   const annots = existentes || doc.context.obj([])
   annots.push(annotRef)
   page.node.set(PDFName.of('Annots'), annots)
+}
+
+// Recuadro fijo del banner "SI TE INTERESA VER LAS ACTIVIDADES..." de la
+// pagina de UN solo vuelo (coordenadas medidas en la referencia real).
+function agregarLinkBanner(page, doc, url) {
+  agregarLink(page, doc, { x: 140, y: 85, width: 315, height: 81 }, url)
 }
 
 // Colores exactos muestreados del PDF de referencia (no los de la app, que son
@@ -62,10 +63,9 @@ function textoPasajeros(adultos, menores, edades) {
 
 // Todas las coordenadas vienen de leer el PDF de referencia real con pdfjs-dist
 // (texto embebido, no una imagen) — son puntos PDF exactos, no aproximaciones.
-// Dibuja UNA pagina de Aereos ya insertada en `doc` (la deja lista para
-// guardar) — separado de generarPaginaAereosPDF/agregarPaginaAereos para que
-// una propuesta combinada, con mas de un vuelo, pueda repetir esto por cada
-// uno agregando paginas en vez de reescribir la logica.
+// Dibuja UNA pagina de Aereos completa (un solo vuelo) ya insertada en `doc`
+// (la deja lista para guardar) — usada solo cuando la propuesta tiene un
+// unico vuelo; con 2 o mas se usa la grilla compacta mas abajo.
 async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
   function tapar(x, y, w, h, color) {
     page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
@@ -265,14 +265,167 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   return doc
 }
 
-// Vuelo 2do en adelante de la propuesta (opciones alternativas en simple,
-// tramos distintos en combinada): copia la pagina de Aereos de `plantillaDoc`
-// (un load aparte de /plantilla-aereos.pdf, igual que ya se hace con la
-// pagina de hospedaje en agregarPaginaHospedajes) y la agrega al final de
-// `doc`, ya dibujada — mismo patron que hospedajes, pero una pagina por
-// vuelo en vez de agrupar varios.
-export async function agregarPaginaAereos(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
-  const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [0])
-  doc.addPage(paginaPlantilla)
-  await dibujarPaginaAereos(doc, paginaPlantilla, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo })
+// ── Grilla compacta: 2 o mas vuelos en la misma hoja ────────────────────────
+// Igual que con hospedajes, no hay plantilla real de referencia para "varios
+// vuelos por hoja" (la referencia es para UNO completo) — se calculan filas
+// iguales dentro de la misma zona de contenido dinamico que antes ocupaba un
+// solo vuelo (equipaje+vuelo+traslados+banner). Se usa SOLO cuando hay 2 o
+// mas vuelos; con uno solo se sigue usando la pagina completa de arriba, que
+// ya esta bien aprovechada.
+const ZONA_GRUPO_TOP = 610 // por debajo del titulo fijo "AÉREOS:" de la plantilla, por encima de "EQUIPAJE INCLUIDO:" (ajustado a ojo sobre el PDF real, ver comentario en el tapar de abajo)
+const ZONA_GRUPO_BOTTOM = 40 // baja hasta el margen inferior real de la hoja: el banner fijo de la plantilla se tapa, cada vuelo puede tener su propio link/destino
+const FILAS_VUELO = 4
+const ALTO_FILA_VUELO = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / FILAS_VUELO
+const COL_IZQ_X = 44
+const COL_DER_X = 320
+const ANCHO_COL_VUELO = 245
+
+function crearSlotVuelo(fila) {
+  const top = ZONA_GRUPO_TOP - fila * ALTO_FILA_VUELO
+  return { top, bottom: top - ALTO_FILA_VUELO }
+}
+
+// Una tarjeta de vuelo dentro de su franja — mismos datos que la pagina
+// completa (fechas, horarios, escalas, equipaje, traslados, banner de
+// actividades) pero en lineas mas chicas, una debajo de otra en vez de
+// repartidas con iconos grandes.
+function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
+  function escribir(texto, x, y, size, color = NAVY_TXT) {
+    page.drawText(texto, { x, y, size, font: bebas, color })
+  }
+  function medirTamanoAjustado(texto, anchoMax, size, tamanoMin = 6.5) {
+    let tamano = size
+    while (tamano > tamanoMin && bebas.widthOfTextAtSize(texto, tamano) > anchoMax) tamano -= 0.5
+    return tamano
+  }
+
+  let y = slot.top - 4
+  escribir(`VUELO ${numero}`, COL_IZQ_X, y, 10, NAVY_TXT)
+  y -= 14
+
+  const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
+  const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
+
+  escribir(`IDA: ${fechaLarga(vuelo.ida_fecha)}`, COL_IZQ_X, y, 12.5, NAVY_TXT)
+  escribir(`VUELTA: ${fechaLarga(vuelo.vuelta_fecha)}`, COL_DER_X, y, 12.5, NAVY_TXT)
+  y -= 12.5
+
+  const textoIdaSale = `SALE DE ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.ida_sale || ''} HS`
+  const textoVueltaSale = `SALE DE ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_sale || ''} HS`
+  const tamanoSale = Math.min(medirTamanoAjustado(textoIdaSale, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaSale, ANCHO_COL_VUELO, 9))
+  escribir(textoIdaSale, COL_IZQ_X, y, tamanoSale, NAVY_TXT)
+  escribir(textoVueltaSale, COL_DER_X, y, tamanoSale, NAVY_TXT)
+  y -= 11
+
+  const textoIdaLlega = `LLEGA A ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.ida_llega || ''} HS`
+  const textoVueltaLlega = `LLEGA A ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_llega || ''} HS`
+  const tamanoLlega = Math.min(medirTamanoAjustado(textoIdaLlega, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaLlega, ANCHO_COL_VUELO, 9))
+  escribir(textoIdaLlega, COL_IZQ_X, y, tamanoLlega, NAVY_TXT)
+  escribir(textoVueltaLlega, COL_DER_X, y, tamanoLlega, NAVY_TXT)
+  y -= 11
+
+  if (hayEscalaIda || hayEscalaVuelta) {
+    let textoIdaEscala = '', textoVueltaEscala = ''
+    if (hayEscalaIda) {
+      const codigoEscala = vuelo.ida_escala_codigo?.toUpperCase()
+      const horaEscala = (vuelo.ida_escala_llega || vuelo.ida_escala_sale) ? ` ${vuelo.ida_escala_llega || '--:--'}-${vuelo.ida_escala_sale || '--:--'} HS` : ''
+      textoIdaEscala = `ESCALA ${vuelo.ida_escala_ciudad?.toUpperCase() || ''}${codigoEscala ? ` (${codigoEscala})` : ''}${horaEscala}`
+    }
+    if (hayEscalaVuelta) {
+      const codigoEscala = vuelo.vuelta_escala_codigo?.toUpperCase()
+      const horaEscala = (vuelo.vuelta_escala_llega || vuelo.vuelta_escala_sale) ? ` ${vuelo.vuelta_escala_llega || '--:--'}-${vuelo.vuelta_escala_sale || '--:--'} HS` : ''
+      textoVueltaEscala = `ESCALA ${vuelo.vuelta_escala_ciudad?.toUpperCase() || ''}${codigoEscala ? ` (${codigoEscala})` : ''}${horaEscala}`
+    }
+    const tamanosEscala = []
+    if (hayEscalaIda) tamanosEscala.push(medirTamanoAjustado(textoIdaEscala, ANCHO_COL_VUELO, 8))
+    if (hayEscalaVuelta) tamanosEscala.push(medirTamanoAjustado(textoVueltaEscala, ANCHO_COL_VUELO, 8))
+    const tamanoEscala = Math.min(...tamanosEscala)
+    if (hayEscalaIda) escribir(textoIdaEscala, COL_IZQ_X, y, tamanoEscala, NAVY_TXT)
+    if (hayEscalaVuelta) escribir(textoVueltaEscala, COL_DER_X, y, tamanoEscala, NAVY_TXT)
+    y -= 10.5
+  }
+
+  y -= 4
+
+  const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
+    .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
+    .map(k => {
+      const cantidad = vuelo.equipaje?.[k] || 0
+      const extra = k === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
+      return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
+    })
+  if (equipajeSeleccionado.length) {
+    const texto = `EQUIPAJE: ${equipajeSeleccionado.join(' · ')}`
+    escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
+    y -= 11
+  }
+
+  if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
+    const texto = vuelo.traslado_ida && vuelo.traslado_vuelta
+      ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
+      : vuelo.traslado_ida
+        ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
+        : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
+    escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
+    y -= 11
+  }
+
+  if (vuelo.banner_link) {
+    const destino = vuelo.banner_destino?.trim() || vuelo.destino_ciudad?.trim() || 'destino'
+    const texto = `VER ACTIVIDADES EN ${destino.toUpperCase()} >`
+    const tamano = medirTamanoAjustado(texto, 515, 9)
+    escribir(texto, COL_IZQ_X, y, tamano, NAVY_TXT)
+    const ancho = bebas.widthOfTextAtSize(texto, tamano)
+    agregarLink(page, doc, { x: COL_IZQ_X - 2, y: y - 3, width: ancho + 4, height: tamano + 5 }, vuelo.banner_link)
+  }
+
+  // Separador fino entre vuelos, apoyado en el piso de la franja.
+  page.drawLine({ start: { x: 30, y: slot.bottom + 8 }, end: { x: 565, y: slot.bottom + 8 }, thickness: 0.5, color: rgb(0.85, 0.83, 0.78) })
+}
+
+async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo }) {
+  function tapar(x, y, w, h, color) {
+    page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
+  }
+  function reemplazarLinea({ x, y, anchoMax, alto, texto, size, color, bg }) {
+    tapar(x, y, Math.max(anchoMax, bebas.widthOfTextAtSize(texto, size)), alto, bg)
+    page.drawText(texto, { x, y, size, font: bebas, color })
+  }
+
+  reemplazarLinea({ x: 31.38, y: 730.82, anchoMax: 220, alto: 26, texto: clienteNombre.toUpperCase(), size: 20, color: CREMA_TXT, bg: NAVY_BG })
+  reemplazarLinea({ x: 31.36, y: 681.22, anchoMax: 220, alto: 26, texto: textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores), size: 20, color: CREMA_TXT, bg: NAVY_BG })
+
+  // Limpia de una sola vez toda la zona dinamica (incluido el banner fijo de
+  // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las
+  // filas — mismo criterio que agregarPaginaHospedajes.
+  tapar(20, ZONA_GRUPO_BOTTOM, 550, ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, CREMA_BG)
+
+  for (let i = 0; i < grupo.length && i < FILAS_VUELO; i++) {
+    dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i), grupo[i], i + 1)
+  }
+}
+
+// Primer grupo (hasta 4 vuelos) de una propuesta con 2 o mas vuelos: arma el
+// documento entero, igual que generarPaginaAereosPDF pero con la grilla.
+export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos }) {
+  const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+  const doc = await PDFDocument.load(plantillaBytes)
+  doc.registerFontkit(fontkit)
+  while (doc.getPageCount() > 1) doc.removePage(1)
+  const page = doc.getPage(0)
+
+  const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
+  const bebas = await doc.embedFont(fontBytes)
+
+  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO) })
+
+  return { doc, bebas }
+}
+
+// Grupos siguientes (mas de 4 vuelos en la misma propuesta) — caso raro, pero
+// se soporta con el mismo patron de agregar-pagina que el resto de la app.
+export async function agregarPaginaAereosGrupo(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos }) {
+  const [pagina] = await doc.copyPages(plantillaDoc, [0])
+  doc.addPage(pagina)
+  await dibujarPaginaAereosGrupo(pagina, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO) })
 }

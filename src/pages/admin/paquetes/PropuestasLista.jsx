@@ -839,8 +839,8 @@ export default function PropuestasLista({ estado }) {
                     placeholder="Link a la reserva/aerolínea"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
-                      {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? 'Cambiar PDF' : '+ Subir PDF')}
+                    <label className={`text-xs font-medium cursor-pointer ${aereoPdfUrl ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300' : 'text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300'}`}>
+                      {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? '✓ PDF cargado — cambiar' : '+ Subir PDF')}
                       <input type="file" accept="application/pdf" className="hidden" disabled={subiendoDocumento === 'aereo'}
                         onChange={e => subirDocumento('aereo', e.target.files[0])} />
                     </label>
@@ -856,8 +856,8 @@ export default function PropuestasLista({ estado }) {
                     placeholder="Link a la reserva del hospedaje"
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 cursor-pointer">
-                      {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? 'Cambiar voucher' : '+ Subir voucher')}
+                    <label className={`text-xs font-medium cursor-pointer ${hospedajeVoucherUrl ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300' : 'text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300'}`}>
+                      {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? '✓ Voucher cargado — cambiar' : '+ Subir voucher')}
                       <input type="file" accept="application/pdf,image/*" className="hidden" disabled={subiendoDocumento === 'voucher'}
                         onChange={e => subirDocumento('voucher', e.target.files[0])} />
                     </label>

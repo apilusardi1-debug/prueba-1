@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
@@ -462,6 +462,19 @@ export default function GeneradorPropuesta() {
   function quitarVuelo(idx) {
     setVuelos(prev => prev.filter((_, i) => i !== idx))
   }
+
+  // Al agregar un vuelo, la tarjeta nueva aparece bien abajo del formulario —
+  // sin este scroll automatico quedaba fuera de vista y habia que buscarla a
+  // mano. Solo dispara cuando la cantidad de vuelos AUMENTA (no al quitar uno
+  // ni en el render inicial), comparando contra el largo anterior.
+  const vueloRefs = useRef([])
+  const vuelosLargoPrevio = useRef(vuelos.length)
+  useEffect(() => {
+    if (vuelos.length > vuelosLargoPrevio.current) {
+      vueloRefs.current[vuelos.length - 1]?.scrollIntoView({ block: 'start' })
+    }
+    vuelosLargoPrevio.current = vuelos.length
+  }, [vuelos.length])
 
   function setEdadMenor(idx, valor) {
     setEdadesMenores(prev => {
@@ -928,7 +941,8 @@ export default function GeneradorPropuesta() {
         </div>
         {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}
         {vuelos.map((v, idx) => (
-          <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+          <div key={idx} ref={el => vueloRefs.current[idx] = el}
+            className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3 scroll-mt-24">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Vuelo {idx + 1}</p>
               <div className="flex items-center gap-3">

@@ -945,7 +945,7 @@ export default function GeneradorPropuesta() {
       {/* Vuelo */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Vuelo</h3>
           <button onClick={agregarVuelo} type="button"
             className="flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-brand-600 dark:bg-brand-500 text-white shadow-md shadow-brand-600/30 dark:shadow-brand-500/30 hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors">
             <span className="text-lg leading-none">+</span> Agregar vuelo
@@ -956,7 +956,7 @@ export default function GeneradorPropuesta() {
           <div key={idx} ref={el => vueloRefs.current[idx] = el}
             className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3 scroll-mt-24">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Vuelo {idx + 1}</p>
+              <p className="text-lg font-bold text-gray-700 dark:text-zinc-200 uppercase tracking-wide">Vuelo {idx + 1}</p>
               <div className="flex items-center gap-3">
                 <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer whitespace-nowrap">
                   {leyendoVuelo && leyendoVueloIdx === idx ? (reintentandoVuelo ? 'Reintentando...' : 'Leyendo imagen...') : '+ Cargar desde imagen'}
@@ -1156,7 +1156,7 @@ export default function GeneradorPropuesta() {
       {/* Hospedajes */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Hospedajes</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Hospedajes</h3>
           <button onClick={agregarHospedaje} type="button"
             className="flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl bg-brand-600 dark:bg-brand-500 text-white shadow-md shadow-brand-600/30 dark:shadow-brand-500/30 hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors">
             <span className="text-lg leading-none">+</span> Agregar hospedaje
@@ -1168,7 +1168,7 @@ export default function GeneradorPropuesta() {
           <div key={idx} ref={el => hospedajeRefs.current[idx] = el}
             className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3 scroll-mt-24">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Hospedaje {idx + 1}</p>
+              <p className="text-lg font-bold text-gray-700 dark:text-zinc-200 uppercase tracking-wide">Hospedaje {idx + 1}</p>
               {hospedajes.length > 1 && (
                 <button onClick={() => quitarHospedaje(idx)} className="text-xs text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium">
                   ✕ Quitar

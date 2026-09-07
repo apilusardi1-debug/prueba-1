@@ -909,8 +909,9 @@ export default function GeneradorPropuesta() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Vuelo</h3>
-          <button onClick={agregarVuelo} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">
-            + Agregar vuelo
+          <button onClick={agregarVuelo} type="button"
+            className="flex items-center gap-1.5 text-sm font-semibold px-3.5 py-2 rounded-xl border border-brand-200 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-500/25 transition-colors">
+            <span className="text-base leading-none">+</span> Agregar vuelo
           </button>
         </div>
         {errorVuelo && <p className="text-xs text-red-500 dark:text-red-400">{errorVuelo}</p>}

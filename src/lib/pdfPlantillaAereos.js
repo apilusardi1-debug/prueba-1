@@ -393,9 +393,6 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
 }
 
 async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo }) {
-  function tapar(x, y, w, h, color) {
-    page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
-  }
   function escribir(texto, x, y, size, color) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
@@ -404,17 +401,42 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
   // "Cotización personalizada para" (que en la plantilla real son 2 renglones
   // cada uno, etiqueta + valor) se funden en 1 renglon cada uno — mismo dato,
-  // menos alto. Todo con rectangulos calculados a mano (sin el +8/-6 que le
-  // suma el helper tapar(), pensado para parches de texto sueltos, no para
-  // estos bloques grandes) para que el limite entre el navy que queda y el
-  // crema que se gana coincida exacto, sin tiras sueltas de un color o el
-  // otro. Limite navy/crema medido en el PDF real: y=665 antes, y=703 ahora
-  // (38pt menos de azul).
+  // menos alto. Limite navy/crema medido en el PDF real: y=665 antes, y=703
+  // ahora (38pt menos de azul).
+  //
+  // OJO con el ANCHO de cada rectangulo, que es donde estaba el bug real:
+  // - Las franjas de fondo (navy y crema) de la plantilla van de BORDE A
+  //   BORDE de la hoja (x=0 a 595.276, sin el margen de 17-20pt que usa el
+  //   resto del contenido) — un rectangulo mas angosto que eso deja una tira
+  //   del color viejo pegada al borde, que es justo el "recuadro" que se veia
+  //   flotando arriba (y el mismo problema iba a pasar abajo, contra el pie
+  //   de pagina, con el tapar() de la zona de vuelos de mas abajo).
+  // - El texto en cambio SI tiene que quedar angosto: el logo (swirl) esta
+  //   fijo en la plantilla a la derecha de esta misma franja — si el
+  //   rectangulo para borrar el texto viejo es de borde a borde, tapa el
+  //   logo tambien. Se limita a un ancho seguro y el texto se achica si hace
+  //   falta para no pasarse de ahi.
+  const PAGINA_ANCHO = 595.276
   const LIMITE_NUEVO = 703
-  page.drawRectangle({ x: 17, y: 665, width: 561, height: 110, color: NAVY_BG }) // reescribe toda la vieja franja de 4 renglones
-  escribir(`NOMBRE DEL CLIENTE: ${clienteNombre.toUpperCase()}`, 31.38, 748, 15, CREMA_TXT)
-  escribir(`COTIZACIÓN PARA: ${textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores)}`, 31.38, 720, 15, CREMA_TXT)
-  page.drawRectangle({ x: 17, y: 665, width: 561, height: LIMITE_NUEVO - 665, color: CREMA_BG }) // misma base (665): sin hueco ni superposicion
+  const ANCHO_TEXTO_HEADER = 420 // hasta aca llega el texto como mucho — el logo esta mas a la derecha
+  function medirAjustado(texto, anchoMax, size, minimo = 10) {
+    let t = size
+    while (t > minimo && bebas.widthOfTextAtSize(texto, t) > anchoMax) t -= 0.5
+    return t
+  }
+
+  const textoNombre = `NOMBRE DEL CLIENTE: ${clienteNombre.toUpperCase()}`
+  const textoCotiz = `COTIZACIÓN PARA: ${textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores)}`
+  const sizeNombre = medirAjustado(textoNombre, ANCHO_TEXTO_HEADER, 15)
+  const sizeCotiz = medirAjustado(textoCotiz, ANCHO_TEXTO_HEADER, 15)
+
+  // 1) Repinta navy SOLO donde vivia el texto viejo (angosto, no toca el logo).
+  page.drawRectangle({ x: 17, y: 665, width: ANCHO_TEXTO_HEADER + 20, height: 110, color: NAVY_BG })
+  escribir(textoNombre, 31.38, 748, sizeNombre, CREMA_TXT)
+  escribir(textoCotiz, 31.38, 720, sizeCotiz, CREMA_TXT)
+  // 2) Convierte a crema la franja que se le saca al azul — esta si de borde
+  //    a borde, porque ahi (por debajo de donde vive el logo) es solo fondo.
+  page.drawRectangle({ x: -5, y: 665, width: PAGINA_ANCHO + 10, height: LIMITE_NUEVO - 665, color: CREMA_BG })
 
   // "AÉREOS:" (con su icono de avion, fijos en la plantilla) sube la misma
   // distancia que se le achico al azul, para no dejar un hueco vacio entre
@@ -425,8 +447,9 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   // Limpia de una sola vez toda la zona dinamica (incluido el banner fijo de
   // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las
-  // filas — mismo criterio que agregarPaginaHospedajes.
-  tapar(20, ZONA_GRUPO_BOTTOM, 550, ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, CREMA_BG)
+  // filas — de borde a borde por la misma razon que el punto 2: el pie de
+  // pagina fijo tambien es de borde a borde.
+  page.drawRectangle({ x: -5, y: ZONA_GRUPO_BOTTOM, width: PAGINA_ANCHO + 10, height: ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, color: CREMA_BG })
 
   for (let i = 0; i < grupo.length && i < FILAS_VUELO; i++) {
     dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i), grupo[i], i + 1)

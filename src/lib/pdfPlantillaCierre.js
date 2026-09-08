@@ -150,7 +150,10 @@ export async function generarPDFCierre(propuesta) {
   // Cada segmento es {texto, bold}; la puntuacion que deba pegarse a una
   // palabra (coma, punto) va incluida en el texto de ESE segmento, nunca
   // suelta en uno propio — si no, el word-wrap le mete un espacio antes.
-  function dibujarParrafoRico(segmentos, x, y, size, anchoMax, gapLinea, color) {
+  // `pagina` parametrizado (default: la de siempre) — el checklist de DETALLE
+  // se movio a una hoja aparte (ver mas abajo) y necesita dibujar sobre esa
+  // pagina nueva, no sobre la primera.
+  function dibujarParrafoRico(segmentos, x, y, size, anchoMax, gapLinea, color, pagina = page) {
     const ESPACIO = helv.widthOfTextAtSize(' ', size)
     const palabras = []
     for (const { texto, bold } of segmentos) {
@@ -171,12 +174,11 @@ export async function generarPDFCierre(propuesta) {
         anchoLinea = anchoConEspacio
       }
     }
-    tapar(x, y - (lineas.length - 1) * gapLinea - 4, anchoMax + 8, lineas.length * gapLinea + 8, CREMA_BG)
     lineas.forEach((linea, i) => {
       let cursorX = x
       const yLinea = y - i * gapLinea
       linea.forEach(p => {
-        escribir(p.texto, cursorX, yLinea, size, color, p.font)
+        pagina.drawText(p.texto, { x: cursorX, y: yLinea, size, font: p.font, color })
         cursorX += p.font.widthOfTextAtSize(p.texto, size) + ESPACIO
       })
     })
@@ -466,18 +468,10 @@ export async function generarPDFCierre(propuesta) {
   // pisaba el renglon de abajo a esas letras, medido con el PDF real).
   tapar(28, 85, 540, 178, CREMA_BG)
 
-  // Titulo "DETALLE" — misma tipografia/estilo (Bebas, mayuscula) que el resto
-  // de los titulos de sección (AÉREOS, HOSPEDAJE, TRASLADOS...) para que este
-  // bloque se lea como una sección mas, no como texto suelto aparte. Centrado
-  // en el ancho de la columna (28 a 568, igual que el tapar de todo el bloque).
-  const SIZE_DETALLE = 20
-  const anchoDetalle = bebas.widthOfTextAtSize('DETALLE', SIZE_DETALLE)
-  escribir('DETALLE', 28 + (540 - anchoDetalle) / 2, 227, SIZE_DETALLE, NAVY_TXT, bebas)
-
   // Circulo relleno a la izquierda de un parrafo, alineado con la altura x del
   // texto (no la linea de base) para que quede centrado con el renglón.
-  function bullet(x, yTexto, size) {
-    page.drawEllipse({ x, y: yTexto + size * 0.32, xScale: 1.8, yScale: 1.8, color: NAVY_TXT })
+  function bullet(x, yTexto, size, pagina = page, escala = 1) {
+    pagina.drawEllipse({ x, y: yTexto + size * 0.32, xScale: 1.8 * escala, yScale: 1.8 * escala, color: NAVY_TXT })
   }
 
   // Checklist con TODO lo que se le resume al cliente en esta segunda propuesta
@@ -577,21 +571,46 @@ export async function generarPDFCierre(propuesta) {
     { texto: `Opciones para abonar el saldo: transferencia en ${nombreMoneda}, transferencia mediante PIX, o en cuotas manteniendo el valor en reales congelado al tipo de cambio del día de cada pago.` },
   ] })
 
-  // Achicado respecto al primer intento: con e-ticket/voucher sumados puede
-  // haber hasta 10 items — a tamaño 9.3 no entraban todos sin pisar el pie de
-  // pagina (medido renderizando el PDF real, no a ojo).
-  const SIZE_ITEM = 8.4
-  const GAP_ITEM = 9.8
-  const GAP_ENTRE_ITEMS = 2.6
-  const X_TEXTO = 39
-  let yItem = 211
+  // El detalle completo (checklist de todo lo que el cliente esta comprando)
+  // pasa a su propia hoja, con la misma tipografia/tono que "Observaciones
+  // importantes" — en la hoja 1 el bloque quedaba muy chico (8.4pt, apretado
+  // contra el pie de pagina) para ser la parte mas importante del PDF. Se
+  // arma copiando la hoja de Observaciones como base (mismo encabezado navy +
+  // logo + pie con el logo de Dream Tours) y se tapan titulo y cuerpo para
+  // dibujar el checklist encima, mucho mas grande y con aire real. Se inserta
+  // ANTES de Observaciones (que pasa a la pagina 3).
+  const [paginaDetalle] = await doc.copyPages(doc, [1])
+  doc.insertPage(1, paginaDetalle)
+
+  // Titulo: mismo lugar/tamaño que tenia "OBSERVACIONES IMPORTANTES" en la
+  // plantilla real (medido: x 31-304, y 790-811 aprox.) — se tapa sobre fondo
+  // navy (no crema, esta parte todavia esta dentro del encabezado) y se
+  // reemplaza por un titulo propio.
+  paginaDetalle.drawRectangle({ x: 25, y: 782, width: 400, height: 40, color: NAVY_BG })
+  paginaDetalle.drawText('DETALLE DE TU PROPUESTA', { x: 31.2, y: 790, size: 26, font: bebas, color: CREMA_TXT })
+
+  // Cuerpo entero: de borde a borde (igual que el resto de los tapados de
+  // esta plantilla) entre el pie del encabezado (y≈761) y el techo del pie de
+  // pagina (y≈62) — ahi vivia todo el texto fijo de "Observaciones..." de la
+  // copia, se borra completo para dibujar el checklist desde cero.
+  paginaDetalle.drawRectangle({ x: -5, y: 65, width: 605, height: 693, color: CREMA_BG })
+
+  paginaDetalle.drawText('Esto es lo que tu propuesta incluye:', { x: 31.2, y: 715, size: 20, font: bebas, color: NAVY_TXT })
+
+  // Mismo contenido que antes (itemsDetalle), pero mucho mas grande y con mas
+  // aire — hay de sobra: esta hoja no compite con ningun otro bloque.
+  const SIZE_ITEM = 13
+  const GAP_ITEM = 19
+  const GAP_ENTRE_ITEMS = 14
+  const X_TEXTO = 46
+  let yItem = 675
   itemsDetalle.forEach(({ segmentos, link }) => {
-    bullet(28, yItem, SIZE_ITEM)
-    const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, 520, GAP_ITEM, NAVY_TXT)
+    bullet(31.2, yItem, SIZE_ITEM, paginaDetalle, 1.5)
+    const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, 510, GAP_ITEM, NAVY_TXT, paginaDetalle)
     // Toda la linea (no solo el texto "ver documento") es el area clickeable
     // del link, mismo criterio que el link de "VER DETALLES" del hospedaje.
     if (link) {
-      agregarLink(page, doc, { x: 28, y: yItem - (lineas - 1) * GAP_ITEM - 4, width: 520, height: lineas * GAP_ITEM }, link)
+      agregarLink(paginaDetalle, doc, { x: 31.2, y: yItem - (lineas - 1) * GAP_ITEM - 4, width: 510, height: lineas * GAP_ITEM }, link)
     }
     yItem -= (lineas - 1) * GAP_ITEM + GAP_ITEM + GAP_ENTRE_ITEMS
   })

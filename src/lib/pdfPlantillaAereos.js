@@ -378,7 +378,17 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
   // 4) Transfers de la propuesta combinada (destinos/traslados por tramo).
   if (destinosValidos.length) {
     const yDestinos = hayTraslados ? finTraslados - GAP_SECCION : yTraslados
-    escribir('TRASLADOS PRIVADOS:', 61.19, yDestinos, 25, NAVY_TXT)
+    const textoTitTraslados = 'TRASLADOS PRIVADOS:'
+    escribir(textoTitTraslados, 61.19, yDestinos, 25, NAVY_TXT)
+    // Precio: suma de "Valor de venta" de todos los tramos (Destinos), no uno
+    // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total).
+    // Respeta la "Pública" de cada tramo (valor_cliente_traslado_publica).
+    const totalTraslados = destinosValidos.reduce((suma, d) =>
+      suma + (d.valor_cliente_traslado_publica !== false ? (parseFloat(d.valor_cliente_traslado) || 0) : 0), 0)
+    if (totalTraslados > 0) {
+      const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados, 25)
+      escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, 61.19 + anchoTitTraslados + 14, yDestinos, 25, NAVY_TXT)
+    }
     destinosValidos.forEach((d, i) => {
       const salida = d.salida?.trim().toUpperCase() || '—'
       const destino = d.destino?.trim().toUpperCase() || '—'
@@ -677,7 +687,17 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // Lista de transfers, en la franja reservada arriba del banner.
   if (destinosValidos.length) {
     let yDest = zonaBottomEfectivo - 6 - GAP_EXTRA_TITULO
-    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
+    const textoTitTraslados = 'TRASLADOS PRIVADOS:'
+    escribir(textoTitTraslados, COL_IZQ_X, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
+    // Precio: suma de "Valor de venta" de todos los tramos (Destinos), no uno
+    // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total).
+    // Respeta la "Pública" de cada tramo (valor_cliente_traslado_publica).
+    const totalTraslados = destinosValidos.reduce((suma, d) =>
+      suma + (d.valor_cliente_traslado_publica !== false ? (parseFloat(d.valor_cliente_traslado) || 0) : 0), 0)
+    if (totalTraslados > 0) {
+      const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados, TITULO_DESTINOS_SIZE)
+      escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, COL_IZQ_X + anchoTitTraslados + 10, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
+    }
     yDest -= ALTO_TITULO_DESTINOS
     for (const d of destinosValidos) {
       const salida = d.salida?.trim().toUpperCase() || '—'

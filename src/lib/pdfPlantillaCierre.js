@@ -238,7 +238,10 @@ export async function generarPDFCierre(propuesta) {
   // HOSPEDAJE, TRASLADOS — queden todos del mismo tamaño visual en vez de
   // cada uno a una escala distinta.
   tapar(28, 600, 250, 65, CREMA_BG)
-  escribir('AÉREOS', 31.96, 620, 29, NAVY_TXT)
+  // x=28, no 31.96: alineado con el borde izquierdo de la caja de IDA de abajo
+  // (X_CAJA_IDA) y con "IDA · ..." — antes quedaba un pelo mas a la derecha
+  // que ambos, notorio en la comparacion pixel a pixel que hizo el usuario.
+  escribir('AÉREOS', 28, 620, 29, NAVY_TXT)
 
   // Boton chico (navy + texto lima, mismo estilo que el resto de los carteles
   // clickeables de la app) al lado del titulo — el link al e-ticket/voucher
@@ -297,10 +300,16 @@ export async function generarPDFCierre(propuesta) {
     codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
     escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
   })
-  yCaja -= altoCajasVuelo + 10
+  const pisoCajas = yCaja - altoCajasVuelo
 
   // Equipaje: no se mostraba en ningun lado de este PDF — se agrega la misma
-  // linea centrada que ya usa la grilla de vuelos, debajo de las cajas.
+  // linea centrada que ya usa la grilla de vuelos, debajo de las cajas. Antes
+  // quedaba pegada arriba (10pt fijos bajo la caja) con todo el aire libre
+  // amontonado abajo, mas notorio cuanto mas corta la caja (sin escala) — se
+  // centra en el espacio real entre el piso de las cajas y la linea horizontal
+  // fija de la plantilla (medida sobre el PDF real: y≈499) que separa esta
+  // seccion de HOSPEDAJE.
+  const SEPARADOR_AEREOS_Y = 499
   const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
@@ -314,7 +323,8 @@ export async function generarPDFCierre(propuesta) {
     while (tamanoEquipaje > 6 && bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje) > X_CAJA_VUELTA + ANCHO_CAJA - X_CAJA_IDA) tamanoEquipaje -= 0.5
     const anchoEquipaje = bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje)
     const xCentroCajas = (X_CAJA_IDA + X_CAJA_VUELTA + ANCHO_CAJA) / 2
-    escribir(textoEquipaje, xCentroCajas - anchoEquipaje / 2, yCaja, tamanoEquipaje, NAVY_TXT)
+    const yEquipaje = (pisoCajas + SEPARADOR_AEREOS_Y) / 2 - tamanoEquipaje * 0.36
+    escribir(textoEquipaje, xCentroCajas - anchoEquipaje / 2, yEquipaje, tamanoEquipaje, NAVY_TXT)
   }
 
   // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" a

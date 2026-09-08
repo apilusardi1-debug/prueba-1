@@ -160,10 +160,8 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
     // Si se eligieron varias habitaciones de este hospedaje (hasta 4), cada
-    // una es clickeable por separado acá — antes solo se podia entrar a la
-    // primera, desde el boton "VER ÁREAS INTERNAS" de abajo de la foto (que
-    // sigue igual, sin tocar). Justo debajo de "incluye"/pension, en la misma
-    // columna de texto.
+    // una es clickeable por separado acá — justo debajo de "incluye"/pension,
+    // en la misma columna de texto.
     if (h.habitaciones?.length && y >= piso) {
       const anchoItem = anchoColumnaTexto
       for (const hab of h.habitaciones) {
@@ -181,6 +179,23 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       }
     }
 
+    // Boton "VER ÁREAS INTERNAS": debajo de la descripcion (no de la foto),
+    // lleva a la habitacion/departamento puntual elegido para esta propuesta
+    // (la primera de "habitaciones" si hay varias) — solo si hay una unidad
+    // especifica cargada. El de "ver areas externas" (fotos generales del
+    // hospedaje) queda unicamente debajo de la foto, un solo boton siempre.
+    if (h.id && h.habitacion_id && y - 14 >= piso) {
+      const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
+      const texto = 'VER ÁREAS INTERNAS >'
+      const tamanoBoton = 8
+      const anchoTexto = helv.widthOfTextAtSize(texto, tamanoBoton)
+      const bandaInt = { x: s.itemsX, y: y - 12, width: anchoTexto + 12, height: 15 }
+      tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
+      escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+      agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
+      y -= 19
+    }
+
     // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y
     // FOTOS" pegada debajo (no encima como en la version de 2 por hoja, para que
     // se lea "al lado de la foto" y no tape parte de la imagen).
@@ -193,48 +208,23 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
     }
 
-    // La foto y los botones son clickeables y llevan a la ficha de ese hospedaje
-    // en el sitio publico, si sabemos su id real. standalone=1: el cliente ve
-    // SOLO esa ficha (sin menu/footer/nav ni lista de otras habitaciones) — no
-    // puede navegar a otros hospedajes ni otras unidades desde el link del PDF.
+    // La foto y el boton de abajo son clickeables y llevan a las fotos
+    // generales del hospedaje/complejo (pileta, canchas, areas comunes) — SIN
+    // habitacion puntual seleccionada — en modo standalone (el cliente no
+    // puede navegar a otros hospedajes desde el link del PDF). El acceso a la
+    // habitacion/departamento puntual elegido es el boton "VER ÁREAS
+    // INTERNAS" de mas arriba, debajo de la descripcion, no este.
     if (h.id) {
-      // Areas externas: fotos generales del hospedaje/complejo (pileta, canchas,
-      // areas comunes) — la ficha sin habitacion puntual seleccionada.
       const urlExternas = `${SITIO_URL}/hoteles/${h.id}?standalone=1`
-      // Areas internas: fotos/videos de la habitacion o departamento puntual de
-      // esta propuesta (solo si hay una unidad especifica cargada).
-      const urlInternas = h.habitacion_id
-        ? `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
-        : null
+      agregarLink(paginaPlantilla, doc, s.imagen, urlExternas)
 
-      agregarLink(paginaPlantilla, doc, s.imagen, urlInternas || urlExternas)
-
-      if (urlInternas) {
-        // Dos botones lado a lado, mismo alto que antes tenia el unico cartelito
-        // (no se toca la altura de fila): izquierda "areas externas" (complejo),
-        // derecha "areas internas" (la unidad puntual).
-        const gapBotones = 4
-        const anchoBoton = (s.imagen.width - gapBotones) / 2
-        const bandaExt = { x: s.imagen.x, y: s.bandaY, width: anchoBoton, height: BANDA_ALTO }
-        const bandaInt = { x: s.imagen.x + anchoBoton + gapBotones, y: s.bandaY, width: anchoBoton, height: BANDA_ALTO }
-
-        tapar(bandaExt.x, bandaExt.y, bandaExt.width, bandaExt.height, NAVY_BG)
-        escribir('VER ÁREAS', bandaExt.x + 5, bandaExt.y + 8.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-        escribir('EXTERNAS >', bandaExt.x + 5, bandaExt.y + 2.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-        agregarLink(paginaPlantilla, doc, bandaExt, urlExternas)
-
-        tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
-        escribir('VER ÁREAS', bandaInt.x + 5, bandaInt.y + 8.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-        escribir('INTERNAS >', bandaInt.x + 5, bandaInt.y + 2.5, 6.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-        agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-      } else {
-        // Sin habitacion puntual cargada: un unico boton a ancho completo, como
-        // antes, llevando a las fotos generales del hospedaje.
-        const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
-        tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
-        escribir('VER INFO Y FOTOS >', banda.x + 6, banda.y + 5, 8, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-        agregarLink(paginaPlantilla, doc, banda, urlExternas)
-      }
+      const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
+      tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
+      const texto = 'VER FOTOS ÁREAS EXTERNAS >'
+      let tamano = 8
+      while (tamano > 5.5 && helv.widthOfTextAtSize(texto, tamano) > banda.width - 10) tamano -= 0.5
+      escribir(texto, banda.x + 5, banda.y + (BANDA_ALTO - tamano) / 2 + 1, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+      agregarLink(paginaPlantilla, doc, banda, urlExternas)
     }
   }
 

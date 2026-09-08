@@ -83,7 +83,7 @@ function textoPasajeros(adultos, menores, edades) {
 // Dibuja UNA pagina de Aereos completa (un solo vuelo) ya insertada en `doc`
 // (la deja lista para guardar) — usada solo cuando la propuesta tiene un
 // unico vuelo; con 2 o mas se usa la grilla compacta mas abajo.
-async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
+async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo, destinos }) {
   function tapar(x, y, w, h, color) {
     page.drawRectangle({ x: x - 3, y: y - 6, width: w + 8, height: h, color })
   }
@@ -190,8 +190,13 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
   const nVuelo = 3 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0) // titulo + sale + llega [+ escala]
   const hayTraslados = vuelo.traslado_ida || vuelo.traslado_vuelta
   const nTraslados = hayTraslados ? 3 : 0
+  // Transfers de una propuesta combinada (traslados por tramo, cargados aparte
+  // de los vuelos en la seccion "Transfers" del Generador) — se guardaban en
+  // la base pero nunca llegaban al PDF. Titulo + una linea por transfer.
+  const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
+  const nDestinos = destinosValidos.length ? 1 + destinosValidos.length : 0
 
-  const secciones = [nEquipaje, nVuelo, nTraslados].filter(n => n > 0)
+  const secciones = [nEquipaje, nVuelo, nTraslados, nDestinos].filter(n => n > 0)
   const totalLineas = secciones.reduce((a, b) => a + b, 0)
   const targetUltimaBaseline = zonaBottom + MARGEN_INFERIOR
   const GAP_SECCION = secciones.length > 1
@@ -273,6 +278,18 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
     escribir('HOTEL / AEROPUERTO', 61.19, yTraslados - 24, 20, NAVY_TXT)
     escribir('OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
   }
+  const finTraslados = hayTraslados ? yTraslados - 2 * GAP_LINEA : yTraslados
+
+  // 4) Transfers de la propuesta combinada (destinos/traslados por tramo).
+  if (destinosValidos.length) {
+    const yDestinos = hayTraslados ? finTraslados - GAP_SECCION : yTraslados
+    escribir('TRASLADOS PRIVADOS:', 61.19, yDestinos, 25, NAVY_TXT)
+    destinosValidos.forEach((d, i) => {
+      const salida = d.salida?.trim().toUpperCase() || '—'
+      const destino = d.destino?.trim().toUpperCase() || '—'
+      escribir(`${salida} / ${destino}`, 61.19, yDestinos - (i + 1) * GAP_LINEA, 20, NAVY_TXT)
+    })
+  }
 
   // Recuadro "SI TE INTERESA VER LAS ACTIVIDADES..." clickeable, si el vuelo tiene
   // un link de actividades cargado en el formulario.
@@ -285,7 +302,7 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
 // real (pagina de Aereos + una de hospedaje de muestra, que se descarta) y
 // devuelve `doc` ya con esa primera pagina dibujada — mismo comportamiento de
 // siempre para propuesta simple (un solo vuelo).
-export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo }) {
+export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo, destinos }) {
   const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
   const doc = await PDFDocument.load(plantillaBytes)
   doc.registerFontkit(fontkit)
@@ -297,7 +314,7 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
   const bebas = await doc.embedFont(fontBytes)
 
-  await dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo })
+  await dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelo, destinos })
 
   return doc
 }
@@ -331,8 +348,8 @@ const ANCHO_COL_VUELO = 245
 // agranda el texto de dibujarVueloCompacto en la misma proporcion, tapada en
 // 2x para que una hoja con 1 solo vuelo residual (ej. un grupo sobrante de 5)
 // no quede con letras desproporcionadas.
-function crearSlotVuelo(fila, totalEnHoja) {
-  const altoFila = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / totalEnHoja
+function crearSlotVuelo(fila, totalEnHoja, zonaBottom = ZONA_GRUPO_BOTTOM) {
+  const altoFila = (ZONA_GRUPO_TOP - zonaBottom) / totalEnHoja
   const top = ZONA_GRUPO_TOP - fila * altoFila
   const escala = Math.min(ALTO_FILA_BASE > 0 ? altoFila / ALTO_FILA_BASE : 1, 2)
   return { top, bottom: top - altoFila, escala }
@@ -485,10 +502,20 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero) {
   page.drawLine({ start: { x: 30, y: slot.bottom + 8 }, end: { x: 565, y: slot.bottom + 8 }, thickness: 0.5, color: rgb(0.85, 0.83, 0.78) })
 }
 
-async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo }) {
+async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo, destinos }) {
   function escribir(texto, x, y, size, color) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
+
+  // Transfers/traslados privados de una propuesta combinada: se cargan por
+  // tramo (salida/destino) en la seccion "Transfers" del Generador, aparte de
+  // los vuelos — antes se guardaban en la base pero nunca llegaban al PDF. Se
+  // listan una sola vez, en la primera hoja de Aereos, reservando el espacio
+  // extra que haga falta ARRIBA del banner de actividades (que es fijo).
+  const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
+  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 16 : 0
+  const ALTO_LINEA_DESTINO = 13
+  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + 6 : 0
 
   // Encabezado compacto — SOLO en esta grilla (la pagina de un solo vuelo no
   // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
@@ -557,11 +584,25 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las
   // filas — de borde a borde por la misma razon que el punto 2: el pie de
   // pagina fijo tambien es de borde a borde.
+  const zonaBottomEfectivo = ZONA_GRUPO_BOTTOM + alturaDestinos
   page.drawRectangle({ x: -5, y: ZONA_GRUPO_BOTTOM, width: PAGINA_ANCHO + 10, height: ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, color: CREMA_BG })
 
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
-    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja), grupo[i], i + 1)
+    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1)
+  }
+
+  // Lista de transfers, en la franja reservada arriba del banner.
+  if (destinosValidos.length) {
+    let yDest = zonaBottomEfectivo - 6
+    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, 11, NAVY_TXT)
+    yDest -= ALTO_TITULO_DESTINOS
+    for (const d of destinosValidos) {
+      const salida = d.salida?.trim().toUpperCase() || '—'
+      const destino = d.destino?.trim().toUpperCase() || '—'
+      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, 9, NAVY_TXT)
+      yDest -= ALTO_LINEA_DESTINO
+    }
   }
 
   // Cartel de actividades: uno solo por hoja (no uno por vuelo), fijo en la
@@ -575,7 +616,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
 // Primer grupo (hasta 4 vuelos) de una propuesta con 2 o mas vuelos: arma el
 // documento entero, igual que generarPaginaAereosPDF pero con la grilla.
-export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos }) {
+export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, destinos }) {
   const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
   const doc = await PDFDocument.load(plantillaBytes)
   doc.registerFontkit(fontkit)
@@ -585,7 +626,10 @@ export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdult
   const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
   const bebas = await doc.embedFont(fontBytes)
 
-  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO) })
+  // Los transfers (destinos) son un dato de la propuesta entera, no de esta
+  // hoja en particular — van solo en la primera (esta), no se repiten si hay
+  // mas de 4 vuelos y se agregan paginas siguientes con agregarPaginaAereosGrupo.
+  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), destinos })
 
   return { doc, bebas }
 }

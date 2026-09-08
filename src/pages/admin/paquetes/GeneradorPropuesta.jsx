@@ -699,6 +699,12 @@ export default function GeneradorPropuesta() {
       // en un solo string para el PDF y el guardado, igual que antes.
       const edadesMenoresTexto = edadesMenores.slice(0, parseInt(cantidadMenores) || 0).filter(Boolean).join(', ')
 
+      // Transfers de la propuesta combinada (traslados por tramo, cargados
+      // aparte de los vuelos en la seccion "Transfers") — se guardaban en la
+      // base pero nunca llegaban al PDF. Mismo filtro que destinos_detalle
+      // mas abajo, al guardar.
+      const destinosParaPdf = tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null
+
       // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
       // vectorial, no una captura de pantalla). Con UN solo vuelo se usa la
       // pagina completa de siempre; con 2 o mas, una grilla compacta de hasta
@@ -706,9 +712,9 @@ export default function GeneradorPropuesta() {
       // pagina entera por cada uno.
       let doc
       if (vuelosParaPdf.length <= 1) {
-        doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0] })
+        doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0], destinos: destinosParaPdf })
       } else {
-        const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf })
+        const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf })
         doc = primerGrupo.doc
         if (vuelosParaPdf.length > 4) {
           const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())

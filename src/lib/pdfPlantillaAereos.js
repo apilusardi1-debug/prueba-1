@@ -488,7 +488,11 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero) {
   y -= altoCajas + 10 * esc
 
   // Equipaje y traslados: una sola linea centrada por dato (no una por
-  // columna), sin icono — el detalle vive en la caja de arriba.
+  // columna), sin icono — el detalle vive en la caja de arriba. El bloque
+  // (1 o 2 lineas) se centra VERTICAL y horizontalmente en el espacio libre
+  // entre el piso de las cajas y el separador de abajo — antes quedaba
+  // pegado arriba (10pt fijos bajo la caja), con todo el aire libre
+  // amontonado abajo cuando el vuelo no tenia traslado propio cargado.
   const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
@@ -497,19 +501,27 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero) {
       return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
     })
   const xCentroHoja = (COL_IZQ_X + COL_DER_X + ANCHO_COL_VUELO) / 2
-  if (equipajeSeleccionado.length) {
-    const texto = `EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`
-    centrado(texto, xCentroHoja, y, medirTamanoAjustado(texto, 515, 9.5), NAVY_TXT)
-    y -= 12 * esc
-  }
+  const lineasInfo = []
+  if (equipajeSeleccionado.length) lineasInfo.push(`EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`)
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
-    const texto = vuelo.traslado_ida && vuelo.traslado_vuelta
-      ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
-      : vuelo.traslado_ida
-        ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
-        : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
-    centrado(texto, xCentroHoja, y, medirTamanoAjustado(texto, 515, 9.5), NAVY_TXT)
-    y -= 12 * esc
+    lineasInfo.push(
+      vuelo.traslado_ida && vuelo.traslado_vuelta
+        ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
+        : vuelo.traslado_ida
+          ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
+          : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
+    )
+  }
+  if (lineasInfo.length) {
+    const bottomBoundary = slot.bottom + 8 * esc
+    const gapLinea = 12 * esc
+    const centroY = (y + bottomBoundary) / 2
+    const tamanoRef = medirTamanoAjustado(lineasInfo[0], 515, 9.5)
+    let yLinea = centroY + (lineasInfo.length - 1) * gapLinea / 2 - tamanoRef * 0.36
+    for (const texto of lineasInfo) {
+      centrado(texto, xCentroHoja, yLinea, medirTamanoAjustado(texto, 515, 9.5), NAVY_TXT)
+      yLinea -= gapLinea
+    }
   }
 
   // El cartel de actividades (con foto, "SI TE INTERESA VER LAS
@@ -532,9 +544,15 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // listan una sola vez, en la primera hoja de Aereos, reservando el espacio
   // extra que haga falta ARRIBA del banner de actividades (que es fijo).
   const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
-  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 16 : 0
-  const ALTO_LINEA_DESTINO = 13
-  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + 6 : 0
+  // Texto de este bloque a 3x (pedido explicito) — el alto reservado
+  // (alturaDestinos) escala en la misma proporcion para que la grilla de
+  // vuelos de arriba se achique lo necesario y no quede pisada.
+  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 48 : 0
+  const ALTO_LINEA_DESTINO = 39
+  // +22 (no +6): mismo ajuste que el gap de arranque del titulo, para que el
+  // aire extra tambien se descuente de la grilla de vuelos en vez de comerse
+  // el margen de abajo, contra el banner fijo.
+  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + 22 : 0
 
   // Encabezado compacto — SOLO en esta grilla (la pagina de un solo vuelo no
   // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
@@ -613,13 +631,16 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   // Lista de transfers, en la franja reservada arriba del banner.
   if (destinosValidos.length) {
-    let yDest = zonaBottomEfectivo - 6
-    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, 11, NAVY_TXT)
+    // -22, no -6: con el titulo a 3x el tamaño de antes (33 vs 11) el mismo
+    // aire fijo de antes dejaba el techo de la letra cruzando el separador
+    // de la ultima fila de vuelos, que esta en zonaBottomEfectivo+8.
+    let yDest = zonaBottomEfectivo - 22
+    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, 33, NAVY_TXT)
     yDest -= ALTO_TITULO_DESTINOS
     for (const d of destinosValidos) {
       const salida = d.salida?.trim().toUpperCase() || '—'
       const destino = d.destino?.trim().toUpperCase() || '—'
-      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, 9, NAVY_TXT)
+      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, 27, NAVY_TXT)
       yDest -= ALTO_LINEA_DESTINO
     }
   }

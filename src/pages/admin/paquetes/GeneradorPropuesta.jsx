@@ -705,6 +705,11 @@ export default function GeneradorPropuesta() {
       // mas abajo, al guardar.
       const destinosParaPdf = tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null
 
+      // Moneda del vuelo (valor de venta) — no tiene campo propio, se toma del
+      // primer hospedaje cargado, mismo criterio que la moneda de la propuesta
+      // guardada en la base (ver mas abajo, "moneda: hospedajesValidos[0]...").
+      const monedaPdf = hospedajes.find(h => h.nombre.trim())?.moneda || 'ARS'
+
       // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
       // vectorial, no una captura de pantalla). Con UN solo vuelo se usa la
       // pagina completa de siempre; con 2 o mas, una grilla compacta de hasta
@@ -712,15 +717,15 @@ export default function GeneradorPropuesta() {
       // pagina entera por cada uno.
       let doc
       if (vuelosParaPdf.length <= 1) {
-        doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0], destinos: destinosParaPdf })
+        doc = await generarPaginaAereosPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelo: vuelosParaPdf[0], destinos: destinosParaPdf, moneda: monedaPdf })
       } else {
-        const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf })
+        const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf })
         doc = primerGrupo.doc
         if (vuelosParaPdf.length > 4) {
           const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
           const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
           for (let i = 4; i < vuelosParaPdf.length; i += 4) {
-            await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4) })
+            await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4), moneda: monedaPdf })
           }
         }
       }

@@ -525,7 +525,7 @@ export async function generarPDFCierre(propuesta) {
       left: RECT_BANNER_ORIGEN.x, bottom: RECT_BANNER_ORIGEN.y,
       right: RECT_BANNER_ORIGEN.x + RECT_BANNER_ORIGEN.width, top: RECT_BANNER_ORIGEN.y + RECT_BANNER_ORIGEN.height,
     })
-    const anchoBanner = 450
+    const anchoBanner = 225
     const altoBanner = anchoBanner * (RECT_BANNER_ORIGEN.height / RECT_BANNER_ORIGEN.width)
     const xBanner = (LINEA_X1 + LINEA_X2) / 2 - anchoBanner / 2
     const yBanner = (243 + 85) / 2 - altoBanner / 2

@@ -274,15 +274,25 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
 // ya esta bien aprovechada.
 const ZONA_GRUPO_TOP = 648 // debajo del titulo "AÉREOS:" (redibujado mas arriba al achicar el encabezado, ver dibujarPaginaAereosGrupo)
 const ZONA_GRUPO_BOTTOM = 50 // medido en el PDF real: el pie de pagina fijo empieza en y=34 — 50 deja margen de sobra sin arriesgar a tocarlo
-const FILAS_VUELO = 4
-const ALTO_FILA_VUELO = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / FILAS_VUELO
+const FILAS_VUELO = 4 // tope de vuelos por hoja (no la cantidad real de filas dibujadas, ver mas abajo)
+const ALTO_FILA_BASE = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / FILAS_VUELO
 const COL_IZQ_X = 44
 const COL_DER_X = 320
 const ANCHO_COL_VUELO = 245
 
-function crearSlotVuelo(fila) {
-  const top = ZONA_GRUPO_TOP - fila * ALTO_FILA_VUELO
-  return { top, bottom: top - ALTO_FILA_VUELO }
+// Antes la zona se dividia siempre en 4 filas fijas aunque hubiera menos
+// vuelos cargados — con 2 vuelos, por ejemplo, quedaban 2 filas enteras en
+// blanco (mitad de hoja vacia). Ahora la fila se calcula sobre la cantidad
+// REAL de vuelos de esta hoja (grupo.length, hasta 4), asi siempre ocupan
+// toda la zona disponible. La escala resultante (>1 con menos de 4 vuelos)
+// agranda el texto de dibujarVueloCompacto en la misma proporcion, tapada en
+// 2x para que una hoja con 1 solo vuelo residual (ej. un grupo sobrante de 5)
+// no quede con letras desproporcionadas.
+function crearSlotVuelo(fila, totalEnHoja) {
+  const altoFila = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / totalEnHoja
+  const top = ZONA_GRUPO_TOP - fila * altoFila
+  const escala = Math.min(ALTO_FILA_BASE > 0 ? altoFila / ALTO_FILA_BASE : 1, 2)
+  return { top, bottom: top - altoFila, escala }
 }
 
 // Una tarjeta de vuelo dentro de su franja — mismos datos que la pagina
@@ -290,39 +300,47 @@ function crearSlotVuelo(fila) {
 // actividades) pero en lineas mas chicas, una debajo de otra en vez de
 // repartidas con iconos grandes.
 function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
+  // Con menos de 4 vuelos en la hoja, slot.escala > 1 (ver crearSlotVuelo) —
+  // agranda tamaños de letra y espaciados en la misma proporcion para
+  // aprovechar el alto real de la franja en vez de dejarlo vacio.
+  const esc = slot.escala || 1
   function escribir(texto, x, y, size, color = NAVY_TXT) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
   function medirTamanoAjustado(texto, anchoMax, size, tamanoMin = 6.5) {
-    let tamano = size
+    let tamano = size * esc
     while (tamano > tamanoMin && bebas.widthOfTextAtSize(texto, tamano) > anchoMax) tamano -= 0.5
     return tamano
   }
 
-  let y = slot.top - 4
-  escribir(`VUELO ${numero}`, COL_IZQ_X, y, 10, NAVY_TXT)
-  y -= 14
+  // Gap inicial mas generoso que un simple "4 * esc": con escala 2 (2 vuelos
+  // en la hoja) la fila 0 arranca justo debajo del titulo fijo "AÉREOS:" — un
+  // gap que solo escalara con la letra mas grande de "VUELO N" terminaba
+  // pisando ese titulo (menos espacio libre del que crece la letra).
+  let y = slot.top - 8 * esc
+  escribir(`VUELO ${numero}`, COL_IZQ_X, y, 10 * esc, NAVY_TXT)
+  y -= 14 * esc
 
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
 
-  escribir(`IDA: ${fechaLarga(vuelo.ida_fecha)}`, COL_IZQ_X, y, 12.5, NAVY_TXT)
-  escribir(`VUELTA: ${fechaLarga(vuelo.vuelta_fecha)}`, COL_DER_X, y, 12.5, NAVY_TXT)
-  y -= 12.5
+  escribir(`IDA: ${fechaLarga(vuelo.ida_fecha)}`, COL_IZQ_X, y, 12.5 * esc, NAVY_TXT)
+  escribir(`VUELTA: ${fechaLarga(vuelo.vuelta_fecha)}`, COL_DER_X, y, 12.5 * esc, NAVY_TXT)
+  y -= 12.5 * esc
 
   const textoIdaSale = `SALE DE ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.ida_sale || ''} HS`
   const textoVueltaSale = `SALE DE ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_sale || ''} HS`
   const tamanoSale = Math.min(medirTamanoAjustado(textoIdaSale, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaSale, ANCHO_COL_VUELO, 9))
   escribir(textoIdaSale, COL_IZQ_X, y, tamanoSale, NAVY_TXT)
   escribir(textoVueltaSale, COL_DER_X, y, tamanoSale, NAVY_TXT)
-  y -= 11
+  y -= 11 * esc
 
   const textoIdaLlega = `LLEGA A ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.ida_llega || ''} HS`
   const textoVueltaLlega = `LLEGA A ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_llega || ''} HS`
   const tamanoLlega = Math.min(medirTamanoAjustado(textoIdaLlega, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaLlega, ANCHO_COL_VUELO, 9))
   escribir(textoIdaLlega, COL_IZQ_X, y, tamanoLlega, NAVY_TXT)
   escribir(textoVueltaLlega, COL_DER_X, y, tamanoLlega, NAVY_TXT)
-  y -= 11
+  y -= 11 * esc
 
   if (hayEscalaIda || hayEscalaVuelta) {
     let textoIdaEscala = '', textoVueltaEscala = ''
@@ -342,10 +360,10 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     const tamanoEscala = Math.min(...tamanosEscala)
     if (hayEscalaIda) escribir(textoIdaEscala, COL_IZQ_X, y, tamanoEscala, NAVY_TXT)
     if (hayEscalaVuelta) escribir(textoVueltaEscala, COL_DER_X, y, tamanoEscala, NAVY_TXT)
-    y -= 10.5
+    y -= 10.5 * esc
   }
 
-  y -= 4
+  y -= 4 * esc
 
   const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
@@ -357,7 +375,7 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
   if (equipajeSeleccionado.length) {
     const texto = `EQUIPAJE: ${equipajeSeleccionado.join(' · ')}`
     escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
-    y -= 11
+    y -= 11 * esc
   }
 
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
@@ -367,7 +385,7 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
         ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
         : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
     escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
-    y -= 11
+    y -= 11 * esc
   }
 
   // Cartel de actividades: siempre presente si el vuelo tiene link cargado
@@ -380,11 +398,11 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     const texto = `VER ACTIVIDADES EN ${destino.toUpperCase()} >`
     const tamano = medirTamanoAjustado(texto, 495, 9)
     const ancho = bebas.widthOfTextAtSize(texto, tamano)
-    const alto = 16
-    const pillBottom = y - 11
+    const alto = 16 * esc
+    const pillBottom = y - 11 * esc
     const rectBanner = { x: COL_IZQ_X - 6, y: pillBottom, width: ancho + 16, height: alto }
     page.drawRectangle({ ...rectBanner, color: NAVY_BG })
-    escribir(texto, COL_IZQ_X + 2, pillBottom + 4.5, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
+    escribir(texto, COL_IZQ_X + 2, pillBottom + 4.5 * esc, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
     agregarLink(page, doc, rectBanner, vuelo.banner_link)
   }
 
@@ -451,8 +469,9 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // pagina fijo tambien es de borde a borde.
   page.drawRectangle({ x: -5, y: ZONA_GRUPO_BOTTOM, width: PAGINA_ANCHO + 10, height: ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, color: CREMA_BG })
 
-  for (let i = 0; i < grupo.length && i < FILAS_VUELO; i++) {
-    dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i), grupo[i], i + 1)
+  const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
+  for (let i = 0; i < totalEnHoja; i++) {
+    dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i, totalEnHoja), grupo[i], i + 1)
   }
 }
 

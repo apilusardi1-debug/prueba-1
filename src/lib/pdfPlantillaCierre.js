@@ -507,25 +507,30 @@ export async function generarPDFCierre(propuesta) {
   page.drawLine({ start: { x: LINEA_X1, y: 333 }, end: { x: LINEA_X2, y: 333 }, thickness: GROSOR_LINEA, color: NAVY_TXT })
   page.drawLine({ start: { x: LINEA_X1, y: 243 }, end: { x: LINEA_X2, y: 243 }, thickness: GROSOR_LINEA, color: NAVY_TXT })
 
-  // Banner "VER ACTIVIDADES EN {DESTINO}" — mismo link de paseos que ya se
-  // carga por vuelo en el Generador (vuelo.banner_link) y que aparece en la
-  // propuesta inicial, pero que hasta ahora no tenia ningun lugar en el PDF
-  // de cierre. Va centrado en el hueco que quedo libre en esta hoja al mover
-  // el DETALLE a su propia pagina (linea 243 arriba, pie de pagina abajo).
+  // Banner "SI TE INTERESA VER LAS ACTIVIDADES Y PASEOS..." — mismo link de
+  // paseos que ya se carga por vuelo en el Generador (vuelo.banner_link) y
+  // aparece en la propuesta inicial, pero hasta ahora no tenia ningun lugar
+  // en el PDF de cierre. En vez de redibujarlo (texto + foto propia), se
+  // reusa el banner real de la plantilla de Aereos tal cual — mismo diseño
+  // exacto en los dos PDF — recortandolo de esa pagina y estampandolo acá.
+  // Va centrado en el hueco que quedo libre en esta hoja al mover el
+  // DETALLE a su propia pagina (linea 243 arriba, pie de pagina abajo).
   if (vuelo.banner_link) {
-    const destinoBanner = vuelo.banner_destino?.trim() || vuelo.destino_ciudad?.trim() || 'destino'
-    const textoBanner = `VER ACTIVIDADES EN ${destinoBanner.toUpperCase()} >`
-    const tamanoBanner = 17
-    const anchoTexto = bebas.widthOfTextAtSize(textoBanner, tamanoBanner)
-    const padXBanner = 22
-    const altoBanner = 42
-    const anchoBanner = anchoTexto + padXBanner * 2
+    const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
+    const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
+    const paginaAereos = plantillaAereosDoc.getPages()[0]
+    // Rect real del banner en esa plantilla (ver agregarLinkBanner en pdfPlantillaAereos.js).
+    const RECT_BANNER_ORIGEN = { x: 140, y: 85, width: 315, height: 81 }
+    const bannerEmbebido = await doc.embedPage(paginaAereos, {
+      left: RECT_BANNER_ORIGEN.x, bottom: RECT_BANNER_ORIGEN.y,
+      right: RECT_BANNER_ORIGEN.x + RECT_BANNER_ORIGEN.width, top: RECT_BANNER_ORIGEN.y + RECT_BANNER_ORIGEN.height,
+    })
+    const anchoBanner = 450
+    const altoBanner = anchoBanner * (RECT_BANNER_ORIGEN.height / RECT_BANNER_ORIGEN.width)
     const xBanner = (LINEA_X1 + LINEA_X2) / 2 - anchoBanner / 2
     const yBanner = (243 + 85) / 2 - altoBanner / 2
-    const rectBanner = { x: xBanner, y: yBanner, width: anchoBanner, height: altoBanner }
-    page.drawRectangle({ ...rectBanner, color: NAVY_BG })
-    escribir(textoBanner, xBanner + padXBanner, yBanner + (altoBanner - tamanoBanner) / 2 + 4, tamanoBanner, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
-    agregarLink(page, doc, rectBanner, vuelo.banner_link)
+    page.drawPage(bannerEmbebido, { x: xBanner, y: yBanner, width: anchoBanner, height: altoBanner })
+    agregarLink(page, doc, { x: xBanner, y: yBanner, width: anchoBanner, height: altoBanner }, vuelo.banner_link)
   }
 
   // Circulo relleno a la izquierda de un parrafo, alineado con la altura x del

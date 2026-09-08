@@ -245,6 +245,13 @@ export async function generarPDFCierre(propuesta) {
   // plantilla real tiene ahí texto de muestra ("e3p9hy") que si no se tapa queda
   // visible en todos los PDF.
   tapar(305.5, 601.7, 160, 60, CREMA_BG)
+  // Linea vertical fija de la plantilla real (separaba "AÉREOS" de "CÓDIGO DE
+  // RESERVA") — con ese campo tapado ya no separa nada, queda flotando sola
+  // arriba de la caja de VUELTA. Medida sobre la plantilla real: x≈297.4,
+  // y 540-653. Alto tope en 127 (no mas: el limite navy/crema de esta franja
+  // esta en y=662 — un tapado mas alto asomaba un mordisco crema en el fondo
+  // navy del encabezado, arriba de ese limite).
+  tapar(295, 538, 4, 127, CREMA_BG)
 
   // Ida (mitad izquierda) y vuelta (mitad derecha): mismas cajas con borde
   // redondeado + flecha + escala centrada que la grilla de vuelos de la

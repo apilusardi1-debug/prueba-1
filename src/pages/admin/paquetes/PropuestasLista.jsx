@@ -928,7 +928,7 @@ export default function PropuestasLista({ estado }) {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Teléfono operativo</label>
+                    <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Teléfono cliente</label>
                     <input value={telefonoInterno} onChange={e => setTelefonoInterno(e.target.value)} onBlur={() => guardarCampoDocumento('telefono_interno', telefonoInterno)}
                       placeholder="Chofer, guía, hotel..."
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />

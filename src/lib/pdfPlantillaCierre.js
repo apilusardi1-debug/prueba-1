@@ -400,20 +400,19 @@ export async function generarPDFCierre(propuesta) {
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }
   // Banda "VER ÁREAS INTERNAS": solo si hay una unidad puntual elegida (con o
-  // sin foto propia cargada — el link vale igual). Alineada con el nombre de
-  // la habitacion (x=308.5, misma columna de texto), no con la foto — antes
-  // quedaba pegada a la foto de la habitacion (x=434), lejos del nombre y
-  // colgada sola cuando no habia foto cargada.
+  // sin foto propia cargada — el link vale igual). Pegada debajo de la foto
+  // de la habitacion, mismo patron exacto que "VER ÁREAS EXTERNAS" debajo de
+  // la foto del hospedaje (ancho de la banda = ancho de la foto).
   if (hospedaje.id && hospedaje.habitacion_id) {
     const urlInternas = `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
     agregarLink(page, doc, fotoHabitacion, urlInternas)
-    const textoInt = 'VER ÁREAS INTERNAS >'
-    const tamanoInt = 7.5
-    const anchoInt = helv.widthOfTextAtSize(textoInt, tamanoInt)
-    const bandaInt = { x: 308.5, y: 390, width: anchoInt + 12, height: 16 }
+    const bandaInt = { x: fotoHabitacion.x, y: fotoHabitacion.y - 19, width: fotoHabitacion.width, height: 16 }
     tapar(bandaInt.x - 4, bandaInt.y - 4, bandaInt.width + 8, bandaInt.height + 8, CREMA_BG)
     page.drawRectangle({ ...bandaInt, color: NAVY_BG })
-    escribir(textoInt, bandaInt.x + 6, bandaInt.y + (bandaInt.height - tamanoInt) / 2 + 1, tamanoInt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+    const textoInt = 'VER ÁREAS INTERNAS >'
+    let tamanoInt = 7.5
+    while (tamanoInt > 5.5 && helv.widthOfTextAtSize(textoInt, tamanoInt) > bandaInt.width - 10) tamanoInt -= 0.5
+    escribir(textoInt, bandaInt.x + 5, bandaInt.y + (bandaInt.height - tamanoInt) / 2 + 1, tamanoInt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
     agregarLink(page, doc, bandaInt, urlInternas)
   }
 

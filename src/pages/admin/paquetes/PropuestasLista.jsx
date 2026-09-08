@@ -333,6 +333,16 @@ export default function PropuestasLista({ estado }) {
   // Pago: mismo criterio que el Generador — en simple los hospedajes cargados
   // son opciones alternativas (se toma el elegido), en combinada se suman.
   const hospedajeElegidoPago = hospedajesOpciones[hospedajeIdx]
+  // Suma de los mismos items que se listan en el desglose "Costos (neto / venta)"
+  // de Datos internos — da el gasto real total vs. lo que se le cobra al cliente.
+  const gastoNetoTotal = (parseFloat(vuelo.costo_neto) || 0)
+    + (parseFloat(vuelo.traslado_costo_neto) || 0)
+    + (parseFloat(hospedajeElegidoPago?.costo_interno) || 0)
+    + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_agencia_traslado) || 0), 0)
+  const valorVentaTotalInterno = (parseFloat(vuelo.venta) || 0)
+    + (parseFloat(vuelo.traslado_venta) || 0)
+    + (parseFloat(hospedajeElegidoPago?.precio) || 0)
+    + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
   const totalPago = esCombinada
     ? hospedajesOpciones.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
     : (parseFloat(hospedajeElegidoPago?.precio) || 0)
@@ -915,6 +925,12 @@ export default function PropuestasLista({ estado }) {
                       </p>
                     )
                   ))}
+                  {(gastoNetoTotal > 0 || valorVentaTotalInterno > 0) && (
+                    <div className="flex items-center justify-between border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                      <p className="text-xs font-semibold text-gray-700 dark:text-zinc-200">Gasto neto total: {formatearNumero(gastoNetoTotal)}</p>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-zinc-200">Valor de venta: {formatearNumero(valorVentaTotalInterno)}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Paseos y contacto operativo: campos nuevos, se cargan solo

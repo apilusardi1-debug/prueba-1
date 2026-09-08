@@ -150,10 +150,11 @@ export async function generarPDFCierre(propuesta) {
   // Cada segmento es {texto, bold}; la puntuacion que deba pegarse a una
   // palabra (coma, punto) va incluida en el texto de ESE segmento, nunca
   // suelta en uno propio — si no, el word-wrap le mete un espacio antes.
-  // `pagina` parametrizado (default: la de siempre) — el checklist de DETALLE
-  // se movio a una hoja aparte (ver mas abajo) y necesita dibujar sobre esa
-  // pagina nueva, no sobre la primera.
-  function dibujarParrafoRico(segmentos, x, y, size, anchoMax, gapLinea, color, pagina = page) {
+  // Separada del dibujado para poder MEDIR cuantas lineas ocupa un parrafo
+  // (cuanta altura va a usar) antes de decidir donde dibujarlo — la usa el
+  // checklist de DETALLE (ver mas abajo) para repartir el espacio libre de su
+  // pagina entre los items en vez de dejarlos amontonados arriba.
+  function partirEnLineasRico(segmentos, size, anchoMax) {
     const ESPACIO = helv.widthOfTextAtSize(' ', size)
     const palabras = []
     for (const { texto, bold } of segmentos) {
@@ -174,6 +175,14 @@ export async function generarPDFCierre(propuesta) {
         anchoLinea = anchoConEspacio
       }
     }
+    return { lineas, ESPACIO }
+  }
+
+  // `pagina` parametrizado (default: la de siempre) — el checklist de DETALLE
+  // se movio a una hoja aparte (ver mas abajo) y necesita dibujar sobre esa
+  // pagina nueva, no sobre la primera.
+  function dibujarParrafoRico(segmentos, x, y, size, anchoMax, gapLinea, color, pagina = page) {
+    const { lineas, ESPACIO } = partirEnLineasRico(segmentos, size, anchoMax)
     lineas.forEach((linea, i) => {
       let cursorX = x
       const yLinea = y - i * gapLinea
@@ -597,22 +606,46 @@ export async function generarPDFCierre(propuesta) {
 
   paginaDetalle.drawText('Esto es lo que tu propuesta incluye:', { x: 31.2, y: 715, size: 20, font: bebas, color: NAVY_TXT })
 
-  // Mismo contenido que antes (itemsDetalle), pero mucho mas grande y con mas
-  // aire — hay de sobra: esta hoja no compite con ningun otro bloque.
-  const SIZE_ITEM = 13
-  const GAP_ITEM = 19
-  const GAP_ENTRE_ITEMS = 14
+  // Mismo contenido que antes (itemsDetalle), mas grande y con aire — pero en
+  // vez de un espacio FIJO entre items (que con pocos items dejaba media hoja
+  // en blanco al pie, y con muchos podia quedar apretado) se mide primero
+  // cuanto ocupa el texto de cada item (con `partirEnLineasRico`, sin dibujar) y
+  // se reparte TODO el espacio libre de la pagina entre los items — repartido
+  // en vez de amontonado, y quedan pocos o muchos items, siempre llena la
+  // hoja de la misma manera prolija que "Observaciones importantes".
+  const SIZE_ITEM = 14
+  const GAP_ITEM = 20
   const X_TEXTO = 46
-  let yItem = 675
+  const ANCHO_ITEM = 510
+  const Y_INICIO = 668
+  const Y_MIN = 110
+  const GAP_ENTRE_ITEMS_MIN = 14
+  const GAP_ENTRE_ITEMS_MAX = 36
+
+  const alturaItems = itemsDetalle.reduce((acc, { segmentos }) => {
+    const { lineas } = partirEnLineasRico(segmentos, SIZE_ITEM, ANCHO_ITEM)
+    return acc + (lineas.length - 1) * GAP_ITEM + GAP_ITEM
+  }, 0)
+  const gapEntreItems = itemsDetalle.length > 1
+    ? Math.min(GAP_ENTRE_ITEMS_MAX, Math.max(GAP_ENTRE_ITEMS_MIN, (Y_INICIO - Y_MIN - alturaItems) / (itemsDetalle.length - 1)))
+    : GAP_ENTRE_ITEMS_MIN
+
+  // Con MUY pocos items (propuesta sin vuelo/hospedaje cargado, caso raro) el
+  // gap ya toca el tope de arriba y sobra espacio igual — ese sobrante se
+  // reparte mitad arriba/mitad abajo (centrado en el area disponible) en vez
+  // de dejarlo todo amontonado al pie de la pagina.
+  const alturaTotal = alturaItems + gapEntreItems * Math.max(itemsDetalle.length - 1, 0)
+  const espacioLibre = Math.max(0, (Y_INICIO - Y_MIN) - alturaTotal)
+  let yItem = Y_INICIO - espacioLibre / 2
   itemsDetalle.forEach(({ segmentos, link }) => {
     bullet(31.2, yItem, SIZE_ITEM, paginaDetalle, 1.5)
-    const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, 510, GAP_ITEM, NAVY_TXT, paginaDetalle)
+    const lineas = dibujarParrafoRico(segmentos, X_TEXTO, yItem, SIZE_ITEM, ANCHO_ITEM, GAP_ITEM, NAVY_TXT, paginaDetalle)
     // Toda la linea (no solo el texto "ver documento") es el area clickeable
     // del link, mismo criterio que el link de "VER DETALLES" del hospedaje.
     if (link) {
-      agregarLink(paginaDetalle, doc, { x: 31.2, y: yItem - (lineas - 1) * GAP_ITEM - 4, width: 510, height: lineas * GAP_ITEM }, link)
+      agregarLink(paginaDetalle, doc, { x: 31.2, y: yItem - (lineas - 1) * GAP_ITEM - 4, width: ANCHO_ITEM, height: lineas * GAP_ITEM }, link)
     }
-    yItem -= (lineas - 1) * GAP_ITEM + GAP_ITEM + GAP_ENTRE_ITEMS
+    yItem -= (lineas - 1) * GAP_ITEM + GAP_ITEM + gapEntreItems
   })
 
   return doc

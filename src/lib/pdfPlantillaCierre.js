@@ -233,8 +233,12 @@ export async function generarPDFCierre(propuesta) {
   // ningún lado real — se saca, y el título baja un poco para quedar
   // centrado en el aire que deja libre (antes quedaba pegado arriba, con
   // el botón pisándole el espacio de abajo).
+  // Tamaño 29 (no 25): medido pixel a pixel sobre "HOSPEDAJE" (titulo fijo de
+  // la plantilla, sin tocar) para que los tres titulos de seccion — AÉREOS,
+  // HOSPEDAJE, TRASLADOS — queden todos del mismo tamaño visual en vez de
+  // cada uno a una escala distinta.
   tapar(28, 600, 250, 65, CREMA_BG)
-  escribir('AÉREOS', 31.96, 620, 25, NAVY_TXT)
+  escribir('AÉREOS', 31.96, 620, 29, NAVY_TXT)
 
   // Boton chico (navy + texto lima, mismo estilo que el resto de los carteles
   // clickeables de la app) al lado del titulo — el link al e-ticket/voucher
@@ -314,23 +318,26 @@ export async function generarPDFCierre(propuesta) {
   }
 
   // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" a
-  // tamaño 25, igual que AÉREOS/HOSPEDAJE — pero al ser una frase larga (no una
-  // palabra sola) queda con muchísimo mas peso visual que el resto de los
-  // títulos de sección. Se redibuja siempre (no solo cuando NO hay traslados)
-  // a un tamaño mas chico para que quede proporcionado al resto. Tapado previo
-  // generoso: a tamaño 25 el texto original es bastante mas ancho que la
-  // version chica, y el tapado propio de reemplazarAjustado (ajustado al
-  // tamaño nuevo) no llegaba a cubrirlo entero — quedaba asomando la cola.
-  // Ancho tope en 260 (no mas: a partir de x=305 empieza la columna real
-  // "AEROPUERTO / HOTEL, IN-OUT", que no hay que tocar — pasarse la borra
-  // tambien, como paso en un intento anterior).
+  // tamaño 25, igual que AÉREOS — pero al ser una frase larga (no una palabra
+  // sola) no entra entera a ese tamaño en la columna disponible. Se redibuja
+  // siempre (no solo cuando NO hay traslados) apuntando al mismo tamaño 29
+  // que AÉREOS/HOSPEDAJE (ver mas arriba) y se achica solo lo minimo
+  // indispensable para entrar en el ancho de la columna — con las frases
+  // reales termina en 26 ("...INCLUIDOS") o 24 ("...NO INCLUIDOS"), mucho mas
+  // cerca de los otros dos titulos que el 18 fijo que tenia antes.
+  // Tapado previo generoso: a tamaño 25-29 el texto original/nuevo es bastante
+  // mas ancho que la version chica de antes, y el tapado propio de
+  // reemplazarAjustado (ajustado al tamaño final) no llegaba a cubrirlo
+  // entero — quedaba asomando la cola. Ancho tope en 260 (no mas: a partir de
+  // x=305 empieza la columna real "AEROPUERTO / HOTEL, IN-OUT", que no hay
+  // que tocar — pasarse la borra tambien, como paso en un intento anterior).
   tapar(32.66, 278, 260, 38, CREMA_BG)
   // Bajado de y=292 a y=278: a la altura vieja quedaba muy arriba respecto del
   // bloque "AEROPUERTO / HOTEL" + "IN - OUT" de al lado (que ocupa de y=268.87
   // a y=292.87) — asi queda mas centrado verticalmente contra ese bloque.
   reemplazarAjustado(
     propuesta.traslados_incluidos === false ? 'TRASLADOS PRIVADOS NO INCLUIDOS' : 'TRASLADOS PRIVADOS INCLUIDOS',
-    32.66, 278, 18, 260, NAVY_TXT, bebas, CREMA_BG, 14
+    32.66, 278, 29, 260, NAVY_TXT, bebas, CREMA_BG, 14
   )
   // "AEROPUERTO / HOTEL" / "IN - OUT" (columna derecha) es texto fijo de la
   // plantilla real, pensado para el caso simple (un solo trayecto). En una

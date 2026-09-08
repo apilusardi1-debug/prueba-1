@@ -367,13 +367,13 @@ export async function generarPDFCierre(propuesta) {
     // sobre la plantilla real, el bloque completo llega hasta y≈333, no solo
     // hasta donde arranca el texto visible).
     tapar(295, 265, 280, 78, CREMA_BG)
-    let yTraslado = 290
+    let yTraslado = 288
     for (const d of destinosTraslados) {
       if (yTraslado < 265) break
       const salida = d.salida?.trim().toUpperCase() || '—'
       const destino = d.destino?.trim().toUpperCase() || '—'
-      escribir(`- ${salida} / ${destino}`, 308.5, yTraslado, 10, NAVY_TXT)
-      yTraslado -= 13
+      escribir(`- ${salida} / ${destino}`, 308.5, yTraslado, 12, NAVY_TXT)
+      yTraslado -= 15
     }
   }
 
@@ -493,6 +493,40 @@ export async function generarPDFCierre(propuesta) {
   // y=268.87 — con un tapado mas alto el borde de arriba de este rectangulo le
   // pisaba el renglon de abajo a esas letras, medido con el PDF real).
   tapar(28, 85, 540, 178, CREMA_BG)
+
+  // Las 2 lineas horizontales finas de la plantilla real que separan AÉREOS /
+  // HOSPEDAJE / TRASLADOS / pie de pago (y≈333 y y≈243, medidas sobre la
+  // plantilla sin tocar) quedaban dañadas por los tapados de arriba: la de
+  // y≈333 se cortaba a la mitad (los tapados de "VER ÁREAS INTERNAS" y el
+  // botón "VER DETALLES" borran su mitad derecha) y la de y≈243 desaparecia
+  // entera (el tapado del pie de pago, arriba, la cubre completa). Se
+  // redibujan las dos completas ahora que ya no hay nada mas que las tape.
+  const LINEA_X1 = 32.66
+  const LINEA_X2 = 564
+  const GROSOR_LINEA = 0.75
+  page.drawLine({ start: { x: LINEA_X1, y: 333 }, end: { x: LINEA_X2, y: 333 }, thickness: GROSOR_LINEA, color: NAVY_TXT })
+  page.drawLine({ start: { x: LINEA_X1, y: 243 }, end: { x: LINEA_X2, y: 243 }, thickness: GROSOR_LINEA, color: NAVY_TXT })
+
+  // Banner "VER ACTIVIDADES EN {DESTINO}" — mismo link de paseos que ya se
+  // carga por vuelo en el Generador (vuelo.banner_link) y que aparece en la
+  // propuesta inicial, pero que hasta ahora no tenia ningun lugar en el PDF
+  // de cierre. Va centrado en el hueco que quedo libre en esta hoja al mover
+  // el DETALLE a su propia pagina (linea 243 arriba, pie de pagina abajo).
+  if (vuelo.banner_link) {
+    const destinoBanner = vuelo.banner_destino?.trim() || vuelo.destino_ciudad?.trim() || 'destino'
+    const textoBanner = `VER ACTIVIDADES EN ${destinoBanner.toUpperCase()} >`
+    const tamanoBanner = 17
+    const anchoTexto = bebas.widthOfTextAtSize(textoBanner, tamanoBanner)
+    const padXBanner = 22
+    const altoBanner = 42
+    const anchoBanner = anchoTexto + padXBanner * 2
+    const xBanner = (LINEA_X1 + LINEA_X2) / 2 - anchoBanner / 2
+    const yBanner = (243 + 85) / 2 - altoBanner / 2
+    const rectBanner = { x: xBanner, y: yBanner, width: anchoBanner, height: altoBanner }
+    page.drawRectangle({ ...rectBanner, color: NAVY_BG })
+    escribir(textoBanner, xBanner + padXBanner, yBanner + (altoBanner - tamanoBanner) / 2 + 4, tamanoBanner, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
+    agregarLink(page, doc, rectBanner, vuelo.banner_link)
+  }
 
   // Circulo relleno a la izquierda de un parrafo, alineado con la altura x del
   // texto (no la linea de base) para que quede centrado con el renglón.

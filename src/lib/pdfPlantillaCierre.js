@@ -360,6 +360,22 @@ export async function generarPDFCierre(propuesta) {
       dibujarImagenCover(page, img, fotoHospedaje)
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }
+  // Banda "VER ÁREAS EXTERNAS" pegada debajo de la foto general del hospedaje
+  // — mismo estilo (navy + texto lima) y mismo criterio que la pagina de
+  // Hospedajes de la propuesta inicial, para que ambos PDF queden consistentes
+  // (antes esta foto no tenia ningun link propio).
+  if (hospedaje.id) {
+    const urlExternas = `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
+    agregarLink(page, doc, fotoHospedaje, urlExternas)
+    const bandaExt = { x: fotoHospedaje.x, y: fotoHospedaje.y - 19, width: fotoHospedaje.width, height: 16 }
+    tapar(bandaExt.x - 4, bandaExt.y - 4, bandaExt.width + 8, bandaExt.height + 8, CREMA_BG)
+    page.drawRectangle({ ...bandaExt, color: NAVY_BG })
+    const textoExt = 'VER ÁREAS EXTERNAS >'
+    let tamanoExt = 7.5
+    while (tamanoExt > 5.5 && helv.widthOfTextAtSize(textoExt, tamanoExt) > bandaExt.width - 10) tamanoExt -= 0.5
+    escribir(textoExt, bandaExt.x + 5, bandaExt.y + (bandaExt.height - tamanoExt) / 2 + 1, tamanoExt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+    agregarLink(page, doc, bandaExt, urlExternas)
+  }
   // Ancho real disponible antes de la foto de la habitacion (que arranca en
   // x=434) — con 200 (el ancho viejo) el texto largo quedaba pisado por la
   // foto en vez de cortarse antes. "pension" achica letra si hace falta;
@@ -371,7 +387,16 @@ export async function generarPDFCierre(propuesta) {
   // que el que se usa ahora — el tapado propio de reemplazarAjustado/
   // reemplazarMultilinea (ajustado al tamaño final, mas chico) no llegaba a
   // cubrirlo entero y quedaba asomando arriba.
-  tapar(308.5, 400, ANCHO_COL_HABITACION + 10, 70, CREMA_BG)
+  // +25 (no +10): quedaba un resto de la plantilla real asomando justo a la
+  // derecha del tapado viejo (un caracter suelto tipo comilla/parentesis,
+  // visto en un PDF real generado sin foto de habitacion) — el tapado no
+  // llegaba a cubrirlo del todo.
+  tapar(308.5, 400, ANCHO_COL_HABITACION + 25, 70, CREMA_BG)
+  // El boton fijo "VER DETALLES" de la plantilla real (navy, debajo de esta
+  // columna de texto) queda tapado — se reemplaza por la banda "VER ÁREAS
+  // INTERNAS" debajo de la foto de la habitacion, mismo criterio que "VER
+  // ÁREAS EXTERNAS" de arriba.
+  tapar(302, 362, 105, 34, CREMA_BG)
   if (hospedaje.pension) {
     reemplazarAjustado(hospedaje.pension, 308.5, 444.1, 18, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 10)
   }
@@ -382,19 +407,27 @@ export async function generarPDFCierre(propuesta) {
   // explicito del usuario, no existia en la plantilla original. Mismo tamano que
   // la foto del hospedaje (115.7x115.7) y misma altura Y, mas a la derecha —
   // medido sobre una captura real que el usuario marco con un recuadro.
+  const fotoHabitacion = { x: 434, y: 366.5, width: 115.7, height: 115.7 }
   const fotoHabitacionBytes = await bytesDeImagen(hospedaje.habitacion_imagen)
   if (fotoHabitacionBytes) {
-    const fotoHabitacion = { x: 434, y: 366.5, width: 115.7, height: 115.7 }
     try {
       const img = await embedImagenAuto(doc, fotoHabitacionBytes)
       dibujarImagenCover(page, img, fotoHabitacion)
     } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
   }
-  if (hospedaje.id) {
-    const url = hospedaje.habitacion_id
-      ? `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
-      : `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
-    agregarLink(page, doc, { x: 308, y: 368, width: 80, height: 16 }, url)
+  // Banda "VER ÁREAS INTERNAS": solo si hay una unidad puntual elegida (con o
+  // sin foto propia cargada — el link vale igual).
+  if (hospedaje.id && hospedaje.habitacion_id) {
+    const urlInternas = `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
+    agregarLink(page, doc, fotoHabitacion, urlInternas)
+    const bandaInt = { x: fotoHabitacion.x, y: fotoHabitacion.y - 19, width: fotoHabitacion.width, height: 16 }
+    tapar(bandaInt.x - 4, bandaInt.y - 4, bandaInt.width + 8, bandaInt.height + 8, CREMA_BG)
+    page.drawRectangle({ ...bandaInt, color: NAVY_BG })
+    const textoInt = 'VER ÁREAS INTERNAS >'
+    let tamanoInt = 7.5
+    while (tamanoInt > 5.5 && helv.widthOfTextAtSize(textoInt, tamanoInt) > bandaInt.width - 10) tamanoInt -= 0.5
+    escribir(textoInt, bandaInt.x + 5, bandaInt.y + (bandaInt.height - tamanoInt) / 2 + 1, tamanoInt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+    agregarLink(page, doc, bandaInt, urlInternas)
   }
 
   // Link al voucher del hospedaje (cargado en el panel de Documentos) — poco

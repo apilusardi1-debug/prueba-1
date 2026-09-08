@@ -323,27 +323,24 @@ async function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero, icono
   }
   // Icono chico alineado con una linea de texto: centrado verticalmente contra
   // el cap-height aproximado del tamaño de letra de esa linea (no el baseline,
-  // que dejaria el icono "flotando" mas abajo que las letras).
+  // que dejaria el icono "flotando" mas abajo que las letras). Piso minimo de
+  // tamaño (no solo proporcional al texto): estos iconos tienen bastante
+  // detalle interno (rejilla del calendario, tirador de la valija) y por
+  // debajo de ~13pt se ven borrosos/de baja calidad aunque el PNG de origen
+  // sea nitido — es un problema de tamaño de render, no del asset.
   async function dibujarIconoLinea(bytes, x, yBaseline, tamanoTexto) {
     const img = await doc.embedPng(bytes)
-    const size = tamanoTexto * 1.15
+    const size = Math.max(tamanoTexto * 1.15, 13 * esc)
     page.drawImage(img, { x, y: yBaseline - size * 0.18, width: size, height: size })
     return size
   }
 
-  // Gap inicial generoso: la fila 0 arranca justo debajo del titulo fijo
-  // "AÉREOS:" (con su propio icono de avion) — el icono de "VUELO N" es mas
-  // alto que el texto solo, asi que necesita mas aire que un simple ajuste de
-  // tipografia para no tocar el icono del titulo de arriba.
-  let y = slot.top - 16 * esc
+  // Gap inicial: la fila 0 arranca justo debajo del titulo fijo "AÉREOS:" (con
+  // su propio icono de avion, el unico de la hoja — "VUELO N" ya no repite el
+  // icono, solo el texto alineado a la columna).
+  let y = slot.top - 14 * esc
   const tamanoTitulo = 10.5 * esc
-  const avionSize = tamanoTitulo * 1.3
-  if (iconos.avion) {
-    const img = await doc.embedPng(iconos.avion)
-    const ratio = img.width / img.height
-    page.drawImage(img, { x: COL_IZQ_X, y: y - avionSize * 0.22, width: avionSize * ratio, height: avionSize })
-  }
-  escribir(`VUELO ${numero}`, COL_IZQ_X + (iconos.avion ? avionSize * 1.5 + 4 : 0), y, tamanoTitulo, NAVY_TXT)
+  escribir(`VUELO ${numero}`, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
   y -= 15 * esc
 
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
@@ -352,7 +349,7 @@ async function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero, icono
   // IDA/VUELTA + fecha: el dato mas importante de la tarjeta, con icono de
   // calendario e igual jerarquia que en la pagina de un solo vuelo.
   const tamanoFecha = 13.5 * esc
-  const iconFecha = tamanoFecha * 1.2
+  const iconFecha = Math.max(tamanoFecha * 1.15, 13 * esc)
   const textoXIda = COL_IZQ_X + (iconos.calendario ? iconFecha + 5 : 0)
   const textoXVuelta = COL_DER_X + (iconos.calendario ? iconFecha + 5 : 0)
   if (iconos.calendario) {

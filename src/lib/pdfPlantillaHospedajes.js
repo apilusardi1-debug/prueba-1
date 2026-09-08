@@ -131,11 +131,11 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
   for (let idx = 0; idx < grupo.length; idx++) {
     const h = grupo[idx]
     const s = SLOTS[idx]
-    // Margen mas generoso que antes (era +4): con la tipografia mas grande del
-    // bloque de precio/habitaciones, un item que entraba "justo" quedaba
-    // pegado a la fila de abajo sin aire — mejor omitirlo (no dibujarlo) que
-    // mostrarlo apretado contra el hospedaje siguiente.
-    const piso = s.zonaLimpiarBottom + 14
+    // Margen de seguridad contra el borde de la fila — solo para que el
+    // ULTIMO renglon que sí entra no quede pegado sin aire al hospedaje de
+    // abajo (no es margen para el boton de habitacion, que tiene su propio
+    // chequeo mas abajo).
+    const piso = s.zonaLimpiarBottom + 6
 
     // Nombre y subtitulo van en la columna de texto (a la derecha de la foto, que
     // ahora siempre esta a la izquierda) — sin descripcion, hay lugar de sobra para
@@ -173,27 +173,34 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
     if (habitacionesElegidas.length && y >= piso) {
       const anchoItem = anchoColumnaTexto
+      const ALTO_BOTON = 15
+      const GAP_NOMBRE_BOTON = 12
+      const GAP_TRAS_BOTON = 27
+      // El nombre y su boton se dibujan como una unidad — antes se chequeaba
+      // el espacio recien DESPUES de dibujar el nombre, y si no alcanzaba para
+      // el boton, quedaba un nombre "huerfano" sin su boton (bug real, visto
+      // en produccion: la 2da habitacion mostraba el nombre pero no el
+      // boton). Ahora se calcula el alto total ANTES de dibujar nada — si no
+      // entra completo, se omite la habitacion entera y se corta ahi.
+      const altoBloque = s.itemsGap + GAP_NOMBRE_BOTON
       for (const hab of habitacionesElegidas) {
-        if (y < piso) break
+        if (y - altoBloque < piso) break
         const nombreHab = (hab.nombre || 'Habitación').toUpperCase()
         let tamanoNombre = s.itemsSize
         while (tamanoNombre > 6 && helv.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoItem) tamanoNombre -= 0.5
         escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, helv)
         y -= s.itemsGap
 
-        if (h.id && y - 12 >= piso - 5) {
+        if (h.id) {
           const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
           const texto = 'VER ÁREAS INTERNAS >'
           const tamanoBoton = 8
           const anchoTexto = helv.widthOfTextAtSize(texto, tamanoBoton)
-          const bandaInt = { x: s.itemsX, y: y - 12, width: anchoTexto + 12, height: 15 }
+          const bandaInt = { x: s.itemsX, y: y - GAP_NOMBRE_BOTON, width: anchoTexto + 12, height: ALTO_BOTON }
           tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
           escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
           agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-          // 19 dejaba el boton casi tocando el nombre de la habitacion
-          // siguiente (el alto del boton ya come la mayor parte del gap) —
-          // 27 deja un aire real antes de la proxima habitacion.
-          y -= 27
+          y -= GAP_TRAS_BOTON
         }
       }
     }

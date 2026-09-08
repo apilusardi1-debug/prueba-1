@@ -457,19 +457,9 @@ export async function generarPDFCierre(propuesta) {
     agregarLink(page, doc, bandaInt, urlInternas)
   }
 
-  // Link al voucher del hospedaje (cargado en el panel de Documentos) — poco
-  // aire libre en esta columna (el botón fijo "VER DETALLES" y la foto de la
-  // habitación ya ocupan casi todo), asi que va como texto chico clickeable
-  // en vez de un botón navy completo, en el hueco justo debajo de "VER
-  // DETALLES" y arriba del separador con la sección de Traslados.
-  const linkHospedajeBoton = propuesta.hospedaje_voucher_url || propuesta.hospedaje_link
-  if (linkHospedajeBoton) {
-    const textoVoucher = 'VER VOUCHER ›'
-    const tamanoVoucher = 8
-    escribir(textoVoucher, 308.5, 353, tamanoVoucher, NAVY_TXT, helvBold)
-    const anchoVoucher = helvBold.widthOfTextAtSize(textoVoucher, tamanoVoucher)
-    agregarLink(page, doc, { x: 306, y: 350, width: anchoVoucher + 4, height: tamanoVoucher + 5 }, linkHospedajeBoton)
-  }
+  // El link "VER VOUCHER" que iba acá se sacó: el link al voucher ya aparece
+  // en el checklist de la pagina de DETALLE ("Voucher del hospedaje: ver
+  // documento."), mismo criterio que el e-ticket del vuelo en AÉREOS.
 
   // Pie de pago: la plantilla real trae esto en dos columnas con etiquetas y
   // bullets ("saldo pendiente" / "detalle" / "importante" en un recuadro

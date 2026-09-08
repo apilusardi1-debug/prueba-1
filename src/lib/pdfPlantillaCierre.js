@@ -243,20 +243,9 @@ export async function generarPDFCierre(propuesta) {
   // que ambos, notorio en la comparacion pixel a pixel que hizo el usuario.
   escribir('AÉREOS', 28, 620, 29, NAVY_TXT)
 
-  // Boton chico (navy + texto lima, mismo estilo que el resto de los carteles
-  // clickeables de la app) al lado del titulo — el link al e-ticket/voucher
-  // del vuelo, cargado en el panel de Documentos, antes no tenia ningun lugar
-  // donde aparecer en este PDF (solo quedaba en el checklist de DETALLE, mas
-  // chico y facil de pasar por alto).
-  const linkAereoBoton = propuesta.aereo_link || propuesta.aereo_pdf_url
-  if (linkAereoBoton) {
-    const textoBotonAereo = 'VER E-TICKET / VOUCHER'
-    const anchoBotonAereo = helv.widthOfTextAtSize(textoBotonAereo, 7.5)
-    const botonAereo = { x: 150, y: 613, width: anchoBotonAereo + 12, height: 16 }
-    page.drawRectangle({ ...botonAereo, color: NAVY_BG })
-    escribir(textoBotonAereo, botonAereo.x + 6, botonAereo.y + 5, 7.5, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
-    agregarLink(page, doc, botonAereo, linkAereoBoton)
-  }
+  // El boton "VER E-TICKET / VOUCHER" que iba acá se sacó: el link al
+  // e-ticket ya aparece en el checklist de la pagina de DETALLE ("E-ticket
+  // del vuelo: ver documento.") — quedaba duplicado tenerlo tambien acá.
 
   // El campo "código de reserva" se sacó del flujo de cierre (ya no se pide al
   // cerrar la propuesta) — se tapa siempre, con o sin valor guardado, porque la
@@ -525,7 +514,7 @@ export async function generarPDFCierre(propuesta) {
       left: RECT_BANNER_ORIGEN.x, bottom: RECT_BANNER_ORIGEN.y,
       right: RECT_BANNER_ORIGEN.x + RECT_BANNER_ORIGEN.width, top: RECT_BANNER_ORIGEN.y + RECT_BANNER_ORIGEN.height,
     })
-    const anchoBanner = 225
+    const anchoBanner = 280
     const altoBanner = anchoBanner * (RECT_BANNER_ORIGEN.height / RECT_BANNER_ORIGEN.width)
     const xBanner = (LINEA_X1 + LINEA_X2) / 2 - anchoBanner / 2
     const yBanner = (243 + 85) / 2 - altoBanner / 2

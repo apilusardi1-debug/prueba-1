@@ -273,7 +273,13 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
 // mas vuelos; con uno solo se sigue usando la pagina completa de arriba, que
 // ya esta bien aprovechada.
 const ZONA_GRUPO_TOP = 648 // debajo del titulo "AÉREOS:" (redibujado mas arriba al achicar el encabezado, ver dibujarPaginaAereosGrupo)
-const ZONA_GRUPO_BOTTOM = 50 // medido en el PDF real: el pie de pagina fijo empieza en y=34 — 50 deja margen de sobra sin arriesgar a tocarlo
+// Mismo limite que "zonaBottom" en la pagina de un solo vuelo (arriba del
+// banner "SI TE INTERESA VER LAS ACTIVIDADES..." con la foto, fijo en la
+// plantilla) — antes esta grilla usaba 50, que tapaba ese banner con el
+// tapar() de mas abajo y en su lugar dibujaba un cartelito chico por vuelo.
+// Ahora se deja intacto (no se tapa) y se agrega UN solo link clickeable
+// encima, una vez por hoja en vez de un cartel repetido por vuelo.
+const ZONA_GRUPO_BOTTOM = 195
 const FILAS_VUELO = 4 // tope de vuelos por hoja (no la cantidad real de filas dibujadas, ver mas abajo)
 const ALTO_FILA_BASE = (ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM) / FILAS_VUELO
 const COL_IZQ_X = 44
@@ -425,23 +431,10 @@ async function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero, icono
     y -= 11 * esc
   }
 
-  // Cartel de actividades: siempre presente si el vuelo tiene link cargado
-  // (todos lo traen por defecto, el catalogo general) — como boton navy con
-  // texto lima, igual que el resto de los carteles clickeables de la app, no
-  // como una linea de texto suelta que se pierde entre el resto de la
-  // informacion de la tarjeta compacta.
-  if (vuelo.banner_link) {
-    const destino = vuelo.banner_destino?.trim() || vuelo.destino_ciudad?.trim() || 'destino'
-    const texto = `VER ACTIVIDADES EN ${destino.toUpperCase()} >`
-    const tamano = medirTamanoAjustado(texto, 495, 9)
-    const ancho = bebas.widthOfTextAtSize(texto, tamano)
-    const alto = 16 * esc
-    const pillBottom = y - 11 * esc
-    const rectBanner = { x: COL_IZQ_X - 6, y: pillBottom, width: ancho + 16, height: alto }
-    page.drawRectangle({ ...rectBanner, color: NAVY_BG })
-    escribir(texto, COL_IZQ_X + 2, pillBottom + 4.5 * esc, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255))
-    agregarLink(page, doc, rectBanner, vuelo.banner_link)
-  }
+  // El cartel de actividades (con foto, "SI TE INTERESA VER LAS
+  // ACTIVIDADES...") ya no se repite por vuelo — queda uno solo, fijo en la
+  // plantilla al pie de la hoja, con su link agregado en
+  // dibujarPaginaAereosGrupo (ver agregarLinkBanner mas abajo).
 
   // Separador fino entre vuelos, apoyado en el piso de la franja.
   page.drawLine({ start: { x: 30, y: slot.bottom + 8 }, end: { x: 565, y: slot.bottom + 8 }, thickness: 0.5, color: rgb(0.85, 0.83, 0.78) })
@@ -543,6 +536,14 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
     await dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i, totalEnHoja), grupo[i], i + 1, iconos)
+  }
+
+  // Cartel de actividades: uno solo por hoja (no uno por vuelo), fijo en la
+  // plantilla con su foto — se le agrega el link del primer vuelo del grupo
+  // que tenga uno cargado, mismo criterio que la pagina de un solo vuelo.
+  const vueloConBanner = grupo.slice(0, totalEnHoja).find(v => v.banner_link)
+  if (vueloConBanner) {
+    agregarLinkBanner(page, doc, vueloConBanner.banner_link)
   }
 }
 

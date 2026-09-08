@@ -321,8 +321,32 @@ export async function generarPDFCierre(propuesta) {
     propuesta.traslados_incluidos === false ? 'TRASLADOS PRIVADOS NO INCLUIDOS' : 'TRASLADOS PRIVADOS INCLUIDOS',
     32.66, 278, 18, 260, NAVY_TXT, bebas, CREMA_BG, 14
   )
+  // "AEROPUERTO / HOTEL" / "IN - OUT" (columna derecha) es texto fijo de la
+  // plantilla real, pensado para el caso simple (un solo trayecto). En una
+  // propuesta combinada hay un tramo de transfer por cada destino (cargados
+  // en la sección "Transfers" del Generador) — se reemplaza ese texto fijo
+  // por el detalle real ("- SALIDA / DESTINO" por tramo), mismo formato que
+  // ya usa la sección de Aéreos para esto.
+  const destinosTraslados = (propuesta.destinos_detalle || []).filter(d => d.salida?.trim() || d.destino?.trim())
   if (propuesta.traslados_incluidos === false) {
-    tapar(305, 265, 150, 45, CREMA_BG)
+    // Mismo tapado alto que el caso de destinos (ver mas abajo): tambien tapa
+    // la linea vertical fija de la plantilla, que sin esto quedaba asomando
+    // sola arriba y abajo del hueco vacio.
+    tapar(295, 265, 280, 78, CREMA_BG)
+  } else if (destinosTraslados.length) {
+    // Tapado alto (no solo el texto "AEROPUERTO/HOTEL, IN-OUT": tambien la
+    // linea vertical fija de la plantilla que separaba esa columna — medido
+    // sobre la plantilla real, el bloque completo llega hasta y≈333, no solo
+    // hasta donde arranca el texto visible).
+    tapar(295, 265, 280, 78, CREMA_BG)
+    let yTraslado = 290
+    for (const d of destinosTraslados) {
+      if (yTraslado < 265) break
+      const salida = d.salida?.trim().toUpperCase() || '—'
+      const destino = d.destino?.trim().toUpperCase() || '—'
+      escribir(`- ${salida} / ${destino}`, 308.5, yTraslado, 10, NAVY_TXT)
+      yTraslado -= 13
+    }
   }
 
   // Hospedaje — la foto empieza en x=157.7 (medido del PDF real), asi que el nombre

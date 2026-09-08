@@ -190,7 +190,10 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
           tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
           escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
           agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-          y -= 19
+          // 19 dejaba el boton casi tocando el nombre de la habitacion
+          // siguiente (el alto del boton ya come la mayor parte del gap) —
+          // 27 deja un aire real antes de la proxima habitacion.
+          y -= 27
         }
       }
     }

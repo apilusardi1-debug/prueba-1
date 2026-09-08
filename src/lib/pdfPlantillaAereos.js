@@ -544,15 +544,23 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // listan una sola vez, en la primera hoja de Aereos, reservando el espacio
   // extra que haga falta ARRIBA del banner de actividades (que es fijo).
   const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
-  // Texto de este bloque a 3x (pedido explicito) — el alto reservado
-  // (alturaDestinos) escala en la misma proporcion para que la grilla de
-  // vuelos de arriba se achique lo necesario y no quede pisada.
-  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 48 : 0
-  const ALTO_LINEA_DESTINO = 39
-  // +22 (no +6): mismo ajuste que el gap de arranque del titulo, para que el
-  // aire extra tambien se descuente de la grilla de vuelos en vez de comerse
-  // el margen de abajo, contra el banner fijo.
-  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + 22 : 0
+  // Texto de este bloque a 1.5x el tamaño original (pedido explicito: primero
+  // se probo a 3x, despues se pidio la mitad de eso). SCALE_DESTINOS es el
+  // unico numero que hay que tocar si se vuelve a pedir otro tamaño — tamaños,
+  // espaciado y el aire extra antes del titulo escalan todos juntos en
+  // proporcion, para que la grilla de vuelos de arriba se achique lo
+  // necesario y el titulo no quede pisando el separador de la ultima fila.
+  const SCALE_DESTINOS = 1.5
+  const TITULO_DESTINOS_SIZE = 11 * SCALE_DESTINOS
+  const LINEA_DESTINO_SIZE = 9 * SCALE_DESTINOS
+  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 16 * SCALE_DESTINOS : 0
+  const ALTO_LINEA_DESTINO = 13 * SCALE_DESTINOS
+  // Aire extra antes del titulo (mas alla del "-6" original) para que su techo
+  // no cruce el separador de la ultima fila de vuelos, que crece con el cap
+  // height del titulo a este tamaño nuevo — mismo aire se descuenta de la
+  // grilla de arriba via alturaDestinos, para no comerse el margen de abajo.
+  const GAP_EXTRA_TITULO = 7.92 * SCALE_DESTINOS - 1.92
+  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + GAP_EXTRA_TITULO : 0
 
   // Encabezado compacto — SOLO en esta grilla (la pagina de un solo vuelo no
   // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
@@ -631,16 +639,13 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   // Lista de transfers, en la franja reservada arriba del banner.
   if (destinosValidos.length) {
-    // -22, no -6: con el titulo a 3x el tamaño de antes (33 vs 11) el mismo
-    // aire fijo de antes dejaba el techo de la letra cruzando el separador
-    // de la ultima fila de vuelos, que esta en zonaBottomEfectivo+8.
-    let yDest = zonaBottomEfectivo - 22
-    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, 33, NAVY_TXT)
+    let yDest = zonaBottomEfectivo - 6 - GAP_EXTRA_TITULO
+    escribir('TRASLADOS PRIVADOS:', COL_IZQ_X, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
     yDest -= ALTO_TITULO_DESTINOS
     for (const d of destinosValidos) {
       const salida = d.salida?.trim().toUpperCase() || '—'
       const destino = d.destino?.trim().toUpperCase() || '—'
-      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, 27, NAVY_TXT)
+      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, LINEA_DESTINO_SIZE, NAVY_TXT)
       yDest -= ALTO_LINEA_DESTINO
     }
   }

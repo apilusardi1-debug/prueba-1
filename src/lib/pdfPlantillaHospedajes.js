@@ -159,41 +159,36 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
-    // Si se eligieron varias habitaciones de este hospedaje (hasta 4), cada
-    // una es clickeable por separado acá — justo debajo de "incluye"/pension,
-    // en la misma columna de texto.
-    if (h.habitaciones?.length && y >= piso) {
+    // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
+    // departamento (hasta 4, elegidas en el Generador) — cada una necesita su
+    // propio nombre Y su propio boton "VER ÁREAS INTERNAS" (no un solo boton
+    // compartido para todas), porque cada una tiene su propia ficha/fotos en
+    // el sitio. Va debajo de "incluye"/pension, en la misma columna de texto.
+    const habitacionesElegidas = h.habitaciones?.length
+      ? h.habitaciones
+      : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
+    if (habitacionesElegidas.length && y >= piso) {
       const anchoItem = anchoColumnaTexto
-      for (const hab of h.habitaciones) {
+      for (const hab of habitacionesElegidas) {
         if (y < piso) break
-        const texto = `• ${(hab.nombre || 'Habitación').toUpperCase()} ›`
-        let tamano = s.itemsSize
-        while (tamano > 6 && helv.widthOfTextAtSize(texto, tamano) > anchoItem) tamano -= 0.5
-        escribir(texto, s.itemsX, y, tamano, NAVY_TXT, helv)
-        if (h.id) {
-          const ancho = helv.widthOfTextAtSize(texto, tamano)
-          const url = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
-          agregarLink(paginaPlantilla, doc, { x: s.itemsX - 2, y: y - 2.5, width: ancho + 4, height: tamano + 4.5 }, url)
-        }
+        const nombreHab = (hab.nombre || 'Habitación').toUpperCase()
+        let tamanoNombre = s.itemsSize
+        while (tamanoNombre > 6 && helv.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoItem) tamanoNombre -= 0.5
+        escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, helv)
         y -= s.itemsGap
-      }
-    }
 
-    // Boton "VER ÁREAS INTERNAS": debajo de la descripcion (no de la foto),
-    // lleva a la habitacion/departamento puntual elegido para esta propuesta
-    // (la primera de "habitaciones" si hay varias) — solo si hay una unidad
-    // especifica cargada. El de "ver areas externas" (fotos generales del
-    // hospedaje) queda unicamente debajo de la foto, un solo boton siempre.
-    if (h.id && h.habitacion_id && y - 14 >= piso) {
-      const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
-      const texto = 'VER ÁREAS INTERNAS >'
-      const tamanoBoton = 8
-      const anchoTexto = helv.widthOfTextAtSize(texto, tamanoBoton)
-      const bandaInt = { x: s.itemsX, y: y - 12, width: anchoTexto + 12, height: 15 }
-      tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
-      escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-      agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-      y -= 19
+        if (h.id && y - 12 >= piso - 5) {
+          const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
+          const texto = 'VER ÁREAS INTERNAS >'
+          const tamanoBoton = 8
+          const anchoTexto = helv.widthOfTextAtSize(texto, tamanoBoton)
+          const bandaInt = { x: s.itemsX, y: y - 12, width: anchoTexto + 12, height: 15 }
+          tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
+          escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+          agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
+          y -= 19
+        }
+      }
     }
 
     // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y

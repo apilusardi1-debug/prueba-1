@@ -298,11 +298,15 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   // Probado en vivo: Gemini a veces se cuelga mucho mas de lo normal (un caso
   // real tardó 150s, el limite de idle-timeout de la Edge Function, antes de
   // devolver el error) — sin este timeout el cliente se quedaba esperando esos
-  // 150s enteros antes de poder reintentar. Con 30s, un intento colgado corta
-  // rápido y el reintento (ver GeneradorPropuesta.jsx) prueba de nuevo antes.
+  // 150s enteros antes de poder reintentar. 30s resultó demasiado ajustado:
+  // probado en vivo, una imagen con bastante texto (captura real de itinerario)
+  // tarda ~30-35s en responder — el cliente cortaba la conexion justo antes de
+  // que llegara la respuesta y lo trataba como "saturado", agotando los 8
+  // reintentos sin que ninguno llegara a tiempo. 60s da el margen real que
+  // necesita una imagen con contenido, sin llegar a esperar los 150s del peor caso.
   const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
     body: { imagenBase64, mediaType },
-    timeout: 30000,
+    timeout: 60000,
   })
   if (!error) return { data, error }
   // Cuando la Edge Function responde con un status distinto de 2xx (ej: 429 de

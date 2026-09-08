@@ -41,7 +41,7 @@ function fechaLarga(iso) {
 // DD/MM/AAAA — usada en el encabezado de cada vuelo de la grilla compacta
 // ("VUELO 1: IDA 6/01/2026"), mas corta que fechaLarga para que entre en una
 // sola linea junto con "VUELO N:".
-function fechaCorta(iso) {
+export function fechaCorta(iso) {
   if (!iso) return ''
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
@@ -51,12 +51,91 @@ function fechaCorta(iso) {
 // tramo (ida/vuelta) de la grilla de vuelos — pdf-lib no trae un
 // drawRoundedRectangle nativo. `x,y` en drawSvgPath es la esquina
 // SUPERIOR IZQUIERDA del path (probado: el alto crece hacia abajo desde ahi).
-function pathRectRedondeado(ancho, alto, radio) {
+export function pathRectRedondeado(ancho, alto, radio) {
   const r = Math.min(radio, ancho / 2, alto / 2)
   return `M ${r} 0 L ${ancho - r} 0 Q ${ancho} 0 ${ancho} ${r} L ${ancho} ${alto - r} Q ${ancho} ${alto} ${ancho - r} ${alto} L ${r} ${alto} Q 0 ${alto} 0 ${alto - r} L 0 ${r} Q 0 0 ${r} 0 Z`
 }
 
-const EQUIPAJE_LABELS = {
+// Tono mas suave que NAVY_TXT para los datos secundarios de la caja de tramo
+// (ciudad, escala) — exportado junto con la caja para que otros PDF que la
+// reusen (ej. el de cierre) mantengan el mismo contraste tipografico.
+export const NAVY_SUAVE_CAJA = rgb(0x3a / 255, 0x55 / 255, 0x64 / 255)
+
+// Alto que ocupa una caja de tramo (ida o vuelta) — se calcula aparte de
+// dibujarCajaTramo porque ida y vuelta suelen dibujarse con el mismo alto
+// (el mayor de los dos) aunque solo una tenga escala, asi quedan simetricas.
+export function altoCajaTramo(hayEscala, esc = 1) {
+  const sinEscala = 13 * esc + 9 * esc + 9 * esc // padding sup + fila principal + fila ciudad
+  return hayEscala ? sinEscala + 8 * esc + 8.5 * esc + 8.5 * esc : sinEscala // + escala (2 lineas) + gap
+}
+
+// Caja con borde redondeado de un tramo (ida o vuelta): codigo+hora de salida
+// — flecha — codigo+hora de llegada, con la ciudad de cada uno chica debajo,
+// y la escala (si hay) centrada mas abajo. Mismo diseño reusado en la grilla
+// de vuelos (2+ en una hoja) y en el PDF de cierre (un unico vuelo) — antes
+// el de cierre traia un diseño viejo (pildoras amarillas de la plantilla
+// real) que no combinaba con el de la propuesta inicial.
+export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoSale, ciudadSale, horaSale, codigoLlega, ciudadLlega, horaLlega, escalaCiudad, escalaCodigo, escalaLlega, escalaSale, colorPrincipal = NAVY_TXT, colorSuave = NAVY_SUAVE_CAJA }) {
+  function escribir(texto, tx, ty, size, color) {
+    page.drawText(texto, { x: tx, y: ty, size, font: bebas, color })
+  }
+  function centrado(texto, xCentro, ty, size, color) {
+    escribir(texto, xCentro - bebas.widthOfTextAtSize(texto, size) / 2, ty, size, color)
+  }
+  function dibujarFlecha(x1, x2, fy, color) {
+    const grosor = Math.max(0.8, 1 * esc)
+    const punta = 4 * esc
+    page.drawLine({ start: { x: x1, y: fy }, end: { x: x2, y: fy }, thickness: grosor, color })
+    page.drawLine({ start: { x: x2, y: fy }, end: { x: x2 - punta, y: fy + punta * 0.65 }, thickness: grosor, color })
+    page.drawLine({ start: { x: x2, y: fy }, end: { x: x2 - punta, y: fy - punta * 0.65 }, thickness: grosor, color })
+  }
+
+  const hayEscala = escalaCiudad || escalaCodigo
+  const alto = altoCajaTramo(hayEscala, esc)
+  page.drawSvgPath(pathRectRedondeado(ancho, alto, 6 * esc), { x, y: yTop, borderColor: colorPrincipal, borderWidth: Math.max(0.75, 1 * esc) })
+
+  const padX = 9 * esc
+  let cy = yTop - 13 * esc
+  const tamanoCiudad = 6.5 * esc
+
+  const textoIzq = `${codigoSale || '—'}  ${horaSale || '--:--'} HS`
+  const textoDer = `${codigoLlega || '—'}  ${horaLlega || '--:--'} HS`
+  // Codigo+hora se achica hasta que entren los dos lados MAS la flecha entre
+  // medio — a escala grande el tamaño de base sin ajustar no entraba en el
+  // ancho fijo de la caja y la flecha terminaba superpuesta con el texto.
+  const anchoFlecha = 24 * esc
+  const anchoDisponible = ancho - padX * 2 - anchoFlecha
+  let tamanoCodigo = 12 * esc
+  while (tamanoCodigo > 7 && (bebas.widthOfTextAtSize(textoIzq, tamanoCodigo) + bebas.widthOfTextAtSize(textoDer, tamanoCodigo)) > anchoDisponible) tamanoCodigo -= 0.5
+  const anchoIzq = bebas.widthOfTextAtSize(textoIzq, tamanoCodigo)
+  const anchoDer = bebas.widthOfTextAtSize(textoDer, tamanoCodigo)
+  escribir(textoIzq, x + padX, cy, tamanoCodigo, colorPrincipal)
+  escribir(textoDer, x + ancho - padX - anchoDer, cy, tamanoCodigo, colorPrincipal)
+  dibujarFlecha(x + padX + anchoIzq + 6 * esc, x + ancho - padX - anchoDer - 6 * esc, cy + tamanoCodigo * 0.32, colorPrincipal)
+  cy -= 9 * esc
+
+  if (ciudadSale) escribir(`(${ciudadSale.toUpperCase()})`, x + padX, cy, tamanoCiudad, colorSuave)
+  if (ciudadLlega) {
+    const anchoCiudadDer = bebas.widthOfTextAtSize(`(${ciudadLlega.toUpperCase()})`, tamanoCiudad)
+    escribir(`(${ciudadLlega.toUpperCase()})`, x + ancho - padX - anchoCiudadDer, cy, tamanoCiudad, colorSuave)
+  }
+  cy -= 9 * esc
+
+  if (hayEscala) {
+    cy -= 8 * esc
+    const xCentro = x + ancho / 2
+    const codigo = escalaCodigo?.toUpperCase()
+    centrado(`ESCALA ${escalaCiudad?.toUpperCase() || ''}${codigo ? ` (${codigo})` : ''}`, xCentro, cy, 7.5 * esc, colorSuave)
+    cy -= 8.5 * esc
+    if (escalaLlega || escalaSale) {
+      centrado(`${escalaLlega || '--:--'} - ${escalaSale || '--:--'}`, xCentro, cy, 7.5 * esc, colorSuave)
+    }
+  }
+
+  return alto
+}
+
+export const EQUIPAJE_LABELS = {
   mochila: 'MOCHILA DE MANO',
   carryOn: 'CARRY ON 10 KG',
   valija23: 'VALIJA 23 KG',
@@ -355,11 +434,6 @@ function crearSlotVuelo(fila, totalEnHoja, zonaBottom = ZONA_GRUPO_BOTTOM) {
   return { top, bottom: top - altoFila, escala }
 }
 
-// Tono mas suave que NAVY_TXT para los datos secundarios (sale/llega, escala)
-// — asi el titulo IDA/VUELTA con la fecha (el dato que mas importa) queda
-// como lo unico "fuerte" de cada columna en vez de que todo pese lo mismo.
-const NAVY_SUAVE = rgb(0x3a / 255, 0x55 / 255, 0x64 / 255)
-
 // Una tarjeta de vuelo dentro de su franja: encabezado "VUELO N: IDA
 // fecha"/"VUELTA fecha" y, debajo, una caja con borde redondeado por tramo
 // (mismo trazo que el resto de "carteles" de la app) con el origen/destino
@@ -383,15 +457,6 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero) {
     while (tamano > tamanoMin && bebas.widthOfTextAtSize(texto, tamano) > anchoMax) tamano -= 0.5
     return tamano
   }
-  // Flecha horizontal simple (linea + punta) entre el origen y el destino de
-  // un tramo, dentro de su caja.
-  function dibujarFlecha(x1, x2, y, color) {
-    const grosor = Math.max(0.8, 1 * esc)
-    const punta = 4 * esc
-    page.drawLine({ start: { x: x1, y }, end: { x: x2, y }, thickness: grosor, color })
-    page.drawLine({ start: { x: x2, y }, end: { x: x2 - punta, y: y + punta * 0.65 }, thickness: grosor, color })
-    page.drawLine({ start: { x: x2, y }, end: { x: x2 - punta, y: y - punta * 0.65 }, thickness: grosor, color })
-  }
 
   // Gap inicial: la fila 0 arranca justo debajo del titulo fijo "AÉREOS:"
   // (con su propio icono de avion, el unico de la hoja).
@@ -401,67 +466,21 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero) {
   escribir(`VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
   y -= 8 * esc
 
-  // Caja por tramo (ida/vuelta): codigo+hora de salida — flecha — codigo+hora
-  // de llegada, con la ciudad de cada uno chica debajo, y la escala (si hay)
-  // centrada mas abajo. Devuelve el alto que ocupo, asi ida y vuelta pueden
-  // quedar con el mismo alto (el mayor de los dos) aunque solo una tenga escala.
-  function altoCaja(hayEscala) {
-    const sinEscala = 13 * esc + 9 * esc + 9 * esc // padding sup + fila principal + fila ciudad
-    return hayEscala ? sinEscala + 8 * esc + 8.5 * esc + 8.5 * esc : sinEscala // + escala (2 lineas) + gap
-  }
-  function dibujarCaja(x, yTop, alto, { codigoSale, ciudadSale, horaSale, codigoLlega, ciudadLlega, horaLlega, escalaCiudad, escalaCodigo, escalaLlega, escalaSale }) {
-    page.drawSvgPath(pathRectRedondeado(ANCHO_COL_VUELO, alto, 6 * esc), { x, y: yTop, borderColor: NAVY_TXT, borderWidth: Math.max(0.75, 1 * esc) })
-
-    const padX = 9 * esc
-    let cy = yTop - 13 * esc
-    const tamanoCiudad = 6.5 * esc
-
-    const textoIzq = `${codigoSale || '—'}  ${horaSale || '--:--'} HS`
-    const textoDer = `${codigoLlega || '—'}  ${horaLlega || '--:--'} HS`
-    // Codigo+hora se achica hasta que entren los dos lados MAS la flecha entre
-    // medio — a escala 2 (pocos vuelos en la hoja) el tamaño de base sin
-    // ajustar no entraba en el ancho fijo de la caja y la flecha terminaba
-    // superpuesta con el texto.
-    const anchoFlecha = 24 * esc
-    const anchoDisponible = ANCHO_COL_VUELO - padX * 2 - anchoFlecha
-    let tamanoCodigo = 12 * esc
-    while (tamanoCodigo > 7 && (bebas.widthOfTextAtSize(textoIzq, tamanoCodigo) + bebas.widthOfTextAtSize(textoDer, tamanoCodigo)) > anchoDisponible) tamanoCodigo -= 0.5
-    const anchoIzq = bebas.widthOfTextAtSize(textoIzq, tamanoCodigo)
-    const anchoDer = bebas.widthOfTextAtSize(textoDer, tamanoCodigo)
-    escribir(textoIzq, x + padX, cy, tamanoCodigo, NAVY_TXT)
-    escribir(textoDer, x + ANCHO_COL_VUELO - padX - anchoDer, cy, tamanoCodigo, NAVY_TXT)
-    dibujarFlecha(x + padX + anchoIzq + 6 * esc, x + ANCHO_COL_VUELO - padX - anchoDer - 6 * esc, cy + tamanoCodigo * 0.32, NAVY_TXT)
-    cy -= 9 * esc
-
-    if (ciudadSale) escribir(`(${ciudadSale.toUpperCase()})`, x + padX, cy, tamanoCiudad, NAVY_SUAVE)
-    if (ciudadLlega) {
-      const anchoCiudadDer = bebas.widthOfTextAtSize(`(${ciudadLlega.toUpperCase()})`, tamanoCiudad)
-      escribir(`(${ciudadLlega.toUpperCase()})`, x + ANCHO_COL_VUELO - padX - anchoCiudadDer, cy, tamanoCiudad, NAVY_SUAVE)
-    }
-    cy -= 9 * esc
-
-    if (escalaCiudad || escalaCodigo) {
-      cy -= 8 * esc
-      const xCentro = x + ANCHO_COL_VUELO / 2
-      const codigo = escalaCodigo?.toUpperCase()
-      centrado(`ESCALA ${escalaCiudad?.toUpperCase() || ''}${codigo ? ` (${codigo})` : ''}`, xCentro, cy, 7.5 * esc, NAVY_SUAVE)
-      cy -= 8.5 * esc
-      if (escalaLlega || escalaSale) {
-        centrado(`${escalaLlega || '--:--'} - ${escalaSale || '--:--'}`, xCentro, cy, 7.5 * esc, NAVY_SUAVE)
-      }
-    }
-  }
-
+  // Caja por tramo (ida/vuelta) con borde redondeado, flecha y escala — ver
+  // dibujarCajaTramo/altoCajaTramo mas arriba (compartidas con el PDF de
+  // cierre, mismo diseño en los dos lugares).
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
-  const altoCajas = Math.max(altoCaja(hayEscalaIda), altoCaja(hayEscalaVuelta))
+  const altoCajas = Math.max(altoCajaTramo(hayEscalaIda, esc), altoCajaTramo(hayEscalaVuelta, esc))
 
-  dibujarCaja(COL_IZQ_X, y, altoCajas, {
+  dibujarCajaTramo(page, bebas, {
+    x: COL_IZQ_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
     codigoSale: vuelo.origen_codigo, ciudadSale: vuelo.origen_ciudad, horaSale: vuelo.ida_sale,
     codigoLlega: vuelo.destino_codigo, ciudadLlega: vuelo.destino_ciudad, horaLlega: vuelo.ida_llega,
     escalaCiudad: vuelo.ida_escala_ciudad, escalaCodigo: vuelo.ida_escala_codigo, escalaLlega: vuelo.ida_escala_llega, escalaSale: vuelo.ida_escala_sale,
   })
-  dibujarCaja(COL_DER_X, y, altoCajas, {
+  dibujarCajaTramo(page, bebas, {
+    x: COL_DER_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
     codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
     codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
     escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,

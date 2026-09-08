@@ -2,6 +2,11 @@ import { PDFDocument, rgb, StandardFonts, PDFName, PDFArray, PDFString, pushGrap
 import fontkit from '@pdf-lib/fontkit'
 import { convertirImagenABase64 } from './supabase.js'
 import { embedImagenAuto } from './pdfImagen.js'
+// Misma caja de tramo (borde redondeado, flecha, escala centrada) que la
+// grilla de vuelos de la propuesta inicial — antes este PDF tenia su propio
+// diseño viejo (pildoras amarillas fijas de la plantilla), inconsistente con
+// el otro PDF.
+import { dibujarCajaTramo, altoCajaTramo, EQUIPAJE_LABELS } from './pdfPlantillaAereos.js'
 
 // Mismos colores exactos que el resto de las plantillas (muestreados del PDF real).
 // Navy y crema sirven tanto de fondo como de texto segun la zona (texto claro sobre
@@ -10,9 +15,6 @@ const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const CREMA_BG = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
 const CREMA_TXT = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
-// Las cajas de IDA/VUELTA son navy (no crema) y las horas van en una pildora
-// amarilla — muestreados directo del PDF real, igual que el resto de los colores.
-const AMARILLO_BG = rgb(0xc6 / 255, 0x9a / 255, 0x00 / 255)
 const SITIO_URL = 'https://prueba-1-rose.vercel.app'
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
@@ -142,39 +144,6 @@ export async function generarPDFCierre(propuesta) {
     tapar(x, y - (size - tamano), anchoMax + 8, size * 0.8 + 5 + (size - tamano), fondo)
     escribir(texto, x, y, tamano, color, font)
   }
-  // Ciudades de origen/destino: si el nombre no entra en el ancho real de la
-  // caja (sobre todo el lado "destino", angosto por la esquina redondeada) se
-  // achica hasta que entre, en vez de desbordar la caja o pisar el ícono de la
-  // esquina — antes quedaban "cortadas" porque el ancho no se respetaba nunca.
-  function reemplazarCiudad(texto, x, y, size, anchoMax, color, font = bebas, fondo = NAVY_BG, tamanoMin = 3.2) {
-    let tamano = size
-    while (tamano > tamanoMin && font.widthOfTextAtSize(String(texto ?? ''), tamano) > anchoMax) tamano -= 0.2
-    tapar(x, y, anchoMax + 8, size * 0.8 + 5, fondo)
-    escribir(texto, x, y, tamano, color, font)
-  }
-  // Pildora amarilla de la hora (sale/llega): a diferencia de reemplazar(), NO usa
-  // el tapar() generico (que suma +8 de relleno pensado para tapar texto viejo,
-  // no para una pildora chica) — dibuja un rectangulo de tamano fijo y ajustado
-  // (mismo ancho para las 4 horas, todas "HH:MM") con el texto centrado adentro,
-  // y bajo, para no pisar el nombre de la ciudad que va justo arriba.
-  function reemplazarHora(x, y, texto, size = SIZE_HORA) {
-    const ANCHO = 25
-    const ALTO = 10
-    // La pildora original de la plantilla tiene la punta redondeada un poco mas
-    // a la izquierda de x — sin este sangrado quedaba asomando ese borde. El
-    // centrado del texto tiene que calcularse sobre el ancho TOTAL ya sangrado
-    // (no solo ANCHO), si no el texto queda corrido hacia la derecha respecto
-    // de lo que realmente se ve pintado.
-    const SANGRADO_IZQ = 6
-    const anchoTotal = ANCHO + SANGRADO_IZQ
-    // Con letra mas grande hace falta un pelo mas de aire hasta el renglon de
-    // la ciudad de arriba — se baja el renglon 2pt en vez de agrandar mas la
-    // pildora hacia arriba.
-    const baseline = y - 2
-    page.drawRectangle({ x: x - SANGRADO_IZQ, y: baseline - 2, width: anchoTotal, height: ALTO, color: AMARILLO_BG })
-    const anchoTexto = bebas.widthOfTextAtSize(String(texto ?? ''), size)
-    escribir(texto, x - SANGRADO_IZQ + (anchoTotal - anchoTexto) / 2, baseline, size, NAVY_TXT, bebas)
-  }
   // Parrafo con partes en negrita (bloque de pago) — mismo tono que la pagina
   // "Observaciones importantes" de la plantilla real: texto corrido con los
   // datos clave resaltados, en vez de renglones sueltos tipo ficha tecnica.
@@ -277,45 +246,53 @@ export async function generarPDFCierre(propuesta) {
   // visible en todos los PDF.
   tapar(305.5, 601.7, 160, 60, CREMA_BG)
 
-  // Ida (mitad izquierda) y vuelta (mitad derecha) — misma estructura, espejada.
-  // Todo este bloque va sobre el fondo navy de la caja de vuelo (parche + texto
-  // claro), salvo las horas que van en una pildora amarilla (parche amarillo +
-  // texto oscuro) — confirmado muestreando el PDF real, no era fondo crema.
-  // Mismo tamano para IDA y VUELTA (14 para codigos, 5 para ciudades) y misma
-  // altura Y (antes vuelta quedaba 1-2pt mas abajo que ida porque la referencia
-  // traia esos valores asi de muestra, sin estar realmente alineados entre si).
-  const SIZE_CODIGO = 14
-  const SIZE_CIUDAD = 5
-  const SIZE_HORA = 9.5
-  // Bajado 4pt respecto al valor original (560.2/553.6): a tamano 14 el codigo
-  // (IGU/REC) llegaba con el techo de la letra casi pegado a la etiqueta estatica
-  // "Origen"/"Destino" de la plantilla, quedando superpuestos.
-  const Y_CODIGO = 556.2
-  const Y_CIUDAD = 549.6
-  reemplazar(fechaLarga(vuelo.ida_fecha).toUpperCase(), 46.1, 549.4, 9.3, 100, CREMA_TXT, bebas, NAVY_BG)
-  reemplazar((vuelo.origen_codigo || '').toUpperCase(), 97.9, Y_CODIGO, SIZE_CODIGO, 50, CREMA_TXT, bebas, NAVY_BG)
-  reemplazarCiudad(vuelo.origen_ciudad || '', 98.5, Y_CIUDAD, SIZE_CIUDAD, 60, CREMA_TXT)
-  reemplazarHora(102.5, 541.9, vuelo.ida_sale || '')
-  reemplazar((vuelo.destino_codigo || '').toUpperCase(), 250.5, Y_CODIGO, SIZE_CODIGO, 20, CREMA_TXT, bebas, NAVY_BG)
-  reemplazarCiudad(vuelo.destino_ciudad || '', 251.1, Y_CIUDAD, SIZE_CIUDAD, 20, CREMA_TXT)
-  reemplazarHora(254.4, 541.9, vuelo.ida_llega || '')
-  // "Directo" es texto fijo de la plantilla real — si se cargo una escala lo
-  // tapamos y ponemos el dato real; si no, se deja el "Directo" original tal cual.
-  if (vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo) {
-    const codigoEscala = vuelo.ida_escala_codigo?.toUpperCase()
-    reemplazarCiudad(`ESCALA ${codigoEscala || vuelo.ida_escala_ciudad?.toUpperCase() || ''}`, 173.5, 561.7, 6.5, 42, CREMA_TXT)
-  }
+  // Ida (mitad izquierda) y vuelta (mitad derecha): mismas cajas con borde
+  // redondeado + flecha + escala centrada que la grilla de vuelos de la
+  // propuesta inicial (dibujarCajaTramo, importada) — antes esta seccion
+  // usaba las pildoras amarillas fijas de la plantilla real, con un diseño
+  // que no combinaba con el del otro PDF. Se tapa esa zona entera (medida
+  // sobre la plantilla real: x 25-569, y 525-603) y se redibuja desde cero.
+  tapar(28, 528, 536, 78, CREMA_BG)
+  const X_CAJA_IDA = 28
+  const X_CAJA_VUELTA = 306
+  const ANCHO_CAJA = 254
+  let yCaja = 597
+  escribir(`IDA · ${fechaLarga(vuelo.ida_fecha).toUpperCase()}`, X_CAJA_IDA, yCaja, 11, NAVY_TXT)
+  escribir(`VUELTA · ${fechaLarga(vuelo.vuelta_fecha).toUpperCase()}`, X_CAJA_VUELTA, yCaja, 11, NAVY_TXT)
+  yCaja -= 14
+  const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
+  const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
+  const altoCajasVuelo = Math.max(altoCajaTramo(hayEscalaIda), altoCajaTramo(hayEscalaVuelta))
+  dibujarCajaTramo(page, bebas, {
+    x: X_CAJA_IDA, yTop: yCaja, ancho: ANCHO_CAJA,
+    codigoSale: vuelo.origen_codigo, ciudadSale: vuelo.origen_ciudad, horaSale: vuelo.ida_sale,
+    codigoLlega: vuelo.destino_codigo, ciudadLlega: vuelo.destino_ciudad, horaLlega: vuelo.ida_llega,
+    escalaCiudad: vuelo.ida_escala_ciudad, escalaCodigo: vuelo.ida_escala_codigo, escalaLlega: vuelo.ida_escala_llega, escalaSale: vuelo.ida_escala_sale,
+  })
+  dibujarCajaTramo(page, bebas, {
+    x: X_CAJA_VUELTA, yTop: yCaja, ancho: ANCHO_CAJA,
+    codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
+    codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
+    escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
+  })
+  yCaja -= altoCajasVuelo + 10
 
-  reemplazar(fechaLarga(vuelo.vuelta_fecha).toUpperCase(), 324.2, 551.2, 9.3, 100, CREMA_TXT, bebas, NAVY_BG)
-  reemplazar((vuelo.destino_codigo || '').toUpperCase(), 375.9, Y_CODIGO, SIZE_CODIGO, 50, CREMA_TXT, bebas, NAVY_BG)
-  reemplazarCiudad(vuelo.destino_ciudad || '', 376.6, Y_CIUDAD, SIZE_CIUDAD, 60, CREMA_TXT)
-  reemplazarHora(379.9, 541.9, vuelo.vuelta_sale || '')
-  reemplazar((vuelo.origen_codigo || '').toUpperCase(), 522.2, Y_CODIGO, SIZE_CODIGO, 20, CREMA_TXT, bebas, NAVY_BG)
-  reemplazarCiudad(vuelo.origen_ciudad || '', 523.0, Y_CIUDAD, SIZE_CIUDAD, 20, CREMA_TXT)
-  reemplazarHora(527.0, 541.9, vuelo.vuelta_llega || '')
-  if (vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo) {
-    const codigoEscala = vuelo.vuelta_escala_codigo?.toUpperCase()
-    reemplazarCiudad(`ESCALA ${codigoEscala || vuelo.vuelta_escala_ciudad?.toUpperCase() || ''}`, 451.9, 560.7, 6.5, 42, CREMA_TXT)
+  // Equipaje: no se mostraba en ningun lado de este PDF — se agrega la misma
+  // linea centrada que ya usa la grilla de vuelos, debajo de las cajas.
+  const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
+    .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
+    .map(k => {
+      const cantidad = vuelo.equipaje?.[k] || 0
+      const extra = k === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
+      return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
+    })
+  if (equipajeSeleccionado.length) {
+    const textoEquipaje = `EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`
+    let tamanoEquipaje = 10
+    while (tamanoEquipaje > 6 && bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje) > X_CAJA_VUELTA + ANCHO_CAJA - X_CAJA_IDA) tamanoEquipaje -= 0.5
+    const anchoEquipaje = bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje)
+    const xCentroCajas = (X_CAJA_IDA + X_CAJA_VUELTA + ANCHO_CAJA) / 2
+    escribir(textoEquipaje, xCentroCajas - anchoEquipaje / 2, yCaja, tamanoEquipaje, NAVY_TXT)
   }
 
   // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" a

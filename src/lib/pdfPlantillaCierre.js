@@ -385,18 +385,20 @@ export async function generarPDFCierre(propuesta) {
   if (hospedaje.nombre) {
     reemplazarMultilinea(hospedaje.nombre.toUpperCase(), 31.2, 417.2, 14, 118, 14, NAVY_TXT, bebas, CREMA_BG, 3)
   }
-  // Boton "VER RESERVA" — link a la reserva del hospedaje (hospedaje_link,
-  // cargado en el panel de Documentos), no el voucher subido (ese ya se saco
-  // de esta pagina). Va en la columna del nombre, a la misma altura que
-  // "VER ÁREAS EXTERNAS" de la foto de al lado.
-  if (propuesta.hospedaje_link) {
+  // Boton "VER RESERVA" — preferentemente el link de la reserva del hospedaje
+  // (hospedaje_link, cargado en el panel de Documentos); si no se cargó ese
+  // link pero si el voucher (hospedaje_voucher_url), usa ese como respaldo
+  // para que el boton no quede sin aparecer solo por eso. Va en la columna
+  // del nombre, a la misma altura que "VER ÁREAS EXTERNAS" de la foto de al lado.
+  const linkReserva = propuesta.hospedaje_link || propuesta.hospedaje_voucher_url
+  if (linkReserva) {
     const textoReserva = 'VER RESERVA ›'
     const tamanoReserva = 7.5
     const anchoReserva = helvBold.widthOfTextAtSize(textoReserva, tamanoReserva)
     const botonReserva = { x: 31.2, y: 347.5, width: anchoReserva + 10, height: 16 }
     page.drawRectangle({ ...botonReserva, color: NAVY_BG })
     escribir(textoReserva, botonReserva.x + 5, botonReserva.y + 4.5, tamanoReserva, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
-    agregarLink(page, doc, botonReserva, propuesta.hospedaje_link)
+    agregarLink(page, doc, botonReserva, linkReserva)
   }
   // La plantilla real trae una foto de muestra fija ahi (no era la del hospedaje
   // real, quedaba siempre la misma pileta sin importar cual se elija) — la tapamos

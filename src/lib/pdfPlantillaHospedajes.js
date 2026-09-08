@@ -97,9 +97,9 @@ function crearSlot(fila) {
   const textoX = 30 + IMG_LADO + 18
   return {
     nombre: { x: textoX, y: top - 15, size: 16 },
-    subtitulo: { x: textoX, y: top - 32, size: 9.5 },
-    infoX: textoX, infoYTop: top - 50, infoSize: 10, infoGap: 12.5,
-    itemsX: textoX, itemsSize: 9, itemsGap: 10.5,
+    subtitulo: { x: textoX, y: top - 34, size: 12 },
+    infoX: textoX, infoYTop: top - 54, infoSize: 12.5, infoGap: 15,
+    itemsX: textoX, itemsSize: 11, itemsGap: 13,
     imagen: { x: 30, y: imagenY, width: IMG_LADO, height: IMG_LADO },
     bandaY,
     zonaLimpiarTop: top, zonaLimpiarBottom: bottom, zonaLimpiarLeft: 20, zonaLimpiarRight: 570,
@@ -131,7 +131,11 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
   for (let idx = 0; idx < grupo.length; idx++) {
     const h = grupo[idx]
     const s = SLOTS[idx]
-    const piso = s.zonaLimpiarBottom + 4
+    // Margen mas generoso que antes (era +4): con la tipografia mas grande del
+    // bloque de precio/habitaciones, un item que entraba "justo" quedaba
+    // pegado a la fila de abajo sin aire — mejor omitirlo (no dibujarlo) que
+    // mostrarlo apretado contra el hospedaje siguiente.
+    const piso = s.zonaLimpiarBottom + 14
 
     // Nombre y subtitulo van en la columna de texto (a la derecha de la foto, que
     // ahora siempre esta a la izquierda) — sin descripcion, hay lugar de sobra para
@@ -153,7 +157,7 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
 
     // Bloque de precio, empieza siempre despues del subtitulo real (baja si el
     // nombre o el subtitulo ocuparon 2 lineas) y nunca invade la fila de abajo.
-    let y = Math.min(s.infoYTop, yFinEncabezado - 14)
+    let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }

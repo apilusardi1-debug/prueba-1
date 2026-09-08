@@ -295,11 +295,20 @@ function crearSlotVuelo(fila, totalEnHoja) {
   return { top, bottom: top - altoFila, escala }
 }
 
+// Tono mas suave que NAVY_TXT para los datos secundarios (sale/llega, escala)
+// — asi el titulo IDA/VUELTA con la fecha (el dato que mas importa) queda
+// como lo unico "fuerte" de cada columna en vez de que todo pese lo mismo.
+const NAVY_SUAVE = rgb(0x3a / 255, 0x55 / 255, 0x64 / 255)
+
 // Una tarjeta de vuelo dentro de su franja — mismos datos que la pagina
 // completa (fechas, horarios, escalas, equipaje, traslados, banner de
 // actividades) pero en lineas mas chicas, una debajo de otra en vez de
-// repartidas con iconos grandes.
-function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
+// repartidas con iconos grandes. Reincorpora los iconos de la plantilla real
+// (avion, calendario, maleta, auto — recortados como PNG aparte, ver
+// public/icono-*.png) que la version anterior de esta grilla no tenia, y
+// suaviza el color de los datos secundarios para que se note que "IDA/VUELTA
+// + fecha" es el dato principal de cada columna.
+async function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero, iconos) {
   // Con menos de 4 vuelos en la hoja, slot.escala > 1 (ver crearSlotVuelo) —
   // agranda tamaños de letra y espaciados en la misma proporcion para
   // aprovechar el alto real de la franja en vez de dejarlo vacio.
@@ -312,34 +321,61 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     while (tamano > tamanoMin && bebas.widthOfTextAtSize(texto, tamano) > anchoMax) tamano -= 0.5
     return tamano
   }
+  // Icono chico alineado con una linea de texto: centrado verticalmente contra
+  // el cap-height aproximado del tamaño de letra de esa linea (no el baseline,
+  // que dejaria el icono "flotando" mas abajo que las letras).
+  async function dibujarIconoLinea(bytes, x, yBaseline, tamanoTexto) {
+    const img = await doc.embedPng(bytes)
+    const size = tamanoTexto * 1.15
+    page.drawImage(img, { x, y: yBaseline - size * 0.18, width: size, height: size })
+    return size
+  }
 
-  // Gap inicial mas generoso que un simple "4 * esc": con escala 2 (2 vuelos
-  // en la hoja) la fila 0 arranca justo debajo del titulo fijo "AÉREOS:" — un
-  // gap que solo escalara con la letra mas grande de "VUELO N" terminaba
-  // pisando ese titulo (menos espacio libre del que crece la letra).
-  let y = slot.top - 8 * esc
-  escribir(`VUELO ${numero}`, COL_IZQ_X, y, 10 * esc, NAVY_TXT)
-  y -= 14 * esc
+  // Gap inicial generoso: la fila 0 arranca justo debajo del titulo fijo
+  // "AÉREOS:" (con su propio icono de avion) — el icono de "VUELO N" es mas
+  // alto que el texto solo, asi que necesita mas aire que un simple ajuste de
+  // tipografia para no tocar el icono del titulo de arriba.
+  let y = slot.top - 16 * esc
+  const tamanoTitulo = 10.5 * esc
+  const avionSize = tamanoTitulo * 1.3
+  if (iconos.avion) {
+    const img = await doc.embedPng(iconos.avion)
+    const ratio = img.width / img.height
+    page.drawImage(img, { x: COL_IZQ_X, y: y - avionSize * 0.22, width: avionSize * ratio, height: avionSize })
+  }
+  escribir(`VUELO ${numero}`, COL_IZQ_X + (iconos.avion ? avionSize * 1.5 + 4 : 0), y, tamanoTitulo, NAVY_TXT)
+  y -= 15 * esc
 
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
 
-  escribir(`IDA: ${fechaLarga(vuelo.ida_fecha)}`, COL_IZQ_X, y, 12.5 * esc, NAVY_TXT)
-  escribir(`VUELTA: ${fechaLarga(vuelo.vuelta_fecha)}`, COL_DER_X, y, 12.5 * esc, NAVY_TXT)
-  y -= 12.5 * esc
+  // IDA/VUELTA + fecha: el dato mas importante de la tarjeta, con icono de
+  // calendario e igual jerarquia que en la pagina de un solo vuelo.
+  const tamanoFecha = 13.5 * esc
+  const iconFecha = tamanoFecha * 1.2
+  const textoXIda = COL_IZQ_X + (iconos.calendario ? iconFecha + 5 : 0)
+  const textoXVuelta = COL_DER_X + (iconos.calendario ? iconFecha + 5 : 0)
+  if (iconos.calendario) {
+    await dibujarIconoLinea(iconos.calendario, COL_IZQ_X, y, tamanoFecha)
+    await dibujarIconoLinea(iconos.calendario, COL_DER_X, y, tamanoFecha)
+  }
+  escribir(`IDA: ${fechaLarga(vuelo.ida_fecha)}`, textoXIda, y, tamanoFecha, NAVY_TXT)
+  escribir(`VUELTA: ${fechaLarga(vuelo.vuelta_fecha)}`, textoXVuelta, y, tamanoFecha, NAVY_TXT)
+  y -= 13 * esc
 
+  // Sale/llega: tono suave, un escalon por debajo de la fecha en importancia.
   const textoIdaSale = `SALE DE ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.ida_sale || ''} HS`
   const textoVueltaSale = `SALE DE ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_sale || ''} HS`
   const tamanoSale = Math.min(medirTamanoAjustado(textoIdaSale, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaSale, ANCHO_COL_VUELO, 9))
-  escribir(textoIdaSale, COL_IZQ_X, y, tamanoSale, NAVY_TXT)
-  escribir(textoVueltaSale, COL_DER_X, y, tamanoSale, NAVY_TXT)
+  escribir(textoIdaSale, COL_IZQ_X, y, tamanoSale, NAVY_SUAVE)
+  escribir(textoVueltaSale, COL_DER_X, y, tamanoSale, NAVY_SUAVE)
   y -= 11 * esc
 
   const textoIdaLlega = `LLEGA A ${vuelo.destino_ciudad?.toUpperCase() || ''} (${vuelo.destino_codigo?.toUpperCase() || ''}) ${vuelo.ida_llega || ''} HS`
   const textoVueltaLlega = `LLEGA A ${vuelo.origen_ciudad?.toUpperCase() || ''} (${vuelo.origen_codigo?.toUpperCase() || ''}) ${vuelo.vuelta_llega || ''} HS`
   const tamanoLlega = Math.min(medirTamanoAjustado(textoIdaLlega, ANCHO_COL_VUELO, 9), medirTamanoAjustado(textoVueltaLlega, ANCHO_COL_VUELO, 9))
-  escribir(textoIdaLlega, COL_IZQ_X, y, tamanoLlega, NAVY_TXT)
-  escribir(textoVueltaLlega, COL_DER_X, y, tamanoLlega, NAVY_TXT)
+  escribir(textoIdaLlega, COL_IZQ_X, y, tamanoLlega, NAVY_SUAVE)
+  escribir(textoVueltaLlega, COL_DER_X, y, tamanoLlega, NAVY_SUAVE)
   y -= 11 * esc
 
   if (hayEscalaIda || hayEscalaVuelta) {
@@ -358,12 +394,12 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     if (hayEscalaIda) tamanosEscala.push(medirTamanoAjustado(textoIdaEscala, ANCHO_COL_VUELO, 8))
     if (hayEscalaVuelta) tamanosEscala.push(medirTamanoAjustado(textoVueltaEscala, ANCHO_COL_VUELO, 8))
     const tamanoEscala = Math.min(...tamanosEscala)
-    if (hayEscalaIda) escribir(textoIdaEscala, COL_IZQ_X, y, tamanoEscala, NAVY_TXT)
-    if (hayEscalaVuelta) escribir(textoVueltaEscala, COL_DER_X, y, tamanoEscala, NAVY_TXT)
+    if (hayEscalaIda) escribir(textoIdaEscala, COL_IZQ_X, y, tamanoEscala, NAVY_SUAVE)
+    if (hayEscalaVuelta) escribir(textoVueltaEscala, COL_DER_X, y, tamanoEscala, NAVY_SUAVE)
     y -= 10.5 * esc
   }
 
-  y -= 4 * esc
+  y -= 5 * esc
 
   const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
@@ -374,7 +410,9 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
     })
   if (equipajeSeleccionado.length) {
     const texto = `EQUIPAJE: ${equipajeSeleccionado.join(' · ')}`
-    escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
+    const tamano = medirTamanoAjustado(texto, iconos.maleta ? 505 : 515, 9)
+    const iconGap = iconos.maleta ? await dibujarIconoLinea(iconos.maleta, COL_IZQ_X, y, tamano) * 1.2 + 5 : 0
+    escribir(texto, COL_IZQ_X + iconGap, y, tamano, NAVY_TXT)
     y -= 11 * esc
   }
 
@@ -384,7 +422,9 @@ function dibujarVueloCompacto(doc, page, bebas, slot, vuelo, numero) {
       : vuelo.traslado_ida
         ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
         : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
-    escribir(texto, COL_IZQ_X, y, medirTamanoAjustado(texto, 515, 9), NAVY_TXT)
+    const tamano = medirTamanoAjustado(texto, iconos.auto ? 505 : 515, 9)
+    const iconGap = iconos.auto ? await dibujarIconoLinea(iconos.auto, COL_IZQ_X, y, tamano) * 1.2 + 5 : 0
+    escribir(texto, COL_IZQ_X + iconGap, y, tamano, NAVY_TXT)
     y -= 11 * esc
   }
 
@@ -458,10 +498,25 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   // "AÉREOS:" (con su icono de avion, fijos en la plantilla) sube la misma
   // distancia que se le achico al azul, para no dejar un hueco vacio entre
-  // el encabezado y el resto — se redibuja sin el icono (vector propio de la
-  // plantilla, no hay forma de reubicarlo sin el asset original).
+  // el encabezado y el resto. El icono de la plantilla es un vector fijo que
+  // no se puede reubicar sin el asset original — pero SI se puede recrear: se
+  // recorto como PNG aparte (public/icono-avion.png, mismo trazo) y se
+  // redibuja al lado del titulo en su nueva posicion.
   page.drawRectangle({ x: 17, y: 598, width: 300, height: 34, color: CREMA_BG })
-  escribir('AÉREOS:', 63, LIMITE_NUEVO - 51.5, 30, NAVY_TXT)
+  let iconoAvionHeader = null
+  try {
+    const avionHeaderBytes = await fetch('/icono-avion.png').then(r => r.arrayBuffer())
+    iconoAvionHeader = await doc.embedPng(avionHeaderBytes)
+  } catch (_) { /* si falla, el titulo queda sin icono en vez de romper el PDF */ }
+  const tituloY = LIMITE_NUEVO - 51.5
+  let tituloX = 63
+  if (iconoAvionHeader) {
+    const alto = 26
+    const ancho = alto * (iconoAvionHeader.width / iconoAvionHeader.height)
+    page.drawImage(iconoAvionHeader, { x: 17, y: tituloY - 5, width: ancho, height: alto })
+    tituloX = 17 + ancho + 10
+  }
+  escribir('AÉREOS:', tituloX, tituloY, 30, NAVY_TXT)
 
   // Limpia de una sola vez toda la zona dinamica (incluido el banner fijo de
   // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las
@@ -469,9 +524,28 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // pagina fijo tambien es de borde a borde.
   page.drawRectangle({ x: -5, y: ZONA_GRUPO_BOTTOM, width: PAGINA_ANCHO + 10, height: ZONA_GRUPO_TOP - ZONA_GRUPO_BOTTOM, color: CREMA_BG })
 
+  // Iconos por tarjeta (avion, calendario, maleta, auto) — se traen los bytes
+  // una sola vez aca y se embeben de nuevo (doc.embedPng) para cada uso
+  // dentro de dibujarVueloCompacto, mismo criterio que ya usaba esta plantilla
+  // en la pagina de un solo vuelo (evita el bug de algunos visores al repetir
+  // el mismo XObject embebido en posiciones no alineadas al pixel).
+  async function bytesIconoSeguro(ruta) {
+    try {
+      return await fetch(ruta).then(r => r.arrayBuffer())
+    } catch (_) {
+      return null
+    }
+  }
+  const iconos = {
+    avion: await bytesIconoSeguro('/icono-avion.png'),
+    calendario: await bytesIconoSeguro('/icono-calendario.png'),
+    maleta: await bytesIconoSeguro('/icono-maleta.png'),
+    auto: await bytesIconoSeguro('/icono-auto.png'),
+  }
+
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
-    dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i, totalEnHoja), grupo[i], i + 1)
+    await dibujarVueloCompacto(doc, page, bebas, crearSlotVuelo(i, totalEnHoja), grupo[i], i + 1, iconos)
   }
 }
 

@@ -273,6 +273,19 @@ export async function generarPDFCierre(propuesta) {
   let yCaja = 597
   escribir(`IDA · ${fechaLarga(vuelo.ida_fecha).toUpperCase()}`, X_CAJA_IDA, yCaja, 11, NAVY_TXT)
   escribir(`VUELTA · ${fechaLarga(vuelo.vuelta_fecha).toUpperCase()}`, X_CAJA_VUELTA, yCaja, 11, NAVY_TXT)
+
+  // Boton "VER VOUCHER" — link a la reserva/aerolinea (aereo_link, cargado en
+  // el panel de Documentos), no el e-ticket/PDF subido (ese ya se saco de
+  // esta pagina, ver mas abajo). Alineado a la derecha de la fila VUELTA.
+  if (propuesta.aereo_link) {
+    const textoVoucherAereo = 'VER VOUCHER ›'
+    const tamanoVoucherAereo = 8
+    const anchoVoucherAereo = helvBold.widthOfTextAtSize(textoVoucherAereo, tamanoVoucherAereo)
+    const botonVoucherAereo = { x: X_CAJA_VUELTA + ANCHO_CAJA - anchoVoucherAereo - 12, y: yCaja - 3, width: anchoVoucherAereo + 12, height: 15 }
+    page.drawRectangle({ ...botonVoucherAereo, color: NAVY_BG })
+    escribir(textoVoucherAereo, botonVoucherAereo.x + 6, botonVoucherAereo.y + 4, tamanoVoucherAereo, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
+    agregarLink(page, doc, botonVoucherAereo, propuesta.aereo_link)
+  }
   yCaja -= 14
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
@@ -371,6 +384,19 @@ export async function generarPDFCierre(propuesta) {
   // desbordar sobre la foto.
   if (hospedaje.nombre) {
     reemplazarMultilinea(hospedaje.nombre.toUpperCase(), 31.2, 417.2, 14, 118, 14, NAVY_TXT, bebas, CREMA_BG, 3)
+  }
+  // Boton "VER RESERVA" — link a la reserva del hospedaje (hospedaje_link,
+  // cargado en el panel de Documentos), no el voucher subido (ese ya se saco
+  // de esta pagina). Va en la columna del nombre, a la misma altura que
+  // "VER ÁREAS EXTERNAS" de la foto de al lado.
+  if (propuesta.hospedaje_link) {
+    const textoReserva = 'VER RESERVA ›'
+    const tamanoReserva = 7.5
+    const anchoReserva = helvBold.widthOfTextAtSize(textoReserva, tamanoReserva)
+    const botonReserva = { x: 31.2, y: 347.5, width: anchoReserva + 10, height: 16 }
+    page.drawRectangle({ ...botonReserva, color: NAVY_BG })
+    escribir(textoReserva, botonReserva.x + 5, botonReserva.y + 4.5, tamanoReserva, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
+    agregarLink(page, doc, botonReserva, propuesta.hospedaje_link)
   }
   // La plantilla real trae una foto de muestra fija ahi (no era la del hospedaje
   // real, quedaba siempre la misma pileta sin importar cual se elija) — la tapamos

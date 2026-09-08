@@ -731,8 +731,24 @@ export default function GeneradorPropuesta() {
       }
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
+      // Propuesta simple: el precio que se imprime junto a "Aéreo + Hospedaje
+      // + Traslados" no es solo el precio del hospedaje — es el paquete
+      // completo (pedido explicito). Se suma el valor de venta del vuelo +
+      // el de su traslado (siempre el primer vuelo: en simple todos los
+      // hospedajes cargados comparten el mismo itinerario de vuelo) al
+      // precio propio de CADA hospedaje. Solo afecta esta copia para el PDF
+      // — hospedajes_detalle se guarda con el precio real de cada uno, sin
+      // tocar (ver mas abajo).
+      const vueloParaTotalSimple = vuelosParaPdf[0] || {}
       const hospedajesParaPdf = await Promise.all(
-        hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
+        hospedajesValidos.map(async h => {
+          const imagen = await imagenParaPdf(h.imagen)
+          if (tipoPropuesta !== 'simple') return { ...h, imagen }
+          const precioCombinado = (parseFloat(vueloParaTotalSimple.venta) || 0)
+            + (parseFloat(vueloParaTotalSimple.traslado_venta) || 0)
+            + (parseFloat(h.precio) || 0)
+          return { ...h, imagen, precio: precioCombinado }
+        })
       )
 
       // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes

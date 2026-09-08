@@ -136,9 +136,29 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
     page.drawImage(img, { x: cx - ICON_SIZE / 2, y: cy - ICON_SIZE / 2, width: ICON_SIZE, height: ICON_SIZE })
   }
 
-  // Nombre del cliente y cantidad de pasajeros (fondo navy)
-  reemplazarLinea({ x: 31.38, y: 730.82, anchoMax: 220, alto: 26, texto: clienteNombre.toUpperCase(), size: 20, color: CREMA_TXT, bg: NAVY_BG })
-  reemplazarLinea({ x: 31.36, y: 681.22, anchoMax: 220, alto: 26, texto: textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores), size: 20, color: CREMA_TXT, bg: NAVY_BG })
+  // Nombre del cliente y cantidad de pasajeros — la plantilla real trae esto en
+  // 2 renglones cada uno (etiqueta arriba, valor abajo: "NOMBRE DEL CLIENTE:" /
+  // "BELKIS", "COTIZACIÓN PERSONALIZADA PARA:" / "2 ADULTOS"). Se funden en 1
+  // renglon cada uno — mismo criterio que ya usa la pagina de grilla
+  // (dibujarPaginaAereosGrupo) para 2+ vuelos, asi ambas quedan con el mismo
+  // estilo de encabezado en vez de que solo la de 1 vuelo quede partida en 4
+  // renglones. No se toca nada por debajo de y=665: ahi ya empieza la zona
+  // crema fija de "AÉREOS:" para abajo.
+  const ANCHO_TEXTO_HEADER = 420 // hasta aca como mucho — el logo (swirl) esta mas a la derecha, fijo en la plantilla
+  function medirAjustadoHeader(texto, anchoMax, size, minimo = 12) {
+    let t = size
+    while (t > minimo && bebas.widthOfTextAtSize(texto, t) > anchoMax) t -= 0.5
+    return t
+  }
+  const textoNombreCliente = `NOMBRE DEL CLIENTE: ${clienteNombre.toUpperCase()}`
+  const textoCotizacion = `COTIZACIÓN PERSONALIZADA PARA: ${textoPasajeros(cantidadAdultos, cantidadMenores, edadesMenores)}`
+  const sizeNombreCliente = medirAjustadoHeader(textoNombreCliente, ANCHO_TEXTO_HEADER, 20)
+  const sizeCotizacion = medirAjustadoHeader(textoCotizacion, ANCHO_TEXTO_HEADER, 20)
+  // Borra los 4 renglones originales de una sola vez (borde angosto, no de
+  // pagina completa: mas a la derecha en esta misma franja vive el logo fijo).
+  page.drawRectangle({ x: 17, y: 665, width: ANCHO_TEXTO_HEADER + 20, height: 110, color: NAVY_BG })
+  escribir(textoNombreCliente, 31.38, 742.8, sizeNombreCliente, CREMA_TXT)
+  escribir(textoCotizacion, 31.36, 693.2, sizeCotizacion, CREMA_TXT)
 
   // Orden pedido: 1) equipaje (igual que antes) 2) vuelo ida/vuelta 3) traslados
   // (antes iba equipaje / traslados / vuelo). Como el orden cambia completo, en

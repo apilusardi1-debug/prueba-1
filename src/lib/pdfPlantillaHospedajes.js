@@ -189,7 +189,9 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       const anchoPill = anchoTexto + padX * 2
       const altoPill = lineasPaquete.length * gapLinea + padY * 2 - (gapLinea - tamanoPaquete)
       const xPill = s.itemsX
-      const yTopPill = s.bandaY + altoPill
+      // +6: un poco mas arriba que "VER FOTOS ÁREAS EXTERNAS", para no tocar
+      // la linea separadora entre hospedajes que va justo debajo.
+      const yTopPill = s.bandaY + 6 + altoPill
       paginaPlantilla.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 4), { x: xPill, y: yTopPill, color: NAVY_BG })
       let yLinea = yTopPill - padY - tamanoPaquete * 0.8
       for (const linea of lineasPaquete) {
@@ -207,30 +209,31 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       ? h.habitaciones
       : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
     if (habitacionesElegidas.length && y >= piso) {
-      const ALTO_BOTON = 15
-      const GAP_NOMBRE_BOTON = 8 // ahora horizontal: aire entre el nombre y el boton, en la misma linea
+      // Boton mas sutil/chico (antes 8pt/15 alto) — pedido explicito.
+      const ALTO_BOTON = 11
+      const GAP_NOMBRE_BOTON = 8 // horizontal: aire entre el nombre y el boton, en la misma linea
       const GAP_ENTRE_HABITACIONES = 20
       const texto = 'VER ÁREAS INTERNAS >'
-      const tamanoBoton = 8
-      const anchoBoton = helv.widthOfTextAtSize(texto, tamanoBoton) + 12
-      // Nombre y boton en la MISMA linea (antes el boton iba en el renglon de
-      // abajo) — el nombre se achica hasta entrar en el ancho que le queda
-      // libre despues de reservarle su lugar al boton, no en la columna
-      // completa como antes.
+      const tamanoBoton = 6.5
+      const anchoBoton = helv.widthOfTextAtSize(texto, tamanoBoton) + 8
+      // Nombre de la habitacion: misma tipografia y tamaño que "NOCHES" (antes
+      // Helvetica mas chico) — se achica desde ahi, no desde itemsSize, si no
+      // entra en el ancho que le queda libre despues de reservarle su lugar
+      // al boton al lado (misma linea, no una por renglon como antes).
       const anchoDisponibleNombre = anchoColumnaTexto - anchoBoton - GAP_NOMBRE_BOTON
       for (const hab of habitacionesElegidas) {
         if (y < piso) break
         const nombreHab = (hab.nombre || 'Habitación').toUpperCase()
-        let tamanoNombre = s.itemsSize
-        while (tamanoNombre > 6 && helv.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoDisponibleNombre) tamanoNombre -= 0.5
-        escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, helv)
+        let tamanoNombre = s.infoSize
+        while (tamanoNombre > 6 && bebas.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoDisponibleNombre) tamanoNombre -= 0.5
+        escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, bebas)
 
         if (h.id) {
           const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
-          const anchoNombreReal = helv.widthOfTextAtSize(nombreHab, tamanoNombre)
-          const bandaInt = { x: s.itemsX + anchoNombreReal + GAP_NOMBRE_BOTON, y: y - 3, width: anchoBoton, height: ALTO_BOTON }
+          const anchoNombreReal = bebas.widthOfTextAtSize(nombreHab, tamanoNombre)
+          const bandaInt = { x: s.itemsX + anchoNombreReal + GAP_NOMBRE_BOTON, y: y - 2, width: anchoBoton, height: ALTO_BOTON }
           tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
-          escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+          escribir(texto, bandaInt.x + 4, bandaInt.y + 3, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
           agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
         }
         y -= GAP_ENTRE_HABITACIONES
@@ -266,6 +269,13 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       while (tamano > 5.5 && helv.widthOfTextAtSize(texto, tamano) > banda.width - 10) tamano -= 0.5
       escribir(texto, banda.x + 5, banda.y + (BANDA_ALTO - tamano) / 2 + 1, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
       agregarLink(paginaPlantilla, doc, banda, urlExternas)
+    }
+
+    // Linea separadora entre hospedajes (no despues del ultimo) — inset
+    // respecto de los margenes de la hoja, negra, mismo criterio que los
+    // separadores del resto de la app.
+    if (idx < grupo.length - 1) {
+      paginaPlantilla.drawLine({ start: { x: 60, y: s.zonaLimpiarBottom }, end: { x: 540, y: s.zonaLimpiarBottom }, thickness: 0.75, color: rgb(0, 0, 0) })
     }
   }
 

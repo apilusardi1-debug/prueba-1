@@ -121,6 +121,7 @@ export default function PropuestasLista({ estado }) {
   const [hospedajeIdx, setHospedajeIdx] = useState(0)
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
   const [seguroViaje, setSeguroViaje] = useState(false)
+  const [seguroViajeValor, setSeguroViajeValor] = useState('')
   const [vencimiento, setVencimiento] = useState('')
   const [sena, setSena] = useState('')
   // Valor equivalente en reales (BRL) "congelado" a un tipo de cambio fijado ese
@@ -210,6 +211,7 @@ export default function PropuestasLista({ estado }) {
     setHospedajeIdx(0)
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
     setSeguroViaje(p.seguro_viaje ?? false)
+    setSeguroViajeValor(p.seguro_viaje_valor != null ? String(p.seguro_viaje_valor) : '')
     setVencimiento(p.vencimiento_saldo || '')
     setSena(p.sena != null ? String(p.sena) : '')
     setValorCongeladoBrl(p.valor_congelado_brl != null ? String(p.valor_congelado_brl) : '')
@@ -252,6 +254,7 @@ export default function PropuestasLista({ estado }) {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
         seguro_viaje: seguroViaje,
+        seguro_viaje_valor: seguroViaje && seguroViajeValor ? parseFloat(seguroViajeValor) : null,
         sena: parseFloat(sena) || 0,
         valor_congelado_brl: valorCongeladoBrl ? parseFloat(valorCongeladoBrl) : null,
         // Guardamos solo el vuelo y el hospedaje que el cliente eligio (si habia
@@ -785,9 +788,16 @@ export default function PropuestasLista({ estado }) {
                     }`}>
                     No
                   </button>
+                  {seguroViaje && (
+                    <input type="text" inputMode="numeric" value={formatearMiles(seguroViajeValor)} onChange={e => setSeguroViajeValor(soloDigitos(e.target.value))}
+                      placeholder="Valor del seguro"
+                      className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  )}
                 </div>
               ) : (
-                <p className="text-sm text-gray-700 dark:text-zinc-300">{seguroViaje ? 'Sí' : 'No'}</p>
+                <p className="text-sm text-gray-700 dark:text-zinc-300">
+                  {seguroViaje ? `Sí${seguroViajeValor ? ` — ${formatPrecio(seguroViajeValor, monedaPago)}` : ''}` : 'No'}
+                </p>
               )}
             </div>
 

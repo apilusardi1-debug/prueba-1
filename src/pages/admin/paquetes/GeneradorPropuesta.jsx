@@ -741,6 +741,10 @@ export default function GeneradorPropuesta() {
 
       // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes
       // por hoja, igual que el diseño original) con los datos tapados y reescritos.
+      // "Aéreo + Traslado + Hospedaje" (paquete completo) solo se muestra con UN
+      // solo vuelo cargado — con 2 o mas no hay un itinerario unico al que
+      // sumarle cada hospedaje (pedido explicito).
+      const vueloUnicoParaTotal = vuelosParaPdf.length === 1 ? vuelosParaPdf[0] : null
       if (hospedajesParaPdf.length) {
         const plantillaHospBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
         const plantillaHospDoc = await PDFDocument.load(plantillaHospBytes)
@@ -749,7 +753,7 @@ export default function GeneradorPropuesta() {
         const helvHosp = await doc.embedFont(StandardFonts.Helvetica)
         for (let i = 0; i < hospedajesParaPdf.length; i += 4) {
           const grupo = hospedajesParaPdf.slice(i, i + 4)
-          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo)
+          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, vueloUnicoParaTotal)
         }
       }
 

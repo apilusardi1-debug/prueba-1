@@ -108,7 +108,7 @@ function crearSlot(fila) {
 
 const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo) {
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, vueloUnico) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -162,6 +162,27 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+
+    // Paquete completo (Aéreo + Traslado + Hospedaje) — solo si la propuesta
+    // tiene UN SOLO vuelo (con 2 o mas no hay un unico itinerario al que
+    // sumarle este hospedaje, pedido explicito de no mostrarlo en ese caso).
+    // Va a la derecha del bloque de arriba, con la misma tipografia grande
+    // del nombre del hospedaje — no la letra chica de "NOCHES/PENSIÓN".
+    if (vueloUnico && vueloUnico.venta && vueloUnico.venta_publica !== false) {
+      const totalPaquete = (parseFloat(vueloUnico.venta) || 0)
+        + (parseFloat(vueloUnico.traslado_venta) || 0)
+        + (parseFloat(h.precio) || 0)
+      const xPaquete = 425
+      const anchoPaquete = 570 - xPaquete
+      const textoPaquete = `AÉREO + TRASLADO + HOSPEDAJE: ${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`
+      const lineasPaquete = partirEnLineas(textoPaquete, bebas, s.nombre.size, anchoPaquete)
+      let yPaquete = s.infoYTop
+      for (const linea of lineasPaquete) {
+        if (yPaquete < piso) break
+        escribir(linea, xPaquete, yPaquete, s.nombre.size, NAVY_TXT, bebas)
+        yPaquete -= s.nombre.size * 1.05
+      }
+    }
 
     // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
     // departamento (hasta 4, elegidas en el Generador) — cada una necesita su

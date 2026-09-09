@@ -369,21 +369,27 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
 
   // 3) Traslados — ahora al final, icono auto reubicado.
   const yTraslados = finVuelo - GAP_SECCION
-  if (vuelo.traslado_ida && vuelo.traslado_vuelta) {
+  if (hayTraslados) {
+    const textoTitTraslados = (vuelo.traslado_ida && vuelo.traslado_vuelta) ? 'TRASLADOS PRIVADOS INCLUIDOS:' : 'TRASLADO PRIVADO INCLUIDO:'
     dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADOS PRIVADOS INCLUIDOS:', 61.19, yTraslados, 25, NAVY_TXT)
-    escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
-    escribir('IN - OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
-  } else if (vuelo.traslado_ida) {
-    dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADO PRIVADO INCLUIDO:', 61.19, yTraslados, 25, NAVY_TXT)
-    escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
-    escribir('IN', 61.19, yTraslados - 48, 20, NAVY_TXT)
-  } else if (vuelo.traslado_vuelta) {
-    dibujarIcono(iconAuto, ICON_X_IZQ, yTraslados)
-    escribir('TRASLADO PRIVADO INCLUIDO:', 61.19, yTraslados, 25, NAVY_TXT)
-    escribir('HOTEL / AEROPUERTO', 61.19, yTraslados - 24, 20, NAVY_TXT)
-    escribir('OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
+    escribir(textoTitTraslados, 61.19, yTraslados, 25, NAVY_TXT)
+    // Valor de venta del traslado propio del vuelo (no el de Destinos, que es
+    // para combinada) — mismo criterio que el resto de los precios: respeta
+    // "Pública", va al lado del titulo.
+    if (vuelo.traslado_venta && vuelo.traslado_venta_publica !== false) {
+      const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados, 25)
+      escribir(`${moneda || 'ARS'}$ ${formatearNumero(vuelo.traslado_venta)}`, 61.19 + anchoTitTraslados + 14, yTraslados, 25, NAVY_TXT)
+    }
+    if (vuelo.traslado_ida && vuelo.traslado_vuelta) {
+      escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
+      escribir('IN - OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
+    } else if (vuelo.traslado_ida) {
+      escribir('AEROPUERTO / HOTEL', 61.19, yTraslados - 24, 20, NAVY_TXT)
+      escribir('IN', 61.19, yTraslados - 48, 20, NAVY_TXT)
+    } else {
+      escribir('HOTEL / AEROPUERTO', 61.19, yTraslados - 24, 20, NAVY_TXT)
+      escribir('OUT', 61.19, yTraslados - 48, 20, NAVY_TXT)
+    }
   }
   const finTraslados = hayTraslados ? yTraslados - 2 * GAP_LINEA : yTraslados
 
@@ -563,13 +569,17 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
   const lineasInfo = []
   if (equipajeSeleccionado.length) lineasInfo.push(`EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`)
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
-    lineasInfo.push(
-      vuelo.traslado_ida && vuelo.traslado_vuelta
-        ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
-        : vuelo.traslado_ida
-          ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
-          : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
-    )
+    const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta
+      ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
+      : vuelo.traslado_ida
+        ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
+        : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
+    // Precio del traslado propio del vuelo (no el de Destinos, que es para
+    // combinada) — mismo criterio que el resto: respeta "Pública".
+    const precioTraslado = (vuelo.traslado_venta && vuelo.traslado_venta_publica !== false)
+      ? ` — ${moneda || 'ARS'}$ ${formatearNumero(vuelo.traslado_venta)}`
+      : ''
+    lineasInfo.push(textoTraslado + precioTraslado)
   }
   if (lineasInfo.length) {
     const bottomBoundary = slot.bottom + 8 * esc

@@ -513,17 +513,27 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
   const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
   escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
   escribir(textoTituloVuelta, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
-  // Valor de venta del vuelo — al lado de "VUELTA fecha", en el aire libre
-  // hasta el borde derecho de esa columna (mucho mas ancho que el hueco entre
-  // IDA y VUELTA, que con fechas largas dejaba el precio ilegible).
+  // Valor de venta del vuelo — pildora navy con texto blanco (mismo trazo que
+  // el resto de los carteles de la app), alineada al borde derecho de la
+  // columna de VUELTA (el mismo borde que la caja de abajo), no pegada al
+  // texto "VUELTA fecha".
   if (vuelo.venta && vuelo.venta_publica !== false) {
     const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTitulo)
-    const xPrecio = COL_DER_X + anchoTituloVuelta + 10 * esc
-    const anchoDisponiblePrecio = COL_DER_X + ANCHO_COL_VUELO - xPrecio - 6 * esc
+    const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 10 * esc
+    const xRightPill = COL_DER_X + ANCHO_COL_VUELO
+    const anchoDisponiblePrecio = xRightPill - xLimiteIzq - 16 * esc // menos el padding horizontal de la pildora
     if (anchoDisponiblePrecio > 20) {
       const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
       const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13)
-      escribir(textoPrecio, xPrecio, y, tamanoPrecio, NAVY_TXT)
+      const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
+      const padX = 8 * esc
+      const padY = 4 * esc
+      const anchoPill = anchoTexto + padX * 2
+      const altoPill = tamanoPrecio + padY * 2
+      const xPill = xRightPill - anchoPill
+      const yTopPill = y + tamanoPrecio * 0.78 + padY
+      page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 4 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
+      escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
     }
   }
   y -= 8 * esc

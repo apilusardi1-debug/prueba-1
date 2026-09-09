@@ -18,6 +18,12 @@ function formatearMiles(valor) {
   const digitos = soloDigitos(valor)
   return digitos ? Number(digitos).toLocaleString('es-AR') : ''
 }
+// Los links cargados a mano a veces no incluyen protocolo (Ej: "www.hotel.com");
+// sin esto el navegador los interpreta como ruta relativa del propio admin.
+function normalizarUrl(url) {
+  const limpio = String(url || '').trim()
+  return /^https?:\/\//i.test(limpio) ? limpio : `https://${limpio}`
+}
 const TITULOS = {
   enviada: { titulo: 'Propuestas enviadas', vacio: 'No hay propuestas enviadas todavía.' },
   cerrada: { titulo: 'Propuestas cerradas', vacio: 'Todavía no se cerró ninguna propuesta.' },
@@ -855,9 +861,17 @@ export default function PropuestasLista({ estado }) {
               <>
                 <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
                   <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Aéreos</p>
-                  <input value={aereoLink} onChange={e => setAereoLink(e.target.value)} onBlur={() => guardarCampoDocumento('aereo_link', aereoLink)}
-                    placeholder="Link a la reserva/aerolínea"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <input value={aereoLink} onChange={e => setAereoLink(e.target.value)} onBlur={() => guardarCampoDocumento('aereo_link', aereoLink)}
+                      placeholder="Link a la reserva/aerolínea"
+                      className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    {aereoLink.trim() && (
+                      <a href={normalizarUrl(aereoLink)} target="_blank" rel="noopener noreferrer"
+                        className="flex-shrink-0 text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-lg px-2.5 py-2">
+                        Abrir ↗
+                      </a>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <label className={`text-xs font-medium cursor-pointer ${aereoPdfUrl ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300' : 'text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300'}`}>
                       {subiendoDocumento === 'aereo' ? 'Subiendo...' : (aereoPdfUrl ? '✓ PDF cargado — cambiar' : '+ Subir PDF')}
@@ -872,9 +886,17 @@ export default function PropuestasLista({ estado }) {
 
                 <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
                   <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Hospedaje</p>
-                  <input value={hospedajeLink} onChange={e => setHospedajeLink(e.target.value)} onBlur={() => guardarCampoDocumento('hospedaje_link', hospedajeLink)}
-                    placeholder="Link a la reserva del hospedaje"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <div className="flex items-center gap-2">
+                    <input value={hospedajeLink} onChange={e => setHospedajeLink(e.target.value)} onBlur={() => guardarCampoDocumento('hospedaje_link', hospedajeLink)}
+                      placeholder="Link a la reserva del hospedaje"
+                      className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    {hospedajeLink.trim() && (
+                      <a href={normalizarUrl(hospedajeLink)} target="_blank" rel="noopener noreferrer"
+                        className="flex-shrink-0 text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-lg px-2.5 py-2">
+                        Abrir ↗
+                      </a>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <label className={`text-xs font-medium cursor-pointer ${hospedajeVoucherUrl ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300' : 'text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300'}`}>
                       {subiendoDocumento === 'voucher' ? 'Subiendo...' : (hospedajeVoucherUrl ? '✓ Voucher cargado — cambiar' : '+ Subir voucher')}

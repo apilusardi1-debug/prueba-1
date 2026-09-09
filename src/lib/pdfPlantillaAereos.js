@@ -521,18 +521,18 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
     const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTitulo)
     const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 10 * esc
     const xRightPill = COL_DER_X + ANCHO_COL_VUELO
-    const anchoDisponiblePrecio = xRightPill - xLimiteIzq - 16 * esc // menos el padding horizontal de la pildora
+    const anchoDisponiblePrecio = xRightPill - xLimiteIzq - 12 * esc // menos el padding horizontal de la pildora
     if (anchoDisponiblePrecio > 20) {
       const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
       const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13)
       const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
-      const padX = 8 * esc
-      const padY = 4 * esc
+      const padX = 6 * esc
+      const padY = 2.5 * esc
       const anchoPill = anchoTexto + padX * 2
       const altoPill = tamanoPrecio + padY * 2
       const xPill = xRightPill - anchoPill
       const yTopPill = y + tamanoPrecio * 0.78 + padY
-      page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 4 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
+      page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 3 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
       escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
     }
   }

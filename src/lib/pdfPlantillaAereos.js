@@ -70,7 +70,7 @@ export const NAVY_SUAVE_CAJA = rgb(0x3a / 255, 0x55 / 255, 0x64 / 255)
 // (el mayor de los dos) aunque solo una tenga escala, asi quedan simetricas.
 export function altoCajaTramo(hayEscala, esc = 1) {
   const sinEscala = 13 * esc + 9 * esc + 9 * esc // padding sup + fila principal + fila ciudad
-  return hayEscala ? sinEscala + 8 * esc + 8.5 * esc + 8.5 * esc : sinEscala // + escala (2 lineas) + gap
+  return hayEscala ? sinEscala + 8 * esc + 9.5 * esc + 9.5 * esc : sinEscala // + escala (2 lineas, texto un poco mas grande) + gap
 }
 
 // Caja con borde redondeado de un tramo (ida o vuelta): codigo+hora de salida
@@ -129,10 +129,10 @@ export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoS
     cy -= 8 * esc
     const xCentro = x + ancho / 2
     const codigo = escalaCodigo?.toUpperCase()
-    centrado(`ESCALA ${escalaCiudad?.toUpperCase() || ''}${codigo ? ` (${codigo})` : ''}`, xCentro, cy, 7.5 * esc, colorSuave)
-    cy -= 8.5 * esc
+    centrado(`ESCALA ${escalaCiudad?.toUpperCase() || ''}${codigo ? ` (${codigo})` : ''}`, xCentro, cy, 8.5 * esc, colorSuave)
+    cy -= 9.5 * esc
     if (escalaLlega || escalaSale) {
-      centrado(`${escalaLlega || '--:--'} - ${escalaSale || '--:--'}`, xCentro, cy, 7.5 * esc, colorSuave)
+      centrado(`${escalaLlega || '--:--'} - ${escalaSale || '--:--'}`, xCentro, cy, 8.5 * esc, colorSuave)
     }
   }
 

@@ -510,8 +510,22 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
   let y = slot.top - 14 * esc
   const tamanoTitulo = 13 * esc
   const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
+  const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
   escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
-  escribir(`VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
+  escribir(textoTituloVuelta, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
+  // Valor de venta del vuelo — al lado de "VUELTA fecha", en el aire libre
+  // hasta el borde derecho de esa columna (mucho mas ancho que el hueco entre
+  // IDA y VUELTA, que con fechas largas dejaba el precio ilegible).
+  if (vuelo.venta && vuelo.venta_publica !== false) {
+    const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTitulo)
+    const xPrecio = COL_DER_X + anchoTituloVuelta + 10 * esc
+    const anchoDisponiblePrecio = COL_DER_X + ANCHO_COL_VUELO - xPrecio - 6 * esc
+    if (anchoDisponiblePrecio > 20) {
+      const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
+      const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13)
+      escribir(textoPrecio, xPrecio, y, tamanoPrecio, NAVY_TXT)
+    }
+  }
   y -= 8 * esc
 
   // Caja por tramo (ida/vuelta) con borde redondeado, flecha y escala — ver
@@ -550,14 +564,6 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
     })
   const xCentroHoja = (COL_IZQ_X + COL_DER_X + ANCHO_COL_VUELO) / 2
   const lineasInfo = []
-  // Valor de venta del vuelo — antes iba al lado del titulo "VUELO N: IDA...",
-  // pero ese espacio es angosto (la columna de VUELTA empieza enseguida) y
-  // con fechas largas el precio quedaba achicado a un tamaño ilegible y
-  // desalineado del titulo. Va acá con el resto de la info del vuelo, en la
-  // linea centrada de ancho completo que ya usan equipaje/traslados.
-  if (vuelo.venta && vuelo.venta_publica !== false) {
-    lineasInfo.push(`VALOR DEL VUELO: ${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`)
-  }
   if (equipajeSeleccionado.length) lineasInfo.push(`EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`)
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
     const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta

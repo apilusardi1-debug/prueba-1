@@ -97,7 +97,8 @@ function crearSlot(fila) {
   const textoX = 30 + IMG_LADO + 18
   return {
     nombre: { x: textoX, y: top - 15, size: 16 },
-    subtitulo: { x: textoX, y: top - 34, size: 12 },
+    // 9, no 12: quedaba casi del mismo tamaño que el título de al lado.
+    subtitulo: { x: textoX, y: top - 32, size: 9 },
     infoX: textoX, infoYTop: top - 54, infoSize: 12.5, infoGap: 15,
     itemsX: textoX, itemsSize: 11, itemsGap: 13,
     imagen: { x: 30, y: imagenY, width: IMG_LADO, height: IMG_LADO },
@@ -155,20 +156,23 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
 
+    // Paquete completo (Aéreo + Traslado + Hospedaje) — solo si la propuesta
+    // tiene UN SOLO vuelo cargado (con 2 o mas no hay un unico itinerario al
+    // que sumarle este hospedaje). Con un solo vuelo, el precio individual del
+    // hospedaje (mas abajo) se oculta: en su lugar se muestra este total.
+    const mostrarPaquete = !!(vueloUnico && vueloUnico.venta && vueloUnico.venta_publica !== false)
+
     // Bloque de precio, empieza siempre despues del subtitulo real (baja si el
     // nombre o el subtitulo ocuparon 2 lineas) y nunca invade la fila de abajo.
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
+    if (!mostrarPaquete) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
-    // Paquete completo (Aéreo + Traslado + Hospedaje) — solo si la propuesta
-    // tiene UN SOLO vuelo (con 2 o mas no hay un unico itinerario al que
-    // sumarle este hospedaje, pedido explicito de no mostrarlo en ese caso).
     // Va a la derecha del bloque de arriba, con la misma tipografia grande
     // del nombre del hospedaje — no la letra chica de "NOCHES/PENSIÓN".
-    if (vueloUnico && vueloUnico.venta && vueloUnico.venta_publica !== false) {
+    if (mostrarPaquete) {
       const totalPaquete = (parseFloat(vueloUnico.venta) || 0)
         + (parseFloat(vueloUnico.traslado_venta) || 0)
         + (parseFloat(h.precio) || 0)
@@ -193,36 +197,33 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       ? h.habitaciones
       : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
     if (habitacionesElegidas.length && y >= piso) {
-      const anchoItem = anchoColumnaTexto
       const ALTO_BOTON = 15
-      const GAP_NOMBRE_BOTON = 12
-      const GAP_TRAS_BOTON = 27
-      // El nombre y su boton se dibujan como una unidad — antes se chequeaba
-      // el espacio recien DESPUES de dibujar el nombre, y si no alcanzaba para
-      // el boton, quedaba un nombre "huerfano" sin su boton (bug real, visto
-      // en produccion: la 2da habitacion mostraba el nombre pero no el
-      // boton). Ahora se calcula el alto total ANTES de dibujar nada — si no
-      // entra completo, se omite la habitacion entera y se corta ahi.
-      const altoBloque = s.itemsGap + GAP_NOMBRE_BOTON
+      const GAP_NOMBRE_BOTON = 8 // ahora horizontal: aire entre el nombre y el boton, en la misma linea
+      const GAP_ENTRE_HABITACIONES = 20
+      const texto = 'VER ÁREAS INTERNAS >'
+      const tamanoBoton = 8
+      const anchoBoton = helv.widthOfTextAtSize(texto, tamanoBoton) + 12
+      // Nombre y boton en la MISMA linea (antes el boton iba en el renglon de
+      // abajo) — el nombre se achica hasta entrar en el ancho que le queda
+      // libre despues de reservarle su lugar al boton, no en la columna
+      // completa como antes.
+      const anchoDisponibleNombre = anchoColumnaTexto - anchoBoton - GAP_NOMBRE_BOTON
       for (const hab of habitacionesElegidas) {
-        if (y - altoBloque < piso) break
+        if (y < piso) break
         const nombreHab = (hab.nombre || 'Habitación').toUpperCase()
         let tamanoNombre = s.itemsSize
-        while (tamanoNombre > 6 && helv.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoItem) tamanoNombre -= 0.5
+        while (tamanoNombre > 6 && helv.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoDisponibleNombre) tamanoNombre -= 0.5
         escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, helv)
-        y -= s.itemsGap
 
         if (h.id) {
           const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
-          const texto = 'VER ÁREAS INTERNAS >'
-          const tamanoBoton = 8
-          const anchoTexto = helv.widthOfTextAtSize(texto, tamanoBoton)
-          const bandaInt = { x: s.itemsX, y: y - GAP_NOMBRE_BOTON, width: anchoTexto + 12, height: ALTO_BOTON }
+          const anchoNombreReal = helv.widthOfTextAtSize(nombreHab, tamanoNombre)
+          const bandaInt = { x: s.itemsX + anchoNombreReal + GAP_NOMBRE_BOTON, y: y - 3, width: anchoBoton, height: ALTO_BOTON }
           tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
           escribir(texto, bandaInt.x + 6, bandaInt.y + 4.5, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
           agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-          y -= GAP_TRAS_BOTON
         }
+        y -= GAP_ENTRE_HABITACIONES
       }
     }
 

@@ -474,7 +474,9 @@ const ANCHO_COL_VUELO = 245
 function crearSlotVuelo(fila, totalEnHoja, zonaBottom = ZONA_GRUPO_BOTTOM) {
   const altoFila = (ZONA_GRUPO_TOP - zonaBottom) / totalEnHoja
   const top = ZONA_GRUPO_TOP - fila * altoFila
-  const escala = Math.min(ALTO_FILA_BASE > 0 ? altoFila / ALTO_FILA_BASE : 1, 2)
+  // Tope en 1.75, no 2: con pocos vuelos en la hoja (1-2) la tarjeta quedaba
+  // demasiado grande — pedido explicito de achicarla "un poco" (1 de 4).
+  const escala = Math.min(ALTO_FILA_BASE > 0 ? altoFila / ALTO_FILA_BASE : 1, 1.75)
   return { top, bottom: top - altoFila, escala }
 }
 

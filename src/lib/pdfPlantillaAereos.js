@@ -509,26 +509,6 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
   const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
   escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
   escribir(`VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
-  // Valor de venta del vuelo — al lado del titulo de IDA, en el aire libre
-  // antes de que arranque la columna de VUELTA. Respeta "Pública": si el
-  // vendedor lo dejó como uso interno (venta_publica false), no se imprime.
-  if (vuelo.venta && vuelo.venta_publica !== false) {
-    const anchoTituloIda = bebas.widthOfTextAtSize(textoTituloIda, tamanoTitulo)
-    const xPrecio = COL_IZQ_X + anchoTituloIda + 10 * esc
-    // Se achica hasta entrar en el aire libre antes de COL_DER_X (donde
-    // arranca "VUELTA") — a esc>1 (pocos vuelos en la hoja) el titulo de IDA
-    // por si solo ya ocupa bastante, y sin este limite el precio quedaba
-    // pisando "VUELTA" en vez de terminar antes.
-    const anchoDisponiblePrecio = COL_DER_X - xPrecio - 8 * esc
-    if (anchoDisponiblePrecio > 20) {
-      const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
-      // 13, no tamanoTitulo: medirTamanoAjustado ya multiplica por "esc" (aca
-      // adentro), pasarle tamanoTitulo (que ya viene con "* esc" aplicado) lo
-      // aplicaba dos veces.
-      const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13)
-      escribir(textoPrecio, xPrecio, y, tamanoPrecio, NAVY_TXT)
-    }
-  }
   y -= 8 * esc
 
   // Caja por tramo (ida/vuelta) con borde redondeado, flecha y escala — ver
@@ -567,6 +547,14 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
     })
   const xCentroHoja = (COL_IZQ_X + COL_DER_X + ANCHO_COL_VUELO) / 2
   const lineasInfo = []
+  // Valor de venta del vuelo — antes iba al lado del titulo "VUELO N: IDA...",
+  // pero ese espacio es angosto (la columna de VUELTA empieza enseguida) y
+  // con fechas largas el precio quedaba achicado a un tamaño ilegible y
+  // desalineado del titulo. Va acá con el resto de la info del vuelo, en la
+  // linea centrada de ancho completo que ya usan equipaje/traslados.
+  if (vuelo.venta && vuelo.venta_publica !== false) {
+    lineasInfo.push(`VALOR DEL VUELO: ${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`)
+  }
   if (equipajeSeleccionado.length) lineasInfo.push(`EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`)
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
     const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta

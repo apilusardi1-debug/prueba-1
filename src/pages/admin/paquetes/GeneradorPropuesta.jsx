@@ -40,7 +40,10 @@ const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 
 
 const HOSPEDAJE_VACIO = {
   id: null, nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
-  incluye: 'Aéreo + Hospedaje + Traslados', pension: '', descripcion: '',
+  // Vacío (antes traía "Aéreo + Hospedaje + Traslados" fijo): el campo se
+  // deshabilitó en el formulario, pero con este default seguía imprimiéndose
+  // en el PDF igual — así no aparece nada mientras no haga falta.
+  incluye: '', pension: '', descripcion: '',
   items_titulo: 'Servicios:', items: [''], nota: '', link_video: '',
   habitacion_id: null, habitacion_imagen: '', personas: '',
   // Hasta 4 tipos de habitacion del MISMO hospedaje (no hospedajes distintos),

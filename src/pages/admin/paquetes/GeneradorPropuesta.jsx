@@ -1317,8 +1317,11 @@ export default function GeneradorPropuesta() {
               </div>
             </div>
 
-            <input value={h.incluye} onChange={e => setHospedajeCampo(idx, 'incluye', e.target.value)} placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            {/* Deshabilitado (no borrado): por ahora no sirve, cada servicio ya
+                muestra su propio precio por separado en el PDF en vez de un
+                total combinado bajo esta leyenda. */}
+            <input value={h.incluye} disabled placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-zinc-600 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm cursor-not-allowed" />
             <textarea value={h.descripcion} onChange={e => setHospedajeCampo(idx, 'descripcion', e.target.value)} rows={3} placeholder="Descripción"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
 

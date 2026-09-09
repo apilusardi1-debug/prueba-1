@@ -195,14 +195,16 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
     escribir(texto, x, y, size, color)
   }
 
-  // Iconos: la plantilla real los trae fijos en su posicion vieja (traslados,
-  // ida/vuelta) — como el orden cambia, no alcanza con dejarlos donde estaban.
-  // Se recortaron de la plantilla real como imagen chica y se reubican junto al
-  // contenido que corresponde en el nuevo orden. El de equipaje (maleta) no hace
-  // falta tocarlo: esta pegado al encabezado, que no se mueve ni se tapa.
+  // Iconos: la plantilla real los trae fijos en su posicion vieja (equipaje,
+  // traslados, ida/vuelta) — como el orden cambia y ahora todo el bloque se
+  // centra como una unidad (ver mas abajo), ninguno se puede dejar en su
+  // posicion original. Se recortaron de la plantilla real como imagen chica y
+  // se reubican junto al contenido que corresponde en cada caso.
   const iconAutoBytes = await fetch('/icono-auto.png').then(r => r.arrayBuffer())
+  const iconMaletaBytes = await fetch('/icono-maleta.png').then(r => r.arrayBuffer())
   const iconCalendarioBytes = await fetch('/icono-calendario.png').then(r => r.arrayBuffer())
   const iconAuto = await doc.embedPng(iconAutoBytes)
+  const iconMaleta = await doc.embedPng(iconMaletaBytes)
   // Se incrusta DOS VECES (ida/vuelta) en vez de reusar el mismo objeto embebido:
   // algunos visores de PDF cachean el bitmap rasterizado por XObject y, al
   // repetir la misma imagen en dos posiciones no alineadas al pixel, el segundo
@@ -256,20 +258,31 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
       return `- ${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
     })
 
-  const REF_EQUIPAJE_TOP = 525.42 // y de la primera linea de equipaje (sin cambios)
   const GAP_LINEA = 24
-  const MARGEN_INFERIOR = 15 // aire minimo entre el ultimo renglon y el banner de abajo
+  // Fijo, no estirado: separa cada bloque (equipaje/vuelo/traslados/destinos)
+  // de forma pareja sin importar cuanto contenido haya. Antes GAP_SECCION se
+  // calculaba para que el bloque completo llegara siempre hasta el banner de
+  // abajo — con poco contenido (ej. sin escala, sin muchos items de equipaje)
+  // esos huecos se estiraban mucho, dejando "EQUIPAJE INCLUIDO:" pegado
+  // arriba (fijo) y todo lo demas desparramado con aire de sobra entre medio
+  // en vez de leerse como un solo bloque prolijo.
+  const GAP_SECCION = 32
+  // Limites para centrar el bloque ENTERO (titulo "EQUIPAJE INCLUIDO:" +
+  // icono incluidos, ya no quedan fijos) entre "AÉREOS:" arriba y el banner
+  // de actividades abajo. Estos dos valores son el caso limite (bloque tan
+  // alto que no queda aire para centrar, ej. con escala + varios destinos):
+  // arrancaria en ZONA_CENTRO_TOP sin margen. Con menos contenido, el bloque
+  // se desliza hacia abajo hasta quedar centrado de verdad.
+  const ZONA_CENTRO_TOP = 585
+  const ZONA_CENTRO_BOTTOM = 185
+  tapar(20, 180, 550, 600 - 180, CREMA_BG)
 
-  const zonaTop = REF_EQUIPAJE_TOP + 22
-  const zonaBottom = 195 // arriba del banner de actividades, que es fijo
-  tapar(20, zonaBottom, 550, zonaTop - zonaBottom, CREMA_BG)
-
-  // Cuantos renglones tiene cada seccion (para repartir el aire entre ellas de
-  // forma pareja y que el bloque completo use todo el recuadro disponible, en
-  // vez de quedar amontonado arriba con un espacio muerto abajo).
+  // Cuantos renglones tiene cada seccion (para calcular el alto total del
+  // bloque y centrarlo — ya no para estirar el aire entre secciones).
   const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
   const nEquipaje = equipajeSeleccionado.length
+  const nEquipajeTotal = 1 + nEquipaje // titulo "EQUIPAJE INCLUIDO:" (ahora dinamico) + items
   const nVuelo = 3 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0) // titulo + sale + llega [+ escala]
   const hayTraslados = vuelo.traslado_ida || vuelo.traslado_vuelta
   const nTraslados = hayTraslados ? 3 : 0
@@ -279,24 +292,23 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
   const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
   const nDestinos = destinosValidos.length ? 1 + destinosValidos.length : 0
 
-  const secciones = [nEquipaje, nVuelo, nTraslados, nDestinos].filter(n => n > 0)
+  const secciones = [nEquipajeTotal, nVuelo, nTraslados, nDestinos].filter(n => n > 0)
   const totalLineas = secciones.reduce((a, b) => a + b, 0)
-  const targetUltimaBaseline = zonaBottom + MARGEN_INFERIOR
-  const GAP_SECCION = secciones.length > 1
-    ? Math.max(20, ((REF_EQUIPAJE_TOP - targetUltimaBaseline) - (totalLineas - secciones.length) * GAP_LINEA) / (secciones.length - 1))
-    : 20
+  const totalDrop = (totalLineas - secciones.length) * GAP_LINEA + (secciones.length - 1) * GAP_SECCION
+  const margenCentrado = Math.max(0, (ZONA_CENTRO_TOP - ZONA_CENTRO_BOTTOM - totalDrop) / 2)
+  const primerBaseline = ZONA_CENTRO_TOP - margenCentrado
 
-  // 1) Equipaje — misma posicion de siempre. El icono maleta esta pegado al
-  // encabezado "EQUIPAJE INCLUIDO:", que queda arriba de la zona que tapamos, asi
-  // que el icono original sigue ahi solo (no hace falta redibujarlo).
-  let y = REF_EQUIPAJE_TOP
+  // 1) Equipaje — titulo + icono ahora dinamicos (antes quedaban fijos en su
+  // posicion original de la plantilla), arrancan en el primer renglon del
+  // bloque ya centrado.
+  let y = primerBaseline
+  dibujarIcono(iconMaleta, ICON_X_IZQ, y)
+  escribir('EQUIPAJE INCLUIDO:', 61.19, y, 25, NAVY_TXT)
   for (const linea of equipajeSeleccionado) {
-    escribir(linea, 61.19, y, 20, NAVY_TXT)
     y -= GAP_LINEA
+    escribir(linea, 61.19, y, 20, NAVY_TXT)
   }
-  // Y de la ULTIMA linea de equipaje realmente dibujada (no una de mas) — asi el
-  // aire hasta el titulo IDA queda igual que el aire entre vuelo y traslados.
-  const finEquipaje = REF_EQUIPAJE_TOP - Math.max(nEquipaje - 1, 0) * GAP_LINEA
+  const finEquipaje = y
 
   // 2) Vuelo ida/vuelta — mismas columnas X que antes (izquierda/derecha), ahora
   // arrancando debajo del equipaje. Icono calendario en cada columna.

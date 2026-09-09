@@ -1,5 +1,6 @@
 import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } from 'pdf-lib'
 import { embedImagenAuto } from './pdfImagen.js'
+import { pathRectRedondeado } from './pdfPlantillaAereos.js'
 
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
@@ -170,21 +171,30 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
-    // Va a la derecha del bloque de arriba, con la misma tipografia grande
-    // del nombre del hospedaje — no la letra chica de "NOCHES/PENSIÓN".
+    // Pildora navy con texto blanco (mismo diseño que el precio del vuelo en
+    // la pagina de Aereos), alineada con la banda "VER FOTOS ÁREAS EXTERNAS"
+    // de abajo — antes era texto plano arriba, al lado de "NOCHES".
     if (mostrarPaquete) {
       const totalPaquete = (parseFloat(vueloUnico.venta) || 0)
         + (parseFloat(vueloUnico.traslado_venta) || 0)
         + (parseFloat(h.precio) || 0)
-      const xPaquete = 425
-      const anchoPaquete = 570 - xPaquete
       const textoPaquete = `AÉREO + TRASLADO + HOSPEDAJE: ${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`
-      const lineasPaquete = partirEnLineas(textoPaquete, bebas, s.nombre.size, anchoPaquete)
-      let yPaquete = s.infoYTop
+      const tamanoPaquete = 11
+      const padX = 10
+      const padY = 6
+      const anchoMaxTexto = 330
+      const lineasPaquete = partirEnLineas(textoPaquete, bebas, tamanoPaquete, anchoMaxTexto)
+      const anchoTexto = Math.max(...lineasPaquete.map(l => bebas.widthOfTextAtSize(l, tamanoPaquete)))
+      const gapLinea = tamanoPaquete * 1.15
+      const anchoPill = anchoTexto + padX * 2
+      const altoPill = lineasPaquete.length * gapLinea + padY * 2 - (gapLinea - tamanoPaquete)
+      const xPill = s.itemsX
+      const yTopPill = s.bandaY + altoPill
+      paginaPlantilla.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 4), { x: xPill, y: yTopPill, color: NAVY_BG })
+      let yLinea = yTopPill - padY - tamanoPaquete * 0.8
       for (const linea of lineasPaquete) {
-        if (yPaquete < piso) break
-        escribir(linea, xPaquete, yPaquete, s.nombre.size, NAVY_TXT, bebas)
-        yPaquete -= s.nombre.size * 1.05
+        escribir(linea, xPill + padX, yLinea, tamanoPaquete, rgb(1, 1, 1), bebas)
+        yLinea -= gapLinea
       }
     }
 

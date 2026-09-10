@@ -457,8 +457,10 @@ export default function GeneradorPropuesta() {
   }
 
   function agregarVuelo() {
+    const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
     setVuelos(prev => [...prev, {
       ...VUELO_VACIO,
+      ...(total ? { equipaje: { ...VUELO_VACIO.equipaje, mochila: total, carryOn: total } } : {}),
       ...(tipoPropuesta === 'combinada' ? { traslado_activo: false, traslado_ida: false, traslado_vuelta: false } : {}),
     }])
   }
@@ -596,6 +598,15 @@ export default function GeneradorPropuesta() {
     const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
     if (!total) return
     setHospedajes(prev => prev.map(h => ({ ...h, personas: String(total) })))
+  }, [cantidadAdultos, cantidadMenores])
+
+  // Mochila de mano y carry on van 1 por pasajero — mismo criterio que
+  // "personas" de hospedaje: se completan solas con el total de Cliente
+  // (adultos + menores), no se cargan a mano en cada vuelo.
+  useEffect(() => {
+    const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
+    if (!total) return
+    setVuelos(prev => prev.map(v => ({ ...v, equipaje: { ...v.equipaje, mochila: total, carryOn: total } })))
   }, [cantidadAdultos, cantidadMenores])
 
   function quitarHospedaje(idx) {
@@ -1078,7 +1089,14 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
               <div className="flex flex-wrap gap-3">
-                {EQUIPAJE_OPCIONES.map(op => (
+                {EQUIPAJE_OPCIONES.filter(op => op.clave === 'mochila' || op.clave === 'carryOn').map(op => (
+                  <div key={op.clave} title="Se completa solo con la cantidad de adultos + menores del Cliente (1 por pasajero)"
+                    className="flex items-center gap-2 border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 rounded-xl pl-3 pr-3 py-1.5">
+                    <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tabular-nums">{v.equipaje?.[op.clave] || 0}</span>
+                  </div>
+                ))}
+                {EQUIPAJE_OPCIONES.filter(op => op.clave !== 'mochila' && op.clave !== 'carryOn').map(op => (
                   <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
                     <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{v.equipaje?.[op.clave] || 0}</span>

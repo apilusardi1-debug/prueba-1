@@ -493,48 +493,30 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   return doc
 }
 
-// Ícono de "traslado" (auto de perfil) 100% vectorial — antes era un PNG
-// embebido y se veía pixelado/deforme en varios lectores de PDF (el flag
-// /Interpolate no alcanzaba: el asset de origen tenía el diseño entero
-// "lavado" en gris-azulado, sin ningún núcleo sólido blanco, así que
-// cualquier intento de reconstruirlo desde ahí quedaba borroso otra vez).
-// Con formas vectoriales (círculo + rectángulos redondeados + círculos) se
-// ve nítido a cualquier tamaño, sin depender del renderizado de imágenes.
-// Perfil (no de frente) — más reconocible como auto con formas simples
-// (cuerpo + cabina + 2 ruedas) sin caer en el problema de que un diseño
-// simétrico con 2 puntos termine leyendo como una cara.
+// Ícono de "traslado" (auto) 100% vectorial — path real tomado de
+// public/icons/transfers-privados.svg (el ícono de marca ya existente, no
+// uno inventado). Antes era un PNG embebido y se veía pixelado/deforme en
+// varios lectores de PDF (el flag /Interpolate no alcanzaba: ese asset
+// rasterizado tenía el diseño entero "lavado" en gris-azulado, sin ningún
+// núcleo sólido blanco). Dibujado como vector se ve nítido a cualquier
+// tamaño, sin depender del renderizado de imágenes.
+const ICONO_AUTO_PATH = 'M1296.74,992.12l-840.39-.03c5.69,98.37-5.24,127.08-110.91,115.67-57.21-2.81-37.61-90.81-41.25-126.23-67.52-26.27-29.33-222.09-38.55-274.56.07-80.87,65.07-164.44,146.24-187.56-28.21-11.43-88.11-16.37-105.05-45.58-10.18-19.96,11.79-38.46,30.13-40.86,37.88-5.34,107.46-29.59,100.52,35.8,37.08-65.89,73.1-165.38,155.94-185.39,107.87-17.26,264.38-11.19,375.25-12.1,202.19-.23,257.48,1.32,345.2,195.74-3.6-55.89,51.72-44.09,88.21-36.27,25.21.54,60.48,22.1,39.35,48.34-17.75,22.92-75.44,30.35-100.92,40.01,77.08,24.96,140.87,95.38,144.79,179.08,0,0,.77,224.17.77,224.17.09,25.61-18.03,46.23-38.06,59.26-3.08,37.6,16.04,125.21-43.97,126.38-109.58,6.98-111.14-13.12-107.3-115.85ZM1139.99,495.82c52.75,1.38,100.83,7.84,153.08,13.53-30-47.09-64.46-148.91-116.12-176.7-106.4-40.41-236.14-18.85-349.09-25.25-232.71,7.03-264.74-26.92-369.12,202.14,206.32-25.71,473.01-20.14,681.25-13.73ZM553.98,765.95c45.83-12.48-11.52-62.72-47.47-71.4-22.05-.9-174.93-57.27-192.34-37.5-15.77,9.27-10.28,44.71-11.24,60.19-.08,27.56,21.56,42.67,47.08,43.33,48.59,1.16,156.31,4.14,203.97,5.38ZM1208.37,766.33l191.29-5.76c51.19,1.24,50.22-40.99,49.42-79.26.05-23.25-21.99-35.05-41.36-28.73l-150.95,38.4c-33.52.78-117.44,67.16-48.41,75.36Z'
+// Bounding box real del path (medido con getBBox() sobre el SVG, no el
+// viewBox entero) — hace falta para centrarlo bien dentro del círculo.
+const ICONO_AUTO_BBOX = { x: 263.05, y: 270.96, width: 1223.02, height: 839.16 }
+
 function dibujarIconoAuto(page, cx, cy, radio) {
   page.drawCircle({ x: cx, y: cy, size: radio, color: NAVY_BG })
-
-  // Coordenadas de diseño (sin escalar), medidas sobre un boceto de
-  // referencia en convención Y-abajo (como una imagen): bbox real
-  // x -310..310, y -111.9..304. anchoAuto fija el tamaño final relativo al
-  // radio del círculo; el resto se escala en la misma proporción.
-  const anchoAuto = radio * 1.42
-  const esc = anchoAuto / 620
-  const bboxCyLocal = 96.05
-  const px = (lx) => cx + lx * esc
-  const py = (ly) => cy + (bboxCyLocal - ly) * esc
-
-  const bodyW = 620, bodyH = 190
-  page.drawSvgPath(pathRectRedondeado(bodyW * esc, bodyH * esc, bodyH * 0.42 * esc),
-    { x: px(-bodyW / 2), y: py(0), color: rgb(1, 1, 1) })
-
-  const cabW = bodyW * 0.5, cabH = bodyH * 0.95, cabOffset = bodyW * 0.03
-  const cabX0 = -cabW / 2 + cabOffset
-  const cabTop = -cabH * 0.62, cabBottom = cabH * 0.15
-  page.drawSvgPath(pathRectRedondeado(cabW * esc, (cabBottom - cabTop) * esc, cabH * 0.32 * esc),
-    { x: px(cabX0), y: py(cabTop), color: rgb(1, 1, 1) })
-  // costura entre la cabina y el techo del cuerpo, tapada
-  page.drawSvgPath(pathRectRedondeado((cabW - 8) * esc, 6 * esc, 0),
-    { x: px(cabX0 + 4), y: py(-3), color: rgb(1, 1, 1) })
-
-  const wheelR = bodyH * 0.60
-  for (const dx of [-0.27, 0.27]) {
-    const wx = dx * bodyW
-    page.drawCircle({ x: px(wx), y: py(bodyH), size: wheelR * esc, color: NAVY_BG })
-    page.drawCircle({ x: px(wx), y: py(bodyH), size: wheelR * 0.42 * esc, color: CREMA_BG })
-  }
+  const anchoDeseado = radio * 1.5
+  const escala = anchoDeseado / ICONO_AUTO_BBOX.width
+  const cxLocal = ICONO_AUTO_BBOX.x + ICONO_AUTO_BBOX.width / 2
+  const cyLocal = ICONO_AUTO_BBOX.y + ICONO_AUTO_BBOX.height / 2
+  page.drawSvgPath(ICONO_AUTO_PATH, {
+    x: cx - cxLocal * escala,
+    y: cy + cyLocal * escala,
+    scale: escala,
+    color: rgb(1, 1, 1),
+  })
 }
 
 // ── Grilla compacta: 2 o mas vuelos en la misma hoja ────────────────────────

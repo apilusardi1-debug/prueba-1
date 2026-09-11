@@ -1479,31 +1479,32 @@ export default function GeneradorPropuesta() {
         ))}
       </div>
 
-      {/* Valor total — solo Propuesta Simple. En Combinada cada servicio ya
-          tiene su propio precio (vuelo, cada hospedaje, traslado por
-          destino), no hace falta un total aparte. */}
-      {tipoPropuesta === 'simple' && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Valor total del paquete</h3>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
-              Un solo valor de venta, cargado a mano — no se desglosa por vuelo/traslado/hospedaje. Va al final del PDF, con la leyenda de qué incluye.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <input type="text" inputMode="numeric" value={formatearMiles(valorTotalSimple)}
-              onChange={e => setValorTotalSimple(soloDigitos(e.target.value))} placeholder="Valor total (Ej: 4.397.000)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-            <select value={incluyeSimple} onChange={e => setIncluyeSimple(e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-              {INCLUYE_SIMPLE_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-
       {/* Generar */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg space-y-3">
+        {/* Valor total — solo Propuesta Simple. En Combinada cada servicio ya
+            tiene su propio precio (vuelo, cada hospedaje, traslado por
+            destino), no hace falta un total aparte. Va en esta barra fija
+            (no como card suelta más arriba) para que no quede perdida de
+            vista si hay varios hospedajes cargados antes. */}
+        {tipoPropuesta === 'simple' && (
+          <div className="border-b border-gray-100 dark:border-zinc-800 pb-3 space-y-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Valor total del paquete</h3>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+                Un solo valor de venta, cargado a mano — no se desglosa por vuelo/traslado/hospedaje. Va al final del PDF, con la leyenda de qué incluye.
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input type="text" inputMode="numeric" value={formatearMiles(valorTotalSimple)}
+                onChange={e => setValorTotalSimple(soloDigitos(e.target.value))} placeholder="Valor total (Ej: 4.397.000)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <select value={incluyeSimple} onChange={e => setIncluyeSimple(e.target.value)}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                {INCLUYE_SIMPLE_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
         {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
         {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ PDF descargado y propuesta guardada.</p>}
         <div className="flex items-center justify-between">

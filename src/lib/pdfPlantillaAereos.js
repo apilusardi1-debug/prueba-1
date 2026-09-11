@@ -621,21 +621,28 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     const altoGrupo = n * boxAlto + (n - 1) * gapBoxes
     let yTop = (y + bottomBoundary) / 2 + altoGrupo / 2
 
+    // Un solo tamaño de letra para las dos tarjetas (no cada una el suyo):
+    // antes "traslados" (texto mas corto) quedaba mas grande que "equipaje"
+    // (texto mas largo, se achicaba mas para entrar) y el documento se veia
+    // desprolijo — se mide cuanto necesita achicarse CADA texto y se usa el
+    // menor de todos, así entran los dos igual de grandes.
+    const iconoLado = Math.min(26 * esc, boxAlto * 0.6)
+    const textoX = COL_IZQ_X + boxAlto * 0.22 + iconoLado + boxAlto * 0.25
+    const anchoDisponible = COL_IZQ_X + boxAncho - textoX - 16 * esc
+    // medirTamanoAjustado multiplica por `esc` adentro — se cancela pasando
+    // el tamaño base ya dividido, asi el punto de partida sale del alto real
+    // de la tarjeta (boxAlto) y no de `esc` solo.
+    const tamano = Math.min(...bloquesInfo.map(b =>
+      medirTamanoAjustado(`${b.titulo}  ${b.texto}`, anchoDisponible, (boxAlto * 0.34) / esc, 6)
+    ))
+
     for (const bloque of bloquesInfo) {
       page.drawSvgPath(pathRectRedondeado(boxAncho, boxAlto, Math.min(8 * esc, boxAlto * 0.2)), { x: COL_IZQ_X, y: yTop, borderColor: NAVY_TXT, borderWidth: Math.max(0.75, 1.25 * esc) })
 
-      const iconoLado = Math.min(26 * esc, boxAlto * 0.6)
       const iconoX = COL_IZQ_X + boxAlto * 0.22
       const iconoY = yTop - boxAlto / 2 - iconoLado / 2
       if (bloque.icono) page.drawImage(bloque.icono, { x: iconoX, y: iconoY, width: iconoLado, height: iconoLado })
 
-      const textoX = iconoX + (bloque.icono ? iconoLado + boxAlto * 0.25 : 0)
-      const anchoDisponible = COL_IZQ_X + boxAncho - textoX - 16 * esc
-      const textoCompleto = `${bloque.titulo}  ${bloque.texto}`
-      // medirTamanoAjustado multiplica por `esc` adentro — se cancela pasando
-      // el tamaño base ya dividido, asi el punto de partida sale del alto
-      // real de la tarjeta (boxAlto) y no de `esc` solo.
-      const tamano = medirTamanoAjustado(textoCompleto, anchoDisponible, (boxAlto * 0.34) / esc, 6)
       const anchoTitulo = bebas.widthOfTextAtSize(bloque.titulo + '  ', tamano)
       const textoY = yTop - boxAlto / 2 - tamano * 0.36
       escribir(bloque.titulo, textoX, textoY, tamano, NAVY_TXT)

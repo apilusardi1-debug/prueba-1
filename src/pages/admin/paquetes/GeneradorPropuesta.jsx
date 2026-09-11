@@ -17,7 +17,7 @@ const VUELO_VACIO = {
   ida_fecha: '', ida_sale: '', ida_llega: '', ida_escala_ciudad: '', ida_escala_codigo: '', ida_escala_llega: '', ida_escala_sale: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
-  equipaje: { mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
+  equipaje: { articuloPersonal: 1, mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
   traslado_ida: true, traslado_vuelta: true, traslado_activo: true,
   // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
   // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
@@ -30,11 +30,13 @@ const VUELO_VACIO = {
 }
 
 const EQUIPAJE_OPCIONES = [
+  { clave: 'articuloPersonal', label: 'Artículo personal' },
   { clave: 'mochila', label: 'Mochila de mano' },
   { clave: 'carryOn', label: 'Carry on 10 kg' },
   { clave: 'valija23', label: 'Valija 23 kg' },
   { clave: 'extra', label: 'Equipaje extra' },
 ]
+const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
 const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
 
@@ -460,7 +462,7 @@ export default function GeneradorPropuesta() {
     const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
     setVuelos(prev => [...prev, {
       ...VUELO_VACIO,
-      ...(total ? { equipaje: { ...VUELO_VACIO.equipaje, mochila: total, carryOn: total } } : {}),
+      ...(total ? { equipaje: { ...VUELO_VACIO.equipaje, ...Object.fromEntries(EQUIPAJE_POR_PASAJERO.map(clave => [clave, total])) } } : {}),
       ...(tipoPropuesta === 'combinada' ? { traslado_activo: false, traslado_ida: false, traslado_vuelta: false } : {}),
     }])
   }
@@ -600,13 +602,16 @@ export default function GeneradorPropuesta() {
     setHospedajes(prev => prev.map(h => ({ ...h, personas: String(total) })))
   }, [cantidadAdultos, cantidadMenores])
 
-  // Mochila de mano y carry on van 1 por pasajero — mismo criterio que
-  // "personas" de hospedaje: se completan solas con el total de Cliente
-  // (adultos + menores), no se cargan a mano en cada vuelo.
+  // Artículo personal, mochila de mano y carry on van 1 por pasajero — mismo
+  // criterio que "personas" de hospedaje: se completan solos con el total de
+  // Cliente (adultos + menores), no se cargan a mano en cada vuelo.
   useEffect(() => {
     const total = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
     if (!total) return
-    setVuelos(prev => prev.map(v => ({ ...v, equipaje: { ...v.equipaje, mochila: total, carryOn: total } })))
+    setVuelos(prev => prev.map(v => ({
+      ...v,
+      equipaje: { ...v.equipaje, ...Object.fromEntries(EQUIPAJE_POR_PASAJERO.map(clave => [clave, total])) },
+    })))
   }, [cantidadAdultos, cantidadMenores])
 
   function quitarHospedaje(idx) {
@@ -1089,14 +1094,14 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
               <div className="flex flex-wrap gap-3">
-                {EQUIPAJE_OPCIONES.filter(op => op.clave === 'mochila' || op.clave === 'carryOn').map(op => (
+                {EQUIPAJE_OPCIONES.filter(op => EQUIPAJE_POR_PASAJERO.includes(op.clave)).map(op => (
                   <div key={op.clave} title="Se completa solo con la cantidad de adultos + menores del Cliente (1 por pasajero)"
                     className="flex items-center gap-2 border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 rounded-xl pl-3 pr-3 py-1.5">
                     <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tabular-nums">{v.equipaje?.[op.clave] || 0}</span>
                   </div>
                 ))}
-                {EQUIPAJE_OPCIONES.filter(op => op.clave !== 'mochila' && op.clave !== 'carryOn').map(op => (
+                {EQUIPAJE_OPCIONES.filter(op => !EQUIPAJE_POR_PASAJERO.includes(op.clave)).map(op => (
                   <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
                     <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{v.equipaje?.[op.clave] || 0}</span>

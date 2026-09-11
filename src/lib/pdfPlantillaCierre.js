@@ -312,7 +312,7 @@ export async function generarPDFCierre(propuesta) {
   // fija de la plantilla (medida sobre el PDF real: y≈499) que separa esta
   // seccion de HOSPEDAJE.
   const SEPARADOR_AEREOS_Y = 499
-  const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
+  const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
       const cantidad = vuelo.equipaje?.[k] || 0

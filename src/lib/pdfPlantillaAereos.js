@@ -140,6 +140,7 @@ export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoS
 }
 
 export const EQUIPAJE_LABELS = {
+  articuloPersonal: 'ARTÍCULO PERSONAL',
   mochila: 'MOCHILA DE MANO',
   carryOn: 'CARRY ON 10 KG',
   valija23: 'VALIJA 23 KG',
@@ -250,7 +251,7 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
   // vez de tapar franja por franja tapamos TODA la zona dinamica de una sola vez
   // y volvemos a dibujar todo — incluidos los iconos, que en la referencia estan
   // fijos en sus posiciones viejas y quedarian mal ubicados si no se reubican.
-  const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
+  const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
       const cantidad = vuelo.equipaje?.[k] || 0
@@ -565,7 +566,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda) {
   // entre el piso de las cajas y el separador de abajo — antes quedaba
   // pegado arriba (10pt fijos bajo la caja), con todo el aire libre
   // amontonado abajo cuando el vuelo no tenia traslado propio cargado.
-  const equipajeSeleccionado = ['mochila', 'carryOn', 'valija23', 'extra']
+  const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
       const cantidad = vuelo.equipaje?.[k] || 0

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
 import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
@@ -317,6 +317,14 @@ export default function GeneradorPropuesta() {
   // elegir varias habitaciones del mismo hotel se clonan tarjetas y las
   // posiciones se corren, un mapa por indice quedaria desalineado.
   const [habitacionesPorHospedaje, setHabitacionesPorHospedaje] = useState({})
+  // Dueño interno de cada tipo de habitación (uso interno — nunca se exporta
+  // al PDF), clave el id de la habitación. Se muestra en amarillo al elegir
+  // la habitación, igual que en /admin/hospedajes.
+  const [propietariosPorHabitacion, setPropietariosPorHabitacion] = useState({})
+  // Dueño interno del hospedaje entero (caso de un solo dueño, ej. Malawi) —
+  // nunca ambos a la vez con propietariosPorHabitacion (ver constraint en
+  // hospedajes_propietarios). Clave el id del hospedaje.
+  const [propietarioPorHospedaje, setPropietarioPorHospedaje] = useState({})
   const [subiendoIdx, setSubiendoIdx] = useState(null)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -372,8 +380,17 @@ export default function GeneradorPropuesta() {
       habitacion_id: null, habitacion_nombre: '', habitacion_imagen: '', habitaciones: [],
     } : h))
     if (!habitacionesPorHospedaje[hDB.id]) {
-      habitacionesApi.getByHospedaje(hDB.id).then(({ data }) => {
+      habitacionesApi.getByHospedaje(hDB.id).then(async ({ data }) => {
         setHabitacionesPorHospedaje(prev => ({ ...prev, [hDB.id]: data || [] }))
+        const propietarios = await Promise.all(
+          (data || []).map(hab => propietariosApi.getByHabitacion(hab.id).then(({ data: p }) => [hab.id, p]))
+        )
+        setPropietariosPorHabitacion(prev => ({ ...prev, ...Object.fromEntries(propietarios.filter(([, p]) => p)) }))
+      })
+    }
+    if (!(hDB.id in propietarioPorHospedaje)) {
+      propietariosApi.getByHospedaje(hDB.id).then(({ data }) => {
+        setPropietarioPorHospedaje(prev => ({ ...prev, [hDB.id]: data || null }))
       })
     }
   }
@@ -1251,6 +1268,13 @@ export default function GeneradorPropuesta() {
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
 
+            {propietarioPorHospedaje[h.id]?.nombre_dueno && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                🔒 {propietarioPorHospedaje[h.id].nombre_dueno}
+                {propietarioPorHospedaje[h.id].contacto_dueno && ` · ${propietarioPorHospedaje[h.id].contacto_dueno}`}
+              </p>
+            )}
+
             <div className="flex items-center gap-3">
               {h.imagen && <img src={h.imagen} alt="preview" className="w-16 h-12 object-cover rounded-lg" />}
               <label className="text-xs text-brand-600 dark:text-brand-400 cursor-pointer">
@@ -1292,6 +1316,12 @@ export default function GeneradorPropuesta() {
                             <p className="text-xs text-gray-400 dark:text-zinc-500">
                               {[hab.superficie ? `${hab.superficie} m²` : null, hab.capacidad ? `hasta ${hab.capacidad}` : null, hab.camas || null].filter(Boolean).join(' · ')}
                             </p>
+                            {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 truncate">
+                                🔒 {propietariosPorHabitacion[hab.id].nombre_dueno}
+                                {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
+                              </p>
+                            )}
                           </div>
                           {elegida && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                         </button>

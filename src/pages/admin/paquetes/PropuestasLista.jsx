@@ -280,7 +280,7 @@ export default function PropuestasLista({ estado }) {
       if (errorUpdate) throw errorUpdate
       const doc = await generarPDFCierre(propuestaActualizada || { ...cerrandoPropuesta, ...datosActualizados })
       const bytes = await doc.save()
-      descargarPdf(bytes, `Detalles_y_servicios_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
+      descargarPdf(bytes, `Detalle_Final_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
       // No queda cerrada todavia — pasa a "archivada" (esperando respuesta) hasta
       // que el cliente confirme o rechace desde esa segunda seccion.
       const { data: propuestaArchivada, error: errorEstado } = await propuestasApi.actualizarEstado(cerrandoPropuesta.id, 'archivada')
@@ -303,7 +303,7 @@ export default function PropuestasLista({ estado }) {
     try {
       const doc = await generarPDFCierre(cerrandoPropuesta)
       const bytes = await doc.save()
-      descargarPdf(bytes, `Detalles_y_servicios_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
+      descargarPdf(bytes, `Detalle_Final_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
     } catch (e) {
       setErrorCierre('No se pudo generar el PDF: ' + e.message)
     } finally {

@@ -733,13 +733,13 @@ export default function GeneradorPropuesta() {
   // En combinada cada hospedaje es una etapa distinta del viaje, se suman
   // entre sí (igual que vuelo/traslado, cada uno con su propio precio). En
   // simple los hospedajes son OPCIONES alternativas (el cliente elige una al
-  // cerrar) — cada una tiene su propio total ("Valor de venta" de esa
-  // tarjeta, pensado como el paquete completo con esa opción), no tiene
-  // sentido sumarlas: el precio cambia según qué hospedaje/cuarto elija.
-  // Acá solo se muestra la primera como referencia rápida.
+  // cerrar) — cada una suma el mismo vuelo+traslado (un solo itinerario,
+  // cargado una vez) más el precio propio de esa tarjeta. No tiene sentido
+  // sumar las opciones entre sí: acá se muestra la primera como referencia.
+  const baseVueloTrasladoSimple = (parseFloat(vuelos[0]?.venta) || 0) + (parseFloat(vuelos[0]?.traslado_venta) || 0)
   const total = tipoPropuesta === 'combinada'
     ? hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
-    : (parseFloat(hospedajes[0]?.precio) || 0)
+    : (baseVueloTrasladoSimple + (parseFloat(hospedajes[0]?.precio) || 0))
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
   // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
@@ -842,12 +842,16 @@ export default function GeneradorPropuesta() {
       }
 
       // Propuesta Simple: hoja final con UNA fila por hospedaje (son
-      // opciones alternativas, cada una con su propio total — no tiene
-      // sentido un total único, cambia según cuál elija el cliente) y la
-      // misma leyenda de qué incluye para todas.
+      // opciones alternativas, cada una con su propio total). El vuelo y el
+      // traslado son los mismos elija el hospedaje que elija (un solo
+      // itinerario) — se cargan una sola vez en la sección Vuelo y se suman
+      // al precio propio de CADA hospedaje, no se vuelven a cargar por
+      // opción. Misma leyenda de qué incluye para todas.
+      const vueloParaSuma = vuelosConDatos[0] || VUELO_VACIO
+      const baseVueloTraslado = (parseFloat(vueloParaSuma.venta) || 0) + (parseFloat(vueloParaSuma.traslado_venta) || 0)
       const opcionesSimple = hospedajesValidos
         .filter(h => parseFloat(h.precio) > 0)
-        .map(h => ({ nombre: h.nombre, total: parseFloat(h.precio) || 0, moneda: h.moneda || 'ARS' }))
+        .map(h => ({ nombre: h.nombre, total: baseVueloTraslado + (parseFloat(h.precio) || 0), moneda: monedaPdf }))
       if (tipoPropuesta === 'simple' && opcionesSimple.length) {
         await agregarPaginaTotalSimple(doc, bebasHosp || primerGrupo.bebas, helvHosp || await doc.embedFont(StandardFonts.Helvetica), {
           clienteNombre: cliente.nombre, opciones: opcionesSimple, incluye: incluyeSimple,
@@ -1507,19 +1511,20 @@ export default function GeneradorPropuesta() {
 
       {/* Generar */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg space-y-3">
-        {/* Solo Propuesta Simple. El total de CADA opción sale del "Valor de
-            venta" que ya tiene su propia tarjeta de hospedaje, más arriba
-            (son alternativas con precio propio, no un total único) — acá
-            solo se elige la leyenda de qué incluye, compartida por todas. En
-            Combinada cada servicio ya tiene su propio precio en detalle, no
-            aplica. Va en esta barra fija para que no quede perdido de vista
-            si hay varios hospedajes cargados antes. */}
+        {/* Solo Propuesta Simple. El total de CADA opción = vuelo + traslado
+            (un solo itinerario, cargado una vez en la sección Vuelo) + el
+            "Valor de venta" propio de esa tarjeta de hospedaje (alternativas
+            con precio propio, no un total único) — acá solo se elige la
+            leyenda de qué incluye, compartida por todas. En Combinada cada
+            servicio ya tiene su propio precio en detalle, no aplica. Va en
+            esta barra fija para que no quede perdido de vista si hay varios
+            hospedajes cargados antes. */}
         {tipoPropuesta === 'simple' && (
           <div className="border-b border-gray-100 dark:border-zinc-800 pb-3 space-y-2">
             <div>
               <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Qué incluye cada opción</h3>
               <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
-                El total de cada hospedaje es su propio "Valor de venta" (más arriba, en esa tarjeta) — son opciones alternativas, cada una con su precio. Acá elegís la leyenda de qué incluye, igual para todas. Al final del PDF queda una fila por hospedaje: nombre + esta leyenda + su valor.
+                El total de cada opción = "Valor de venta" del vuelo + del traslado (Vuelo, más arriba, el mismo para todas) + "Valor de venta" de esa tarjeta de hospedaje. Acá elegís la leyenda de qué incluye, igual para todas. Al final del PDF queda una fila por hospedaje: nombre + esta leyenda + el total sumado.
               </p>
             </div>
             <select value={incluyeSimple} onChange={e => setIncluyeSimple(e.target.value)}

@@ -1,5 +1,16 @@
-import { PDFDocument, rgb, PDFName, PDFArray, PDFString } from 'pdf-lib'
+import { PDFDocument, rgb, PDFName, PDFArray, PDFString, PDFBool } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
+
+// pdf-lib no marca las imagenes embebidas con /Interpolate (queda en false
+// por default) — sin ese flag varios lectores de PDF dibujan los iconos
+// chicos (el circulo navy con el dibujo blanco adentro) con "point
+// sampling" puro en vez de suavizado al achicarlos, y se ven pixelados
+// aunque el PNG de origen tenga resolucion de sobra (228x228 para un
+// icono que termina ocupando 20-40pt). Se activa a mano en el XObject.
+function activarSuavizado(doc, imagen) {
+  const dict = doc.context.lookup(imagen.ref)
+  dict?.set(PDFName.of('Interpolate'), PDFBool.True)
+}
 
 // Convierte un rectangulo cualquiera de la pagina en un area clickeable que
 // abre `url` — mismo mecanismo que en pdfPlantillaHospedajes.js/Cierre.js.
@@ -742,6 +753,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   try {
     const avionHeaderBytes = await fetch('/icono-avion.png').then(r => r.arrayBuffer())
     iconoAvionHeader = await doc.embedPng(avionHeaderBytes)
+    activarSuavizado(doc, iconoAvionHeader)
   } catch (_) { /* si falla, el titulo queda sin icono en vez de romper el PDF */ }
 
   // Iconos de las tarjetas de equipaje/traslados de cada vuelo — se embeben
@@ -754,6 +766,8 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     ])
     iconos.maleta = await doc.embedPng(maletaBytes)
     iconos.auto = await doc.embedPng(autoBytes)
+    activarSuavizado(doc, iconos.maleta)
+    activarSuavizado(doc, iconos.auto)
   } catch (_) { /* si falla, las tarjetas quedan sin icono en vez de romper el PDF */ }
   const tituloY = LIMITE_NUEVO - 51.5
   let tituloX = 63
@@ -861,6 +875,7 @@ export async function agregarPaginaTotalSimple(doc, bebas, helv, { clienteNombre
   try {
     const logoBytes = await fetch('/logo-blanco.png').then(r => r.arrayBuffer())
     const logo = await doc.embedPng(logoBytes)
+    activarSuavizado(doc, logo)
     const altoLogo = 60
     const anchoLogo = altoLogo * (logo.width / logo.height)
     page.drawImage(logo, { x: centroX - anchoLogo / 2, y: ALTO - 140, width: anchoLogo, height: altoLogo })

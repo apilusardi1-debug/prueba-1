@@ -493,6 +493,50 @@ export async function generarPaginaAereosPDF({ clienteNombre, cantidadAdultos, c
   return doc
 }
 
+// Ícono de "traslado" (auto de perfil) 100% vectorial — antes era un PNG
+// embebido y se veía pixelado/deforme en varios lectores de PDF (el flag
+// /Interpolate no alcanzaba: el asset de origen tenía el diseño entero
+// "lavado" en gris-azulado, sin ningún núcleo sólido blanco, así que
+// cualquier intento de reconstruirlo desde ahí quedaba borroso otra vez).
+// Con formas vectoriales (círculo + rectángulos redondeados + círculos) se
+// ve nítido a cualquier tamaño, sin depender del renderizado de imágenes.
+// Perfil (no de frente) — más reconocible como auto con formas simples
+// (cuerpo + cabina + 2 ruedas) sin caer en el problema de que un diseño
+// simétrico con 2 puntos termine leyendo como una cara.
+function dibujarIconoAuto(page, cx, cy, radio) {
+  page.drawCircle({ x: cx, y: cy, size: radio, color: NAVY_BG })
+
+  // Coordenadas de diseño (sin escalar), medidas sobre un boceto de
+  // referencia en convención Y-abajo (como una imagen): bbox real
+  // x -310..310, y -111.9..304. anchoAuto fija el tamaño final relativo al
+  // radio del círculo; el resto se escala en la misma proporción.
+  const anchoAuto = radio * 1.42
+  const esc = anchoAuto / 620
+  const bboxCyLocal = 96.05
+  const px = (lx) => cx + lx * esc
+  const py = (ly) => cy + (bboxCyLocal - ly) * esc
+
+  const bodyW = 620, bodyH = 190
+  page.drawSvgPath(pathRectRedondeado(bodyW * esc, bodyH * esc, bodyH * 0.42 * esc),
+    { x: px(-bodyW / 2), y: py(0), color: rgb(1, 1, 1) })
+
+  const cabW = bodyW * 0.5, cabH = bodyH * 0.95, cabOffset = bodyW * 0.03
+  const cabX0 = -cabW / 2 + cabOffset
+  const cabTop = -cabH * 0.62, cabBottom = cabH * 0.15
+  page.drawSvgPath(pathRectRedondeado(cabW * esc, (cabBottom - cabTop) * esc, cabH * 0.32 * esc),
+    { x: px(cabX0), y: py(cabTop), color: rgb(1, 1, 1) })
+  // costura entre la cabina y el techo del cuerpo, tapada
+  page.drawSvgPath(pathRectRedondeado((cabW - 8) * esc, 6 * esc, 0),
+    { x: px(cabX0 + 4), y: py(-3), color: rgb(1, 1, 1) })
+
+  const wheelR = bodyH * 0.60
+  for (const dx of [-0.27, 0.27]) {
+    const wx = dx * bodyW
+    page.drawCircle({ x: px(wx), y: py(bodyH), size: wheelR * esc, color: NAVY_BG })
+    page.drawCircle({ x: px(wx), y: py(bodyH), size: wheelR * 0.42 * esc, color: CREMA_BG })
+  }
+}
+
 // ── Grilla compacta: 2 o mas vuelos en la misma hoja ────────────────────────
 // Igual que con hospedajes, no hay plantilla real de referencia para "varios
 // vuelos por hoja" (la referencia es para UNO completo) — se calculan filas
@@ -631,7 +675,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     const precioTraslado = (mostrarPrecios && vuelo.traslado_venta && vuelo.traslado_venta_publica !== false)
       ? ` — ${moneda || 'ARS'}$ ${formatearNumero(vuelo.traslado_venta)}`
       : ''
-    bloquesInfo.push({ icono: iconos.auto, titulo: tituloTraslado, texto: textoTraslado + precioTraslado })
+    bloquesInfo.push({ dibujarIcono: dibujarIconoAuto, titulo: tituloTraslado, texto: textoTraslado + precioTraslado })
   }
 
   if (bloquesInfo.length) {
@@ -672,7 +716,8 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
 
       const iconoX = COL_IZQ_X + boxAlto * 0.22
       const iconoY = yTop - boxAlto / 2 - iconoLado / 2
-      if (bloque.icono) page.drawImage(bloque.icono, { x: iconoX, y: iconoY, width: iconoLado, height: iconoLado })
+      if (bloque.dibujarIcono) bloque.dibujarIcono(page, iconoX + iconoLado / 2, iconoY + iconoLado / 2, iconoLado / 2)
+      else if (bloque.icono) page.drawImage(bloque.icono, { x: iconoX, y: iconoY, width: iconoLado, height: iconoLado })
 
       const anchoTitulo = bebas.widthOfTextAtSize(bloque.titulo + '  ', tamano)
       const textoY = yTop - boxAlto / 2 - tamano * 0.36
@@ -776,19 +821,16 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     activarSuavizado(doc, iconoAvionHeader)
   } catch (_) { /* si falla, el titulo queda sin icono en vez de romper el PDF */ }
 
-  // Iconos de las tarjetas de equipaje/traslados de cada vuelo — se embeben
-  // una sola vez por hoja (no por vuelo) y se pasan a dibujarVueloCompacto.
+  // Ícono de la tarjeta de equipaje — se embebe una sola vez por hoja (no por
+  // vuelo) y se pasa a dibujarVueloCompacto. El de traslados (auto) ya no es
+  // una imagen: se dibuja 100% vectorial (dibujarIconoAuto, ver más arriba),
+  // se veía mal en varios lectores de PDF por chico que se dibuje.
   const iconos = {}
   try {
-    const [maletaBytes, autoBytes] = await Promise.all([
-      fetch('/icono-maleta.png').then(r => r.arrayBuffer()),
-      fetch('/icono-auto.png').then(r => r.arrayBuffer()),
-    ])
+    const maletaBytes = await fetch('/icono-maleta.png').then(r => r.arrayBuffer())
     iconos.maleta = await doc.embedPng(maletaBytes)
-    iconos.auto = await doc.embedPng(autoBytes)
     activarSuavizado(doc, iconos.maleta)
-    activarSuavizado(doc, iconos.auto)
-  } catch (_) { /* si falla, las tarjetas quedan sin icono en vez de romper el PDF */ }
+  } catch (_) { /* si falla, la tarjeta queda sin icono en vez de romper el PDF */ }
   const tituloY = LIMITE_NUEVO - 51.5
   let tituloX = 63
   if (iconoAvionHeader) {

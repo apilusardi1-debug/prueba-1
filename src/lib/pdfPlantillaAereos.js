@@ -502,16 +502,13 @@ function crearSlotVuelo(fila, totalEnHoja, zonaBottom = ZONA_GRUPO_BOTTOM) {
 // traslados quedan como una sola linea centrada por tarjeta, sin iconos —
 // diseño pedido explicitamente para que la grilla se lea como una ficha
 // prolija en vez de una lista de texto suelto.
-function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarPrecios = true) {
+function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarPrecios = true, iconos = {}) {
   // Con menos de 4 vuelos en la hoja, slot.escala > 1 (ver crearSlotVuelo) —
   // agranda tamaños de letra y espaciados en la misma proporcion para
   // aprovechar el alto real de la franja en vez de dejarlo vacio.
   const esc = slot.escala || 1
   function escribir(texto, x, y, size, color = NAVY_TXT) {
     page.drawText(texto, { x, y, size, font: bebas, color })
-  }
-  function centrado(texto, xCentro, y, size, color = NAVY_TXT) {
-    escribir(texto, xCentro - bebas.widthOfTextAtSize(texto, size) / 2, y, size, color)
   }
   function medirTamanoAjustado(texto, anchoMax, size, tamanoMin = 6.5) {
     let tamano = size * esc
@@ -573,12 +570,13 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   })
   y -= altoCajas + 10 * esc
 
-  // Equipaje y traslados: una sola linea centrada por dato (no una por
-  // columna), sin icono — el detalle vive en la caja de arriba. El bloque
-  // (1 o 2 lineas) se centra VERTICAL y horizontalmente en el espacio libre
-  // entre el piso de las cajas y el separador de abajo — antes quedaba
-  // pegado arriba (10pt fijos bajo la caja), con todo el aire libre
-  // amontonado abajo cuando el vuelo no tenia traslado propio cargado.
+  // Equipaje y traslados: antes una sola linea de texto chico (9.5pt) por
+  // dato, las dos apretadas entre si — pedido explicito de agrandarlas y
+  // separarlas. Ahora son tarjetas propias (borde redondeado + icono, mismo
+  // trazo que las cajas de ida/vuelta de arriba), una por dato, que se
+  // centran VERTICAL y horizontalmente como grupo en el espacio libre entre
+  // el piso de las cajas y el separador de abajo — aprovechan mejor el aire
+  // libre que queda cuando hay pocos vuelos en la hoja.
   const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
     .map(k => {
@@ -586,31 +584,64 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
       const extra = k === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
       return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
     })
-  const xCentroHoja = (COL_IZQ_X + COL_DER_X + ANCHO_COL_VUELO) / 2
-  const lineasInfo = []
-  if (equipajeSeleccionado.length) lineasInfo.push(`EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`)
+  const bloquesInfo = []
+  if (equipajeSeleccionado.length) {
+    bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.join('   +   ') })
+  }
   if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
+    const tituloTraslado = (vuelo.traslado_ida && vuelo.traslado_vuelta) ? 'TRASLADOS PRIVADOS INCLUIDOS:' : 'TRASLADO PRIVADO INCLUIDO:'
     const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta
-      ? 'TRASLADOS PRIVADOS INCLUIDOS: AEROPUERTO / HOTEL (IN - OUT)'
+      ? 'AEROPUERTO / HOTEL (IN - OUT)'
       : vuelo.traslado_ida
-        ? 'TRASLADO PRIVADO INCLUIDO: AEROPUERTO / HOTEL (IN)'
-        : 'TRASLADO PRIVADO INCLUIDO: HOTEL / AEROPUERTO (OUT)'
+        ? 'AEROPUERTO / HOTEL (IN)'
+        : 'HOTEL / AEROPUERTO (OUT)'
     // Precio del traslado propio del vuelo (no el de Destinos, que es para
     // combinada) — mismo criterio que el resto: respeta "Pública".
     const precioTraslado = (mostrarPrecios && vuelo.traslado_venta && vuelo.traslado_venta_publica !== false)
       ? ` — ${moneda || 'ARS'}$ ${formatearNumero(vuelo.traslado_venta)}`
       : ''
-    lineasInfo.push(textoTraslado + precioTraslado)
+    bloquesInfo.push({ icono: iconos.auto, titulo: tituloTraslado, texto: textoTraslado + precioTraslado })
   }
-  if (lineasInfo.length) {
+
+  if (bloquesInfo.length) {
     const bottomBoundary = slot.bottom + 8 * esc
-    const gapLinea = 12 * esc
-    const centroY = (y + bottomBoundary) / 2
-    const tamanoRef = medirTamanoAjustado(lineasInfo[0], 515, 9.5)
-    let yLinea = centroY + (lineasInfo.length - 1) * gapLinea / 2 - tamanoRef * 0.36
-    for (const texto of lineasInfo) {
-      centrado(texto, xCentroHoja, yLinea, medirTamanoAjustado(texto, 515, 9.5), NAVY_TXT)
-      yLinea -= gapLinea
+    const boxAncho = (COL_DER_X + ANCHO_COL_VUELO) - COL_IZQ_X
+    const n = bloquesInfo.length
+    // El alto de cada tarjeta sale del espacio libre REAL entre las cajas de
+    // ida/vuelta y el separador de abajo — no solo de `esc`, que se satura en
+    // 1.5x tanto con 1 vuelo en la hoja (mucho aire libre) como con 2 (la
+    // mitad), lo que antes hacia que las tarjetas de una hoja con 2+ vuelos
+    // se superpusieran con el titulo del vuelo siguiente. Con tope (no crecen
+    // sin limite con 1 solo vuelo) y piso (no se angostan tanto que el texto
+    // deje de entrar con 3-4 vuelos en la hoja).
+    const espacioLibre = y - bottomBoundary
+    const gapBoxes = n > 1 ? Math.min(18 * esc, Math.max(4, espacioLibre * 0.06)) : 0
+    const boxAltoCalc = (espacioLibre - gapBoxes * (n - 1)) / n
+    const boxAlto = Math.max(16, Math.min(44 * esc, boxAltoCalc))
+    const altoGrupo = n * boxAlto + (n - 1) * gapBoxes
+    let yTop = (y + bottomBoundary) / 2 + altoGrupo / 2
+
+    for (const bloque of bloquesInfo) {
+      page.drawSvgPath(pathRectRedondeado(boxAncho, boxAlto, Math.min(8 * esc, boxAlto * 0.2)), { x: COL_IZQ_X, y: yTop, borderColor: NAVY_TXT, borderWidth: Math.max(0.75, 1.25 * esc) })
+
+      const iconoLado = Math.min(26 * esc, boxAlto * 0.6)
+      const iconoX = COL_IZQ_X + boxAlto * 0.22
+      const iconoY = yTop - boxAlto / 2 - iconoLado / 2
+      if (bloque.icono) page.drawImage(bloque.icono, { x: iconoX, y: iconoY, width: iconoLado, height: iconoLado })
+
+      const textoX = iconoX + (bloque.icono ? iconoLado + boxAlto * 0.25 : 0)
+      const anchoDisponible = COL_IZQ_X + boxAncho - textoX - 16 * esc
+      const textoCompleto = `${bloque.titulo}  ${bloque.texto}`
+      // medirTamanoAjustado multiplica por `esc` adentro — se cancela pasando
+      // el tamaño base ya dividido, asi el punto de partida sale del alto
+      // real de la tarjeta (boxAlto) y no de `esc` solo.
+      const tamano = medirTamanoAjustado(textoCompleto, anchoDisponible, (boxAlto * 0.34) / esc, 6)
+      const anchoTitulo = bebas.widthOfTextAtSize(bloque.titulo + '  ', tamano)
+      const textoY = yTop - boxAlto / 2 - tamano * 0.36
+      escribir(bloque.titulo, textoX, textoY, tamano, NAVY_TXT)
+      escribir(bloque.texto, textoX + anchoTitulo, textoY, tamano, NAVY_SUAVE_CAJA)
+
+      yTop -= boxAlto + gapBoxes
     }
   }
 
@@ -705,6 +736,18 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     const avionHeaderBytes = await fetch('/icono-avion.png').then(r => r.arrayBuffer())
     iconoAvionHeader = await doc.embedPng(avionHeaderBytes)
   } catch (_) { /* si falla, el titulo queda sin icono en vez de romper el PDF */ }
+
+  // Iconos de las tarjetas de equipaje/traslados de cada vuelo — se embeben
+  // una sola vez por hoja (no por vuelo) y se pasan a dibujarVueloCompacto.
+  const iconos = {}
+  try {
+    const [maletaBytes, autoBytes] = await Promise.all([
+      fetch('/icono-maleta.png').then(r => r.arrayBuffer()),
+      fetch('/icono-auto.png').then(r => r.arrayBuffer()),
+    ])
+    iconos.maleta = await doc.embedPng(maletaBytes)
+    iconos.auto = await doc.embedPng(autoBytes)
+  } catch (_) { /* si falla, las tarjetas quedan sin icono en vez de romper el PDF */ }
   const tituloY = LIMITE_NUEVO - 51.5
   let tituloX = 63
   if (iconoAvionHeader) {
@@ -724,7 +767,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
-    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1, moneda, mostrarPrecios)
+    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1, moneda, mostrarPrecios, iconos)
   }
 
   // Lista de transfers, en la franja reservada arriba del banner.

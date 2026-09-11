@@ -17,7 +17,10 @@ const VUELO_VACIO = {
   ida_fecha: '', ida_sale: '', ida_llega: '', ida_escala_ciudad: '', ida_escala_codigo: '', ida_escala_llega: '', ida_escala_sale: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
-  equipaje: { articuloPersonal: 1, mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraDescripcion: '' },
+  // "extra" es equipaje adicional que el cliente paga aparte de lo incluido
+  // (ej. una 2da valija) — extraTipo dice si ese extra es un Carry on o una
+  // Valija 23kg, extraPrecio/extraMoneda el valor que se le cobra por eso.
+  equipaje: { articuloPersonal: 1, mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraTipo: 'carryOn', extraPrecio: '', extraMoneda: 'ARS' },
   traslado_ida: true, traslado_vuelta: true, traslado_activo: true,
   // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
   // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
@@ -482,6 +485,9 @@ export default function GeneradorPropuesta() {
 
   function setVueloCampo(idx, campo, valor) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, [campo]: valor } : v))
+  }
+  function setEquipajeCampo(idx, campo, valor) {
+    setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, equipaje: { ...v.equipaje, [campo]: valor } } : v))
   }
   function alternarTrasladoVuelo(idx) {
     setVuelos(prev => prev.map((v, i) => {
@@ -1198,9 +1204,21 @@ export default function GeneradorPropuesta() {
                 ))}
               </div>
               {(v.equipaje?.extra || 0) > 0 && (
-                <input value={v.equipaje?.extraDescripcion || ''} onChange={e => setVuelos(prev => prev.map((vv, i) => i === idx ? { ...vv, equipaje: { ...vv.equipaje, extraDescripcion: e.target.value } } : vv))}
-                  placeholder="Descripción del equipaje extra (Ej: 1 tabla de surf)"
-                  className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <div className="mt-2 grid sm:grid-cols-3 gap-2">
+                  <select value={v.equipaje?.extraTipo || 'carryOn'} onChange={e => setEquipajeCampo(idx, 'extraTipo', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    <option value="carryOn">Carry on 10 kg</option>
+                    <option value="valija23">Valija 23 kg</option>
+                  </select>
+                  <input type="text" inputMode="numeric" value={formatearMiles(v.equipaje?.extraPrecio)}
+                    onChange={e => setEquipajeCampo(idx, 'extraPrecio', soloDigitos(e.target.value))} placeholder="Valor del extra"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  <select value={v.equipaje?.extraMoneda || 'ARS'} onChange={e => setEquipajeCampo(idx, 'extraMoneda', e.target.value)}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    <option value="ARS">ARS$</option>
+                    <option value="USD">U$D</option>
+                  </select>
+                </div>
               )}
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">

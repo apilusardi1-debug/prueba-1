@@ -158,6 +158,32 @@ export const EQUIPAJE_LABELS = {
   extra: 'EQUIPAJE EXTRA',
 }
 
+// Arma la lista de items de equipaje seleccionados — el "extra" (equipaje
+// adicional que el cliente paga aparte de lo incluido) ahora es un tipo
+// concreto (Carry on 10kg / Valija 23kg, elegido en el Generador) con un
+// valor a mano en ARS o USD, en vez de una descripción libre ("1 tabla de
+// surf"). Se muestra en ambos PDF (propuesta y cierre) — compartido para no
+// repetir la lógica en los dos.
+export function textoEquipajeSeleccionado(equipaje, mostrarPrecios = true) {
+  return ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
+    .filter(k => (equipaje?.[k] || 0) > 0)
+    .map(k => {
+      const cantidad = equipaje?.[k] || 0
+      if (k !== 'extra') return `${cantidad} ${EQUIPAJE_LABELS[k]}`
+
+      const tipo = equipaje?.extraTipo === 'valija23' ? 'valija23' : 'carryOn'
+      const precioTxt = (mostrarPrecios && equipaje?.extraPrecio)
+        ? ` — ${equipaje.extraMoneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(equipaje.extraPrecio)}`
+        : ''
+      // Fallback para propuestas guardadas antes de este cambio, que solo
+      // tenían la descripción libre (sin tipo ni precio cargados).
+      const descripcionVieja = !equipaje?.extraTipo && equipaje?.extraDescripcion?.trim()
+        ? `: ${equipaje.extraDescripcion.toUpperCase()}`
+        : ''
+      return `${cantidad} ${EQUIPAJE_LABELS[tipo]} EXTRA${precioTxt}${descripcionVieja}`
+    })
+}
+
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
 // parentesis) — antes solo existia "cantidad de pasajeros" como si todos
 // fueran adultos. Un menor marcado "Bebé" (< 1 año) llega en `edades` como
@@ -588,13 +614,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   // centran VERTICAL y horizontalmente como grupo en el espacio libre entre
   // el piso de las cajas y el separador de abajo — aprovechan mejor el aire
   // libre que queda cuando hay pocos vuelos en la hoja.
-  const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
-    .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
-    .map(k => {
-      const cantidad = vuelo.equipaje?.[k] || 0
-      const extra = k === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
-      return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
-    })
+  const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje, mostrarPrecios)
   const bloquesInfo = []
   if (equipajeSeleccionado.length) {
     bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.join('   +   ') })

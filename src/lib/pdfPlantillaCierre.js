@@ -6,7 +6,7 @@ import { embedImagenAuto } from './pdfImagen.js'
 // grilla de vuelos de la propuesta inicial — antes este PDF tenia su propio
 // diseño viejo (pildoras amarillas fijas de la plantilla), inconsistente con
 // el otro PDF.
-import { dibujarCajaTramo, altoCajaTramo, EQUIPAJE_LABELS } from './pdfPlantillaAereos.js'
+import { dibujarCajaTramo, altoCajaTramo, textoEquipajeSeleccionado } from './pdfPlantillaAereos.js'
 
 // Mismos colores exactos que el resto de las plantillas (muestreados del PDF real).
 // Navy y crema sirven tanto de fondo como de texto segun la zona (texto claro sobre
@@ -325,13 +325,7 @@ export async function generarPDFCierre(propuesta) {
   // fija de la plantilla (medida sobre el PDF real: y≈499) que separa esta
   // seccion de HOSPEDAJE.
   const SEPARADOR_AEREOS_Y = 499
-  const equipajeSeleccionado = ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
-    .filter(k => (vuelo.equipaje?.[k] || 0) > 0)
-    .map(k => {
-      const cantidad = vuelo.equipaje?.[k] || 0
-      const extra = k === 'extra' && vuelo.equipaje?.extraDescripcion?.trim()
-      return `${cantidad} ${EQUIPAJE_LABELS[k]}${extra ? `: ${vuelo.equipaje.extraDescripcion.toUpperCase()}` : ''}`
-    })
+  const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje)
   if (equipajeSeleccionado.length) {
     const textoEquipaje = `EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`
     let tamanoEquipaje = 10

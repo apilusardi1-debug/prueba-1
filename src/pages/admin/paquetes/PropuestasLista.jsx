@@ -269,6 +269,12 @@ export default function PropuestasLista({ estado }) {
         vuelo: vueloElegido || cerrandoPropuesta.vuelo,
         vuelos: vueloElegido ? [vueloElegido] : cerrandoPropuesta.vuelos,
         hospedajes_detalle: hospedajeElegido ? [hospedajeElegido] : cerrandoPropuesta.hospedajes_detalle,
+        // El PDF de cierre (generarPDFCierre) lee "total" tal cual de la base,
+        // no lo recalcula — sin esto quedaba el total guardado al CREAR la
+        // propuesta (con el primer hospedaje/opción), no el de la opción que
+        // el cliente terminó eligiendo. totalPago ya suma vuelo + traslado +
+        // el hospedaje elegido (o todos, en combinada).
+        total: totalPago,
       }
       const { data: propuestaActualizada, error: errorUpdate } = await propuestasApi.update(cerrandoPropuesta.id, datosActualizados)
       if (errorUpdate) throw errorUpdate
@@ -352,9 +358,13 @@ export default function PropuestasLista({ estado }) {
     + (parseFloat(vuelo.traslado_venta) || 0)
     + (parseFloat(hospedajeElegidoPago?.precio) || 0)
     + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
+  // En simple el total a pagar es vuelo + traslado + el hospedaje elegido
+  // (mismo criterio que la hoja "Valor de cada opción" del Generador) — antes
+  // solo tomaba el precio del hospedaje, sin sumar vuelo/traslado.
+  // valorVentaTotalInterno ya arma esa cuenta arriba.
   const totalPago = esCombinada
     ? hospedajesOpciones.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
-    : (parseFloat(hospedajeElegidoPago?.precio) || 0)
+    : valorVentaTotalInterno
   const saldoPago = Math.max(totalPago - (parseFloat(sena) || 0), 0)
   const monedaPago = cerrandoPropuesta?.moneda || 'BRL'
 

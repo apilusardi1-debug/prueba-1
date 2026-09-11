@@ -19,15 +19,28 @@ const SITIO_URL = 'https://prueba-1-rose.vercel.app'
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
 // parentesis) — antes solo existia "cantidad de pasajeros" como si todos
-// fueran adultos.
+// fueran adultos. Un menor marcado "Bebé" (< 1 año) llega en `edades` como
+// el token BEBÉ en vez de una edad en años — se separa del resto y se
+// muestra aparte, ej. "2 ADULTOS + 1 MENOR (5) + BEBÉ".
 function textoPasajeros(adultos, menores, edades) {
   const nAdultos = Number(adultos) || 0
   const nMenores = Number(menores) || 0
   if (!nAdultos && !nMenores) return '—'
   let texto = nAdultos ? `${nAdultos} ${nAdultos === 1 ? 'ADULTO' : 'ADULTOS'}` : ''
   if (nMenores) {
-    const menorTxt = `${nMenores} ${nMenores === 1 ? 'MENOR' : 'MENORES'}${edades?.trim() ? ` (${edades.trim()})` : ''}`
-    texto = texto ? `${texto} + ${menorTxt}` : menorTxt
+    const tokens = (edades || '').split(',').map(t => t.trim()).filter(Boolean)
+    const esBebe = t => t.toUpperCase() === 'BEBÉ' || t.toUpperCase() === 'BEBE'
+    const nBebes = tokens.filter(esBebe).length
+    const edadesSinBebes = tokens.filter(t => !esBebe(t)).join(', ')
+    const nMenoresConEdad = nMenores - nBebes
+    if (nMenoresConEdad > 0) {
+      const menorTxt = `${nMenoresConEdad} ${nMenoresConEdad === 1 ? 'MENOR' : 'MENORES'}${edadesSinBebes ? ` (${edadesSinBebes})` : ''}`
+      texto = texto ? `${texto} + ${menorTxt}` : menorTxt
+    }
+    if (nBebes > 0) {
+      const bebeTxt = nBebes === 1 ? 'BEBÉ' : `${nBebes} BEBÉS`
+      texto = texto ? `${texto} + ${bebeTxt}` : bebeTxt
+    }
   }
   return texto
 }

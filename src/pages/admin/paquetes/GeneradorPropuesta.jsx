@@ -291,6 +291,10 @@ export default function GeneradorPropuesta() {
   const [cantidadAdultos, setCantidadAdultos] = useState('')
   const [cantidadMenores, setCantidadMenores] = useState('')
   const [edadesMenores, setEdadesMenores] = useState([])
+  // Menor de 1 año, marcado con el botón "Bebé" al lado de su edad — no se le
+  // carga edad en años, va como "BEBÉ" en el texto de pasajeros del PDF
+  // (ej. "2 ADULTOS + BEBÉ") en vez de "1 MENOR". Array paralelo a edadesMenores.
+  const [bebesMenores, setBebesMenores] = useState([])
   const [presupuestoLimite, setPresupuestoLimite] = useState('')
   // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
@@ -504,6 +508,21 @@ export default function GeneradorPropuesta() {
     setEdadesMenores(prev => {
       const next = [...prev]
       next[idx] = valor
+      return next
+    })
+  }
+
+  function toggleBebeMenor(idx) {
+    setBebesMenores(prev => {
+      const next = [...prev]
+      next[idx] = !next[idx]
+      return next
+    })
+    // Al marcarlo bebé no hace falta la edad en años — se limpia lo que
+    // hubiera cargado antes de tocar el botón.
+    setEdadesMenores(prev => {
+      const next = [...prev]
+      next[idx] = ''
       return next
     })
   }
@@ -732,8 +751,13 @@ export default function GeneradorPropuesta() {
         vuelosConDatos.map(async v => ({ ...v, banner_imagen: await imagenParaPdf(v.banner_imagen) }))
       )
       // Un campo de edad por menor (en vez de una lista en texto libre) -- se unen
-      // en un solo string para el PDF y el guardado, igual que antes.
-      const edadesMenoresTexto = edadesMenores.slice(0, parseInt(cantidadMenores) || 0).filter(Boolean).join(', ')
+      // en un solo string para el PDF y el guardado, igual que antes. Un menor
+      // marcado "Bebé" (< 1 año) va como el token BEBÉ en vez de una edad en
+      // años -- textoPasajeros() en pdfPlantillaAereos/Cierre lo detecta y arma
+      // "2 ADULTOS + BEBÉ" en vez de "1 MENOR".
+      const edadesMenoresTexto = Array.from({ length: parseInt(cantidadMenores) || 0 })
+        .map((_, i) => (bebesMenores[i] ? 'BEBÉ' : edadesMenores[i]))
+        .filter(Boolean).join(', ')
 
       // Transfers de la propuesta combinada (traslados por tramo, cargados
       // aparte de los vuelos en la seccion "Transfers") — se guardaban en la
@@ -837,6 +861,7 @@ export default function GeneradorPropuesta() {
       setCantidadAdultos('')
       setCantidadMenores('')
       setEdadesMenores([])
+      setBebesMenores([])
       setPresupuestoLimite('')
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
@@ -903,15 +928,26 @@ export default function GeneradorPropuesta() {
         {parseInt(cantidadMenores) > 0 && (
           <div className="grid sm:grid-cols-4 gap-3">
             {Array.from({ length: parseInt(cantidadMenores) }).map((_, i) => (
-              <input
-                key={i}
-                type="number"
-                min="0"
-                value={edadesMenores[i] || ''}
-                onChange={e => setEdadMenor(i, e.target.value)}
-                placeholder={`Edad menor ${i + 1}`}
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
+              <div key={i} className="flex gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  value={edadesMenores[i] || ''}
+                  onChange={e => setEdadMenor(i, e.target.value)}
+                  disabled={!!bebesMenores[i]}
+                  placeholder={bebesMenores[i] ? 'Bebé (< 1 año)' : `Edad menor ${i + 1}`}
+                  className={`w-full min-w-0 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 ${bebesMenores[i] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+                <button type="button" onClick={() => toggleBebeMenor(i)}
+                  title="Menor de 1 año — no lleva edad en años, va como BEBÉ en el PDF"
+                  className={`flex-shrink-0 px-3 rounded-xl text-xs font-medium border transition-colors ${
+                    bebesMenores[i]
+                      ? 'bg-brand-500 border-brand-500 text-white'
+                      : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:border-brand-300'
+                  }`}>
+                  Bebé
+                </button>
+              </div>
             ))}
           </div>
         )}

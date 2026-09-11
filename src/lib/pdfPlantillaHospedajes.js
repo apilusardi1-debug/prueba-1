@@ -1,6 +1,5 @@
 import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } from 'pdf-lib'
 import { embedImagenAuto } from './pdfImagen.js'
-import { pathRectRedondeado } from './pdfPlantillaAereos.js'
 
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
@@ -110,7 +109,7 @@ function crearSlot(fila) {
 
 const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, vueloUnico) {
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, mostrarPrecios = true) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -157,48 +156,19 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
 
-    // Paquete completo (Aéreo + Traslado + Hospedaje) — solo si la propuesta
-    // tiene UN SOLO vuelo cargado (con 2 o mas no hay un unico itinerario al
-    // que sumarle este hospedaje). Con un solo vuelo, el precio individual del
-    // hospedaje (mas abajo) se oculta: en su lugar se muestra este total.
-    const mostrarPaquete = !!(vueloUnico && vueloUnico.venta && vueloUnico.venta_publica !== false)
-
-    // Bloque de precio, empieza siempre despues del subtitulo real (baja si el
-    // nombre o el subtitulo ocuparon 2 lineas) y nunca invade la fila de abajo.
+    // Precio individual del hospedaje — solo en Propuesta Combinada. En
+    // Simple el precio de cada servicio (vuelo, traslado, hospedaje) va
+    // oculto: se reemplaza por un único total cargado a mano al final del
+    // PDF (agregarPaginaTotalSimple en pdfPlantillaAereos.js). Antes esta
+    // hoja armaba un total automático "AÉREO + TRASLADO + HOSPEDAJE" sumando
+    // vuelo.venta + vuelo.traslado_venta + h.precio cuando había un solo
+    // vuelo cargado — se probó y se pidió volver a un total manual, no
+    // auto-sumado.
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (!mostrarPaquete) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (mostrarPrecios) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
-
-    // Pildora navy con texto blanco (mismo diseño que el precio del vuelo en
-    // la pagina de Aereos), alineada con la banda "VER FOTOS ÁREAS EXTERNAS"
-    // de abajo — antes era texto plano arriba, al lado de "NOCHES".
-    if (mostrarPaquete) {
-      const totalPaquete = (parseFloat(vueloUnico.venta) || 0)
-        + (parseFloat(vueloUnico.traslado_venta) || 0)
-        + (parseFloat(h.precio) || 0)
-      const textoPaquete = `AÉREO + TRASLADO + HOSPEDAJE: ${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`
-      const tamanoPaquete = 11
-      const padX = 10
-      const padY = 6
-      const anchoMaxTexto = 330
-      const lineasPaquete = partirEnLineas(textoPaquete, bebas, tamanoPaquete, anchoMaxTexto)
-      const anchoTexto = Math.max(...lineasPaquete.map(l => bebas.widthOfTextAtSize(l, tamanoPaquete)))
-      const gapLinea = tamanoPaquete * 1.15
-      const anchoPill = anchoTexto + padX * 2
-      const altoPill = lineasPaquete.length * gapLinea + padY * 2 - (gapLinea - tamanoPaquete)
-      const xPill = s.itemsX
-      // +6: un poco mas arriba que "VER FOTOS ÁREAS EXTERNAS", para no tocar
-      // la linea separadora entre hospedajes que va justo debajo.
-      const yTopPill = s.bandaY + 6 + altoPill
-      paginaPlantilla.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 4), { x: xPill, y: yTopPill, color: NAVY_BG })
-      let yLinea = yTopPill - padY - tamanoPaquete * 0.8
-      for (const linea of lineasPaquete) {
-        escribir(linea, xPill + padX, yLinea, tamanoPaquete, rgb(1, 1, 1), bebas)
-        yLinea -= gapLinea
-      }
-    }
 
     // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
     // departamento (hasta 4, elegidas en el Generador) — cada una necesita su

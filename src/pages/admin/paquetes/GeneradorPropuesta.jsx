@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
-import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
+import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo, agregarPaginaTotalSimple } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
@@ -39,6 +39,15 @@ const EQUIPAJE_OPCIONES = [
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
 const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
+
+// Propuesta Simple: un único valor de venta para todo el paquete, cargado a
+// mano (no la suma automática de los servicios sueltos) — el admin indica
+// cuáles de estos 3 combos incluye ese total, según lo que pidió el cliente.
+const INCLUYE_SIMPLE_OPCIONES = [
+  'Aéreo + Traslado + Hospedaje',
+  'Aéreo + Hospedaje',
+  'Traslado + Hospedaje',
+]
 
 const HOSPEDAJE_VACIO = {
   id: null, nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
@@ -299,6 +308,12 @@ export default function GeneradorPropuesta() {
   // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
   const [tipoPropuesta, setTipoPropuesta] = useState('simple')
+  // Solo Propuesta Simple: valor de venta único del paquete completo,
+  // cargado a mano, y qué combo de servicios incluye — reemplaza el
+  // desglose de precio por servicio (que sí se muestra en Combinada), va al
+  // final del PDF en vez de repetido por cada tarjeta de hospedaje.
+  const [valorTotalSimple, setValorTotalSimple] = useState('')
+  const [incluyeSimple, setIncluyeSimple] = useState(INCLUYE_SIMPLE_OPCIONES[0])
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
   // Se puede agregar mas de un vuelo en cualquiera de los dos tipos de
   // propuesta: en simple son opciones alternativas (igual que con hospedaje),
@@ -708,13 +723,13 @@ export default function GeneradorPropuesta() {
     }))
   }
 
-  // En propuesta simple los hospedajes cargados son OPCIONES alternativas para
-  // una misma estadía (el cliente elige una al cerrar) — sumarlas daría un total
-  // inflado. En combinada cada hospedaje es una etapa distinta del viaje, así
-  // que sí se suman entre sí.
+  // En combinada cada hospedaje es una etapa distinta del viaje, se suman
+  // entre sí (igual que vuelo/traslado, cada uno con su propio precio). En
+  // simple no hay desglose por servicio — el total es el valor de venta
+  // único del paquete completo, cargado a mano aparte.
   const total = tipoPropuesta === 'combinada'
     ? hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
-    : (parseFloat(hospedajes[0]?.precio) || 0)
+    : (parseFloat(valorTotalSimple) || 0)
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
   // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
@@ -770,6 +785,14 @@ export default function GeneradorPropuesta() {
       // guardada en la base (ver mas abajo, "moneda: hospedajesValidos[0]...").
       const monedaPdf = hospedajes.find(h => h.nombre.trim())?.moneda || 'ARS'
 
+      // Propuesta Simple: un único valor de venta cargado a mano para todo el
+      // paquete (ver sección "Valor total del paquete"), sin desglose por
+      // servicio — se probó auto-sumar vuelo+traslado+hospedaje en un total
+      // por tarjeta y se pidió volver a un total manual. Combinada: cada
+      // servicio (vuelo, cada hospedaje, traslado por destino) mantiene su
+      // propio precio, mostrado en detalle — sin cambios ahí.
+      const mostrarPrecios = tipoPropuesta === 'combinada'
+
       // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
       // vectorial, no una captura de pantalla). SIEMPRE la grilla compacta
       // (mismo formato tenga 1, 2, 3 o 4 vuelos por hoja — pedido explicito:
@@ -778,40 +801,42 @@ export default function GeneradorPropuesta() {
       // Con un solo vuelo, crearSlotVuelo le da toda la hoja (escala hasta
       // 2x), asi que no queda mas chico que la pagina completa de antes.
       let doc
-      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf })
+      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf, mostrarPrecios })
       doc = primerGrupo.doc
       if (vuelosParaPdf.length > 4) {
         const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
         const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
         for (let i = 4; i < vuelosParaPdf.length; i += 4) {
-          await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4), moneda: monedaPdf })
+          await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4), moneda: monedaPdf, mostrarPrecios })
         }
       }
 
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
-      // Cada servicio con su propio precio por separado (vuelo, hospedaje,
-      // traslado) — mismo criterio en simple y combinada. Se probó sumarlos
-      // en uno solo para simple, pero se pidió volver a separarlos.
       const hospedajesParaPdf = await Promise.all(
         hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
       )
 
       // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes
       // por hoja, igual que el diseño original) con los datos tapados y reescritos.
-      // "Aéreo + Traslado + Hospedaje" (paquete completo) solo se muestra con UN
-      // solo vuelo cargado — con 2 o mas no hay un itinerario unico al que
-      // sumarle cada hospedaje (pedido explicito).
-      const vueloUnicoParaTotal = vuelosParaPdf.length === 1 ? vuelosParaPdf[0] : null
+      let bebasHosp, helvHosp
       if (hospedajesParaPdf.length) {
         const plantillaHospBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
         const plantillaHospDoc = await PDFDocument.load(plantillaHospBytes)
         const bebasBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
-        const bebasHosp = await doc.embedFont(bebasBytes)
-        const helvHosp = await doc.embedFont(StandardFonts.Helvetica)
+        bebasHosp = await doc.embedFont(bebasBytes)
+        helvHosp = await doc.embedFont(StandardFonts.Helvetica)
         for (let i = 0; i < hospedajesParaPdf.length; i += 4) {
           const grupo = hospedajesParaPdf.slice(i, i + 4)
-          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, vueloUnicoParaTotal)
+          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, mostrarPrecios)
         }
+      }
+
+      // Propuesta Simple: hoja final con el valor total del paquete (cargado
+      // a mano) y qué incluye — reemplaza el desglose por servicio.
+      if (tipoPropuesta === 'simple' && total > 0) {
+        await agregarPaginaTotalSimple(doc, bebasHosp || primerGrupo.bebas, helvHosp || await doc.embedFont(StandardFonts.Helvetica), {
+          clienteNombre: cliente.nombre, total, moneda: monedaPdf, incluye: incluyeSimple,
+        })
       }
 
       const pdfBytes = await doc.save()
@@ -840,6 +865,11 @@ export default function GeneradorPropuesta() {
         presupuesto_limite: parseFloat(presupuestoLimite) || null,
         sena: 0,
         tipo_propuesta: tipoPropuesta,
+        // Solo simple: valor único del paquete + qué incluye (ver sección
+        // "Valor total del paquete"). En combinada queda null — ahí el total
+        // sale de sumar el precio de cada servicio, no de un campo aparte.
+        valor_total_simple: tipoPropuesta === 'simple' ? (parseFloat(valorTotalSimple) || null) : null,
+        incluye_simple: tipoPropuesta === 'simple' ? incluyeSimple : null,
         destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
         // "vuelo" queda como el primero, para todo lo que ya lee ese campo
         // (modal de cierre, PDF de cierre) sin cambios. "vuelos" es el array
@@ -863,6 +893,8 @@ export default function GeneradorPropuesta() {
       setEdadesMenores([])
       setBebesMenores([])
       setPresupuestoLimite('')
+      setValorTotalSimple('')
+      setIncluyeSimple(INCLUYE_SIMPLE_OPCIONES[0])
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
       setVuelos([{ ...VUELO_VACIO }])
@@ -1446,6 +1478,29 @@ export default function GeneradorPropuesta() {
           </div>
         ))}
       </div>
+
+      {/* Valor total — solo Propuesta Simple. En Combinada cada servicio ya
+          tiene su propio precio (vuelo, cada hospedaje, traslado por
+          destino), no hace falta un total aparte. */}
+      {tipoPropuesta === 'simple' && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Valor total del paquete</h3>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+              Un solo valor de venta, cargado a mano — no se desglosa por vuelo/traslado/hospedaje. Va al final del PDF, con la leyenda de qué incluye.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <input type="text" inputMode="numeric" value={formatearMiles(valorTotalSimple)}
+              onChange={e => setValorTotalSimple(soloDigitos(e.target.value))} placeholder="Valor total (Ej: 4.397.000)"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            <select value={incluyeSimple} onChange={e => setIncluyeSimple(e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+              {INCLUYE_SIMPLE_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Generar */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg">

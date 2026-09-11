@@ -895,14 +895,16 @@ export async function agregarPaginaAereosGrupo(doc, plantillaDoc, bebas, { clien
   await dibujarPaginaAereosGrupo(pagina, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), moneda, mostrarPrecios })
 }
 
-// Página final de "Propuesta Simple": UN valor total del paquete (cargado a
-// mano, no la suma automática de aéreo+traslado+hospedaje que se probó antes
-// y se pidió sacar — ver comentario en GeneradorPropuesta.jsx) junto con una
-// leyenda de qué servicios incluye (Aéreo+Traslado+Hospedaje / Aéreo+Hospedaje
-// / Traslado+Hospedaje, la que el admin haya elegido). No hay plantilla de
+// Página final de "Propuesta Simple": UNA fila por hospedaje cargado, cada
+// uno con su propio total (el "Valor de venta" de esa tarjeta) — son
+// opciones alternativas (el cliente elige una al cerrar), no un total único:
+// el precio cambia según qué hospedaje/cuarto elija. Se probó antes un total
+// único (cargado a mano, y antes de eso auto-sumado) y se pidió volver a
+// separarlo por opción — ver comentario en GeneradorPropuesta.jsx. La
+// leyenda de qué incluye es la misma para todas. No hay plantilla de
 // referencia para esta hoja — se arma desde cero, mismo trazo navy+crema que
 // el resto de "carteles" de la app (pills, encabezados).
-export async function agregarPaginaTotalSimple(doc, bebas, helv, { clienteNombre, total, moneda, incluye }) {
+export async function agregarPaginaTotalSimple(doc, bebas, helv, { clienteNombre, opciones, incluye }) {
   const ANCHO = 595.276
   const ALTO = 841.89
   const page = doc.addPage([ANCHO, ALTO])
@@ -920,21 +922,41 @@ export async function agregarPaginaTotalSimple(doc, bebas, helv, { clienteNombre
     const logoBytes = await fetch('/logo-blanco.png').then(r => r.arrayBuffer())
     const logo = await doc.embedPng(logoBytes)
     activarSuavizado(doc, logo)
-    const altoLogo = 60
+    const altoLogo = 55
     const anchoLogo = altoLogo * (logo.width / logo.height)
-    page.drawImage(logo, { x: centroX - anchoLogo / 2, y: ALTO - 140, width: anchoLogo, height: altoLogo })
+    page.drawImage(logo, { x: centroX - anchoLogo / 2, y: ALTO - 115, width: anchoLogo, height: altoLogo })
   } catch (_) { /* si falla, la hoja sigue sin logo en vez de romper el PDF */ }
 
   if (clienteNombre) {
-    centrado(`PROPUESTA PARA ${clienteNombre.toUpperCase()}`, ALTO - 200, 13, helv)
+    centrado(`PROPUESTA PARA ${clienteNombre.toUpperCase()}`, ALTO - 170, 13, helv)
   }
 
-  centrado('VALOR TOTAL DEL PAQUETE', ALTO / 2 + 70, 18, bebas)
+  const n = opciones.length
+  centrado(n > 1 ? 'VALOR DE CADA OPCIÓN' : 'VALOR TOTAL DEL PAQUETE', ALTO - 210, 18, bebas)
 
-  const textoTotal = `${moneda || 'ARS'}$ ${formatearNumero(total)}`
-  centrado(textoTotal, ALTO / 2 - 5, 56, bebas)
+  // Reparte el resto de la hoja en partes iguales entre las opciones —
+  // mismo criterio que el checklist del PDF de Cierre (partirEnLineasRico):
+  // se mide el alto disponible primero, no un espacio fijo por fila que deje
+  // aire de más con pocas opciones o quede apretado con muchas.
+  const topLista = ALTO - 245
+  const bottomLista = 90
+  const altoFila = (topLista - bottomLista) / n
+  const tamanoNombre = n > 2 ? 15 : 19
+  const tamanoTotal = n > 2 ? 25 : 32
+  let yFilaTop = topLista
 
-  if (incluye) {
-    centrado(`INCLUYE: ${incluye.toUpperCase()}`, ALTO / 2 - 55, 14, helv)
-  }
+  opciones.forEach((op, i) => {
+    const centroFila = yFilaTop - altoFila / 2
+    const numero = n > 1 ? `OPCIÓN ${i + 1}: ` : ''
+    centrado(`${numero}${(op.nombre || '').toUpperCase()}`, centroFila + altoFila * 0.20, tamanoNombre, bebas)
+    const textoTotal = `${op.moneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(op.total)}`
+    centrado(textoTotal, centroFila - altoFila * 0.10, tamanoTotal, bebas)
+    if (incluye) {
+      centrado(`INCLUYE: ${incluye.toUpperCase()}`, centroFila - altoFila * 0.32, 10.5, helv)
+    }
+    if (i < n - 1) {
+      page.drawLine({ start: { x: 70, y: yFilaTop - altoFila }, end: { x: ANCHO - 70, y: yFilaTop - altoFila }, thickness: 0.75, color: CREMA_TXT, opacity: 0.25 })
+    }
+    yFilaTop -= altoFila
+  })
 }

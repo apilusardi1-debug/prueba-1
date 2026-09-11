@@ -1094,15 +1094,9 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Equipaje incluido</p>
               <div className="flex flex-wrap gap-3">
-                {EQUIPAJE_OPCIONES.filter(op => EQUIPAJE_POR_PASAJERO.includes(op.clave)).map(op => (
-                  <div key={op.clave} title="Se completa solo con la cantidad de adultos + menores del Cliente (1 por pasajero)"
-                    className="flex items-center gap-2 border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 rounded-xl pl-3 pr-3 py-1.5">
-                    <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tabular-nums">{v.equipaje?.[op.clave] || 0}</span>
-                  </div>
-                ))}
-                {EQUIPAJE_OPCIONES.filter(op => !EQUIPAJE_POR_PASAJERO.includes(op.clave)).map(op => (
-                  <div key={op.clave} className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
+                {EQUIPAJE_OPCIONES.map(op => (
+                  <div key={op.clave} title={EQUIPAJE_POR_PASAJERO.includes(op.clave) ? 'Arranca en la cantidad de adultos + menores del Cliente — se puede ajustar a mano' : undefined}
+                    className="flex items-center gap-2 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3 pr-1.5 py-1.5">
                     <span className="text-sm text-gray-700 dark:text-zinc-300">{op.label}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 w-4 text-center tabular-nums">{v.equipaje?.[op.clave] || 0}</span>
                     <div className="flex flex-col gap-0.5">

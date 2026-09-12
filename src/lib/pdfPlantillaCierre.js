@@ -730,3 +730,90 @@ export async function generarPDFCierre(propuesta) {
 
   return doc
 }
+
+// PDF "Detalles y Servicios" — resumen corto que se manda DESPUÉS de cerrar
+// la propuesta (desde Propuestas Cerradas): qué ya compró el cliente (con
+// links a la reserva/voucher real, no al itinerario cargado en el Generador)
+// + el saldo pendiente + las mismas Observaciones importantes que ya se
+// mandaron antes. Plantilla propia (public/plantilla-detalles-servicios.pdf,
+// 2 páginas: esta + Observaciones, que no necesita ningún cambio — coordenadas
+// medidas sobre el PDF real con pdfplumber, mismo criterio que el resto de
+// los PDF de esta app).
+export async function generarPDFDetallesYServicios(propuesta) {
+  const plantillaBytes = await fetch('/plantilla-detalles-servicios.pdf').then(r => r.arrayBuffer())
+  const doc = await PDFDocument.load(plantillaBytes)
+  doc.registerFontkit(fontkit)
+  const page = doc.getPage(0)
+
+  const fontBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
+  const bebas = await doc.embedFont(fontBytes)
+
+  function tapar(x, y, w, h, color = CREMA_BG) {
+    page.drawRectangle({ x: x - 3, y: y - 3, width: w + 8, height: h, color })
+  }
+  function escribir(texto, x, y, size, color = NAVY_TXT, font = bebas) {
+    page.drawText(String(texto ?? ''), { x, y, size, font, color })
+  }
+  function centrado(texto, xCentro, y, size, color, font = bebas) {
+    escribir(texto, xCentro - font.widthOfTextAtSize(String(texto ?? ''), size) / 2, y, size, color, font)
+  }
+
+  // Encabezado: el nombre del cliente y la cantidad de pasajeros van en la
+  // MISMA línea que su etiqueta fija ("nombre del cliente:" / "cotización
+  // personalizada para:"), no en un renglón aparte como en el otro PDF de
+  // cierre — así es como viene diseñada esta plantilla.
+  tapar(163.1, 748, 400, 26, NAVY_BG)
+  escribir((propuesta.cliente_nombre || '').toUpperCase(), 170, 752, 17, CREMA_TXT, bebas)
+
+  const adultosParaTexto = propuesta.cantidad_adultos != null ? propuesta.cantidad_adultos : propuesta.cantidad_pasajeros
+  tapar(240.4, 721, 320, 26, NAVY_BG)
+  escribir(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 246, 725, 17, CREMA_TXT, bebas)
+
+  // Botones "VER RESERVA" — la píldora navy de la plantilla ya está bien,
+  // pero su texto viene en negro sobre navy (case ilegible en el PDF real,
+  // no un problema de renderizado) — se tapa y se redibuja en el mismo verde
+  // lima que usa el resto de la app para este tipo de botón ("VER VOUCHER",
+  // "VER ÁREAS INTERNAS"). Se agrega el link clickeable sobre toda la
+  // píldora. Preferir el link cargado a mano y, a falta de eso, el documento
+  // subido — mismo criterio que "E-ticket del vuelo"/"Voucher del hospedaje"
+  // en el otro PDF de cierre.
+  const VERDE_LIMA = rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255)
+  const PILDORA_ANCHO = 155.3
+  function botonVerReserva(yBottom, url) {
+    const xCentro = 220 + PILDORA_ANCHO / 2
+    tapar(240, yBottom + 7, 120, 16, NAVY_BG)
+    centrado('VER RESERVA', xCentro, yBottom + 9, 15, VERDE_LIMA, bebas)
+    if (url) agregarLink(page, doc, { x: 220, y: yBottom, width: PILDORA_ANCHO, height: 25 }, url)
+  }
+  botonVerReserva(654.4, propuesta.aereo_link || propuesta.aereo_pdf_url)
+  botonVerReserva(567.1, propuesta.hospedaje_link || propuesta.hospedaje_voucher_url)
+
+  // Traslados — mismo dato (traslados_incluidos) que el resto de la app. El
+  // texto "AEROPUERTO / HOTEL IN - OUT" de la plantilla ya sirve para el caso
+  // más común (traslados incluidos, un solo trayecto); si no están incluidos
+  // se tapa y se reemplaza. (Caso combinado con transfers por destino: no
+  // contemplado en esta plantilla por ahora, igual que no lo pedía el diseño
+  // de referencia.)
+  if (propuesta.traslados_incluidos === false) {
+    tapar(305, 465, 250, 40, CREMA_BG)
+    escribir('NO INCLUIDOS', 315, 478, 18, NAVY_TXT, bebas)
+  }
+
+  // Saldo pendiente total — reemplaza el "R $XXXX" de muestra por el valor
+  // real, mismo formato (moneda de la propuesta) que el resto de la app usa
+  // para el saldo (ej. "ARS$ 500.000").
+  const total = Number(propuesta.total) || 0
+  const sena = Number(propuesta.sena) || 0
+  const saldo = Math.max(total - sena, 0)
+  const moneda = propuesta.moneda || 'ARS'
+  const saldoTxt = `${moneda}$ ${formatearNumero(saldo)}`
+  const centroCaja = (29.5 + 562.3) / 2
+  // Tapado angosto (321-357, real) para no pisar "SALDO PENDIENTE TOTAL:"
+  // arriba (termina en y≈358.5) ni "Opciones para el saldo pendiente" abajo
+  // (empieza en y≈319.6) — el "$XXXX" de muestra quedaba mas chico que un
+  // monto real, que necesita mas aire.
+  tapar(44, 324, 504, 36, NAVY_BG)
+  centrado(saldoTxt, centroCaja, 329, 30, CREMA_TXT, bebas)
+
+  return doc
+}

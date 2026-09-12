@@ -295,22 +295,6 @@ export default function PropuestasLista({ estado }) {
     }
   }
 
-  // Re-descarga el PDF de una propuesta ya cerrada, con los datos tal cual quedaron
-  // guardados (no vuelve a tocar la base ni pide nada nuevo).
-  async function redescargarCierre() {
-    setGenerandoCierre(true)
-    setErrorCierre('')
-    try {
-      const doc = await generarPDFCierre(cerrandoPropuesta)
-      const bytes = await doc.save()
-      descargarPdf(bytes, `Detalle_Final_${(cerrandoPropuesta.cliente_nombre || 'propuesta').replace(/\s+/g, '_')}.pdf`)
-    } catch (e) {
-      setErrorCierre('No se pudo generar el PDF: ' + e.message)
-    } finally {
-      setGenerandoCierre(false)
-    }
-  }
-
   // "Detalles y Servicios": resumen corto para mandar despues de cerrar la
   // propuesta — que ya compro (con los links reales cargados en Datos
   // internos, no el itinerario del Generador) + saldo pendiente +
@@ -1032,17 +1016,11 @@ export default function PropuestasLista({ estado }) {
                   {generandoCierre ? 'Generando...' : 'Generar y archivar'}
                 </button>
               ) : (
-                <>
-                  <button onClick={descargarDetallesYServicios} disabled={generandoCierre}
-                    title="Resumen corto para mandar después de cerrar: qué ya compró + saldo pendiente + observaciones"
-                    className="border border-brand-600 text-brand-600 dark:text-brand-400 dark:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-                    {generandoCierre ? 'Generando...' : 'Detalles y Servicios'}
-                  </button>
-                  <button onClick={redescargarCierre} disabled={generandoCierre}
-                    className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-                    {generandoCierre ? 'Generando...' : 'Descargar PDF'}
-                  </button>
-                </>
+                <button onClick={descargarDetallesYServicios} disabled={generandoCierre}
+                  title="Resumen corto para mandar después de cerrar: qué ya compró + saldo pendiente + observaciones"
+                  className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
+                  {generandoCierre ? 'Generando...' : 'Detalles y Servicios'}
+                </button>
               )}
             </div>
            </div>

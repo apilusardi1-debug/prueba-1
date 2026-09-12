@@ -584,31 +584,45 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   let y = slot.top - 14 * esc
   const tamanoTitulo = 13 * esc
   const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
-  const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
   escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
-  escribir(textoTituloVuelta, COL_DER_X, y, tamanoTitulo, NAVY_TXT)
+
   // Valor de venta del vuelo — pildora navy con texto blanco (mismo trazo que
   // el resto de los carteles de la app), alineada al borde derecho de la
-  // columna de VUELTA (el mismo borde que la caja de abajo), no pegada al
-  // texto "VUELTA fecha".
-  if (mostrarPrecios && vuelo.venta && vuelo.venta_publica !== false) {
-    const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTitulo)
-    const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 10 * esc
-    const xRightPill = COL_DER_X + ANCHO_COL_VUELO
-    const anchoDisponiblePrecio = xRightPill - xLimiteIzq - 12 * esc // menos el padding horizontal de la pildora
-    if (anchoDisponiblePrecio > 20) {
-      const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
-      const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13)
-      const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
-      const padX = 6 * esc
-      const padY = 2.5 * esc
-      const anchoPill = anchoTexto + padX * 2
-      const altoPill = tamanoPrecio + padY * 2
-      const xPill = xRightPill - anchoPill
-      const yTopPill = y + tamanoPrecio * 0.78 + padY
-      page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 3 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
-      escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
+  // columna de VUELTA. Antes el titulo "VUELTA fecha" se dibujaba siempre al
+  // mismo tamaño y, si la fecha entraba con año de 4 dígitos (ej.
+  // "VUELTA 13/01/2027"), ocupaba toda la columna y no quedaba lugar para la
+  // píldora — se descartaba en silencio (if anchoDisponible > 20), sin
+  // avisar, aunque el precio estuviera cargado y público. Ahora el título de
+  // VUELTA se achica lo mínimo necesario para dejarle SIEMPRE un hueco fijo
+  // a la píldora al lado, así el precio nunca desaparece por falta de
+  // espacio — sí puede pasar que quede mas chico en fechas largas.
+  const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
+  const mostrarPrecioVuelo = mostrarPrecios && vuelo.venta && vuelo.venta_publica !== false
+  const anchoMinPrecio = 62 * esc
+  let tamanoTituloVuelta = tamanoTitulo
+  if (mostrarPrecioVuelo) {
+    while (tamanoTituloVuelta > 7 * esc && bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta) > ANCHO_COL_VUELO - anchoMinPrecio - 8 * esc) {
+      tamanoTituloVuelta -= 0.5
     }
+  }
+  escribir(textoTituloVuelta, COL_DER_X, y, tamanoTituloVuelta, NAVY_TXT)
+
+  if (mostrarPrecioVuelo) {
+    const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta)
+    const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 8 * esc
+    const xRightPill = COL_DER_X + ANCHO_COL_VUELO
+    const anchoDisponiblePrecio = Math.max(xRightPill - xLimiteIzq - 12 * esc, anchoMinPrecio * 0.55)
+    const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
+    const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13, 6)
+    const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
+    const padX = 6 * esc
+    const padY = 2.5 * esc
+    const anchoPill = anchoTexto + padX * 2
+    const altoPill = tamanoPrecio + padY * 2
+    const xPill = xRightPill - anchoPill
+    const yTopPill = y + tamanoPrecio * 0.78 + padY
+    page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 3 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
+    escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
   }
   y -= 8 * esc
 

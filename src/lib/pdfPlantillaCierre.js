@@ -815,5 +815,16 @@ export async function generarPDFDetallesYServicios(propuesta) {
   tapar(44, 324, 504, 36, NAVY_BG)
   centrado(saldoTxt, centroCaja, 329, 30, CREMA_TXT, bebas)
 
+  // La página 2 de ESTA plantilla (Observaciones importantes) es una imagen
+  // rasterizada a 77dpi — se ve borrosa/de baja calidad, sobre todo con
+  // zoom. Se reemplaza por la misma página, mismo contenido exacto, pero en
+  // texto vectorial real: la que ya usa el PDF de cierre completo
+  // (plantilla-cierre.pdf, página 2) y ahí sí se ve nítida.
+  doc.removePage(1)
+  const plantillaCierreBytes = await fetch('/plantilla-cierre.pdf').then(r => r.arrayBuffer())
+  const docCierre = await PDFDocument.load(plantillaCierreBytes)
+  const [paginaObservaciones] = await doc.copyPages(docCierre, [1])
+  doc.addPage(paginaObservaciones)
+
   return doc
 }

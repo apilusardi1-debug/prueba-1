@@ -360,13 +360,12 @@ export default function PropuestasLista({ estado }) {
     + (parseFloat(vuelo.traslado_venta) || 0)
     + (parseFloat(hospedajeElegidoPago?.precio) || 0)
     + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
-  // En simple el total a pagar es vuelo + traslado + el hospedaje elegido
-  // (mismo criterio que la hoja "Valor de cada opción" del Generador) — antes
-  // solo tomaba el precio del hospedaje, sin sumar vuelo/traslado.
-  // valorVentaTotalInterno ya arma esa cuenta arriba.
-  const totalPago = esCombinada
-    ? hospedajesOpciones.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
-    : valorVentaTotalInterno
+  // El total a pagar es vuelo + traslado + el hospedaje elegido (mismo criterio
+  // que la hoja "Valor de cada opción" del Generador, tanto en simple como en
+  // combinada) — antes en combinada se sumaban TODOS los hospedajes cargados
+  // (que son opciones alternativas, no todos incluidos), en vez de solo el
+  // que el cliente eligió. valorVentaTotalInterno ya arma esa cuenta arriba.
+  const totalPago = valorVentaTotalInterno
   const saldoPago = Math.max(totalPago - (parseFloat(sena) || 0), 0)
   const monedaPago = cerrandoPropuesta?.moneda || 'BRL'
 

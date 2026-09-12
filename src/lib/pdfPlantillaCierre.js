@@ -771,10 +771,13 @@ export async function generarPDFDetallesYServicios(propuesta) {
     tapar(x, y - (size - tamano), anchoMax + 8, size * 0.8 + 5 + (size - tamano), NAVY_BG)
     escribir(texto, x, y, tamano, CREMA_TXT, bebas)
   }
-  reemplazarAjustado((propuesta.cliente_nombre || '').toUpperCase(), 170, 752, 17, LIMITE_LOGO_X - 170)
+  // Alineado contra la base real de cada etiqueta fija ("nombre del
+  // cliente:" / "cotización personalizada para:"), medida sobre el PDF
+  // real — antes quedaba ~5pt más abajo que la etiqueta, se notaba "flotando".
+  reemplazarAjustado((propuesta.cliente_nombre || '').toUpperCase(), 170, 756.3, 17, LIMITE_LOGO_X - 170)
 
   const adultosParaTexto = propuesta.cantidad_adultos != null ? propuesta.cantidad_adultos : propuesta.cantidad_pasajeros
-  reemplazarAjustado(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 246, 725, 17, LIMITE_LOGO_X - 246)
+  reemplazarAjustado(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 246, 729.7, 17, LIMITE_LOGO_X - 246)
 
   // Botones "VER RESERVA" — la píldora navy de la plantilla ya está bien,
   // pero su texto viene en negro sobre navy (case ilegible en el PDF real,

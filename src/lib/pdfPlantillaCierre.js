@@ -761,13 +761,20 @@ export async function generarPDFDetallesYServicios(propuesta) {
   // Encabezado: el nombre del cliente y la cantidad de pasajeros van en la
   // MISMA línea que su etiqueta fija ("nombre del cliente:" / "cotización
   // personalizada para:"), no en un renglón aparte como en el otro PDF de
-  // cierre — así es como viene diseñada esta plantilla.
-  tapar(163.1, 748, 400, 26, NAVY_BG)
-  escribir((propuesta.cliente_nombre || '').toUpperCase(), 170, 752, 17, CREMA_TXT, bebas)
+  // cierre — así es como viene diseñada esta plantilla. El logo (vector,
+  // medido con pdfplumber) arranca en x≈479 — el tapado y el texto no pueden
+  // pasar de ahí, antes lo pisaban y quedaba recortado.
+  const LIMITE_LOGO_X = 470
+  function reemplazarAjustado(texto, x, y, size, anchoMax, tamanoMin = 10) {
+    let tamano = size
+    while (tamano > tamanoMin && bebas.widthOfTextAtSize(String(texto ?? ''), tamano) > anchoMax) tamano -= 1
+    tapar(x, y - (size - tamano), anchoMax + 8, size * 0.8 + 5 + (size - tamano), NAVY_BG)
+    escribir(texto, x, y, tamano, CREMA_TXT, bebas)
+  }
+  reemplazarAjustado((propuesta.cliente_nombre || '').toUpperCase(), 170, 752, 17, LIMITE_LOGO_X - 170)
 
   const adultosParaTexto = propuesta.cantidad_adultos != null ? propuesta.cantidad_adultos : propuesta.cantidad_pasajeros
-  tapar(240.4, 721, 320, 26, NAVY_BG)
-  escribir(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 246, 725, 17, CREMA_TXT, bebas)
+  reemplazarAjustado(textoPasajeros(adultosParaTexto, propuesta.cantidad_menores, propuesta.edades_menores), 246, 725, 17, LIMITE_LOGO_X - 246)
 
   // Botones "VER RESERVA" — la píldora navy de la plantilla ya está bien,
   // pero su texto viene en negro sobre navy (case ilegible en el PDF real,

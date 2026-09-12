@@ -651,8 +651,13 @@ export async function generarPDFCierre(propuesta) {
 
   // Opciones para abonar el saldo — texto fijo (politica de pago de la agencia,
   // no un dato por propuesta), pero con la moneda real de esta propuesta.
+  // Aclaracion final ("IMPORTANTE") pedida explicitamente: el valor en reales
+  // queda fijo, lo unico que puede variar es la conversion de pesos/dolares a
+  // reales al pagar el saldo — va en negrita solo la palabra "IMPORTANTE:".
   itemsDetalle.push({ segmentos: [
     { texto: `Opciones para abonar el saldo: transferencia en ${nombreMoneda}, transferencia mediante PIX, o en cuotas manteniendo el valor en reales congelado al tipo de cambio del día de cada pago.` },
+    { texto: 'IMPORTANTE:', bold: true },
+    { texto: 'El valor en reales se mantiene fijo. La única variación posible será en la conversión de pesos o dólares a reales al momento de realizar el pago restante.' },
   ] })
 
   // El detalle completo (checklist de todo lo que el cliente esta comprando)

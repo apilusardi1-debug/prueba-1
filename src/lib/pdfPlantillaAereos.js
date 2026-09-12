@@ -743,24 +743,22 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // los vuelos — antes se guardaban en la base pero nunca llegaban al PDF. Se
   // listan una sola vez, en la primera hoja de Aereos, reservando el espacio
   // extra que haga falta ARRIBA del banner de actividades (que es fijo).
+  // Antes era texto suelto sin destacar (sin borde ni ícono) — inconsistente
+  // con las tarjetas de Equipaje/Traslados de cada vuelo. Ahora usa la misma
+  // tarjeta con borde redondeado + ícono (el mismo auto vectorial que ya usa
+  // "Traslados incluidos" por vuelo), alto variable según cuántos tramos haya.
   const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
-  // Texto de este bloque a 1.5x el tamaño original (pedido explicito: primero
-  // se probo a 3x, despues se pidio la mitad de eso). SCALE_DESTINOS es el
-  // unico numero que hay que tocar si se vuelve a pedir otro tamaño — tamaños,
-  // espaciado y el aire extra antes del titulo escalan todos juntos en
-  // proporcion, para que la grilla de vuelos de arriba se achique lo
-  // necesario y el titulo no quede pisando el separador de la ultima fila.
-  const SCALE_DESTINOS = 1.5
-  const TITULO_DESTINOS_SIZE = 11 * SCALE_DESTINOS
-  const LINEA_DESTINO_SIZE = 9 * SCALE_DESTINOS
-  const ALTO_TITULO_DESTINOS = destinosValidos.length ? 16 * SCALE_DESTINOS : 0
-  const ALTO_LINEA_DESTINO = 13 * SCALE_DESTINOS
-  // Aire extra antes del titulo (mas alla del "-6" original) para que su techo
-  // no cruce el separador de la ultima fila de vuelos, que crece con el cap
-  // height del titulo a este tamaño nuevo — mismo aire se descuenta de la
-  // grilla de arriba via alturaDestinos, para no comerse el margen de abajo.
-  const GAP_EXTRA_TITULO = 7.92 * SCALE_DESTINOS - 1.92
-  const alturaDestinos = destinosValidos.length ? ALTO_TITULO_DESTINOS + destinosValidos.length * ALTO_LINEA_DESTINO + GAP_EXTRA_TITULO : 0
+  const TIT_TRASLADOS_SIZE = 15
+  const LINEA_TRASLADOS_SIZE = 11.5
+  const GAP_LINEA_TRASLADOS = 15
+  const PAD_TRASLADOS_TOP = 16
+  const PAD_TRASLADOS_BOTTOM = 14
+  const altoTarjetaTraslados = destinosValidos.length
+    ? PAD_TRASLADOS_TOP + TIT_TRASLADOS_SIZE + 6 + destinosValidos.length * GAP_LINEA_TRASLADOS + PAD_TRASLADOS_BOTTOM
+    : 0
+  // Aire antes de la tarjeta (separacion contra el separador de la ultima
+  // fila de vuelos) y despues (contra el banner de actividades, fijo abajo).
+  const alturaDestinos = destinosValidos.length ? altoTarjetaTraslados + 16 : 0
 
   // Encabezado compacto — SOLO en esta grilla (la pagina de un solo vuelo no
   // se toca). "PAQUETE DE VIAJE" queda igual; "Nombre del cliente" y
@@ -851,24 +849,33 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   // Lista de transfers, en la franja reservada arriba del banner.
   if (destinosValidos.length) {
-    let yDest = zonaBottomEfectivo - 6 - GAP_EXTRA_TITULO
+    const boxAncho = (COL_DER_X + ANCHO_COL_VUELO) - COL_IZQ_X
+    const yTop = zonaBottomEfectivo - 8
+    page.drawSvgPath(pathRectRedondeado(boxAncho, altoTarjetaTraslados, 8), { x: COL_IZQ_X, y: yTop, borderColor: NAVY_TXT, borderWidth: 1.25 })
+
+    const iconoLado = 30
+    const iconoX = COL_IZQ_X + 16
+    dibujarIconoAuto(page, iconoX + iconoLado / 2, yTop - PAD_TRASLADOS_TOP - iconoLado / 2, iconoLado / 2)
+
+    const textoX = iconoX + iconoLado + 14
+    let yLinea = yTop - PAD_TRASLADOS_TOP - TIT_TRASLADOS_SIZE * 0.78
     const textoTitTraslados = 'TRASLADOS PRIVADOS:'
-    escribir(textoTitTraslados, COL_IZQ_X, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
+    escribir(textoTitTraslados, textoX, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)
     // Precio: suma de "Valor de venta" de todos los tramos (Destinos), no uno
     // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total).
     // Respeta la "Pública" de cada tramo (valor_cliente_traslado_publica).
     const totalTraslados = destinosValidos.reduce((suma, d) =>
       suma + (d.valor_cliente_traslado_publica !== false ? (parseFloat(d.valor_cliente_traslado) || 0) : 0), 0)
     if (totalTraslados > 0) {
-      const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados, TITULO_DESTINOS_SIZE)
-      escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, COL_IZQ_X + anchoTitTraslados + 10, yDest, TITULO_DESTINOS_SIZE, NAVY_TXT)
+      const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados + '  ', TIT_TRASLADOS_SIZE)
+      escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, textoX + anchoTitTraslados, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)
     }
-    yDest -= ALTO_TITULO_DESTINOS
+    yLinea -= GAP_LINEA_TRASLADOS + 6
     for (const d of destinosValidos) {
       const salida = d.salida?.trim().toUpperCase() || '—'
       const destino = d.destino?.trim().toUpperCase() || '—'
-      escribir(`- ${salida} / ${destino}`, COL_IZQ_X, yDest, LINEA_DESTINO_SIZE, NAVY_TXT)
-      yDest -= ALTO_LINEA_DESTINO
+      escribir(`- ${salida} / ${destino}`, textoX, yLinea, LINEA_TRASLADOS_SIZE, NAVY_SUAVE_CAJA)
+      yLinea -= GAP_LINEA_TRASLADOS
     }
   }
 

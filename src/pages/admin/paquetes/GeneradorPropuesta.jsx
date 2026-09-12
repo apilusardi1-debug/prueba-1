@@ -841,20 +841,27 @@ export default function GeneradorPropuesta() {
         }
       }
 
-      // Propuesta Simple: hoja final con UNA fila por hospedaje (son
-      // opciones alternativas, cada una con su propio total). El vuelo y el
-      // traslado son los mismos elija el hospedaje que elija (un solo
-      // itinerario) — se cargan una sola vez en la sección Vuelo y se suman
-      // al precio propio de CADA hospedaje, no se vuelven a cargar por
-      // opción. Misma leyenda de qué incluye para todas.
-      const vueloParaSuma = vuelosConDatos[0] || VUELO_VACIO
-      const baseVueloTraslado = (parseFloat(vueloParaSuma.venta) || 0) + (parseFloat(vueloParaSuma.traslado_venta) || 0)
-      const opcionesSimple = hospedajesValidos
+      // Hoja final con UNA fila por hospedaje (son opciones alternativas,
+      // cada una con su propio total) — en las dos modalidades, Simple Y
+      // Combinada, aunque se presenten distinto en el resto del PDF (Simple
+      // no desglosa ningún precio en las páginas de arriba; Combinada sí, en
+      // detalle, y esta hoja queda como síntesis). El vuelo y el traslado son
+      // los mismos elija el hospedaje que elija — se suman al precio propio
+      // de CADA hospedaje, no se vuelven a cargar por opción.
+      // Simple: un solo vuelo (vuelosConDatos[0]) + su traslado propio.
+      // Combinada: puede haber varios vuelos y varios tramos de traslado
+      // (Transfers/destinos) — se suman TODOS.
+      const baseVueloTraslado = tipoPropuesta === 'combinada'
+        ? vuelosConDatos.reduce((sum, v) => sum + (parseFloat(v.venta) || 0) + (parseFloat(v.traslado_venta) || 0), 0)
+          + (destinosParaPdf || []).reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
+        : (parseFloat(vuelosConDatos[0]?.venta) || 0) + (parseFloat(vuelosConDatos[0]?.traslado_venta) || 0)
+      const opciones = hospedajesValidos
         .filter(h => parseFloat(h.precio) > 0)
         .map(h => ({ nombre: h.nombre, total: baseVueloTraslado + (parseFloat(h.precio) || 0), moneda: monedaPdf }))
-      if (tipoPropuesta === 'simple' && opcionesSimple.length) {
+      if (opciones.length) {
         await agregarPaginaTotalSimple(doc, bebasHosp || primerGrupo.bebas, helvHosp || await doc.embedFont(StandardFonts.Helvetica), {
-          clienteNombre: cliente.nombre, opciones: opcionesSimple, incluye: incluyeSimple,
+          clienteNombre: cliente.nombre, opciones,
+          incluye: tipoPropuesta === 'combinada' ? INCLUYE_SIMPLE_OPCIONES[0] : incluyeSimple,
         })
       }
 

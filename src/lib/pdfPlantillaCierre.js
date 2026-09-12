@@ -461,7 +461,12 @@ export async function generarPDFCierre(propuesta) {
     reemplazarAjustado(hospedaje.pension, 308.5, 444.1, 18, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 10)
   }
   if (hospedaje.habitacion_nombre) {
-    reemplazarAjustado(hospedaje.habitacion_nombre.toUpperCase(), 308.5, 414.1, 14, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 8)
+    // Antes usaba reemplazarAjustado (solo achica la letra, nunca corta en
+    // lineas) — con un nombre largo ("Flat de 1 cuarto, balcón con vista
+    // parcial al mar") la letra llegaba al tamaño mínimo y el texto igual se
+    // desbordaba en una sola línea, pisando la foto de al lado. Con hasta 3
+    // líneas cortas entra completo.
+    reemplazarMultilinea(hospedaje.habitacion_nombre.toUpperCase(), 308.5, 414.1, 12, ANCHO_COL_HABITACION, 13, NAVY_TXT, bebas, CREMA_BG, 3)
   }
   // Foto chica de la habitacion elegida (no del hospedaje en general) — pedido
   // explicito del usuario, no existia en la plantilla original. Mismo tamano que

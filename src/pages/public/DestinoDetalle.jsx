@@ -75,7 +75,7 @@ function SeccionEditorial({ destino }) {
 
       {/* ¿Noronha es caro? */}
       {c.caro && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
           <h2 className={`${tituloSeccion} mb-8`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
           <div className="grid sm:grid-cols-2 gap-6">
             <div className="bg-hero-cream rounded-2xl p-6 md:p-8">
@@ -120,7 +120,7 @@ function SeccionEditorial({ destino }) {
 
       {/* Foto de apoyo: llegando a la isla */}
       {c.vuelo && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>
               <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Llegando a Noronha</h2>

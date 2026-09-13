@@ -173,15 +173,11 @@ function SeccionEditorial({ destino }) {
                   {c.videos.map((v, i) => (
                     <button key={i} onClick={() => setVideoActivo(v)}
                       className="group relative rounded-xl overflow-hidden text-left" style={{ aspectRatio: '9/16' }}>
-                      {v.thumbnail ? (
-                        <img src={v.thumbnail} alt={v.titulo || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      ) : (
-                        <video src={v.video + '#t=0.5'} preload="metadata" muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      )}
-                      <div className="absolute inset-0 bg-black/15 group-hover:bg-black/5 transition-colors" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-hero-yellow/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <svg width="13" height="16" viewBox="0 0 20 24" fill="#072e40"><path d="M0 0l20 12L0 24z" /></svg>
+                      <video src={v.video} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
+                      <div className="absolute bottom-2 right-2">
+                        <span className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="material-symbols-outlined text-white text-[18px]">fullscreen</span>
                         </span>
                       </div>
                     </button>

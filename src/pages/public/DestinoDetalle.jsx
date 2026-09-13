@@ -378,7 +378,7 @@ export default function DestinoDetalle() {
             ← {t('nav_destinations')}
           </Link>
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-3xl md:text-4xl leading-none">{destino.icono}</span>
+            {destino.icono && <span className="text-3xl md:text-4xl leading-none">{destino.icono}</span>}
             <span className="font-label-lg text-label-sm uppercase text-hero-cream/80 tracking-wide">{destino.estado} · Brasil</span>
           </div>
           <h1 className="font-display-hero uppercase text-hero-yellow leading-none mb-5"

@@ -162,7 +162,7 @@ export const destinos = [
     estado: 'Pernambuco',
     descripcion: 'Archipiélago protegido. El mejor buceo y snorkel de Brasil, con delfines y tortugas.',
     imagen: '/fernando-de-noronha.jpeg',
-    icono: '🐢',
+    icono: '',
     // Contenido editorial extra para la ficha de destino (/destinos/:id) — es
     // opcional: si un destino no tiene `contenido`, esas secciones no se
     // muestran (ver DestinoDetalle.jsx). Se arma acá porque hoy no hay un

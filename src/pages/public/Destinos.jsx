@@ -38,7 +38,7 @@ export default function Destinos() {
                   />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.75) 0%, transparent 55%)' }} />
                   <div style={{ position: 'absolute', bottom: 16, left: 16, color: 'white' }}>
-                    <p style={{ fontSize: '2rem', lineHeight: 1, marginBottom: 4 }}>{d.icono}</p>
+                    {d.icono && <p style={{ fontSize: '2rem', lineHeight: 1, marginBottom: 4 }}>{d.icono}</p>}
                     <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.3rem', color: '#f9f3e3', lineHeight: 1.1 }}>{d.nombre}</h2>
                     <p style={{ fontSize: '0.72rem', color: '#e8d09acc', marginTop: 2 }}>{d.estado}</p>
                   </div>

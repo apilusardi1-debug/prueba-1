@@ -221,8 +221,12 @@ export const destinos = [
       // Fotos sueltas de la isla, además de las de cada sección — pensada para
       // ir sumando más con el tiempo (no hay límite de cantidad).
       galeria: [
-        { imagen: '/noronha-galeria-1.jpeg', alt: 'Playa en Fernando de Noronha, con el Morro Dois Irmãos de fondo' },
-        { imagen: '/noronha-galeria-2.jpeg', alt: 'Atardecer en una playa de Fernando de Noronha' },
+        { imagen: '/noronha-real-sancho.jpeg', alt: 'Baía do Sancho, Fernando de Noronha' },
+        { imagen: '/noronha-real-flor-1.jpeg', alt: 'Atardecer junto al Morro Dois Irmãos, Fernando de Noronha' },
+        { imagen: '/noronha-real-fn.jpeg', alt: 'Vista elevada de una playa en Fernando de Noronha' },
+        { imagen: '/noronha-real-buda.jpeg', alt: 'El Morro do Pico visto desde la playa, Fernando de Noronha' },
+        { imagen: '/noronha-real-buraco.jpeg', alt: 'Piscina natural en las rocas de Fernando de Noronha' },
+        { imagen: '/noronha-real-flor-2.jpeg', alt: 'Vista de la costa de Fernando de Noronha' },
       ],
       // Videos de la agencia — array para poder sumar varios (bautismo de
       // buceo, drone de las playas, testimonios, etc.). Mientras esté vacío

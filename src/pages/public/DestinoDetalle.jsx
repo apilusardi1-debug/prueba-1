@@ -73,6 +73,27 @@ function SeccionEditorial({ destino }) {
         )}
       </section>
 
+      {/* ¿Noronha es caro? */}
+      {c.caro && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+          <h2 className={`${tituloSeccion} mb-8`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div className="bg-hero-cream rounded-2xl p-6 md:p-8">
+              <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.intro}</p>
+            </div>
+            <div className="bg-hero-cream rounded-2xl p-6 md:p-8">
+              <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
+              <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
+            </div>
+          </div>
+          {c.caro.cierre && (
+            <p className="font-body-md text-body-md text-hero-navy font-medium leading-relaxed mt-6 max-w-3xl">
+              👉 {c.caro.cierre}
+            </p>
+          )}
+        </section>
+      )}
+
       {/* Ingreso y tasas */}
       {c.tasas?.items?.length > 0 && (
         <section className="py-14 md:py-16" style={{ backgroundColor: 'rgba(136,209,244,0.18)' }}>

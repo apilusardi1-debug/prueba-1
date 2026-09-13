@@ -1,66 +1,89 @@
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { destinos, excursiones, formatPrecio } from '../../data/mockData.js'
+import { destinos, formatPrecio } from '../../data/mockData.js'
+import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 
 export default function Destinos() {
   const { t } = useLang()
+  const [excursiones, setExcursiones] = useState([])
+
+  useEffect(() => {
+    excursionesApi.getAll().then(({ data }) => {
+      if (data) setExcursiones(data.map(normalizarExcursion))
+    }).catch(() => {})
+  }, [])
+
+  // Precio "desde" real por destino (paquetes cargados en el admin), en vez
+  // de los datos de mockData.js que quedaban desactualizados sin relación
+  // con el inventario real.
+  const desdePorDestino = useMemo(() => {
+    const map = {}
+    excursiones
+      .filter((e) => e.categoria === 'paquetes')
+      .forEach((e) => {
+        if (!map[e.destino] || e.precio < map[e.destino].precio) {
+          map[e.destino] = { precio: e.precio, moneda: e.moneda }
+        }
+      })
+    return map
+  }, [excursiones])
 
   return (
-    <div style={{ backgroundColor: '#f9f3e3', minHeight: '100vh' }}>
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="mb-10">
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Brasil</p>
-          <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2rem,4vw,3rem)', color: '#1C1208', lineHeight: 1.1, marginBottom: 8 }}>
+    <div className="bg-surface min-h-screen">
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="bg-hero-navy pt-32 pb-16 md:pb-20">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
             {t('nav_destinations')}
           </h1>
-          <p style={{ color: '#1C1208AA', fontSize: '1rem' }}>Nordeste Brasileiro — los mejores destinos de playa de Brasil</p>
+          <p className="font-display-hero uppercase text-hero-cream"
+            style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
+            Nordeste brasileño — los mejores destinos de playa de Brasil
+          </p>
         </div>
+      </section>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {destinos.map((d) => {
-            const paquetesDestino = excursiones.filter((e) => e.destino === d.nombre && e.categoria === 'paquetes')
-            const desde = paquetesDestino.length > 0 ? Math.min(...paquetesDestino.map((e) => e.precio)) : null
-
-            return (
-              <Link
-                key={d.id}
-                to={`/destinos/${d.id}`}
-                className="group overflow-hidden transition-all"
-                style={{ background: 'white', borderRadius: 20, border: '1px solid #e8d09a', textDecoration: 'none', display: 'block' }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow='0 8px 30px rgba(28,18,8,0.1)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow='none'}
-              >
-                <div className="relative overflow-hidden" style={{ height: 220 }}>
-                  <img
-                    src={d.imagen}
-                    alt={d.nombre}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,18,8,0.75) 0%, transparent 55%)' }} />
-                  <div style={{ position: 'absolute', bottom: 16, left: 16, color: 'white' }}>
-                    {d.icono && <p style={{ fontSize: '2rem', lineHeight: 1, marginBottom: 4 }}>{d.icono}</p>}
-                    <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.3rem', color: '#f9f3e3', lineHeight: 1.1 }}>{d.nombre}</h2>
-                    <p style={{ fontSize: '0.72rem', color: '#e8d09acc', marginTop: 2 }}>{d.estado}</p>
+      {/* ── LISTADO ──────────────────────────────────────────── */}
+      <section className="py-12 md:py-16">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {destinos.map((d) => {
+              const desde = desdePorDestino[d.nombre]
+              return (
+                <Link key={d.id} to={`/destinos/${d.id}`}
+                  className="group flex flex-col bg-white border-2 border-hero-navy/10 hover:border-hero-navy rounded-2xl overflow-hidden transition-colors">
+                  <div className="relative h-56 overflow-hidden">
+                    <img src={d.imagen} alt={d.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/85 via-deep-ocean/10 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-5">
+                      <h2 className="font-display-hero uppercase text-hero-yellow leading-none mb-1"
+                        style={{ fontSize: 'clamp(1.4rem, 2.5vw, 1.75rem)' }}>
+                        {d.nombre}
+                      </h2>
+                      <p className="font-label-lg text-label-sm uppercase text-sand-beige/90">{d.estado}</p>
+                    </div>
                   </div>
-                </div>
-                <div style={{ padding: '16px 20px' }}>
-                  <p style={{ fontSize: '0.85rem', color: '#1C1208AA', marginBottom: 14, lineHeight: 1.5 }}>{d.descripcion}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e8d09a', paddingTop: 12 }}>
-                    {desde ? (
-                      <span style={{ fontSize: '0.85rem', color: '#b07420', fontWeight: 700 }}>
-                        Desde {formatPrecio(desde, 'USD')}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.82rem', color: '#1C120888' }}>Consultá disponibilidad</span>
-                    )}
-                    <span style={{ fontSize: '0.8rem', color: '#b07420', fontWeight: 600 }}>Ver paquetes →</span>
+                  <div className="p-5 flex flex-col flex-1 gap-3">
+                    <p className="font-body-md text-body-md text-on-surface-variant flex-1 line-clamp-2">{d.descripcion}</p>
+                    <div className="pt-3 border-t border-surface-variant flex items-center justify-between gap-3">
+                      {desde ? (
+                        <span className="font-label-lg text-label-sm uppercase text-hero-navy font-bold whitespace-nowrap">
+                          Desde {formatPrecio(desde.precio, desde.moneda)}
+                        </span>
+                      ) : (
+                        <span className="font-body-md text-body-md text-on-surface-variant">Consultá disponibilidad</span>
+                      )}
+                      <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline whitespace-nowrap">Explorar →</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            )
-          })}
+                </Link>
+              )
+            })}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }

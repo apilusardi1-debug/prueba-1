@@ -57,7 +57,7 @@ function SeccionEditorial({ destino }) {
         {c.pullQuote && (
           <p className="font-display-hero uppercase text-hero-navy leading-snug mb-10"
             style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', letterSpacing: '0.01em' }}>
-            "{c.pullQuote}"
+            {c.pullQuote}
           </p>
         )}
         {c.datos?.length > 0 && (

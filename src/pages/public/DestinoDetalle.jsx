@@ -76,7 +76,7 @@ function SeccionEditorial({ destino }) {
       {/* ¿Noronha es caro? */}
       {c.caro && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
-          <div className={c.caro.video ? 'grid md:grid-cols-2 gap-8 md:gap-12 items-stretch' : ''}>
+          <div className={c.caro.video ? 'grid md:grid-cols-2 gap-8 md:gap-12 items-start' : ''}>
             <div>
               <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
               <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed mb-8">
@@ -94,7 +94,7 @@ function SeccionEditorial({ destino }) {
               )}
             </div>
             {c.caro.video && (
-              <div className="rounded-3xl overflow-hidden mx-auto w-full max-w-sm md:max-w-none">
+              <div className="rounded-3xl overflow-hidden mx-auto h-80 md:h-[520px]">
                 <video src={c.caro.video} autoPlay loop muted playsInline className="w-full h-full object-cover" />
               </div>
             )}

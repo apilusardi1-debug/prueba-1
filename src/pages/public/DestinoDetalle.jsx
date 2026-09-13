@@ -100,7 +100,7 @@ function SeccionEditorial({ destino }) {
       {/* Foto de apoyo: llegando a la isla */}
       {c.vuelo && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>
               <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Llegando a Noronha</h2>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.vuelo.texto}</p>

@@ -76,20 +76,29 @@ function SeccionEditorial({ destino }) {
       {/* ¿Noronha es caro? */}
       {c.caro && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
-          <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
-          <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed max-w-3xl mb-8">
-            {c.caro.intro}
-          </p>
-          <div className="bg-hero-cream rounded-2xl p-6 md:p-8 max-w-3xl mb-6">
-            <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
-            <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
-          </div>
-          {c.caro.cierre && (
-            <div className="flex items-start gap-3 bg-hero-navy rounded-2xl p-5 md:p-6 max-w-3xl">
-              <span className="material-symbols-outlined text-hero-yellow text-2xl flex-shrink-0">tips_and_updates</span>
-              <p className="font-body-md text-body-md text-hero-cream leading-relaxed">{c.caro.cierre}</p>
+          <div className={c.caro.video ? 'grid md:grid-cols-2 gap-8 md:gap-12 items-stretch' : ''}>
+            <div>
+              <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
+              <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed mb-8">
+                {c.caro.intro}
+              </p>
+              <div className="bg-hero-cream rounded-2xl p-6 md:p-8 mb-6">
+                <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
+                <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
+              </div>
+              {c.caro.cierre && (
+                <div className="flex items-start gap-3 bg-hero-navy rounded-2xl p-5 md:p-6">
+                  <span className="material-symbols-outlined text-hero-yellow text-2xl flex-shrink-0">tips_and_updates</span>
+                  <p className="font-body-md text-body-md text-hero-cream leading-relaxed">{c.caro.cierre}</p>
+                </div>
+              )}
             </div>
-          )}
+            {c.caro.video && (
+              <div className="rounded-3xl overflow-hidden mx-auto w-full max-w-sm md:max-w-none">
+                <video src={c.caro.video} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
         </section>
       )}
 

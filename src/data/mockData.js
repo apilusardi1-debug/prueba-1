@@ -186,6 +186,7 @@ export const destinos = [
         intro: 'Noronha no es un destino económico, y es importante saberlo antes de viajar. Pero también vale cada centavo: no es un lugar como cualquier otro.',
         porQue: 'Es una isla aislada, de acceso controlado, y casi todo lo que se consume llega en barco o avión. Eso encarece productos, servicios y toda la logística —la misma razón por la que este paraíso está tan bien conservado. A eso se suman la tasa ambiental obligatoria (por día de estadía) y el pase del Parque Nacional, necesario para varias de las playas más famosas.',
         cierre: 'Entender esto desde el principio ayuda a viajar con expectativas realistas y a valorar aún más la experiencia que ofrece la isla.',
+        video: '/noronha-caro-video.mp4',
       },
       // Sección propia de "Ingreso y tasas" (además de las tarjetas cortas en
       // `datos`) con el detalle de cómo se paga cada una, tal como estaba en

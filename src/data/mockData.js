@@ -179,28 +179,42 @@ export const destinos = [
         { icono: 'payments', titulo: '¿Es un destino caro?', texto: 'Sí, y vale saberlo antes de viajar: es una isla aislada, casi todo llega en barco o avión, y eso encarece la estadía.' },
         { icono: 'confirmation_number', titulo: 'Acceso limitado', texto: 'La isla controla la cantidad de turistas y de vuelos diarios, así que conviene reservar con anticipación.' },
       ],
+      // Foto de apoyo para "Cómo llegar" — vista desde el avión al aterrizar.
+      vuelo: {
+        texto: 'Llegar ya es parte de la experiencia: en la aproximación final, la vista desde la ventanilla muestra el Morro Dois Irmãos y las primeras playas de la isla.',
+        imagen: '/noronha-vuelo.jpeg',
+      },
       buceo: {
-        texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo: hasta 50 metros de visibilidad y agua cálida todo el año, sin necesidad de traje de neopreno. Bajo el agua conviven tortugas gigantes, rayas, cardúmenes de colores, morenas, langostas, tiburones (lija, limón, nodriza) y delfines, además de naufragios convertidos en arrecifes artificiales, cavernas y túneles. No hace falta experiencia previa: hay bautismos guiados para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados, como el naufragio de la Corveta Ipiranga, a 62 metros de profundidad. Y si preferís quedarte en la superficie, algunos de los mejores puntos de snorkel del mundo muestran casi la misma vida marina.',
+        texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo: hasta 50 metros de visibilidad y agua cálida todo el año, sin necesidad de traje de neopreno. Bajo el agua conviven tortugas gigantes, rayas, cardúmenes de colores, morenas, langostas, barracudas, tiburones (lija, limón, nodriza) y delfines, además de naufragios convertidos en arrecifes artificiales, cavernas, túneles y otras formaciones rocosas submarinas. No hace falta experiencia previa: hay bautismos guiados para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados, como el naufragio de la Corveta Ipiranga, a 62 metros de profundidad. Y si preferís quedarte en la superficie, algunos de los mejores puntos de snorkel del mundo muestran casi la misma vida marina.',
         imagen: '/noronha-buceo.jpeg',
       },
       delfines: {
         texto: 'Nadar cerca de delfines rotadores es una de las experiencias más buscadas de la isla: llegan en manada todas las mañanas a descansar en la Baía dos Golfinhos.',
         imagen: '/noronha-delfines.jpeg',
       },
-      // Video opcional de la agencia para esta sección — mientras no haya uno
-      // propio, no se muestra nada (ver DestinoDetalle.jsx).
-      video: null,
-      cierre: [
-        { icono: 'cottage', titulo: 'Dónde te alojás', texto: 'A diferencia de otros destinos del nordeste, en Noronha no hay grandes resorts frente al mar: la isla prioriza la conservación por sobre el desarrollo hotelero. La mayoría son posadas familiares, armadas a partir de casas adaptadas, desde opciones boutique más exclusivas hasta alternativas simples cerca del centro. Llegar a algunas playas implica una caminata corta, y eso también forma parte de la experiencia.' },
-        { icono: 'event_available', titulo: 'Un destino que pide planificación', texto: 'Noronha no es un destino masivo: tiene cupos de visitantes limitados, pocos vuelos por día y trámites propios (tasa ambiental, pase del parque). Llegar desde fuera de Brasil implica al menos dos vuelos internos, así que conviene armar bien el itinerario y reservar con tiempo.' },
+      // Fotos sueltas de la isla, además de las de cada sección — pensada para
+      // ir sumando más con el tiempo (no hay límite de cantidad).
+      galeria: [
+        { imagen: '/noronha-galeria-1.jpeg', alt: 'Playa en Fernando de Noronha, con el Morro Dois Irmãos de fondo' },
+        { imagen: '/noronha-galeria-2.jpeg', alt: 'Atardecer en una playa de Fernando de Noronha' },
       ],
+      // Videos de la agencia — array para poder sumar varios (bautismo de
+      // buceo, drone de las playas, testimonios, etc.). Mientras esté vacío
+      // no se muestra nada (ver DestinoDetalle.jsx); cuando carguen el
+      // primero, agregar acá {titulo, video: 'https://...', thumbnail: '...'}.
+      videos: [],
+      cierre: [
+        { icono: 'cottage', titulo: 'Dónde te alojás', texto: 'A diferencia de otros destinos del nordeste, en Noronha no hay grandes resorts frente al mar: la isla prioriza la conservación por sobre el desarrollo hotelero. La mayoría son posadas familiares, armadas a partir de casas adaptadas, desde opciones boutique más exclusivas hasta alternativas simples cerca del centro (ideal para salir de noche). Llegar a algunas playas implica una caminata corta, y eso también forma parte de la experiencia.' },
+        { icono: 'event_available', titulo: 'Un destino que pide planificación', texto: 'Noronha no es un destino masivo: tiene cupos de visitantes limitados, pocos vuelos por día y trámites propios (tasa ambiental, pase del parque). Llegar desde fuera de Brasil implica al menos dos vuelos internos —por ejemplo, con conexión en São Paulo o Recife—, así que conviene armar bien el itinerario y reservar con tiempo.' },
+      ],
+      cierreTexto: 'Entender todo esto antes de viajar no es un detalle menor: es lo que convierte a Noronha en mucho más que un destino de playa — una experiencia transformadora.',
       playasDestacadas: [
         { nombre: 'Baía do Sancho', imagen: '/noronha-sancho.jpeg', texto: 'Elegida varias veces como una de las mejores playas del mundo. Se llega bajando una escalera tallada en la roca (o en barco) hasta una franja de arena dorada entre acantilados, con un mar que va del turquesa al azul profundo.' },
         { nombre: 'Praia da Conceição', imagen: '/noronha-conceicao.jpeg', texto: 'A pocos minutos del centro, con el Morro do Pico —la formación más alta de la isla— de fondo. Ideal para el atardecer, con piscinas naturales cuando baja la marea.' },
+        { nombre: 'Cacimba do Padre', imagen: '/noronha-cacimba.jpeg', texto: 'Con el Morro Dois Irmãos como telón de fondo, es el escenario de las olas grandes y los campeonatos de surf entre diciembre y marzo, que atraen a surfistas de distintas partes del mundo. El resto del año el mar se calma y se puede nadar tranquilo.' },
+        { nombre: 'Praia do Cachorro', imagen: '/noronha-cachorro.jpeg', texto: 'La más cercana al centro histórico, con piscinas naturales entre las rocas cuando baja la marea — entre ellas, el Buraco do Galego, una piscina pequeña de agua cristalina.' },
       ],
       playasMas: [
-        { nombre: 'Cacimba do Padre', texto: 'Con el Morro Dois Irmãos como telón de fondo, es el escenario de las olas grandes y los campeonatos de surf entre diciembre y marzo. El resto del año el mar se calma y se puede nadar tranquilo.' },
-        { nombre: 'Praia do Cachorro', texto: 'La más cercana al centro histórico, con piscinas naturales entre las rocas cuando baja la marea — entre ellas, el Buraco do Galego, una piscina pequeña de agua cristalina.' },
         { nombre: 'Praia do Porto', texto: 'El punto de buceo y snorkel más visitado de la isla: un acuario natural a cielo abierto con tortugas, rayas y los restos del Navío Elefante, un naufragio convertido en arrecife.' },
       ],
     },

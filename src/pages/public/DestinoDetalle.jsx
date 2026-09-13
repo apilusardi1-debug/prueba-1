@@ -40,6 +40,7 @@ function CardPaquete({ ex }) {
 
 function SeccionEditorial({ destino }) {
   const c = destino.contenido
+  const [videoActivo, setVideoActivo] = useState(null)
   if (!c) return null
   const tituloSeccion = 'font-display-hero uppercase text-hero-navy'
   const tituloEstilo = { fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }
@@ -70,6 +71,21 @@ function SeccionEditorial({ destino }) {
         )}
       </section>
 
+      {/* Foto de apoyo: llegando a la isla */}
+      {c.vuelo && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div>
+              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Llegando a Noronha</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.vuelo.texto}</p>
+            </div>
+            <div className="rounded-3xl overflow-hidden h-72 md:h-96">
+              <img src={c.vuelo.imagen} alt={`Vista aérea de ${destino.nombre}`} className="w-full h-full object-cover" />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Buceo */}
       {c.buceo && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
@@ -85,10 +101,36 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
-      {/* Video de la agencia (si hay uno cargado) */}
-      {c.video && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
-          <video src={c.video} controls playsInline className="w-full rounded-3xl bg-black" style={{ aspectRatio: '16/9' }} />
+      {/* Videos de la agencia (si hay alguno cargado) */}
+      {c.videos?.length > 0 && (
+        <section className="pb-14 md:pb-16 bg-hero-navy py-14 md:py-16">
+          <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <h2 className="font-display-hero uppercase text-hero-cream" style={tituloEstilo}>Videos de {destino.nombre}</h2>
+          </div>
+          <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
+            <div className="flex gap-4" style={{ width: 'max-content' }}>
+              {c.videos.map((v, i) => (
+                <button key={i} onClick={() => setVideoActivo(v)}
+                  className="group relative rounded-2xl overflow-hidden flex-shrink-0 text-left"
+                  style={{ width: 'clamp(180px, 20vw, 240px)', aspectRatio: '9/16' }}>
+                  {v.thumbnail ? (
+                    <img src={v.thumbnail} alt={v.titulo || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <video src={v.video + '#t=0.5'} preload="metadata" muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-14 h-14 rounded-full bg-hero-yellow/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg width="20" height="24" viewBox="0 0 20 24" fill="#072e40"><path d="M0 0l20 12L0 24z" /></svg>
+                    </span>
+                  </div>
+                  {v.titulo && (
+                    <p className="absolute bottom-0 left-0 right-0 p-3 font-label-lg text-label-sm text-hero-cream leading-tight">{v.titulo}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
       )}
 
@@ -137,9 +179,28 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
+      {/* Galería de fotos sueltas — pensada para ir sumando más con el tiempo */}
+      {c.galeria?.length > 0 && (
+        <section className="pb-14 md:pb-16">
+          <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a la isla</h2>
+          </div>
+          <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
+            <div className="flex gap-4" style={{ width: 'max-content' }}>
+              {c.galeria.map((g, i) => (
+                <div key={i} className="rounded-2xl overflow-hidden flex-shrink-0"
+                  style={{ width: 'clamp(220px, 26vw, 340px)', aspectRatio: '4/5' }}>
+                  <img src={g.imagen} alt={g.alt || destino.nombre} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Cierre: hospedaje + logística */}
       {c.cierre?.length > 0 && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-10">
           <div className="grid sm:grid-cols-2 gap-4">
             {c.cierre.map((item) => (
               <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8">
@@ -150,6 +211,28 @@ function SeccionEditorial({ destino }) {
             ))}
           </div>
         </section>
+      )}
+
+      {c.cierreTexto && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+          <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl"
+            style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.4rem)', letterSpacing: '0.01em' }}>
+            {c.cierreTexto}
+          </p>
+        </section>
+      )}
+
+      {/* Lightbox de video */}
+      {videoActivo && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setVideoActivo(null)}>
+          <button onClick={() => setVideoActivo(null)}
+            className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-xl">
+            ×
+          </button>
+          <video src={videoActivo.video} controls autoPlay playsInline
+            className="max-h-[90vh] rounded-2xl bg-black" style={{ aspectRatio: '9/16' }}
+            onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
     </>
   )

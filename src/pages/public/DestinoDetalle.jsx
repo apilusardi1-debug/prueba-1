@@ -433,19 +433,6 @@ export default function DestinoDetalle() {
           </div>
         ) : (
           <>
-            {/* Paquetes */}
-            {paquetesDestino.length > 0 && (
-              <div className="mb-16">
-                <h2 className="font-display-hero uppercase text-hero-navy mb-8"
-                  style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
-                  {t('nav_packages')}
-                </h2>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {paquetesDestino.map((ex) => <CardPaquete key={ex.id} ex={ex} />)}
-                </div>
-              </div>
-            )}
-
             {/* Excursiones */}
             {excursionesDestino.length > 0 && (
               <div className="mb-16">

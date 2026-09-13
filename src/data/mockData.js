@@ -179,6 +179,17 @@ export const destinos = [
         { icono: 'payments', titulo: '¿Es un destino caro?', texto: 'Sí, y vale saberlo antes de viajar: es una isla aislada, casi todo llega en barco o avión, y eso encarece la estadía.' },
         { icono: 'confirmation_number', titulo: 'Acceso limitado', texto: 'La isla controla la cantidad de turistas y de vuelos diarios, así que conviene reservar con anticipación.' },
       ],
+      // Sección propia de "Ingreso y tasas" (además de las tarjetas cortas en
+      // `datos`) con el detalle de cómo se paga cada una, tal como estaba en
+      // el material de referencia. El botón lleva al portal oficial de venta
+      // de entradas del Parque Nacional Marinho (ICMBio).
+      tasas: {
+        items: [
+          { titulo: '1) TPA — Tasa de preservación ambiental diaria', texto: 'Es obligatoria para todos los visitantes y se paga por día de permanencia en la isla. Se puede pagar online, a través del sitio oficial del gobierno del archipiélago, o directamente en el aeropuerto al ingresar.' },
+          { titulo: '2) Ingreso al Parque Nacional Marinho (tasa ICMBio)', texto: 'Esta entrada es necesaria para visitar playas, senderos y zonas protegidas dentro del Parque Nacional Marinho. Se compra online y se recibe un código QR para presentar durante las visitas.' },
+        ],
+        boton: { texto: 'Ver ingreso y tasa', url: 'https://tickets.parnanoronha.com.br/' },
+      },
       // Foto de apoyo para "Cómo llegar" — vista desde el avión al aterrizar.
       vuelo: {
         texto: 'Llegar ya es parte de la experiencia: en la aproximación final, la vista desde la ventanilla muestra el Morro Dois Irmãos y las primeras playas de la isla.',

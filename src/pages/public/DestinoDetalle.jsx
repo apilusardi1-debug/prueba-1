@@ -71,6 +71,30 @@ function SeccionEditorial({ destino }) {
         )}
       </section>
 
+      {/* Ingreso y tasas */}
+      {c.tasas?.items?.length > 0 && (
+        <section className="py-14 md:py-16" style={{ backgroundColor: 'rgba(136,209,244,0.18)' }}>
+          <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Ingreso y tasas</h2>
+            <div className="grid sm:grid-cols-2 gap-6 mb-8">
+              {c.tasas.items.map((item) => (
+                <div key={item.titulo} className="bg-white rounded-2xl p-6 md:p-8">
+                  <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3 leading-snug">{item.titulo}</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{item.texto}</p>
+                </div>
+              ))}
+            </div>
+            {c.tasas.boton && (
+              <a href={c.tasas.boton.url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-hero-navy text-white font-label-lg text-label-lg uppercase px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
+                {c.tasas.boton.texto}
+                <span className="material-symbols-outlined text-hero-yellow text-[20px]">arrow_forward</span>
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Foto de apoyo: llegando a la isla */}
       {c.vuelo && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">

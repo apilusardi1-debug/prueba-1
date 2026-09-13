@@ -184,6 +184,15 @@ export const destinos = [
         texto: 'Llegar ya es parte de la experiencia: en la aproximación final, la vista desde la ventanilla muestra el Morro Dois Irmãos y las primeras playas de la isla.',
         imagen: '/noronha-vuelo.jpeg',
       },
+      // Sección propia de "mejor época" (además de la tarjeta corta en `datos`)
+      // con las dos temporadas contrastadas, tal como la pregunta se
+      // presentaba en el material de referencia.
+      epoca: {
+        temporadas: [
+          { titulo: 'Junio a noviembre', subtitulo: 'La época que recomendamos', texto: 'El mar está más calmo y alcanza una transparencia impresionante, el escenario perfecto para el buceo, el snorkel y para contemplar la naturaleza de la isla sin el oleaje de fondo.' },
+          { titulo: 'Noviembre a mayo', subtitulo: 'Temporada de olas y surf', texto: 'El mar cambia de comportamiento y llegan olas grandes, con campeonatos que atraen a surfistas de distintas partes del mundo. No es la época ideal si tu prioridad es el mar tranquilo y cristalino que caracteriza a Noronha.' },
+        ],
+      },
       buceo: {
         texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo: hasta 50 metros de visibilidad y agua cálida todo el año, sin necesidad de traje de neopreno. Bajo el agua conviven tortugas gigantes, rayas, cardúmenes de colores, morenas, langostas, barracudas, tiburones (lija, limón, nodriza) y delfines, además de naufragios convertidos en arrecifes artificiales, cavernas, túneles y otras formaciones rocosas submarinas. No hace falta experiencia previa: hay bautismos guiados para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados, como el naufragio de la Corveta Ipiranga, a 62 metros de profundidad. Y si preferís quedarte en la superficie, algunos de los mejores puntos de snorkel del mundo muestran casi la misma vida marina.',
         imagen: '/noronha-buceo.jpeg',

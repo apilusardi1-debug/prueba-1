@@ -86,6 +86,24 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
+      {/* Mejor época para viajar */}
+      {c.epoca?.temporadas?.length > 0 && (
+        <section className="bg-hero-cream py-14 md:py-16">
+          <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>¿Cuál es la mejor época para viajar a {destino.nombre}?</h2>
+            <div className="grid sm:grid-cols-2 gap-6">
+              {c.epoca.temporadas.map((t) => (
+                <div key={t.titulo} className="bg-white rounded-2xl p-6 md:p-8">
+                  <p className="font-label-lg text-label-sm uppercase text-hero-navy/60 mb-1">{t.subtitulo}</p>
+                  <h3 className="font-display-hero uppercase text-hero-navy text-xl mb-3">{t.titulo}</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{t.texto}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Buceo */}
       {c.buceo && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">

@@ -76,20 +76,19 @@ function SeccionEditorial({ destino }) {
       {/* ¿Noronha es caro? */}
       {c.caro && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
-          <h2 className={`${tituloSeccion} mb-8`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div className="bg-hero-cream rounded-2xl p-6 md:p-8">
-              <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.intro}</p>
-            </div>
-            <div className="bg-hero-cream rounded-2xl p-6 md:p-8">
-              <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
-              <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
-            </div>
+          <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
+          <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed max-w-3xl mb-8">
+            {c.caro.intro}
+          </p>
+          <div className="bg-hero-cream rounded-2xl p-6 md:p-8 max-w-3xl mb-6">
+            <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
+            <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
           </div>
           {c.caro.cierre && (
-            <p className="font-body-md text-body-md text-hero-navy font-medium leading-relaxed mt-6 max-w-3xl">
-              👉 {c.caro.cierre}
-            </p>
+            <div className="flex items-start gap-3 bg-hero-navy rounded-2xl p-5 md:p-6 max-w-3xl">
+              <span className="material-symbols-outlined text-hero-yellow text-2xl flex-shrink-0">tips_and_updates</span>
+              <p className="font-body-md text-body-md text-hero-cream leading-relaxed">{c.caro.cierre}</p>
+            </div>
           )}
         </section>
       )}

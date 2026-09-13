@@ -123,6 +123,64 @@ export const destinos = [
     descripcion: 'Famosa por sus piscinas naturales y aguas cristalinas. Una de las mejores playas de Brasil.',
     imagen: '/porto-de-galinhas.jpeg',
     icono: '🐠',
+    contenido: {
+      intro: 'Porto de Galinhas es la playa más visitada de Pernambuco, en el municipio de Ipojuca, a unos 50 km de Recife. Debe su fama a un arrecife de coral de casi 700 metros que corre paralelo a la costa: cuando baja la marea, el agua que queda atrapada entre la arena y el arrecife forma piscinas naturales de aguas cálidas y transparentes.',
+      pullQuote: 'El arrecife hace de pared, la marea baja hace el resto: aparece una piscina que no construyó nadie.',
+      datos: [
+        { icono: 'directions_car', titulo: 'Cómo llegar', texto: 'A unos 50 km del Aeropuerto de Recife, aproximadamente una hora en auto por la ruta PE-009.' },
+        { icono: 'waves', titulo: 'Piscinas naturales', texto: 'Se forman entre la arena y un arrecife de coral de casi 700 metros. Se ven mejor con marea media o baja.' },
+        { icono: 'sailing', titulo: 'Cómo se llega', texto: 'En jangada, el bote de vela típico de la zona — no hace falta saber nadar. Ir por tu cuenta nadando requiere buen estado físico.' },
+        { icono: 'wb_sunny', titulo: 'Mejor época', texto: 'Sep-mar: temporada seca. Abr-ago: temporada de lluvias, más fuertes entre mayo y julio (aunque suelen ser cortas).' },
+        { icono: 'eco', titulo: 'Cuidá el arrecife', texto: 'Pisar el coral está prohibido: es frágil y muere al contacto. Se recomienda usar calzado de agua por los erizos.' },
+        { icono: 'history_edu', titulo: 'Un nombre con historia', texto: 'Viene de la época colonial: tras prohibirse el tráfico de personas esclavizadas, quienes lo seguían haciendo en secreto usaban la frase en código "hay gallinas nuevas en el puerto" para avisar a los compradores.' },
+      ],
+      fotoSecundaria: {
+        titulo: 'La feirinha, de noche',
+        texto: 'Cuando cae el sol, la calle principal del pueblo se llena de puestos de artesanías, ropa y comida — el paseo clásico después de un día de playa, con las sombrillas de colores como sello del lugar.',
+        imagen: '/porto-feirinha.jpeg',
+      },
+      epoca: {
+        temporadas: [
+          { titulo: 'Septiembre a marzo', subtitulo: 'La época que recomendamos', texto: 'Temporada seca, con más sol y cielos despejados — temperaturas de entre 26° y 32°, ideales para pasar el día en las piscinas naturales.' },
+          { titulo: 'Abril a agosto', subtitulo: 'Temporada de lluvias', texto: 'Las lluvias suelen ser cortas e intercaladas con sol; los meses más lluviosos son mayo, junio y julio. El mar sigue apto para las piscinas naturales, pero con menos días soleados.' },
+        ],
+      },
+      actividad: {
+        titulo: 'Las piscinas naturales',
+        texto: 'Son la postal de Porto de Galinhas: el arrecife corta el oleaje y deja un espejo de agua tibia y transparente, con cientos de peces de colores nadando junto a los bañistas. Se llega en jangada —el bote de vela artesanal que manejan los jangadeiros locales—, un paseo de unos 40 minutos que no requiere saber nadar. Antes de bajar, muchos operadores muestran un video breve de concientización ambiental: caminar sobre el coral está prohibido porque lo daña, así que conviene entrar con cuidado y, si es posible, con calzado de agua.',
+        checklist: [
+          'Agua cálida todo el año, alrededor de 29°.',
+          'No hace falta saber nadar: la jangada te lleva y te trae.',
+          'Cientos de peces de arrecife nadando junto a vos.',
+        ],
+        imagen: '/porto-piscinas.jpeg',
+      },
+      banner: {
+        texto: 'Porto de Galinhas fue elegida varias veces "Mejor Playa de Brasil" por los lectores de la revista Viagem & Turismo — y las jangadas de colores frente a la orilla son parte de por qué.',
+        imagen: '/porto-praia-principal.jpeg',
+      },
+      // Videos de la agencia — vacío por ahora (ver DestinoDetalle.jsx).
+      videos: [],
+      // Fotos sueltas del destino, además de las de cada sección — pensada
+      // para ir sumando más con el tiempo (no hay límite de cantidad).
+      galeria: [
+        { imagen: '/porto-galeria-1.jpeg', alt: 'Botes sobre el arrecife en Porto de Galinhas' },
+      ],
+      cierre: [
+        { icono: 'directions_car', titulo: 'Cómo moverse', texto: 'Además de las jangadas a las piscinas, los paseos en buggy son un clásico para conocer la costa: en una misma salida se puede recorrer Maracaípe, Cupe, Muro Alto y las piscinas naturales.' },
+        { icono: 'beach_access', titulo: 'Un destino accesible', texto: 'A diferencia de otros destinos del nordeste, Porto de Galinhas no tiene cupos ni tasas de ingreso: se llega en auto desde Recife el mismo día, y hay alojamiento para todos los presupuestos.' },
+      ],
+      cierreTexto: 'Entre el arrecife, la arena y la feirinha de la noche, Porto de Galinhas tiene el ritmo perfecto para desconectar sin complicaciones de logística.',
+      playasDestacadas: [
+        { nombre: 'Praia de Porto de Galinhas', imagen: '/porto-galeria-2.jpeg', texto: 'El corazón del pueblo: acá arrancan los paseos en jangada hacia las piscinas naturales, con la arena llena de sombrillas de colores. Es la base ideal para el resto de los paseos.' },
+        { nombre: 'Muro Alto', imagen: '/porto-muroalto.jpeg', texto: 'Su piscina natural, protegida por un arrecife a unos 150 metros de la costa, está entre las más grandes de Latinoamérica (más de 2 km). Aguas calmas y tibias, ideales para ir con chicos.' },
+        { nombre: 'Praia dos Carneiros', imagen: '/porto-carneiros.jpeg', texto: 'Ya en el municipio vecino de Tamandaré, con aguas tranquilas protegidas por arrecifes y una pequeña capilla blanca frente al mar como postal. Se visita en una excursión de un día, combinando playa, río y manglar.' },
+      ],
+      playasMas: [
+        { nombre: 'Cupe', texto: 'Con olas más fuertes que el resto de la zona, es una de las playas preferidas por los surfistas. Pontal do Cupe, un sector más resguardado, también tiene sus propias piscinas naturales en marea baja.' },
+        { nombre: 'Maracaípe', texto: 'La más agreste y menos concurrida del circuito, con el oleaje más fuerte — el mejor lugar para surfear cerca de Porto de Galinhas.' },
+      ],
+    },
   },
   {
     id: 'maragogi',
@@ -200,7 +258,8 @@ export const destinos = [
         boton: { texto: 'Ver ingreso y tasa', url: 'https://tickets.parnanoronha.com.br/' },
       },
       // Foto de apoyo para "Cómo llegar" — vista desde el avión al aterrizar.
-      vuelo: {
+      fotoSecundaria: {
+        titulo: 'Llegando a Noronha',
         texto: 'Llegar ya es parte de la experiencia: en la aproximación final, la vista desde la ventanilla muestra el Morro Dois Irmãos y las primeras playas de la isla.',
         imagen: '/noronha-vuelo.jpeg',
       },
@@ -213,7 +272,8 @@ export const destinos = [
           { titulo: 'Noviembre a mayo', subtitulo: 'Temporada de olas y surf', texto: 'El mar cambia de comportamiento y llegan olas grandes, con campeonatos que atraen a surfistas de distintas partes del mundo. No es la época ideal si tu prioridad es el mar tranquilo y cristalino que caracteriza a Noronha.' },
         ],
       },
-      buceo: {
+      actividad: {
+        titulo: 'Un paraíso para el buceo',
         texto: 'Noronha es reconocida mundialmente como uno de los mejores destinos de buceo del planeta. Bajo el agua conviven tortugas gigantes, rayas, cardúmenes de colores, morenas, langostas, barracudas, tiburones (lija, limón, nodriza) y delfines, además de naufragios convertidos en arrecifes artificiales, cavernas, túneles y otras formaciones rocosas submarinas. Y no hace falta ser un buzo experimentado: las agencias de la isla acompañan cada paso para que, aunque sea tu primera vez, la experiencia sea segura, guiada e inolvidable.',
         checklist: [
           'Visibilidad inigualable: hasta 50 metros de claridad en algunos puntos.',
@@ -223,7 +283,7 @@ export const destinos = [
         niveles: 'Hay opciones para todos los niveles: bautismo de buceo para quienes nunca lo hicieron (con instructor desde el primer minuto, en puntos seguros y poco profundos), inmersiones recreativas para buzos certificados, y salidas técnicas y avanzadas para quienes buscan más profundidad, como el naufragio de la Corveta Ipiranga, a 62 metros. Y si no te animás con el cilindro, algunos de los mejores puntos de snorkel del mundo muestran casi la misma vida marina desde la superficie.',
         imagen: '/noronha-buceo.jpeg',
       },
-      delfines: {
+      banner: {
         texto: 'Nadar cerca de delfines rotadores es una de las experiencias más buscadas de la isla: llegan en manada todas las mañanas a descansar en la Baía dos Golfinhos.',
         imagen: '/noronha-delfines.jpeg',
       },

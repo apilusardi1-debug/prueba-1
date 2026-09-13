@@ -126,16 +126,16 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
-      {/* Foto de apoyo: llegando a la isla */}
-      {c.vuelo && (
+      {/* Foto de apoyo secundaria (llegada, actividad extra, etc.) */}
+      {c.fotoSecundaria && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>
-              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Llegando a Noronha</h2>
-              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.vuelo.texto}</p>
+              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>{c.fotoSecundaria.titulo}</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.fotoSecundaria.texto}</p>
             </div>
             <div className="rounded-3xl overflow-hidden h-72 md:h-96">
-              <img src={c.vuelo.imagen} alt={`Vista aérea de ${destino.nombre}`} className="w-full h-full object-cover" />
+              <img src={c.fotoSecundaria.imagen} alt={c.fotoSecundaria.titulo} className="w-full h-full object-cover" />
             </div>
           </div>
         </section>
@@ -159,14 +159,14 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
-      {/* Buceo */}
-      {c.buceo && (
+      {/* Actividad principal del destino (buceo, piscinas naturales, etc.) */}
+      {c.actividad && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             {/* Columna de media: foto + videos agrupados como una misma galería */}
             <div className="order-2 md:order-1">
               <div className="rounded-3xl overflow-hidden h-64 md:h-80 mb-3">
-                <img src={c.buceo.imagen} alt={`Buceo en ${destino.nombre}`} className="w-full h-full object-cover" />
+                <img src={c.actividad.imagen} alt={c.actividad.titulo} className="w-full h-full object-cover" />
               </div>
               {c.videos?.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
@@ -187,11 +187,11 @@ function SeccionEditorial({ destino }) {
             </div>
 
             <div className="order-1 md:order-2">
-              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Un paraíso para el buceo</h2>
-              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-5">{c.buceo.texto}</p>
-              {c.buceo.checklist?.length > 0 && (
+              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>{c.actividad.titulo}</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-5">{c.actividad.texto}</p>
+              {c.actividad.checklist?.length > 0 && (
                 <ul className="space-y-2 mb-5">
-                  {c.buceo.checklist.map((item, i) => (
+                  {c.actividad.checklist.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 font-body-md text-body-md text-on-surface-variant leading-relaxed">
                       <span className="material-symbols-outlined text-hero-navy text-[18px] mt-0.5 flex-shrink-0">check_circle</span>
                       {item}
@@ -199,21 +199,21 @@ function SeccionEditorial({ destino }) {
                   ))}
                 </ul>
               )}
-              {c.buceo.niveles && (
-                <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.buceo.niveles}</p>
+              {c.actividad.niveles && (
+                <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.actividad.niveles}</p>
               )}
             </div>
           </div>
         </section>
       )}
 
-      {/* Banner de delfines / fauna */}
-      {c.delfines && (
+      {/* Banner de foto full-bleed con texto */}
+      {c.banner && (
         <section className="relative h-[340px] md:h-[440px] overflow-hidden">
-          <img src={c.delfines.imagen} alt={`Delfines en ${destino.nombre}`} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={c.banner.imagen} alt={destino.nombre} className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/85 via-deep-ocean/15 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-8 md:pb-10">
-            <p className="font-body-lg text-body-lg text-white max-w-xl leading-relaxed">{c.delfines.texto}</p>
+            <p className="font-body-lg text-body-lg text-white max-w-xl leading-relaxed">{c.banner.texto}</p>
           </div>
         </section>
       )}
@@ -258,7 +258,7 @@ function SeccionEditorial({ destino }) {
       {c.galeria?.length > 0 && (
         <section className="pb-14 md:pb-16 overflow-hidden">
           <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-            <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a la isla</h2>
+            <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a {destino.nombre}</h2>
           </div>
           <div style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)' }}>
             <div className="destinos-track" style={{ display: 'flex', gap: '16px', width: 'max-content', padding: '8px 0 16px' }}>

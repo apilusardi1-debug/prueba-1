@@ -481,8 +481,8 @@ export default function DestinoDetalle() {
               </div>
             )}
 
-            {/* Sin contenido todavía */}
-            {!hayContenido && (
+            {/* Sin contenido comercial ni editorial todavía */}
+            {!hayContenido && !destino.contenido && (
               <div className="text-center py-16">
                 <p className="text-5xl mb-4">🏖️</p>
                 <p className="font-display-hero uppercase text-hero-navy text-2xl mb-3">Muy pronto en {destino.nombre}</p>

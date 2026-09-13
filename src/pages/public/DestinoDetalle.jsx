@@ -38,6 +38,102 @@ function CardPaquete({ ex }) {
   )
 }
 
+function SeccionEditorial({ destino }) {
+  const c = destino.contenido
+  if (!c) return null
+  const tituloSeccion = 'font-display-hero uppercase text-hero-navy'
+  const tituloEstilo = { fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }
+
+  return (
+    <>
+      {/* Sobre el destino + datos prácticos */}
+      <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pt-14 md:pt-20">
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-10">
+          {c.intro}
+        </p>
+        {c.datos?.length > 0 && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {c.datos.map((d) => (
+              <div key={d.titulo} className="bg-hero-cream rounded-2xl p-6">
+                <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{d.icono}</span>
+                <h3 className="font-display-hero uppercase text-hero-navy text-base mb-2">{d.titulo}</h3>
+                <p className="font-body-md text-body-md text-hero-navy/70 leading-snug">{d.texto}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Buceo */}
+      {c.buceo && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div className="rounded-3xl overflow-hidden h-72 md:h-96 order-2 md:order-1">
+              <img src={c.buceo.imagen} alt={`Buceo en ${destino.nombre}`} className="w-full h-full object-cover" />
+            </div>
+            <div className="order-1 md:order-2">
+              <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Un paraíso para el buceo</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.buceo.texto}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Video de la agencia (si hay uno cargado) */}
+      {c.video && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+          <video src={c.video} controls playsInline className="w-full rounded-3xl bg-black" style={{ aspectRatio: '16/9' }} />
+        </section>
+      )}
+
+      {/* Banner de delfines / fauna */}
+      {c.delfines && (
+        <section className="relative h-[340px] md:h-[440px] overflow-hidden">
+          <img src={c.delfines.imagen} alt={`Delfines en ${destino.nombre}`} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-deep-ocean/85 via-deep-ocean/15 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-8 md:pb-10">
+            <p className="font-body-lg text-body-lg text-white max-w-xl leading-relaxed">{c.delfines.texto}</p>
+          </div>
+        </section>
+      )}
+
+      {/* Playas */}
+      {(c.playasDestacadas?.length > 0 || c.playasMas?.length > 0) && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+          <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Las playas que no te podés perder</h2>
+
+          {c.playasDestacadas?.length > 0 && (
+            <div className="space-y-10 mb-10">
+              {c.playasDestacadas.map((p, i) => (
+                <div key={p.nombre} className="grid md:grid-cols-2 gap-8 items-center">
+                  <div className={`rounded-3xl overflow-hidden h-64 md:h-80 ${i % 2 === 1 ? 'md:order-2' : ''}`}>
+                    <img src={p.imagen} alt={p.nombre} className="w-full h-full object-cover" />
+                  </div>
+                  <div className={i % 2 === 1 ? 'md:order-1' : ''}>
+                    <h3 className="font-display-hero uppercase text-hero-navy text-xl mb-3">{p.nombre}</h3>
+                    <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{p.texto}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {c.playasMas?.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {c.playasMas.map((p) => (
+                <div key={p.nombre} className="border border-hero-navy/15 rounded-2xl p-6">
+                  <h3 className="font-display-hero uppercase text-hero-navy text-base mb-2">{p.nombre}</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{p.texto}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+    </>
+  )
+}
+
 function CardHospedaje({ h }) {
   return (
     <Link to={`/hoteles/${h.id}`}
@@ -139,6 +235,9 @@ export default function DestinoDetalle() {
           </div>
         </div>
       </section>
+
+      {/* ── CONTENIDO EDITORIAL ─────────────────────────────────── */}
+      <SeccionEditorial destino={destino} />
 
       {/* ── CONTENIDO ────────────────────────────────────────── */}
       <div id="contenido" className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">

@@ -163,6 +163,40 @@ export const destinos = [
     descripcion: 'Archipiélago protegido. El mejor buceo y snorkel de Brasil, con delfines y tortugas.',
     imagen: '/fernando-de-noronha.jpeg',
     icono: '🐢',
+    // Contenido editorial extra para la ficha de destino (/destinos/:id) — es
+    // opcional: si un destino no tiene `contenido`, esas secciones no se
+    // muestran (ver DestinoDetalle.jsx). Se arma acá porque hoy no hay un
+    // modelo en Supabase para esto; cuando haya contenido real para más
+    // destinos, agregar el mismo objeto siguiendo esta forma.
+    contenido: {
+      intro: 'Fernando de Noronha es un archipiélago volcánico frente a la costa de Pernambuco, declarado Patrimonio Natural de la Humanidad por la UNESCO. Se llega en poco más de una hora de vuelo desde Recife o Natal, pero ahí el ritmo cambia por completo: la isla limita la cantidad de visitantes por día, así que sus playas y arrecifes se mantienen casi intactos.',
+      datos: [
+        { icono: 'flight_takeoff', titulo: 'Cómo llegar', texto: 'No hay vuelos directos: primero volás a Recife o Natal y desde ahí tomás una conexión interna hasta la isla.' },
+        { icono: 'eco', titulo: 'Tasa de preservación', texto: 'Se paga por día de estadía y financia la conservación del parque — cuanto más te quedás, más aporta a la isla.' },
+        { icono: 'park', titulo: 'Parque Nacional Marinho', texto: 'Un pase aparte habilita el ingreso a las playas y zonas protegidas del lado del parque, como Baía do Sancho.' },
+        { icono: 'wb_sunny', titulo: 'Mejor época', texto: 'Jun-nov: mar calmo y máxima transparencia, ideal para buceo. Dic-may: llegan las olas grandes y el surf.' },
+      ],
+      buceo: {
+        texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo. La visibilidad puede superar los 40 metros y el agua se mantiene cálida todo el año. En sus arrecifes conviven tortugas, rayas, meros, morenas y cardúmenes enteros, y para los buceadores más experimentados hay naufragios como la Corveta Ipiranga, hundida a 62 metros. Hay opciones para todos los niveles: bautismos para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados.',
+        imagen: '/noronha-buceo.jpeg',
+      },
+      delfines: {
+        texto: 'Nadar cerca de delfines rotadores es una de las experiencias más buscadas de la isla: llegan en manada todas las mañanas a descansar en la Baía dos Golfinhos.',
+        imagen: '/noronha-delfines.jpeg',
+      },
+      // Video opcional de la agencia para esta sección — mientras no haya uno
+      // propio, no se muestra nada (ver DestinoDetalle.jsx).
+      video: null,
+      playasDestacadas: [
+        { nombre: 'Baía do Sancho', imagen: '/noronha-sancho.jpeg', texto: 'Elegida varias veces como una de las mejores playas del mundo. Se llega bajando una escalera tallada en la roca (o en barco) hasta una franja de arena dorada entre acantilados, con un mar que va del turquesa al azul profundo.' },
+        { nombre: 'Praia da Conceição', imagen: '/noronha-conceicao.jpeg', texto: 'A pocos minutos del centro, con el Morro do Pico —la formación más alta de la isla— de fondo. Ideal para el atardecer, con piscinas naturales cuando baja la marea.' },
+      ],
+      playasMas: [
+        { nombre: 'Cacimba do Padre', texto: 'Con el Morro Dois Irmãos como telón de fondo, es el escenario de las olas grandes y los campeonatos de surf entre diciembre y marzo. El resto del año el mar se calma y se puede nadar tranquilo.' },
+        { nombre: 'Praia do Cachorro', texto: 'La más cercana al centro histórico, con piscinas naturales entre las rocas cuando baja la marea — entre ellas, el Buraco do Galego, una piscina pequeña de agua cristalina.' },
+        { nombre: 'Praia do Porto', texto: 'El punto de buceo y snorkel más visitado de la isla: un acuario natural a cielo abierto con tortugas, rayas y los restos del Navío Elefante, un naufragio convertido en arrecife.' },
+      ],
+    },
   },
 ]
 

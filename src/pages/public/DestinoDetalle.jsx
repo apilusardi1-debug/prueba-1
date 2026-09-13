@@ -48,11 +48,17 @@ function SeccionEditorial({ destino }) {
     <>
       {/* Sobre el destino + datos prácticos */}
       <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pt-14 md:pt-20">
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-10">
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-6">
           {c.intro}
         </p>
+        {c.pullQuote && (
+          <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl mb-10"
+            style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', letterSpacing: '0.01em' }}>
+            "{c.pullQuote}"
+          </p>
+        )}
         {c.datos?.length > 0 && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {c.datos.map((d) => (
               <div key={d.titulo} className="bg-hero-cream rounded-2xl p-6">
                 <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{d.icono}</span>
@@ -128,6 +134,21 @@ function SeccionEditorial({ destino }) {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {/* Cierre: hospedaje + logística */}
+      {c.cierre?.length > 0 && (
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {c.cierre.map((item) => (
+              <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8">
+                <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{item.icono}</span>
+                <h3 className="font-display-hero uppercase text-hero-navy text-lg mb-2">{item.titulo}</h3>
+                <p className="font-body-md text-body-md text-hero-navy/70 leading-relaxed">{item.texto}</p>
+              </div>
+            ))}
+          </div>
         </section>
       )}
     </>

@@ -170,14 +170,17 @@ export const destinos = [
     // destinos, agregar el mismo objeto siguiendo esta forma.
     contenido: {
       intro: 'Fernando de Noronha es un archipiélago volcánico frente a la costa de Pernambuco, declarado Patrimonio Natural de la Humanidad por la UNESCO. Se llega en poco más de una hora de vuelo desde Recife o Natal, pero ahí el ritmo cambia por completo: la isla limita la cantidad de visitantes por día, así que sus playas y arrecifes se mantienen casi intactos.',
+      pullQuote: 'En Noronha no somos visitantes: somos invitados de la naturaleza.',
       datos: [
-        { icono: 'flight_takeoff', titulo: 'Cómo llegar', texto: 'No hay vuelos directos: primero volás a Recife o Natal y desde ahí tomás una conexión interna hasta la isla.' },
-        { icono: 'eco', titulo: 'Tasa de preservación', texto: 'Se paga por día de estadía y financia la conservación del parque — cuanto más te quedás, más aporta a la isla.' },
-        { icono: 'park', titulo: 'Parque Nacional Marinho', texto: 'Un pase aparte habilita el ingreso a las playas y zonas protegidas del lado del parque, como Baía do Sancho.' },
-        { icono: 'wb_sunny', titulo: 'Mejor época', texto: 'Jun-nov: mar calmo y máxima transparencia, ideal para buceo. Dic-may: llegan las olas grandes y el surf.' },
+        { icono: 'flight_takeoff', titulo: 'Cómo llegar', texto: 'No hay vuelos directos: se llega con una conexión interna dentro de Brasil, vía Recife o Natal, hasta la isla.' },
+        { icono: 'eco', titulo: 'Tasa de preservación (TPA)', texto: 'Se paga por día de estadía, online o al llegar al aeropuerto, y financia la conservación de la isla.' },
+        { icono: 'park', titulo: 'Parque Nacional Marinho', texto: 'Un pase aparte —con código QR— habilita el ingreso a playas y zonas protegidas, como Baía do Sancho.' },
+        { icono: 'wb_sunny', titulo: 'Mejor época', texto: 'Jun-nov: mar calmo y máxima transparencia, ideal para buceo. Nov-may: llegan las olas grandes y el surf.' },
+        { icono: 'payments', titulo: '¿Es un destino caro?', texto: 'Sí, y vale saberlo antes de viajar: es una isla aislada, casi todo llega en barco o avión, y eso encarece la estadía.' },
+        { icono: 'confirmation_number', titulo: 'Acceso limitado', texto: 'La isla controla la cantidad de turistas y de vuelos diarios, así que conviene reservar con anticipación.' },
       ],
       buceo: {
-        texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo. La visibilidad puede superar los 40 metros y el agua se mantiene cálida todo el año. En sus arrecifes conviven tortugas, rayas, meros, morenas y cardúmenes enteros, y para los buceadores más experimentados hay naufragios como la Corveta Ipiranga, hundida a 62 metros. Hay opciones para todos los niveles: bautismos para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados.',
+        texto: 'Noronha está considerada uno de los mejores puntos de buceo del mundo: hasta 50 metros de visibilidad y agua cálida todo el año, sin necesidad de traje de neopreno. Bajo el agua conviven tortugas gigantes, rayas, cardúmenes de colores, morenas, langostas, tiburones (lija, limón, nodriza) y delfines, además de naufragios convertidos en arrecifes artificiales, cavernas y túneles. No hace falta experiencia previa: hay bautismos guiados para quienes bucean por primera vez, inmersiones recreativas para certificados y salidas técnicas para los más avanzados, como el naufragio de la Corveta Ipiranga, a 62 metros de profundidad. Y si preferís quedarte en la superficie, algunos de los mejores puntos de snorkel del mundo muestran casi la misma vida marina.',
         imagen: '/noronha-buceo.jpeg',
       },
       delfines: {
@@ -187,6 +190,10 @@ export const destinos = [
       // Video opcional de la agencia para esta sección — mientras no haya uno
       // propio, no se muestra nada (ver DestinoDetalle.jsx).
       video: null,
+      cierre: [
+        { icono: 'cottage', titulo: 'Dónde te alojás', texto: 'A diferencia de otros destinos del nordeste, en Noronha no hay grandes resorts frente al mar: la isla prioriza la conservación por sobre el desarrollo hotelero. La mayoría son posadas familiares, armadas a partir de casas adaptadas, desde opciones boutique más exclusivas hasta alternativas simples cerca del centro. Llegar a algunas playas implica una caminata corta, y eso también forma parte de la experiencia.' },
+        { icono: 'event_available', titulo: 'Un destino que pide planificación', texto: 'Noronha no es un destino masivo: tiene cupos de visitantes limitados, pocos vuelos por día y trámites propios (tasa ambiental, pase del parque). Llegar desde fuera de Brasil implica al menos dos vuelos internos, así que conviene armar bien el itinerario y reservar con tiempo.' },
+      ],
       playasDestacadas: [
         { nombre: 'Baía do Sancho', imagen: '/noronha-sancho.jpeg', texto: 'Elegida varias veces como una de las mejores playas del mundo. Se llega bajando una escalera tallada en la roca (o en barco) hasta una franja de arena dorada entre acantilados, con un mar que va del turquesa al azul profundo.' },
         { nombre: 'Praia da Conceição', imagen: '/noronha-conceicao.jpeg', texto: 'A pocos minutos del centro, con el Morro do Pico —la formación más alta de la isla— de fondo. Ideal para el atardecer, con piscinas naturales cuando baja la marea.' },

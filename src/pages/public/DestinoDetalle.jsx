@@ -236,15 +236,17 @@ function SeccionEditorial({ destino }) {
         </section>
       )}
 
-      {/* Galería de fotos sueltas — pensada para ir sumando más con el tiempo */}
+      {/* Galería de fotos sueltas — carrusel infinito, mismo estilo que
+          "Destinos Favoritos" en Home. Pensada para ir sumando más fotos
+          reales de la agencia con el tiempo (sin límite de cantidad). */}
       {c.galeria?.length > 0 && (
-        <section className="pb-14 md:pb-16">
+        <section className="pb-14 md:pb-16 overflow-hidden">
           <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a la isla</h2>
           </div>
-          <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
-            <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {c.galeria.map((g, i) => (
+          <div style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)' }}>
+            <div className="destinos-track" style={{ display: 'flex', gap: '16px', width: 'max-content', padding: '8px 0 16px' }}>
+              {[...c.galeria, ...c.galeria].map((g, i) => (
                 <div key={i} className="rounded-2xl overflow-hidden flex-shrink-0"
                   style={{ width: 'clamp(220px, 26vw, 340px)', aspectRatio: '4/5' }}>
                   <img src={g.imagen} alt={g.alt || destino.nombre} className="w-full h-full object-cover" />

@@ -271,8 +271,8 @@ function SeccionEditorial({ destino }) {
       )}
 
       {c.cierreTexto && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16">
-          <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl"
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16 text-center">
+          <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl mx-auto"
             style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.4rem)', letterSpacing: '0.01em' }}>
             {c.cierreTexto}
           </p>

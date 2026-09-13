@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { hospedajesApi } from '../../lib/supabase.js'
 
 function Estrellas({ n }) {
@@ -12,10 +12,13 @@ function Estrellas({ n }) {
 }
 
 export default function Hoteles() {
+  const [searchParams] = useSearchParams()
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
-  const [destino, setDestino] = useState('')
+  // Permite llegar acá desde una ficha de destino (/destinos/:id) ya
+  // filtrado por ese destino, sin perder la posibilidad de cambiarlo.
+  const [destino, setDestino] = useState(searchParams.get('destino') || '')
 
   useEffect(() => {
     hospedajesApi.getAll().then(({ data }) => {

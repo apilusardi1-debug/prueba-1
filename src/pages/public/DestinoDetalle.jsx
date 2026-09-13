@@ -40,8 +40,10 @@ function CardPaquete({ ex }) {
 
 function SeccionEditorial({ destino }) {
   const c = destino.contenido
+  const { config } = useSiteConfig()
   const [videoActivo, setVideoActivo] = useState(null)
   if (!c) return null
+  const waHref = (mensaje) => `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(mensaje)}`
   const tituloSeccion = 'font-display-hero uppercase text-hero-navy'
   const tituloEstilo = { fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }
 
@@ -137,7 +139,20 @@ function SeccionEditorial({ destino }) {
             </div>
             <div className="order-1 md:order-2">
               <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Un paraíso para el buceo</h2>
-              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.buceo.texto}</p>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-5">{c.buceo.texto}</p>
+              {c.buceo.checklist?.length > 0 && (
+                <ul className="space-y-2 mb-5">
+                  {c.buceo.checklist.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                      <span className="material-symbols-outlined text-hero-navy text-[18px] mt-0.5 flex-shrink-0">check_circle</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {c.buceo.niveles && (
+                <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{c.buceo.niveles}</p>
+              )}
             </div>
           </div>
         </section>
@@ -245,10 +260,17 @@ function SeccionEditorial({ destino }) {
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-10">
           <div className="grid sm:grid-cols-2 gap-4">
             {c.cierre.map((item) => (
-              <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8">
+              <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8 flex flex-col">
                 <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{item.icono}</span>
                 <h3 className="font-display-hero uppercase text-hero-navy text-lg mb-2">{item.titulo}</h3>
-                <p className="font-body-md text-body-md text-hero-navy/70 leading-relaxed">{item.texto}</p>
+                <p className="font-body-md text-body-md text-hero-navy/70 leading-relaxed mb-4">{item.texto}</p>
+                {item.boton && item.whatsappMensaje && (
+                  <a href={waHref(item.whatsappMensaje)} target="_blank" rel="noopener noreferrer"
+                    className="mt-auto self-start inline-flex items-center gap-2 bg-hero-navy text-white font-label-lg text-label-sm uppercase px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity">
+                    {item.boton}
+                    <span className="material-symbols-outlined text-hero-yellow text-[16px]">arrow_forward</span>
+                  </a>
+                )}
               </div>
             ))}
           </div>

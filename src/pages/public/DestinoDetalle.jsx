@@ -51,11 +51,11 @@ function SeccionEditorial({ destino }) {
     <>
       {/* Sobre el destino + datos prácticos */}
       <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pt-14 md:pt-20">
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-6">
+        <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed mb-6">
           {c.intro}
         </p>
         {c.pullQuote && (
-          <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl mb-10"
+          <p className="font-display-hero uppercase text-hero-navy leading-snug mb-10"
             style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', letterSpacing: '0.01em' }}>
             "{c.pullQuote}"
           </p>

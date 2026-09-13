@@ -133,10 +133,34 @@ function SeccionEditorial({ destino }) {
       {/* Buceo */}
       {c.buceo && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center mb-10">
-            <div className="rounded-3xl overflow-hidden h-72 md:h-96 order-2 md:order-1">
-              <img src={c.buceo.imagen} alt={`Buceo en ${destino.nombre}`} className="w-full h-full object-cover" />
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+            {/* Columna de media: foto + videos agrupados como una misma galería */}
+            <div className="order-2 md:order-1">
+              <div className="rounded-3xl overflow-hidden h-64 md:h-80 mb-3">
+                <img src={c.buceo.imagen} alt={`Buceo en ${destino.nombre}`} className="w-full h-full object-cover" />
+              </div>
+              {c.videos?.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {c.videos.map((v, i) => (
+                    <button key={i} onClick={() => setVideoActivo(v)}
+                      className="group relative rounded-xl overflow-hidden text-left" style={{ aspectRatio: '9/16' }}>
+                      {v.thumbnail ? (
+                        <img src={v.thumbnail} alt={v.titulo || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <video src={v.video + '#t=0.5'} preload="metadata" muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      )}
+                      <div className="absolute inset-0 bg-black/15 group-hover:bg-black/5 transition-colors" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-hero-yellow/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <svg width="13" height="16" viewBox="0 0 20 24" fill="#072e40"><path d="M0 0l20 12L0 24z" /></svg>
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div className="order-1 md:order-2">
               <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>Un paraíso para el buceo</h2>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-5">{c.buceo.texto}</p>
@@ -155,34 +179,6 @@ function SeccionEditorial({ destino }) {
               )}
             </div>
           </div>
-
-          {/* Videos de buceo de la agencia (si hay alguno cargado) */}
-          {c.videos?.length > 0 && (
-            <div className="no-scrollbar overflow-x-auto">
-              <div className="flex gap-4" style={{ width: 'max-content' }}>
-                {c.videos.map((v, i) => (
-                  <button key={i} onClick={() => setVideoActivo(v)}
-                    className="group relative rounded-2xl overflow-hidden flex-shrink-0 text-left"
-                    style={{ width: 'clamp(160px, 18vw, 220px)', aspectRatio: '9/16' }}>
-                    {v.thumbnail ? (
-                      <img src={v.thumbnail} alt={v.titulo || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <video src={v.video + '#t=0.5'} preload="metadata" muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="w-12 h-12 rounded-full bg-hero-yellow/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg width="16" height="20" viewBox="0 0 20 24" fill="#072e40"><path d="M0 0l20 12L0 24z" /></svg>
-                      </span>
-                    </div>
-                    {v.titulo && (
-                      <p className="absolute bottom-0 left-0 right-0 p-3 font-label-lg text-label-sm text-white leading-tight">{v.titulo}</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
       )}
 

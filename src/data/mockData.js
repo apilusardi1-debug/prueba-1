@@ -230,9 +230,12 @@ export const destinos = [
       ],
       // Videos de la agencia — array para poder sumar varios (bautismo de
       // buceo, drone de las playas, testimonios, etc.). Mientras esté vacío
-      // no se muestra nada (ver DestinoDetalle.jsx); cuando carguen el
-      // primero, agregar acá {titulo, video: 'https://...', thumbnail: '...'}.
-      videos: [],
+      // no se muestra nada (ver DestinoDetalle.jsx).
+      videos: [
+        { titulo: 'Buceando en Noronha', video: '/noronha-buceo-video-1.mp4' },
+        { titulo: 'Buceando en Noronha', video: '/noronha-buceo-video-2.mp4' },
+        { titulo: 'Buceando en Noronha', video: '/noronha-buceo-video-3.mp4' },
+      ],
       cierre: [
         { icono: 'cottage', titulo: 'Dónde te alojás', texto: 'A diferencia de otros destinos del nordeste, en Noronha no hay grandes resorts frente al mar: la isla prioriza la conservación por sobre el desarrollo hotelero. La mayoría son posadas familiares, armadas a partir de casas adaptadas, desde opciones boutique más exclusivas hasta alternativas intermedias cerca del centro (ideal para salir de noche) y otras más simples y tranquilas. Llegar a algunas playas implica una caminata corta, y eso también forma parte de la experiencia.', whatsappMensaje: 'Hola! Quiero cotizar hospedaje en Fernando de Noronha', boton: 'Cotizá tu hospedaje' },
         { icono: 'event_available', titulo: 'Un destino que pide planificación', texto: 'Noronha no es un destino masivo: tiene cupos de visitantes limitados, pocos vuelos por día y trámites propios (tasa ambiental, pase del parque). Llegar desde fuera de Brasil implica al menos dos vuelos internos —por ejemplo, con conexión en São Paulo o Recife—, así que conviene armar bien el itinerario y reservar con tiempo.' },

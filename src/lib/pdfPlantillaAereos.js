@@ -188,7 +188,7 @@ export function textoEquipajeSeleccionado(equipaje) {
         ? ` — ${ex.moneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(ex.precio)}`
         : ''
       const descripcionVieja = ex.descripcionVieja?.trim() ? `: ${ex.descripcionVieja.toUpperCase()}` : ''
-      return `${ex.cantidad} ${EQUIPAJE_LABELS[tipo]} EXTRA${precioTxt}${descripcionVieja}`
+      return `${ex.cantidad} ${EQUIPAJE_LABELS[tipo]} OPCIONAL${precioTxt}${descripcionVieja}`
     })
 
   return [...incluidos, ...extrasTexto]

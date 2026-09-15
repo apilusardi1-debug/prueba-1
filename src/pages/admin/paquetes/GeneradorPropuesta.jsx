@@ -1240,10 +1240,10 @@ export default function GeneradorPropuesta() {
               </div>
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">Equipaje extra (adicional que paga el cliente aparte)</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Equipaje opcional (adicional que paga el cliente aparte)</p>
                   <button type="button" onClick={() => agregarEquipajeExtra(idx)}
                     className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
-                    + Agregar equipaje extra
+                    + Agregar equipaje opcional
                   </button>
                 </div>
                 {(v.equipaje?.extras || []).map((ex, i) => (
@@ -1257,7 +1257,7 @@ export default function GeneradorPropuesta() {
                       onChange={e => setEquipajeExtraCampo(idx, i, 'cantidad', Math.max(1, parseInt(e.target.value) || 1))}
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                     <input type="text" inputMode="numeric" value={formatearMiles(ex.precio)}
-                      onChange={e => setEquipajeExtraCampo(idx, i, 'precio', soloDigitos(e.target.value))} placeholder="Valor del extra"
+                      onChange={e => setEquipajeExtraCampo(idx, i, 'precio', soloDigitos(e.target.value))} placeholder="Valor del opcional"
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
                     <select value={ex.moneda || 'ARS'} onChange={e => setEquipajeExtraCampo(idx, i, 'moneda', e.target.value)}
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">

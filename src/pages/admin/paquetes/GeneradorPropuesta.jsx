@@ -774,7 +774,17 @@ export default function GeneradorPropuesta() {
 
   async function generar() {
     if (!busqCliente.trim()) return setError('Ingresá el nombre del cliente.')
-    if (!hospedajes.some(h => h.nombre.trim())) return setError('Cargá al menos un hospedaje con nombre.')
+    // Antes era obligatorio cargar un hospedaje — pero puede haber propuestas
+    // de solo Vuelo, solo Traslado, o cualquier combinación sin hospedaje
+    // (ver el mismo criterio en el PDF: un servicio no cargado no aparece).
+    // Lo único que no puede pasar es generar una propuesta sin NINGÚN
+    // servicio cargado.
+    const hayVueloCargado = vuelos.some(v => v.origen_ciudad?.trim() || v.destino_ciudad?.trim())
+    const hayTrasladoCargado = vuelos.some(v => (v.traslado_ida || v.traslado_vuelta) && v.traslado_venta)
+    const hayHospedajeCargado = hospedajes.some(h => h.nombre.trim())
+    if (!hayVueloCargado && !hayTrasladoCargado && !hayHospedajeCargado) {
+      return setError('Cargá al menos un servicio: vuelo, traslado u hospedaje.')
+    }
     setError('')
     setGenerando(true)
     setExito(false)

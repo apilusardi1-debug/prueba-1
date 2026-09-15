@@ -164,7 +164,7 @@ export const EQUIPAJE_LABELS = {
 // valor a mano en ARS o USD, en vez de una descripción libre ("1 tabla de
 // surf"). Se muestra en ambos PDF (propuesta y cierre) — compartido para no
 // repetir la lógica en los dos.
-export function textoEquipajeSeleccionado(equipaje, mostrarPrecios = true) {
+export function textoEquipajeSeleccionado(equipaje) {
   return ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
     .filter(k => (equipaje?.[k] || 0) > 0)
     .map(k => {
@@ -172,7 +172,11 @@ export function textoEquipajeSeleccionado(equipaje, mostrarPrecios = true) {
       if (k !== 'extra') return `${cantidad} ${EQUIPAJE_LABELS[k]}`
 
       const tipo = equipaje?.extraTipo === 'valija23' ? 'valija23' : 'carryOn'
-      const precioTxt = (mostrarPrecios && equipaje?.extraPrecio)
+      // El precio del extra se muestra siempre que esté cargado, aunque la
+      // propuesta sea "simple" (que oculta el resto de los precios) — es un
+      // adicional que el cliente paga aparte, no parte del total del
+      // paquete, así que tiene que quedar claro cuánto cuesta.
+      const precioTxt = equipaje?.extraPrecio
         ? ` — ${equipaje.extraMoneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(equipaje.extraPrecio)}`
         : ''
       // Fallback para propuestas guardadas antes de este cambio, que solo
@@ -654,7 +658,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   // centran VERTICAL y horizontalmente como grupo en el espacio libre entre
   // el piso de las cajas y el separador de abajo — aprovechan mejor el aire
   // libre que queda cuando hay pocos vuelos en la hoja.
-  const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje, mostrarPrecios)
+  const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje)
   const bloquesInfo = []
   if (equipajeSeleccionado.length) {
     bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.join('   +   ') })

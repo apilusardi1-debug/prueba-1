@@ -15,6 +15,9 @@ const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const CREMA_BG = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
 const CREMA_TXT = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
+// Dorado — solo para diferenciar el equipaje OPCIONAL del incluido (pedido
+// explícito: que no se confundan). Mismo tono que usa pdfPlantillaAereos.js.
+const DORADO_TXT = rgb(0xb0 / 255, 0x74 / 255, 0x20 / 255)
 const SITIO_URL = 'https://prueba-1-rose.vercel.app'
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
@@ -326,14 +329,32 @@ export async function generarPDFCierre(propuesta) {
   // seccion de HOSPEDAJE.
   const SEPARADOR_AEREOS_Y = 499
   const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje)
-  if (equipajeSeleccionado.length) {
-    const textoEquipaje = `EQUIPAJE INCLUIDO: ${equipajeSeleccionado.join(' + ')}`
+  // Incluido y opcional van en renglones separados (antes iban mezclados en
+  // una sola línea) — el opcional en dorado para que no se confunda con lo
+  // que ya viene en la tarifa.
+  const lineasEquipaje = []
+  if (equipajeSeleccionado.incluidos.length) {
+    lineasEquipaje.push({ texto: `EQUIPAJE INCLUIDO: ${equipajeSeleccionado.incluidos.join(' + ')}`, color: NAVY_TXT })
+  }
+  if (equipajeSeleccionado.opcionales.length) {
+    lineasEquipaje.push({ texto: `EQUIPAJE OPCIONAL: ${equipajeSeleccionado.opcionales.join(' + ')}`, color: DORADO_TXT })
+  }
+  if (lineasEquipaje.length) {
+    const anchoDisponible = X_CAJA_VUELTA + ANCHO_CAJA - X_CAJA_IDA
     let tamanoEquipaje = 10
-    while (tamanoEquipaje > 6 && bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje) > X_CAJA_VUELTA + ANCHO_CAJA - X_CAJA_IDA) tamanoEquipaje -= 0.5
-    const anchoEquipaje = bebas.widthOfTextAtSize(textoEquipaje, tamanoEquipaje)
+    for (const linea of lineasEquipaje) {
+      while (tamanoEquipaje > 6 && bebas.widthOfTextAtSize(linea.texto, tamanoEquipaje) > anchoDisponible) tamanoEquipaje -= 0.5
+    }
     const xCentroCajas = (X_CAJA_IDA + X_CAJA_VUELTA + ANCHO_CAJA) / 2
-    const yEquipaje = (pisoCajas + SEPARADOR_AEREOS_Y) / 2 - tamanoEquipaje * 0.36
-    escribir(textoEquipaje, xCentroCajas - anchoEquipaje / 2, yEquipaje, tamanoEquipaje, NAVY_TXT)
+    const gapLineas = 4
+    const altoTotal = lineasEquipaje.length * tamanoEquipaje + (lineasEquipaje.length - 1) * gapLineas
+    let yTopFila = (pisoCajas + SEPARADOR_AEREOS_Y) / 2 + altoTotal / 2
+    for (const linea of lineasEquipaje) {
+      const ancho = bebas.widthOfTextAtSize(linea.texto, tamanoEquipaje)
+      const yBaseline = yTopFila - tamanoEquipaje / 2 - tamanoEquipaje * 0.36
+      escribir(linea.texto, xCentroCajas - ancho / 2, yBaseline, tamanoEquipaje, linea.color)
+      yTopFila -= tamanoEquipaje + gapLineas
+    }
   }
 
   // Traslados: la plantilla real trae fijo "TRASLADOS PRIVADOS INCLUIDOS" a

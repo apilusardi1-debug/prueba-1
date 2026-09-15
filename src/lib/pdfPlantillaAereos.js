@@ -42,6 +42,10 @@ const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const CREMA_TXT = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
 const CREMA_BG = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
+// Dorado — solo para diferenciar el equipaje OPCIONAL del incluido (pedido
+// explícito: que no se confundan). Mismo tono cálido que ya usa el resto de
+// la app para "a cargo del cliente" en otras pantallas.
+const DORADO_TXT = rgb(0xb0 / 255, 0x74 / 255, 0x20 / 255)
 
 function formatearNumero(n) {
   return Number(n || 0).toLocaleString('es-AR')
@@ -157,11 +161,15 @@ export const EQUIPAJE_LABELS = {
   valija23: 'VALIJA 23 KG',
 }
 
-// Arma la lista de items de equipaje seleccionados. El equipaje adicional
-// que el cliente paga aparte de lo incluido ("extras") es una LISTA — se
-// pueden combinar varios tipos a la vez (ej. 1 carry on extra + 1 valija
-// 23kg extra), cada uno con su propio precio en ARS o USD. Se muestra en
-// ambos PDF (propuesta y cierre) — compartido para no repetir la lógica.
+// Arma la lista de items de equipaje seleccionados, separada en
+// `incluidos` (lo que ya viene en la tarifa) y `opcionales` (lo que el
+// cliente paga aparte de lo incluido) — se devuelven separados en vez de
+// una sola lista para poder mostrarlos en renglones/tarjetas distintas y
+// que no se confundan entre sí (pedido explícito: que se note la
+// diferencia). El equipaje opcional es una LISTA — se pueden combinar
+// varios tipos a la vez (ej. 1 carry on opcional + 1 valija 23kg
+// opcional), cada uno con su propio precio en ARS o USD. Se usa en ambos
+// PDF (propuesta y cierre) — compartido para no repetir la lógica.
 export function textoEquipajeSeleccionado(equipaje) {
   const incluidos = ['articuloPersonal', 'mochila', 'carryOn', 'valija23']
     .filter(k => (equipaje?.[k] || 0) > 0)
@@ -191,7 +199,7 @@ export function textoEquipajeSeleccionado(equipaje) {
       return `${ex.cantidad} ${EQUIPAJE_LABELS[tipo]} OPCIONAL${precioTxt}${descripcionVieja}`
     })
 
-  return [...incluidos, ...extrasTexto]
+  return { incluidos, opcionales: extrasTexto }
 }
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
@@ -676,10 +684,16 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   // libre que queda cuando hay pocos vuelos en la hoja.
   // El equipaje (franquicia de carry-on/valija) es un dato del vuelo — sin
   // vuelo cargado no hay a qué aerolínea referirlo, así que no se muestra.
-  const equipajeSeleccionado = hayVuelo ? textoEquipajeSeleccionado(vuelo.equipaje) : []
+  const equipajeSeleccionado = hayVuelo ? textoEquipajeSeleccionado(vuelo.equipaje) : { incluidos: [], opcionales: [] }
   const bloquesInfo = []
-  if (equipajeSeleccionado.length) {
-    bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.join('   +   ') })
+  if (equipajeSeleccionado.incluidos.length) {
+    bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.incluidos.join('   +   ') })
+  }
+  // Tarjeta propia (renglón aparte) en dorado para el equipaje OPCIONAL —
+  // antes iba mezclado en la misma línea que el incluido y costaba
+  // distinguir qué pagaba el cliente aparte.
+  if (equipajeSeleccionado.opcionales.length) {
+    bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE OPCIONAL:', texto: equipajeSeleccionado.opcionales.join('   +   '), color: DORADO_TXT })
   }
   // El traslado es independiente del vuelo (puede ofrecerse solo, con
   // Hospedaje, sin vuelo) pero solo si tiene un precio cargado — los
@@ -735,7 +749,8 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     ))
 
     for (const bloque of bloquesInfo) {
-      page.drawSvgPath(pathRectRedondeado(boxAncho, boxAlto, Math.min(8 * esc, boxAlto * 0.2)), { x: COL_IZQ_X, y: yTop, borderColor: NAVY_TXT, borderWidth: Math.max(0.75, 1.25 * esc) })
+      const colorBloque = bloque.color || NAVY_TXT
+      page.drawSvgPath(pathRectRedondeado(boxAncho, boxAlto, Math.min(8 * esc, boxAlto * 0.2)), { x: COL_IZQ_X, y: yTop, borderColor: colorBloque, borderWidth: Math.max(0.75, 1.25 * esc) })
 
       const iconoX = COL_IZQ_X + boxAlto * 0.22
       const iconoY = yTop - boxAlto / 2 - iconoLado / 2
@@ -744,8 +759,8 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
 
       const anchoTitulo = bebas.widthOfTextAtSize(bloque.titulo + '  ', tamano)
       const textoY = yTop - boxAlto / 2 - tamano * 0.36
-      escribir(bloque.titulo, textoX, textoY, tamano, NAVY_TXT)
-      escribir(bloque.texto, textoX + anchoTitulo, textoY, tamano, NAVY_SUAVE_CAJA)
+      escribir(bloque.titulo, textoX, textoY, tamano, colorBloque)
+      escribir(bloque.texto, textoX + anchoTitulo, textoY, tamano, bloque.color ? colorBloque : NAVY_SUAVE_CAJA)
 
       yTop -= boxAlto + gapBoxes
     }

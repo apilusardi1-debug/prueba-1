@@ -17,10 +17,11 @@ const VUELO_VACIO = {
   ida_fecha: '', ida_sale: '', ida_llega: '', ida_escala_ciudad: '', ida_escala_codigo: '', ida_escala_llega: '', ida_escala_sale: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
-  // "extra" es equipaje adicional que el cliente paga aparte de lo incluido
-  // (ej. una 2da valija) — extraTipo dice si ese extra es un Carry on o una
-  // Valija 23kg, extraPrecio/extraMoneda el valor que se le cobra por eso.
-  equipaje: { articuloPersonal: 1, mochila: 1, carryOn: 1, valija23: 0, extra: 0, extraTipo: 'carryOn', extraPrecio: '', extraMoneda: 'ARS' },
+  // "extras" es equipaje adicional que el cliente paga aparte de lo incluido
+  // (ej. una 2da valija) — una lista en vez de un solo tipo, para poder
+  // combinar varios (ej. 1 carry on extra + 1 valija 23kg extra) a la vez,
+  // cada uno con su propio precio.
+  equipaje: { articuloPersonal: 1, mochila: 1, carryOn: 1, valija23: 0, extras: [] },
   traslado_ida: true, traslado_vuelta: true, traslado_activo: true,
   // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
   // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
@@ -37,8 +38,8 @@ const EQUIPAJE_OPCIONES = [
   { clave: 'mochila', label: 'Mochila de mano' },
   { clave: 'carryOn', label: 'Carry on 10 kg' },
   { clave: 'valija23', label: 'Valija 23 kg' },
-  { clave: 'extra', label: 'Equipaje extra' },
 ]
+const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS' }
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
 const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
@@ -489,6 +490,21 @@ export default function GeneradorPropuesta() {
   }
   function setEquipajeCampo(idx, campo, valor) {
     setVuelos(prev => prev.map((v, i) => i === idx ? { ...v, equipaje: { ...v.equipaje, [campo]: valor } } : v))
+  }
+  function agregarEquipajeExtra(idx) {
+    setVuelos(prev => prev.map((v, i) => i === idx
+      ? { ...v, equipaje: { ...v.equipaje, extras: [...(v.equipaje?.extras || []), { ...EQUIPAJE_EXTRA_VACIO }] } }
+      : v))
+  }
+  function quitarEquipajeExtra(idx, i) {
+    setVuelos(prev => prev.map((v, vi) => vi === idx
+      ? { ...v, equipaje: { ...v.equipaje, extras: (v.equipaje?.extras || []).filter((_, ei) => ei !== i) } }
+      : v))
+  }
+  function setEquipajeExtraCampo(idx, i, campo, valor) {
+    setVuelos(prev => prev.map((v, vi) => vi === idx
+      ? { ...v, equipaje: { ...v.equipaje, extras: (v.equipaje?.extras || []).map((ex, ei) => ei === i ? { ...ex, [campo]: valor } : ex) } }
+      : v))
   }
   function alternarTrasladoVuelo(idx) {
     setVuelos(prev => prev.map((v, i) => {
@@ -1222,23 +1238,39 @@ export default function GeneradorPropuesta() {
                   </div>
                 ))}
               </div>
-              {(v.equipaje?.extra || 0) > 0 && (
-                <div className="mt-2 grid sm:grid-cols-3 gap-2">
-                  <select value={v.equipaje?.extraTipo || 'carryOn'} onChange={e => setEquipajeCampo(idx, 'extraTipo', e.target.value)}
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    <option value="carryOn">Carry on 10 kg</option>
-                    <option value="valija23">Valija 23 kg</option>
-                  </select>
-                  <input type="text" inputMode="numeric" value={formatearMiles(v.equipaje?.extraPrecio)}
-                    onChange={e => setEquipajeCampo(idx, 'extraPrecio', soloDigitos(e.target.value))} placeholder="Valor del extra"
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                  <select value={v.equipaje?.extraMoneda || 'ARS'} onChange={e => setEquipajeCampo(idx, 'extraMoneda', e.target.value)}
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    <option value="ARS">ARS$</option>
-                    <option value="USD">U$D</option>
-                  </select>
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Equipaje extra (adicional que paga el cliente aparte)</p>
+                  <button type="button" onClick={() => agregarEquipajeExtra(idx)}
+                    className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
+                    + Agregar equipaje extra
+                  </button>
                 </div>
-              )}
+                {(v.equipaje?.extras || []).map((ex, i) => (
+                  <div key={i} className="grid sm:grid-cols-[1fr_90px_1fr_100px_auto] gap-2 mb-2">
+                    <select value={ex.tipo || 'carryOn'} onChange={e => setEquipajeExtraCampo(idx, i, 'tipo', e.target.value)}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                      <option value="carryOn">Carry on 10 kg</option>
+                      <option value="valija23">Valija 23 kg</option>
+                    </select>
+                    <input type="number" min="1" value={ex.cantidad || 1}
+                      onChange={e => setEquipajeExtraCampo(idx, i, 'cantidad', Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <input type="text" inputMode="numeric" value={formatearMiles(ex.precio)}
+                      onChange={e => setEquipajeExtraCampo(idx, i, 'precio', soloDigitos(e.target.value))} placeholder="Valor del extra"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <select value={ex.moneda || 'ARS'} onChange={e => setEquipajeExtraCampo(idx, i, 'moneda', e.target.value)}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                      <option value="ARS">ARS$</option>
+                      <option value="USD">U$D</option>
+                    </select>
+                    <button type="button" onClick={() => quitarEquipajeExtra(idx, i)}
+                      className="text-gray-400 hover:text-red-500 px-2" title="Quitar">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del vuelo — el neto es uso interno, nunca se exporta al PDF</p>

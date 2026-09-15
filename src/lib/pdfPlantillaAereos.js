@@ -155,37 +155,43 @@ export const EQUIPAJE_LABELS = {
   mochila: 'MOCHILA DE MANO',
   carryOn: 'CARRY ON 10 KG',
   valija23: 'VALIJA 23 KG',
-  extra: 'EQUIPAJE EXTRA',
 }
 
-// Arma la lista de items de equipaje seleccionados — el "extra" (equipaje
-// adicional que el cliente paga aparte de lo incluido) ahora es un tipo
-// concreto (Carry on 10kg / Valija 23kg, elegido en el Generador) con un
-// valor a mano en ARS o USD, en vez de una descripción libre ("1 tabla de
-// surf"). Se muestra en ambos PDF (propuesta y cierre) — compartido para no
-// repetir la lógica en los dos.
+// Arma la lista de items de equipaje seleccionados. El equipaje adicional
+// que el cliente paga aparte de lo incluido ("extras") es una LISTA — se
+// pueden combinar varios tipos a la vez (ej. 1 carry on extra + 1 valija
+// 23kg extra), cada uno con su propio precio en ARS o USD. Se muestra en
+// ambos PDF (propuesta y cierre) — compartido para no repetir la lógica.
 export function textoEquipajeSeleccionado(equipaje) {
-  return ['articuloPersonal', 'mochila', 'carryOn', 'valija23', 'extra']
+  const incluidos = ['articuloPersonal', 'mochila', 'carryOn', 'valija23']
     .filter(k => (equipaje?.[k] || 0) > 0)
-    .map(k => {
-      const cantidad = equipaje?.[k] || 0
-      if (k !== 'extra') return `${cantidad} ${EQUIPAJE_LABELS[k]}`
+    .map(k => `${equipaje[k]} ${EQUIPAJE_LABELS[k]}`)
 
-      const tipo = equipaje?.extraTipo === 'valija23' ? 'valija23' : 'carryOn'
+  // Fallback para propuestas guardadas antes de este cambio, que tenían un
+  // solo extra (equipaje.extra/extraTipo/extraPrecio/extraMoneda) en vez de
+  // la lista `extras`.
+  const extras = equipaje?.extras?.length
+    ? equipaje.extras
+    : (equipaje?.extra || 0) > 0
+      ? [{ tipo: equipaje.extraTipo, cantidad: equipaje.extra, precio: equipaje.extraPrecio, moneda: equipaje.extraMoneda, descripcionVieja: !equipaje.extraTipo && equipaje.extraDescripcion }]
+      : []
+
+  const extrasTexto = extras
+    .filter(ex => (ex.cantidad || 0) > 0)
+    .map(ex => {
+      const tipo = ex.tipo === 'valija23' ? 'valija23' : 'carryOn'
       // El precio del extra se muestra siempre que esté cargado, aunque la
       // propuesta sea "simple" (que oculta el resto de los precios) — es un
       // adicional que el cliente paga aparte, no parte del total del
       // paquete, así que tiene que quedar claro cuánto cuesta.
-      const precioTxt = equipaje?.extraPrecio
-        ? ` — ${equipaje.extraMoneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(equipaje.extraPrecio)}`
+      const precioTxt = ex.precio
+        ? ` — ${ex.moneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(ex.precio)}`
         : ''
-      // Fallback para propuestas guardadas antes de este cambio, que solo
-      // tenían la descripción libre (sin tipo ni precio cargados).
-      const descripcionVieja = !equipaje?.extraTipo && equipaje?.extraDescripcion?.trim()
-        ? `: ${equipaje.extraDescripcion.toUpperCase()}`
-        : ''
-      return `${cantidad} ${EQUIPAJE_LABELS[tipo]} EXTRA${precioTxt}${descripcionVieja}`
+      const descripcionVieja = ex.descripcionVieja?.trim() ? `: ${ex.descripcionVieja.toUpperCase()}` : ''
+      return `${ex.cantidad} ${EQUIPAJE_LABELS[tipo]} EXTRA${precioTxt}${descripcionVieja}`
     })
+
+  return [...incluidos, ...extrasTexto]
 }
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre

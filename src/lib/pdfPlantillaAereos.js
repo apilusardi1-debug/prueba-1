@@ -589,73 +589,83 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     return tamano
   }
 
+  // Si no se cargó origen ni destino, este vuelo no se está ofreciendo (ej.
+  // una propuesta de solo Traslado + Hospedaje) — no se dibuja el título ni
+  // las cajas de ida/vuelta (antes quedaban como cajas vacías con "—  --:--
+  // HS", como si fuera un vuelo real sin datos). El resto de la tarjeta
+  // (equipaje/traslados) se ajusta para usar el alto completo del slot.
+  const hayVuelo = !!(vuelo.origen_ciudad?.trim() || vuelo.destino_ciudad?.trim())
+
   // Gap inicial: la fila 0 arranca justo debajo del titulo fijo "AÉREOS:"
   // (con su propio icono de avion, el unico de la hoja).
   let y = slot.top - 14 * esc
-  const tamanoTitulo = 13 * esc
-  const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
-  escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
 
-  // Valor de venta del vuelo — pildora navy con texto blanco (mismo trazo que
-  // el resto de los carteles de la app), alineada al borde derecho de la
-  // columna de VUELTA. Antes el titulo "VUELTA fecha" se dibujaba siempre al
-  // mismo tamaño y, si la fecha entraba con año de 4 dígitos (ej.
-  // "VUELTA 13/01/2027"), ocupaba toda la columna y no quedaba lugar para la
-  // píldora — se descartaba en silencio (if anchoDisponible > 20), sin
-  // avisar, aunque el precio estuviera cargado y público. Ahora el título de
-  // VUELTA se achica lo mínimo necesario para dejarle SIEMPRE un hueco fijo
-  // a la píldora al lado, así el precio nunca desaparece por falta de
-  // espacio — sí puede pasar que quede mas chico en fechas largas.
-  const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
-  const mostrarPrecioVuelo = mostrarPrecios && vuelo.venta && vuelo.venta_publica !== false
-  const anchoMinPrecio = 62 * esc
-  let tamanoTituloVuelta = tamanoTitulo
-  if (mostrarPrecioVuelo) {
-    while (tamanoTituloVuelta > 7 * esc && bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta) > ANCHO_COL_VUELO - anchoMinPrecio - 8 * esc) {
-      tamanoTituloVuelta -= 0.5
+  if (hayVuelo) {
+    const tamanoTitulo = 13 * esc
+    const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
+    escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
+
+    // Valor de venta del vuelo — pildora navy con texto blanco (mismo trazo que
+    // el resto de los carteles de la app), alineada al borde derecho de la
+    // columna de VUELTA. Antes el titulo "VUELTA fecha" se dibujaba siempre al
+    // mismo tamaño y, si la fecha entraba con año de 4 dígitos (ej.
+    // "VUELTA 13/01/2027"), ocupaba toda la columna y no quedaba lugar para la
+    // píldora — se descartaba en silencio (if anchoDisponible > 20), sin
+    // avisar, aunque el precio estuviera cargado y público. Ahora el título de
+    // VUELTA se achica lo mínimo necesario para dejarle SIEMPRE un hueco fijo
+    // a la píldora al lado, así el precio nunca desaparece por falta de
+    // espacio — sí puede pasar que quede mas chico en fechas largas.
+    const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
+    const mostrarPrecioVuelo = mostrarPrecios && vuelo.venta && vuelo.venta_publica !== false
+    const anchoMinPrecio = 62 * esc
+    let tamanoTituloVuelta = tamanoTitulo
+    if (mostrarPrecioVuelo) {
+      while (tamanoTituloVuelta > 7 * esc && bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta) > ANCHO_COL_VUELO - anchoMinPrecio - 8 * esc) {
+        tamanoTituloVuelta -= 0.5
+      }
     }
+    escribir(textoTituloVuelta, COL_DER_X, y, tamanoTituloVuelta, NAVY_TXT)
+
+    if (mostrarPrecioVuelo) {
+      const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta)
+      const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 8 * esc
+      const xRightPill = COL_DER_X + ANCHO_COL_VUELO
+      const anchoDisponiblePrecio = Math.max(xRightPill - xLimiteIzq - 12 * esc, anchoMinPrecio * 0.55)
+      const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
+      const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13, 6)
+      const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
+      const padX = 6 * esc
+      const padY = 2.5 * esc
+      const anchoPill = anchoTexto + padX * 2
+      const altoPill = tamanoPrecio + padY * 2
+      const xPill = xRightPill - anchoPill
+      const yTopPill = y + tamanoPrecio * 0.78 + padY
+      page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 3 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
+      escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
+    }
+    y -= 8 * esc
+
+    // Caja por tramo (ida/vuelta) con borde redondeado, flecha y escala — ver
+    // dibujarCajaTramo/altoCajaTramo mas arriba (compartidas con el PDF de
+    // cierre, mismo diseño en los dos lugares).
+    const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
+    const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
+    const altoCajas = Math.max(altoCajaTramo(hayEscalaIda, esc), altoCajaTramo(hayEscalaVuelta, esc))
+
+    dibujarCajaTramo(page, bebas, {
+      x: COL_IZQ_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
+      codigoSale: vuelo.origen_codigo, ciudadSale: vuelo.origen_ciudad, horaSale: vuelo.ida_sale,
+      codigoLlega: vuelo.destino_codigo, ciudadLlega: vuelo.destino_ciudad, horaLlega: vuelo.ida_llega,
+      escalaCiudad: vuelo.ida_escala_ciudad, escalaCodigo: vuelo.ida_escala_codigo, escalaLlega: vuelo.ida_escala_llega, escalaSale: vuelo.ida_escala_sale,
+    })
+    dibujarCajaTramo(page, bebas, {
+      x: COL_DER_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
+      codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
+      codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
+      escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
+    })
+    y -= altoCajas + 10 * esc
   }
-  escribir(textoTituloVuelta, COL_DER_X, y, tamanoTituloVuelta, NAVY_TXT)
-
-  if (mostrarPrecioVuelo) {
-    const anchoTituloVuelta = bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta)
-    const xLimiteIzq = COL_DER_X + anchoTituloVuelta + 8 * esc
-    const xRightPill = COL_DER_X + ANCHO_COL_VUELO
-    const anchoDisponiblePrecio = Math.max(xRightPill - xLimiteIzq - 12 * esc, anchoMinPrecio * 0.55)
-    const textoPrecio = `${moneda || 'ARS'}$ ${formatearNumero(vuelo.venta)}`
-    const tamanoPrecio = medirTamanoAjustado(textoPrecio, anchoDisponiblePrecio, 13, 6)
-    const anchoTexto = bebas.widthOfTextAtSize(textoPrecio, tamanoPrecio)
-    const padX = 6 * esc
-    const padY = 2.5 * esc
-    const anchoPill = anchoTexto + padX * 2
-    const altoPill = tamanoPrecio + padY * 2
-    const xPill = xRightPill - anchoPill
-    const yTopPill = y + tamanoPrecio * 0.78 + padY
-    page.drawSvgPath(pathRectRedondeado(anchoPill, altoPill, 3 * esc), { x: xPill, y: yTopPill, color: NAVY_BG })
-    escribir(textoPrecio, xPill + padX, y, tamanoPrecio, rgb(1, 1, 1))
-  }
-  y -= 8 * esc
-
-  // Caja por tramo (ida/vuelta) con borde redondeado, flecha y escala — ver
-  // dibujarCajaTramo/altoCajaTramo mas arriba (compartidas con el PDF de
-  // cierre, mismo diseño en los dos lugares).
-  const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
-  const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
-  const altoCajas = Math.max(altoCajaTramo(hayEscalaIda, esc), altoCajaTramo(hayEscalaVuelta, esc))
-
-  dibujarCajaTramo(page, bebas, {
-    x: COL_IZQ_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
-    codigoSale: vuelo.origen_codigo, ciudadSale: vuelo.origen_ciudad, horaSale: vuelo.ida_sale,
-    codigoLlega: vuelo.destino_codigo, ciudadLlega: vuelo.destino_ciudad, horaLlega: vuelo.ida_llega,
-    escalaCiudad: vuelo.ida_escala_ciudad, escalaCodigo: vuelo.ida_escala_codigo, escalaLlega: vuelo.ida_escala_llega, escalaSale: vuelo.ida_escala_sale,
-  })
-  dibujarCajaTramo(page, bebas, {
-    x: COL_DER_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
-    codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
-    codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
-    escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
-  })
-  y -= altoCajas + 10 * esc
 
   // Equipaje y traslados: antes una sola linea de texto chico (9.5pt) por
   // dato, las dos apretadas entre si — pedido explicito de agrandarlas y
@@ -664,12 +674,19 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   // centran VERTICAL y horizontalmente como grupo en el espacio libre entre
   // el piso de las cajas y el separador de abajo — aprovechan mejor el aire
   // libre que queda cuando hay pocos vuelos en la hoja.
-  const equipajeSeleccionado = textoEquipajeSeleccionado(vuelo.equipaje)
+  // El equipaje (franquicia de carry-on/valija) es un dato del vuelo — sin
+  // vuelo cargado no hay a qué aerolínea referirlo, así que no se muestra.
+  const equipajeSeleccionado = hayVuelo ? textoEquipajeSeleccionado(vuelo.equipaje) : []
   const bloquesInfo = []
   if (equipajeSeleccionado.length) {
     bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE INCLUIDO:', texto: equipajeSeleccionado.join('   +   ') })
   }
-  if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
+  // El traslado es independiente del vuelo (puede ofrecerse solo, con
+  // Hospedaje, sin vuelo) pero solo si tiene un precio cargado — los
+  // checkboxes de ida/vuelta arrancan tildados por defecto en cada vuelo
+  // nuevo, así que por sí solos no alcanzan como señal de "se está
+  // ofreciendo": si nunca se cargó un valor de venta, no se ofreció.
+  if ((vuelo.traslado_ida || vuelo.traslado_vuelta) && vuelo.traslado_venta) {
     const tituloTraslado = (vuelo.traslado_ida && vuelo.traslado_vuelta) ? 'TRASLADOS PRIVADOS INCLUIDOS:' : 'TRASLADO PRIVADO INCLUIDO:'
     const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta
       ? 'AEROPUERTO / HOTEL (IN - OUT)'
@@ -835,15 +852,28 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     iconos.maleta = await doc.embedPng(maletaBytes)
     activarSuavizado(doc, iconos.maleta)
   } catch (_) { /* si falla, la tarjeta queda sin icono en vez de romper el PDF */ }
+  // El título de la hoja depende de qué se cargó de verdad: si ningún vuelo
+  // del grupo tiene origen/destino, esto no es una propuesta con aéreo (ej.
+  // Traslado + Hospedaje solamente) — el título "AÉREOS:" con el ícono de
+  // avión no corresponde. Si hay traslado cargado (con precio) se usa
+  // "TRASLADOS:" con el auto en vez del avión; si no hay ni vuelo ni
+  // traslado, no se dibuja título (la hoja queda solo con lo que sí hay).
+  const grupoTieneVuelo = grupo.some(v => v.origen_ciudad?.trim() || v.destino_ciudad?.trim())
+  const grupoTieneTraslado = grupo.some(v => (v.traslado_ida || v.traslado_vuelta) && v.traslado_venta) || destinosValidos.length > 0
   const tituloY = LIMITE_NUEVO - 51.5
   let tituloX = 63
-  if (iconoAvionHeader) {
-    const alto = 26
-    const ancho = alto * (iconoAvionHeader.width / iconoAvionHeader.height)
-    page.drawImage(iconoAvionHeader, { x: 17, y: tituloY - 5, width: ancho, height: alto })
-    tituloX = 17 + ancho + 10
+  if (grupoTieneVuelo) {
+    if (iconoAvionHeader) {
+      const alto = 26
+      const ancho = alto * (iconoAvionHeader.width / iconoAvionHeader.height)
+      page.drawImage(iconoAvionHeader, { x: 17, y: tituloY - 5, width: ancho, height: alto })
+      tituloX = 17 + ancho + 10
+    }
+    escribir('AÉREOS:', tituloX, tituloY, 30, NAVY_TXT)
+  } else if (grupoTieneTraslado) {
+    dibujarIconoAuto(page, 17 + 15, tituloY + 8, 15)
+    escribir('TRASLADOS:', 17 + 30 + 10, tituloY, 30, NAVY_TXT)
   }
-  escribir('AÉREOS:', tituloX, tituloY, 30, NAVY_TXT)
 
   // Limpia de una sola vez toda la zona dinamica (incluido el banner fijo de
   // la plantilla de un solo vuelo, que acá no aplica) antes de dibujar las

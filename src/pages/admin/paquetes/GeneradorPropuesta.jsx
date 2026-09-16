@@ -821,13 +821,12 @@ export default function GeneradorPropuesta() {
       // guardada en la base (ver mas abajo, "moneda: hospedajesValidos[0]...").
       const monedaPdf = hospedajes.find(h => h.nombre.trim())?.moneda || 'ARS'
 
-      // Propuesta Simple: un único valor de venta cargado a mano para todo el
-      // paquete (ver sección "Valor total del paquete"), sin desglose por
-      // servicio — se probó auto-sumar vuelo+traslado+hospedaje en un total
-      // por tarjeta y se pidió volver a un total manual. Combinada: cada
-      // servicio (vuelo, cada hospedaje, traslado por destino) mantiene su
-      // propio precio, mostrado en detalle — sin cambios ahí.
-      const mostrarPrecios = tipoPropuesta === 'combinada'
+      // El precio de cada servicio (vuelo, traslado, cada hospedaje) se
+      // muestra en su propia sección si está tildado "Pública" — si está
+      // "Privada" no se ve el valor unitario ahí, solo entra en la suma de
+      // la hoja final. Antes esto dependía del tipo de propuesta (Simple
+      // ocultaba TODOS los precios sin importar el tilde) — se sacó esa
+      // condición: cada tilde manda por sí solo, en Simple y en Combinada.
 
       // Pagina(s) de Aereos: se generan sobre el PDF de referencia real (texto
       // vectorial, no una captura de pantalla). SIEMPRE la grilla compacta
@@ -837,13 +836,13 @@ export default function GeneradorPropuesta() {
       // Con un solo vuelo, crearSlotVuelo le da toda la hoja (escala hasta
       // 2x), asi que no queda mas chico que la pagina completa de antes.
       let doc
-      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf, mostrarPrecios })
+      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf })
       doc = primerGrupo.doc
       if (vuelosParaPdf.length > 4) {
         const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
         const plantillaAereosDoc = await PDFDocument.load(plantillaAereosBytes)
         for (let i = 4; i < vuelosParaPdf.length; i += 4) {
-          await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4), moneda: monedaPdf, mostrarPrecios })
+          await agregarPaginaAereosGrupo(doc, plantillaAereosDoc, primerGrupo.bebas, { clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf.slice(i, i + 4), moneda: monedaPdf })
         }
       }
 
@@ -863,17 +862,18 @@ export default function GeneradorPropuesta() {
         helvHosp = await doc.embedFont(StandardFonts.Helvetica)
         for (let i = 0; i < hospedajesParaPdf.length; i += 4) {
           const grupo = hospedajesParaPdf.slice(i, i + 4)
-          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, mostrarPrecios)
+          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo)
         }
       }
 
       // Hoja final con UNA fila por hospedaje (son opciones alternativas,
       // cada una con su propio total) — en las dos modalidades, Simple Y
-      // Combinada, aunque se presenten distinto en el resto del PDF (Simple
-      // no desglosa ningún precio en las páginas de arriba; Combinada sí, en
-      // detalle, y esta hoja queda como síntesis). El vuelo y el traslado son
-      // los mismos elija el hospedaje que elija — se suman al precio propio
-      // de CADA hospedaje, no se vuelven a cargar por opción.
+      // Combinada. Esta hoja siempre suma vuelo + traslado + hospedaje, se
+      // vean o no esos precios por separado más arriba (eso lo decide el
+      // tilde Pública/Privada de cada uno, no cambia esta suma). El vuelo y
+      // el traslado son los mismos elija el hospedaje que elija — se suman
+      // al precio propio de CADA hospedaje, no se vuelven a cargar por
+      // opción.
       // Simple: un solo vuelo (vuelosConDatos[0]) + su traslado propio.
       // Combinada: puede haber varios vuelos y varios tramos de traslado
       // (Transfers/destinos) — se suman TODOS.

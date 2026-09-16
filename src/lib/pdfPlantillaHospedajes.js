@@ -109,7 +109,7 @@ function crearSlot(fila) {
 
 const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, mostrarPrecios = true) {
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -156,17 +156,13 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
 
-    // Precio individual del hospedaje — solo en Propuesta Combinada. En
-    // Simple el precio de cada servicio (vuelo, traslado, hospedaje) va
-    // oculto: se reemplaza por un único total cargado a mano al final del
-    // PDF (agregarPaginaTotalSimple en pdfPlantillaAereos.js). Antes esta
-    // hoja armaba un total automático "AÉREO + TRASLADO + HOSPEDAJE" sumando
-    // vuelo.venta + vuelo.traslado_venta + h.precio cuando había un solo
-    // vuelo cargado — se probó y se pidió volver a un total manual, no
-    // auto-sumado.
+    // Precio individual del hospedaje — se ve si está tildado "Pública"
+    // (checkbox propio de cada hospedaje en el Generador), en simple o
+    // combinada. Si está "Privada" no se ve acá; igual entra en la suma de
+    // la hoja final (agregarPaginaTotalSimple en pdfPlantillaAereos.js).
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (mostrarPrecios) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.precio_publico !== false) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 

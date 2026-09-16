@@ -583,7 +583,7 @@ function crearSlotVuelo(fila, totalEnHoja, zonaBottom = ZONA_GRUPO_BOTTOM) {
 // traslados quedan como una sola linea centrada por tarjeta, sin iconos —
 // diseño pedido explicitamente para que la grilla se lea como una ficha
 // prolija en vez de una lista de texto suelto.
-function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarPrecios = true, iconos = {}) {
+function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, iconos = {}) {
   // Con menos de 4 vuelos en la hoja, slot.escala > 1 (ver crearSlotVuelo) —
   // agranda tamaños de letra y espaciados en la misma proporcion para
   // aprovechar el alto real de la franja en vez de dejarlo vacio.
@@ -624,7 +624,9 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     // a la píldora al lado, así el precio nunca desaparece por falta de
     // espacio — sí puede pasar que quede mas chico en fechas largas.
     const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
-    const mostrarPrecioVuelo = mostrarPrecios && vuelo.venta && vuelo.venta_publica !== false
+    // El precio del vuelo se ve si está tildado "Pública" — sin importar si
+    // la propuesta es simple o combinada (antes simple lo ocultaba siempre).
+    const mostrarPrecioVuelo = vuelo.venta && vuelo.venta_publica !== false
     const anchoMinPrecio = 62 * esc
     let tamanoTituloVuelta = tamanoTitulo
     if (mostrarPrecioVuelo) {
@@ -710,8 +712,8 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
         ? 'AEROPUERTO / HOTEL (IN)'
         : 'HOTEL / AEROPUERTO (OUT)'
     // Precio del traslado propio del vuelo (no el de Destinos, que es para
-    // combinada) — mismo criterio que el resto: respeta "Pública".
-    const precioTraslado = (mostrarPrecios && vuelo.traslado_venta && vuelo.traslado_venta_publica !== false)
+    // combinada) — se ve si está tildado "Pública", en simple o combinada.
+    const precioTraslado = (vuelo.traslado_venta && vuelo.traslado_venta_publica !== false)
       ? ` — ${moneda || 'ARS'}$ ${formatearNumero(vuelo.traslado_venta)}`
       : ''
     bloquesInfo.push({ dibujarIcono: dibujarIconoAuto, titulo: tituloTraslado, texto: textoTraslado + precioTraslado })
@@ -777,7 +779,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
   page.drawLine({ start: { x: 30, y: slot.bottom + 8 }, end: { x: 565, y: slot.bottom + 8 }, thickness: 0.5, color: rgb(0.85, 0.83, 0.78) })
 }
 
-async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo, destinos, moneda, mostrarPrecios = true }) {
+async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo, destinos, moneda }) {
   function escribir(texto, x, y, size, color) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
@@ -901,7 +903,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
-    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1, moneda, mostrarPrecios, iconos)
+    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1, moneda, iconos)
   }
 
   // Lista de transfers, en la franja reservada arriba del banner.
@@ -947,7 +949,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
 // Primer grupo (hasta 4 vuelos) de una propuesta con 2 o mas vuelos: arma el
 // documento entero, igual que generarPaginaAereosPDF pero con la grilla.
-export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, destinos, moneda, mostrarPrecios = true }) {
+export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, destinos, moneda }) {
   const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
   const doc = await PDFDocument.load(plantillaBytes)
   doc.registerFontkit(fontkit)
@@ -960,17 +962,17 @@ export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdult
   // Los transfers (destinos) son un dato de la propuesta entera, no de esta
   // hoja en particular — van solo en la primera (esta), no se repiten si hay
   // mas de 4 vuelos y se agregan paginas siguientes con agregarPaginaAereosGrupo.
-  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), destinos, moneda, mostrarPrecios })
+  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), destinos, moneda })
 
   return { doc, bebas }
 }
 
 // Grupos siguientes (mas de 4 vuelos en la misma propuesta) — caso raro, pero
 // se soporta con el mismo patron de agregar-pagina que el resto de la app.
-export async function agregarPaginaAereosGrupo(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, moneda, mostrarPrecios = true }) {
+export async function agregarPaginaAereosGrupo(doc, plantillaDoc, bebas, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, moneda }) {
   const [pagina] = await doc.copyPages(plantillaDoc, [0])
   doc.addPage(pagina)
-  await dibujarPaginaAereosGrupo(pagina, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), moneda, mostrarPrecios })
+  await dibujarPaginaAereosGrupo(pagina, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), moneda })
 }
 
 // Página final de "Propuesta Simple": UNA fila por hospedaje cargado, cada

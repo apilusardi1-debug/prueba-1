@@ -696,11 +696,13 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, mostrarP
     bloquesInfo.push({ icono: iconos.maleta, titulo: 'EQUIPAJE OPCIONAL:', texto: equipajeSeleccionado.opcionales.join('   +   '), color: DORADO_TXT })
   }
   // El traslado es independiente del vuelo (puede ofrecerse solo, con
-  // Hospedaje, sin vuelo) pero solo si tiene un precio cargado — los
-  // checkboxes de ida/vuelta arrancan tildados por defecto en cada vuelo
-  // nuevo, así que por sí solos no alcanzan como señal de "se está
-  // ofreciendo": si nunca se cargó un valor de venta, no se ofreció.
-  if ((vuelo.traslado_ida || vuelo.traslado_vuelta) && vuelo.traslado_venta) {
+  // Hospedaje, sin vuelo). La señal de "se está ofreciendo" es el switch
+  // "Traslados privados" del Generador (apagarlo destilda ida y vuelta), NO
+  // que tenga un precio cargado: es normal cotizar el traslado dentro del
+  // total del paquete y dejar su "Valor de venta" vacío — así se cargaron
+  // propuestas reales que quedaron sin la tarjeta de traslados por pedirle
+  // precio a este chequeo.
+  if (vuelo.traslado_ida || vuelo.traslado_vuelta) {
     const tituloTraslado = (vuelo.traslado_ida && vuelo.traslado_vuelta) ? 'TRASLADOS PRIVADOS INCLUIDOS:' : 'TRASLADO PRIVADO INCLUIDO:'
     const textoTraslado = vuelo.traslado_ida && vuelo.traslado_vuelta
       ? 'AEROPUERTO / HOTEL (IN - OUT)'
@@ -874,7 +876,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // "TRASLADOS:" con el auto en vez del avión; si no hay ni vuelo ni
   // traslado, no se dibuja título (la hoja queda solo con lo que sí hay).
   const grupoTieneVuelo = grupo.some(v => v.origen_ciudad?.trim() || v.destino_ciudad?.trim())
-  const grupoTieneTraslado = grupo.some(v => (v.traslado_ida || v.traslado_vuelta) && v.traslado_venta) || destinosValidos.length > 0
+  const grupoTieneTraslado = grupo.some(v => v.traslado_ida || v.traslado_vuelta) || destinosValidos.length > 0
   const tituloY = LIMITE_NUEVO - 51.5
   let tituloX = 63
   if (grupoTieneVuelo) {

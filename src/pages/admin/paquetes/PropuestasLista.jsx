@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { propuestasApi, subirDocumentoPropuesta } from '../../../lib/supabase.js'
 import { generarPDFCierre, generarPDFDetallesYServicios } from '../../../lib/pdfPlantillaCierre.js'
+import { EQUIPAJE_LABELS } from '../../../lib/pdfPlantillaAereos.js'
 
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
@@ -126,6 +127,12 @@ export default function PropuestasLista({ estado }) {
   const [vueloIdx, setVueloIdx] = useState(0)
   const [hospedajeIdx, setHospedajeIdx] = useState(0)
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
+  // Equipaje opcional: en el Generador se pueden cargar varios tipos a la vez
+  // (ej. carry on + valija 23), como opciones ofrecidas al cliente. Acá se
+  // marca cuál de esas opciones confirmó efectivamente por mensaje — solo esa
+  // se suma al total y queda en el PDF de cierre y en los siguientes. Guarda
+  // índices sobre `vuelo.equipaje.extras`.
+  const [equipajeOpcionalElegido, setEquipajeOpcionalElegido] = useState([])
   const [seguroViaje, setSeguroViaje] = useState(false)
   const [seguroViajeValor, setSeguroViajeValor] = useState('')
   const [vencimiento, setVencimiento] = useState('')
@@ -216,6 +223,7 @@ export default function PropuestasLista({ estado }) {
     setVueloIdx(0)
     setHospedajeIdx(0)
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
+    setEquipajeOpcionalElegido([])
     setSeguroViaje(p.seguro_viaje ?? false)
     setSeguroViajeValor(p.seguro_viaje_valor != null ? String(p.seguro_viaje_valor) : '')
     setVencimiento(p.vencimiento_saldo || '')
@@ -255,7 +263,17 @@ export default function PropuestasLista({ estado }) {
     try {
       const hospedajeElegido = (cerrandoPropuesta.hospedajes_detalle || [])[hospedajeIdx]
       const vuelosDisponibles = cerrandoPropuesta.vuelos?.length ? cerrandoPropuesta.vuelos : (cerrandoPropuesta.vuelo ? [cerrandoPropuesta.vuelo] : [])
-      const vueloElegido = vuelosDisponibles[vueloIdx]
+      const vueloDisponible = vuelosDisponibles[vueloIdx]
+      // El equipaje opcional puede tener varias opciones cargadas (ej. carry
+      // on + valija 23) — solo queda la que el cliente confirmó, igual que ya
+      // pasa con el vuelo/hospedaje elegidos entre varias opciones ofrecidas.
+      const vueloElegido = vueloDisponible ? {
+        ...vueloDisponible,
+        equipaje: {
+          ...vueloDisponible.equipaje,
+          extras: (vueloDisponible.equipaje?.extras || []).filter((_, i) => equipajeOpcionalElegido.includes(i)),
+        },
+      } : vueloDisponible
       const datosActualizados = {
         vencimiento_saldo: vencimiento || null,
         traslados_incluidos: trasladosIncluidos,
@@ -360,12 +378,22 @@ export default function PropuestasLista({ estado }) {
     + (parseFloat(vuelo.traslado_venta) || 0)
     + (parseFloat(hospedajeElegidoPago?.precio) || 0)
     + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
+  // Equipaje opcional confirmado por el cliente (puede ser más de un tipo a
+  // la vez, ej. carry on + valija 23) — se suma aparte porque no forma parte
+  // de la propuesta original, es un adicional que el cliente pidió después.
+  // En "enviada" todavía se está eligiendo (solo cuenta lo tildado); en
+  // "cerrada" el vuelo guardado ya quedó recortado a lo confirmado, así que
+  // se suma todo lo que haya ahí.
+  const extrasVuelo = vuelo.equipaje?.extras || []
+  const totalEquipajeOpcionalElegido = estado === 'enviada'
+    ? equipajeOpcionalElegido.reduce((sum, i) => sum + (parseFloat(extrasVuelo[i]?.precio) || 0), 0)
+    : extrasVuelo.reduce((sum, ex) => sum + (parseFloat(ex.precio) || 0), 0)
   // El total a pagar es vuelo + traslado + el hospedaje elegido (mismo criterio
   // que la hoja "Valor de cada opción" del Generador, tanto en simple como en
   // combinada) — antes en combinada se sumaban TODOS los hospedajes cargados
   // (que son opciones alternativas, no todos incluidos), en vez de solo el
   // que el cliente eligió. valorVentaTotalInterno ya arma esa cuenta arriba.
-  const totalPago = valorVentaTotalInterno
+  const totalPago = valorVentaTotalInterno + totalEquipajeOpcionalElegido
   const saldoPago = Math.max(totalPago - (parseFloat(sena) || 0), 0)
   const monedaPago = cerrandoPropuesta?.moneda || 'BRL'
 
@@ -768,6 +796,37 @@ export default function PropuestasLista({ estado }) {
                 <p className="text-sm text-gray-700 dark:text-zinc-300">{trasladosIncluidos ? 'Sí' : 'No'}</p>
               )}
             </div>
+
+            {/* Equipaje opcional: puede haber más de una opción cargada en el
+                Generador (ej. carry on extra + valija 23 extra) — se marca acá
+                cuál confirmó el cliente por mensaje después de la primer
+                propuesta, para que se sume al total y quede en el PDF de cierre. */}
+            {extrasVuelo.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">
+                  {estado === 'enviada' ? 'Equipaje opcional que confirmó el cliente' : 'Equipaje opcional confirmado'}
+                </p>
+                <div className="space-y-2">
+                  {extrasVuelo.map((ex, i) => {
+                    const elegido = estado === 'enviada' ? equipajeOpcionalElegido.includes(i) : true
+                    const tipoLabel = EQUIPAJE_LABELS[ex.tipo === 'valija23' ? 'valija23' : 'carryOn']
+                    const precioTxt = ex.precio ? `${ex.moneda === 'USD' ? 'U$D' : 'ARS$'} ${formatearNumero(ex.precio)}` : ''
+                    const Elemento = estado === 'enviada' ? 'button' : 'div'
+                    return (
+                      <Elemento key={i} type={estado === 'enviada' ? 'button' : undefined}
+                        onClick={estado === 'enviada' ? () => setEquipajeOpcionalElegido(prev => elegido ? prev.filter(x => x !== i) : [...prev, i]) : undefined}
+                        className={`w-full flex items-center gap-2 border rounded-xl p-2.5 text-left transition-colors ${
+                          elegido ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700'
+                        } ${estado === 'enviada' ? 'hover:border-brand-300' : ''}`}>
+                        <span className={elegido ? 'text-brand-600 dark:text-brand-400 text-sm' : 'text-gray-300 dark:text-zinc-600 text-sm'}>{elegido ? '✓' : '○'}</span>
+                        <span className="text-sm font-medium text-gray-800 dark:text-zinc-200">{ex.cantidad} {tipoLabel} OPCIONAL</span>
+                        {precioTxt && <span className="text-xs text-gray-400 dark:text-zinc-500 ml-auto">{precioTxt}</span>}
+                      </Elemento>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Combinada: cada transfer tiene su propio tramo salida -> destino
                 (distinto al fijo aeropuerto-hotel de la simple) — se listan todos

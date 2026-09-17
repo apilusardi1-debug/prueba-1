@@ -92,6 +92,17 @@ function formatearNumero(n) {
   return Number(n || 0).toLocaleString('es-AR')
 }
 
+// Noches de hospedaje a partir de la duración del viaje (fecha de vuelta -
+// fecha de ida del vuelo) — se usa para completar solas las tarjetas de
+// hospedaje apenas se cargan ambas fechas del vuelo.
+function calcularNoches(idaFecha, vueltaFecha) {
+  if (!idaFecha || !vueltaFecha) return null
+  const ida = new Date(idaFecha + 'T00:00:00')
+  const vuelta = new Date(vueltaFecha + 'T00:00:00')
+  const dias = Math.round((vuelta - ida) / 86400000)
+  return dias > 0 ? dias : null
+}
+
 // Los campos de monto guardan solo dígitos en el estado (compatible con
 // parseFloat/Number para el total y el guardado en BD); lo que se ve en el
 // input tiene los puntos de miles/millones puestos en el momento de mostrar.
@@ -652,7 +663,8 @@ export default function GeneradorPropuesta() {
 
   function agregarHospedaje() {
     const totalPersonas = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
-    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''], personas: totalPersonas ? String(totalPersonas) : '' }])
+    const noches = calcularNoches(vuelos[0]?.ida_fecha, vuelos[0]?.vuelta_fecha)
+    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''], personas: totalPersonas ? String(totalPersonas) : '', noches: noches ? String(noches) : '' }])
   }
 
   // Mismo criterio que el scroll automatico de Vuelo: al agregar un hospedaje
@@ -675,6 +687,16 @@ export default function GeneradorPropuesta() {
     if (!total) return
     setHospedajes(prev => prev.map(h => ({ ...h, personas: String(total) })))
   }, [cantidadAdultos, cantidadMenores])
+
+  // "Noches" de cada hospedaje se completa sola con la duración del vuelo
+  // (fecha de vuelta - fecha de ida del primer vuelo cargado) — se sigue
+  // pudiendo editar a mano después (no queda bloqueado como "personas"),
+  // solo se recalcula si vuelven a cambiar esas fechas.
+  useEffect(() => {
+    const noches = calcularNoches(vuelos[0]?.ida_fecha, vuelos[0]?.vuelta_fecha)
+    if (!noches) return
+    setHospedajes(prev => prev.map(h => ({ ...h, noches: String(noches) })))
+  }, [vuelos[0]?.ida_fecha, vuelos[0]?.vuelta_fecha])
 
   // Artículo personal, mochila de mano y carry on van 1 por pasajero — mismo
   // criterio que "personas" de hospedaje: se completan solos con el total de
@@ -1488,6 +1510,7 @@ export default function GeneradorPropuesta() {
 
             <div className="grid sm:grid-cols-2 gap-3">
               <input type="number" value={h.noches} onChange={e => setHospedajeCampo(idx, 'noches', e.target.value)} placeholder="Noches"
+                title="Se completa sola con la duración del vuelo (fecha de vuelta - fecha de ida) — se puede editar a mano"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <p title="Se completa solo con la cantidad de adultos + menores del Cliente"
                 className="w-full border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 text-gray-700 dark:text-zinc-300 rounded-xl px-3 py-2.5 text-sm">

@@ -43,7 +43,7 @@ const EQUIPAJE_OPCIONES = [
 const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS', publica: false }
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
-const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
+const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Sin desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
 
 // Propuesta Simple: un único valor de venta para todo el paquete, cargado a
 // mano (no la suma automática de los servicios sueltos) — el admin indica

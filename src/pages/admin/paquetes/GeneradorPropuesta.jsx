@@ -740,16 +740,24 @@ export default function GeneradorPropuesta() {
     try {
       const { base64, mediaType } = await archivoAImagenComprimida(archivo)
       let data, error
-      for (let intento = 0; intento < 8; intento++) {
+      // Antes eran 8 intentos con 10s fijos entre cada uno (hasta ~80s de
+      // espera en el peor caso). Un 429/5xx pasajero de Gemini se resuelve
+      // solo, o no — esperar tanto no mejora la chance de éxito, solo hace
+      // sentir la app rota. Bajado a 5 intentos con espera creciente corta
+      // (2/3/4/5s = 14s de espera total, ~20s en el peor caso incluyendo las
+      // llamadas) — si sigue sin andar en 5 intentos cortos, es más probable
+      // que sea persistente (cuota agotada, modelo caído) y no algo que un
+      // reintento más vaya a resolver.
+      for (let intento = 0; intento < 5; intento++) {
         if (intento > 0) {
           setReintentandoVuelo(true)
-          await new Promise(r => setTimeout(r, 10000))
+          await new Promise(r => setTimeout(r, 1000 * (intento + 1)))
         }
         ;({ data, error } = await extraerDatosVuelo(base64, mediaType))
         if (!data?.rateLimited) break
       }
       if (error || data?.error) {
-        setErrorVuelo(data?.error || error?.message || 'No se pudo leer la imagen.')
+        setErrorVuelo((data?.error || error?.message || 'No se pudo leer la imagen.') + ' Podés volver a intentar.')
       } else if (data?.vuelo) {
         setVuelos(prev => prev.map((v, i) => {
           if (i !== idx) return v

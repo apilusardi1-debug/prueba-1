@@ -1300,7 +1300,7 @@ export default function GeneradorPropuesta() {
                 <div>
                   <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta de este transfer — el neto es uso interno, nunca se exporta al PDF</p>
                   <div className="grid sm:grid-cols-3 gap-3">
-                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                    <CampoValor moneda="BRL" value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto" />
                     <CampoValor moneda={monedaPropuesta} value={formatearMiles(d.valor_cliente_traslado)} onChange={e => setDestinoCampo(idx, 'valor_cliente_traslado', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                     <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                       <input type="checkbox" checked={!!d.valor_cliente_traslado_publica} onChange={() => setDestinoCampo(idx, 'valor_cliente_traslado_publica', !d.valor_cliente_traslado_publica)}
@@ -1497,7 +1497,7 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del vuelo — el neto es uso interno, nunca se exporta al PDF</p>
               <div className="grid sm:grid-cols-3 gap-3">
-                <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.costo_neto)} onChange={e => setVueloCampo(idx, 'costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                <CampoValor moneda="BRL" value={formatearMiles(v.costo_neto)} onChange={e => setVueloCampo(idx, 'costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
                 <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.venta)} onChange={e => setVueloCampo(idx, 'venta', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                 <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                   <input type="checkbox" checked={!!v.venta_publica} onChange={() => setVueloCampo(idx, 'venta_publica', !v.venta_publica)}
@@ -1533,7 +1533,7 @@ export default function GeneradorPropuesta() {
                 <div className="mt-3">
                   <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado — el neto es uso interno, nunca se exporta al PDF</p>
                   <div className="grid sm:grid-cols-3 gap-3">
-                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.traslado_costo_neto)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                    <CampoValor moneda="BRL" value={formatearMiles(v.traslado_costo_neto)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
                     <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.traslado_venta)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                     <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                       <input type="checkbox" checked={!!v.traslado_venta_publica} disabled={v.traslado_activo === false} onChange={() => setVueloCampo(idx, 'traslado_venta_publica', !v.traslado_venta_publica)}
@@ -1690,7 +1690,7 @@ export default function GeneradorPropuesta() {
                           <div onClick={e => e.stopPropagation()} className="space-y-1">
                             <p className="text-[10px] text-gray-400 dark:text-zinc-500">Valor neto (costo) y de venta de esta habitación — el neto es uso interno, nunca se exporta al PDF</p>
                             <div className="grid grid-cols-3 gap-1.5">
-                              <CampoValor small moneda={monedaPropuesta} value={formatearMiles(elegida.costo_interno)}
+                              <CampoValor small moneda="BRL" value={formatearMiles(elegida.costo_interno)}
                                 onChange={e => setCampoHabitacion(idx, hab.id, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />
                               <CampoValor small moneda={monedaPropuesta} value={formatearMiles(elegida.precio)}
                                 onChange={e => setCampoHabitacion(idx, hab.id, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta" />
@@ -1726,7 +1726,7 @@ export default function GeneradorPropuesta() {
               <div>
                 <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta — el neto es uso interno, nunca se exporta al PDF</p>
                 <div className="grid sm:grid-cols-3 gap-3">
-                  <CampoValor moneda={monedaPropuesta} value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                  <CampoValor moneda="BRL" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />
                   <CampoValor moneda={monedaPropuesta} value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                   <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                     <input type="checkbox" checked={!!h.precio_publico} onChange={() => setHospedajeCampo(idx, 'precio_publico', !h.precio_publico)}

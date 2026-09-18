@@ -379,8 +379,10 @@ export default function PropuestasLista({ estado }) {
     })
     return grupos
   })()
-  // Uno por destino — el que esté tildado en ese grupo (o el primero, por
-  // default). Reemplaza al viejo hospedajeElegidoPago (uno solo para toda la
+  // Uno por destino — el que esté tildado en ese grupo (el primero, por
+  // default, hasta que se destilde). -1 ("sin hospedaje confirmado en este
+  // destino") cae en un índice inexistente del array, .filter(Boolean) lo
+  // saca solo. Reemplaza al viejo hospedajeElegidoPago (uno solo para toda la
   // propuesta).
   const hospedajesElegidos = gruposHospedajesPorDestino
     .map(grupo => grupo.opciones[hospedajeIdxPorDestino[grupo.destino] ?? 0]?.h)
@@ -787,19 +789,22 @@ export default function PropuestasLista({ estado }) {
                     </p>
                     <div className="space-y-2">
                       {grupo.opciones.map(({ h, i }, idxEnGrupo) => {
-                        // Solo se ve como "seleccionado" (borde + tilde) cuando
-                        // ese destino tiene más de una opción entre las que
-                        // elegir — con una sola no hay nada que seleccionar,
-                        // es directamente el hospedaje de ese destino.
-                        const haySeleccion = grupo.opciones.length > 1
-                        const seleccionado = haySeleccion && (hospedajeIdxPorDestino[grupo.destino] ?? 0) === idxEnGrupo
-                        const Elemento = estado === 'enviada' && haySeleccion ? 'button' : 'div'
+                        // Por default entra seleccionado el primero de cada
+                        // destino (idx 0) — pero se puede destildar (queda -1,
+                        // "sin hospedaje confirmado en este destino") aunque
+                        // sea la única opción, no solo cuando hay varias.
+                        const idxActual = hospedajeIdxPorDestino[grupo.destino] ?? 0
+                        const seleccionado = idxActual === idxEnGrupo
+                        const Elemento = estado === 'enviada' ? 'button' : 'div'
                         return (
-                          <Elemento key={i} type={estado === 'enviada' && haySeleccion ? 'button' : undefined}
-                            onClick={estado === 'enviada' && haySeleccion ? () => setHospedajeIdxPorDestino(prev => ({ ...prev, [grupo.destino]: idxEnGrupo })) : undefined}
+                          <Elemento key={i} type={estado === 'enviada' ? 'button' : undefined}
+                            onClick={estado === 'enviada' ? () => setHospedajeIdxPorDestino(prev => ({
+                              ...prev,
+                              [grupo.destino]: seleccionado ? -1 : idxEnGrupo,
+                            })) : undefined}
                             className={`w-full flex items-center gap-3 border rounded-xl p-2.5 text-left transition-colors ${
                               seleccionado ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700'
-                            } ${estado === 'enviada' && haySeleccion ? 'hover:border-brand-300' : ''}`}>
+                            } ${estado === 'enviada' ? 'hover:border-brand-300' : ''}`}>
                             <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
                               {h.imagen && <img src={h.imagen} alt="" className="w-full h-full object-cover" />}
                             </div>

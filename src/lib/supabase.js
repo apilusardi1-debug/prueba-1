@@ -370,6 +370,14 @@ export const conceptosApi = {
   delete: (id) => supabase?.from('conceptos_movimiento').delete().eq('id', id),
 }
 
+// ── Respuestas rápidas (CRM WhatsApp) ────────────────────────────────────────────
+export const respuestasRapidasApi = {
+  getAll: () => supabase?.from('respuestas_rapidas').select('*').order('titulo'),
+  create: (data) => supabase?.from('respuestas_rapidas').insert(data).select().single(),
+  update: (id, data) => supabase?.from('respuestas_rapidas').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('respuestas_rapidas').delete().eq('id', id),
+}
+
 // ── Usuarios del panel admin ─────────────────────────────────────────────────────
 // La tabla usuarios_admin tiene RLS activado sin políticas (bloqueada
 // para anon) — todo el acceso pasa por la Edge Function usuarios-admin,

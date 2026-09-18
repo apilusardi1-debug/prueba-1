@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -60,11 +60,21 @@ export default function WhatsAppCRM() {
   const [asignando, setAsignando] = useState(false)
   const [menuAsignar, setMenuAsignar] = useState(false)
   const [filtroAsignacion, setFiltroAsignacion] = useState('todas') // todas | sin_asignar | mias
+  const [respuestasRapidas, setRespuestasRapidas] = useState([])
+  const [menuRespuestas, setMenuRespuestas] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
   const menuAsignarRef = useRef(null)
+  const menuRespuestasRef = useRef(null)
+
+  // Cargar respuestas rápidas activas
+  useEffect(() => {
+    respuestasRapidasApi.getAll().then(({ data }) => {
+      setRespuestasRapidas((data || []).filter(r => r.activo))
+    })
+  }, [])
 
   // Cargar usuarios del panel (para asignar conversaciones) y resolver "mi usuario"
   useEffect(() => {
@@ -163,10 +173,19 @@ export default function WhatsAppCRM() {
       if (menuAsignarRef.current && !menuAsignarRef.current.contains(e.target)) {
         setMenuAsignar(false)
       }
+      if (menuRespuestasRef.current && !menuRespuestasRef.current.contains(e.target)) {
+        setMenuRespuestas(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  function insertarRespuesta(texto) {
+    setTexto(prev => (prev ? `${prev} ${texto}` : texto))
+    setMenuRespuestas(false)
+    inputRef.current?.focus()
+  }
 
   async function seleccionarConversacion(conv) {
     setSeleccionada(conv)
@@ -515,6 +534,35 @@ export default function WhatsAppCRM() {
 
           {/* Input de envío */}
           <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
+            <div className="relative shrink-0" ref={menuRespuestasRef}>
+              <button
+                onClick={() => setMenuRespuestas(v => !v)}
+                title="Respuestas rápidas"
+                className="w-[42px] h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                ⚡
+              </button>
+              {menuRespuestas && (
+                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[220px] max-w-[280px] max-h-64 overflow-y-auto">
+                  {respuestasRapidas.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">
+                      Sin respuestas guardadas — armalas en Configuración → Respuestas rápidas.
+                    </p>
+                  ) : (
+                    respuestasRapidas.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => insertarRespuesta(r.texto)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                      >
+                        <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <textarea
               ref={inputRef}
               rows={1}

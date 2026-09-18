@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
-import { usuariosAdminApi, hashPassword, conceptosApi } from '../../lib/supabase.js'
+import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi } from '../../lib/supabase.js'
 import { ROLES } from '../../lib/roles.js'
 
 const SECTION = {
@@ -390,6 +390,142 @@ function TabConceptos() {
   )
 }
 
+function TabRespuestasRapidas() {
+  const [respuestas, setRespuestas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [nuevoTitulo, setNuevoTitulo] = useState('')
+  const [nuevoTexto, setNuevoTexto] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editForm, setEditForm] = useState({ titulo: '', texto: '' })
+
+  useEffect(() => { cargar() }, [])
+
+  async function cargar() {
+    setLoading(true)
+    const { data } = await respuestasRapidasApi.getAll()
+    setRespuestas(data || [])
+    setLoading(false)
+  }
+
+  async function agregar() {
+    if (!nuevoTitulo.trim() || !nuevoTexto.trim()) return
+    setGuardando(true)
+    const { data } = await respuestasRapidasApi.create({ titulo: nuevoTitulo.trim(), texto: nuevoTexto.trim() })
+    if (data) setRespuestas(prev => [...prev, data].sort((a, b) => a.titulo.localeCompare(b.titulo)))
+    setNuevoTitulo('')
+    setNuevoTexto('')
+    setGuardando(false)
+  }
+
+  function iniciarEdicion(r) {
+    setEditandoId(r.id)
+    setEditForm({ titulo: r.titulo, texto: r.texto })
+  }
+
+  async function guardarEdicion(id) {
+    if (!editForm.titulo.trim() || !editForm.texto.trim()) return
+    const { data } = await respuestasRapidasApi.update(id, { titulo: editForm.titulo.trim(), texto: editForm.texto.trim() })
+    if (data) setRespuestas(prev => prev.map(r => r.id === id ? data : r))
+    setEditandoId(null)
+  }
+
+  async function toggleActivo(r) {
+    await respuestasRapidasApi.update(r.id, { activo: !r.activo })
+    setRespuestas(prev => prev.map(x => x.id === r.id ? { ...x, activo: !x.activo } : x))
+  }
+
+  async function eliminar(id) {
+    await respuestasRapidasApi.delete(id)
+    setRespuestas(prev => prev.filter(r => r.id !== id))
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Respuestas rápidas</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Frases guardadas que se pueden insertar con un click al responder en CRM → WhatsApp.</p>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm mb-4 overflow-hidden">
+        {loading ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Cargando...</p>
+        ) : respuestas.length === 0 ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Sin respuestas guardadas.</p>
+        ) : (
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+            {respuestas.map(r => (
+              <div key={r.id} className="px-5 py-3">
+                {editandoId === r.id ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editForm.titulo}
+                      autoFocus
+                      onChange={e => setEditForm(f => ({ ...f, titulo: e.target.value }))}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    />
+                    <textarea
+                      rows={2}
+                      value={editForm.texto}
+                      onChange={e => setEditForm(f => ({ ...f, texto: e.target.value }))}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={() => guardarEdicion(r.id)} className="text-xs font-semibold text-brand-600 dark:text-brand-400">Guardar</button>
+                      <button onClick={() => setEditandoId(null)} className="text-xs text-gray-400 dark:text-zinc-500">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => iniciarEdicion(r)} className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 hover:text-brand-600 dark:hover:text-brand-400">{r.titulo}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                    </button>
+                    <button
+                      onClick={() => toggleActivo(r)}
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${r.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'}`}
+                    >
+                      {r.activo ? 'Activa' : 'Inactiva'}
+                    </button>
+                    <button onClick={() => eliminar(r.id)} className="text-xs text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 font-medium shrink-0">
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={nuevoTitulo}
+          onChange={e => setNuevoTitulo(e.target.value)}
+          placeholder="Título (Ej: Bienvenida)"
+          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <textarea
+          rows={2}
+          value={nuevoTexto}
+          onChange={e => setNuevoTexto(e.target.value)}
+          placeholder="Texto del mensaje..."
+          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+        />
+        <button
+          onClick={agregar}
+          disabled={guardando || !nuevoTitulo.trim() || !nuevoTexto.trim()}
+          className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          + Agregar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SiteConfig() {
   const { config, saveConfig, loading } = useSiteConfig()
   const [form, setForm] = useState(config)
@@ -432,7 +568,7 @@ export default function SiteConfig() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }].map(t => (
+        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }, { id: 'respuestas', label: 'Respuestas rápidas' }].map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -450,6 +586,7 @@ export default function SiteConfig() {
 
       {tab === 'accesos' && <TabAccesos />}
       {tab === 'conceptos' && <TabConceptos />}
+      {tab === 'respuestas' && <TabRespuestasRapidas />}
 
       {tab === 'sitio' && (
         <>

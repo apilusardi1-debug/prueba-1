@@ -28,16 +28,23 @@ const CAMPOS = [
 ]
 
 // La cuota gratuita del proyecto (era el problema original: "Quota exceeded
-// ... limit: 20") ya se resolvió habilitando facturación en Google Cloud.
-// El problema actual es otro: gemini-3.5-flash devuelve seguido un error de
-// Google real (no de nuestro código) tipo "is currently experiencing high
-// demand, spikes in demand are usually temporary" -- capacidad del lado de
-// Google para ESE modelo puntual, no de nuestra cuenta. Probado en vivo:
-// 1 de 2 llamadas a 3.5-flash fallaron por esto mismo, mientras que
-// gemini-3.6-flash (mismo dia, misma cuenta) dio 5 de 5 exitosas. El
-// reintento del lado del cliente (ver GeneradorPropuesta.jsx) sigue estando
-// para absorber lo que quede de este tipo de picos pasajeros.
+// ... limit: 20") ya se resolvió habilitando facturación en Google Cloud. El
+// problema actual es otro y la facturación NO lo resuelve: son 503
+// "gemini-3.6-flash is currently experiencing high demand" -- capacidad del
+// lado de Google para ESE modelo puntual (confirmado en los logs reales de
+// la función), no cuota de nuestra cuenta.
+// Por eso, si el modelo principal da un error transitorio (429/5xx), se
+// prueba UNA vez más con gemini-3.5-flash antes de rendirse -- son versiones
+// de modelo distintas, es razonable asumir que no comparten la misma
+// capacidad saturada en el mismo momento (fallas no correlacionadas), y ya
+// se probó antes que 3.5-flash funciona con esta misma cuenta/API key.
+// Importante: esto es un segundo fetch inmediato, SIN esperar entre medio --
+// ya se probó reintentar con backoff/sleep ACÁ ADENTRO y la Edge Function
+// terminaba muriendo con WORKER_RESOURCE_LIMIT. La espera entre intentos la
+// sigue poniendo el cliente (ver GeneradorPropuesta.jsx), llamando de nuevo
+// a esta función con una invocación fresca.
 const GEMINI_MODEL = 'gemini-3.6-flash'
+const GEMINI_MODEL_RESPALDO = 'gemini-3.5-flash'
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 
 // El prompt describe explicitamente los formatos reales que llegan a la agencia
@@ -78,6 +85,37 @@ Sea cual sea el formato, extraé estos datos:
 Si un vuelo (ida o vuelta) tiene más de una escala, usá solo la primera. Si la imagen es un viaje solo de ida (sin vuelta), dejá todos los campos de vuelta como string vacío "". Si algún dato puntual no se puede leer con certeza en la imagen, dejá ese campo como string vacío "" en vez de inventar un valor. Si el año de la fecha no aparece en la imagen, asumí el año de hoy (o el que viene, si esa fecha ya pasó este año).`
 }
 
+// Un intento a un modelo puntual. No reintenta ni espera -- eso lo maneja el
+// llamador (probar el modelo de respaldo, o el cliente llamando de nuevo).
+async function llamarGemini(model: string, imagenBase64: string, mediaType: string | undefined, properties: Record<string, unknown>) {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'POST',
+    // Sin el header Api-Revision, Google parece no aplicar bien "thinking_level"
+    // (probado: la misma llamada tardaba entre 9 y 60 segundos, muy variable —
+    // consistente con el modelo pensando en nivel default/alto en vez de "low").
+    // Documentado como obligatorio en la doc actual de la Interactions API.
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '', 'Api-Revision': '2026-05-20' },
+    body: JSON.stringify({
+      model,
+      input: [
+        { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
+        { type: 'text', text: construirPrompt() },
+      ],
+      response_format: {
+        type: 'text',
+        mime_type: 'application/json',
+        schema: { type: 'object', properties, required: CAMPOS },
+      },
+      // Por default el modelo "piensa" con nivel medio/alto antes de responder,
+      // pensado para tareas que requieren razonamiento — acá solo hace falta
+      // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
+      // y evita varios segundos de latencia que no aportan nada a este caso.
+      generation_config: { thinking_level: 'low' },
+    }),
+  })
+  return res
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
@@ -92,41 +130,20 @@ serve(async (req) => {
 
     const properties = Object.fromEntries(CAMPOS.map((c) => [c, { type: 'string' }]))
 
-    // Un solo intento acá adentro (nada de reintentar-con-espera dentro de la
-    // misma invocación): se probó con un loop de reintentos con backoff y la
-    // Edge Function terminaba muriendo con WORKER_RESOURCE_LIMIT (se queda sin
-    // recursos), aunque cada llamada individual a Gemini responde rápido
-    // (~1-2s incluso cuando falla). La paciencia ante un 429/5xx pasajero la
-    // pone el cliente, llamando de nuevo a esta función con una invocación
-    // fresca cada vez — más liviano y más confiable que reintentar acá.
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST',
-      // Sin el header Api-Revision, Google parece no aplicar bien "thinking_level"
-      // (probado: la misma llamada tardaba entre 9 y 60 segundos, muy variable —
-      // consistente con el modelo pensando en nivel default/alto en vez de "low").
-      // Documentado como obligatorio en la doc actual de la Interactions API.
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY ?? '', 'Api-Revision': '2026-05-20' },
-      body: JSON.stringify({
-        model: GEMINI_MODEL,
-        input: [
-          { type: 'image', mime_type: mediaType || 'image/png', data: imagenBase64 },
-          { type: 'text', text: construirPrompt() },
-        ],
-        response_format: {
-          type: 'text',
-          mime_type: 'application/json',
-          schema: { type: 'object', properties, required: CAMPOS },
-        },
-        // Por default el modelo "piensa" con nivel medio/alto antes de responder,
-        // pensado para tareas que requieren razonamiento — acá solo hace falta
-        // leer campos de una imagen y acomodarlos, así que "low" alcanza de sobra
-        // y evita varios segundos de latencia que no aportan nada a este caso.
-        generation_config: { thinking_level: 'low' },
-      }),
-    })
+    // Modelo principal, y si da un error transitorio (429/5xx) un segundo
+    // intento inmediato con el modelo de respaldo, sin esperar entre medio
+    // (ver comentario de GEMINI_MODEL_RESPALDO más arriba, y por qué no se
+    // reintenta con sleep acá adentro).
+    let res = await llamarGemini(GEMINI_MODEL, imagenBase64, mediaType, properties)
+    let modeloUsado = GEMINI_MODEL
+    if (!res.ok && (res.status === 429 || res.status >= 500)) {
+      console.error(`Gemini error con ${GEMINI_MODEL}:`, res.status, await res.text())
+      res = await llamarGemini(GEMINI_MODEL_RESPALDO, imagenBase64, mediaType, properties)
+      modeloUsado = GEMINI_MODEL_RESPALDO
+    }
 
     if (!res.ok) {
-      console.error('Gemini error:', res.status, await res.text())
+      console.error(`Gemini error con ${modeloUsado}:`, res.status, await res.text())
       const esTransitorio = res.status === 429 || res.status >= 500
       return new Response(JSON.stringify({
         error: esTransitorio

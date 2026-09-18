@@ -47,6 +47,17 @@ const GEMINI_MODEL = 'gemini-3.6-flash'
 const GEMINI_MODEL_RESPALDO = 'gemini-3.5-flash'
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 
+// Tercer nivel de respaldo, para cuando Gemini falla ENTERO (no solo un
+// modelo puntual — confirmado en logs reales: 503 en 3.6-flash Y en
+// 3.5-flash el mismo día). Infraestructura de otra empresa (Anthropic), no
+// comparte la capacidad saturada de Google. Haiku 4.5: modelo económico y
+// rápido, apropiado para esta tarea (leer campos de una imagen, sin
+// razonamiento complejo) — es el último recurso, no el camino normal.
+// Opcional: si no está configurado el secret ANTHROPIC_API_KEY en Supabase,
+// este nivel simplemente se salta (no rompe nada mientras no se cargue).
+const CLAUDE_MODEL = 'claude-haiku-4-5'
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
+
 // El prompt describe explicitamente los formatos reales que llegan a la agencia
 // (no solo "una captura de itinerario" generico) porque cada uno pone la misma
 // informacion en un lugar visual distinto -- sin esto el modelo tiende a leer
@@ -116,6 +127,47 @@ async function llamarGemini(model: string, imagenBase64: string, mediaType: stri
   return res
 }
 
+// Tercer nivel de respaldo (Claude/Anthropic) — se usa "tool use" forzado en
+// vez de response_format porque es el mecanismo estándar de Claude para
+// salida estructurada garantizada: se define UNA tool con el schema de
+// campos y se fuerza tool_choice a esa tool, así el "input" del tool_use ya
+// viene como el objeto JSON parseado (no hace falta JSON.parse un string,
+// como con Gemini).
+async function llamarClaude(imagenBase64: string, mediaType: string | undefined, properties: Record<string, unknown>) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY ?? '',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 1024,
+      tools: [{
+        name: 'extraer_datos_vuelo',
+        description: 'Devuelve los datos extraídos del itinerario de vuelo en la imagen.',
+        input_schema: {
+          type: 'object',
+          properties,
+          required: CAMPOS,
+          additionalProperties: false,
+        },
+        strict: true,
+      }],
+      tool_choice: { type: 'tool', name: 'extraer_datos_vuelo' },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/png', data: imagenBase64 } },
+          { type: 'text', text: construirPrompt() },
+        ],
+      }],
+    }),
+  })
+  return res
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
@@ -142,9 +194,35 @@ serve(async (req) => {
       modeloUsado = GEMINI_MODEL_RESPALDO
     }
 
+    // El body de `res` solo se puede leer una vez -- se captura acá (si hace
+    // falta) antes de decidir si además se prueba Claude, para no volver a
+    // leerlo más abajo.
+    let statusFinal = res.status
+    let esTransitorio = !res.ok && (res.status === 429 || res.status >= 500)
+    let textoErrorGemini = !res.ok ? await res.text() : ''
+
+    // Si Gemini falló ENTERO (los dos modelos) con un error transitorio,
+    // tercer intento con Claude antes de rendirse — ver llamarClaude. Se
+    // salta solo si no hay ANTHROPIC_API_KEY cargada (no configurado todavía).
+    if (esTransitorio && ANTHROPIC_API_KEY) {
+      console.error(`Gemini error con ${modeloUsado}:`, statusFinal, textoErrorGemini)
+      const resClaude = await llamarClaude(imagenBase64, mediaType, properties)
+      if (resClaude.ok) {
+        const dataClaude = await resClaude.json()
+        const toolUse = dataClaude?.content?.find((c: any) => c.type === 'tool_use')
+        if (toolUse?.input) {
+          return new Response(JSON.stringify({ vuelo: toolUse.input }), {
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          })
+        }
+      } else {
+        console.error('Claude error:', resClaude.status, await resClaude.text())
+      }
+      // Si Claude tampoco respondió bien, seguimos con el error de Gemini.
+    }
+
     if (!res.ok) {
-      console.error(`Gemini error con ${modeloUsado}:`, res.status, await res.text())
-      const esTransitorio = res.status === 429 || res.status >= 500
+      console.error(`Gemini error con ${modeloUsado}:`, statusFinal, textoErrorGemini)
       return new Response(JSON.stringify({
         error: esTransitorio
           ? 'El lector de imágenes está saturado en este momento — esperá unos segundos y probá de nuevo.'

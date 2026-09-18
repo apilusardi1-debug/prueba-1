@@ -101,6 +101,15 @@ export const leadsApi = {
   delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }
 
+// ── Recordatorios de seguimiento (leads) ─────────────────────────────────────────
+export const recordatoriosApi = {
+  getPendientes: () => supabase?.from('recordatorios').select('*').eq('completado', false).order('fecha'),
+  getByLead: (leadId) => supabase?.from('recordatorios').select('*').eq('lead_id', leadId).order('fecha'),
+  create: (data) => supabase?.from('recordatorios').insert(data).select().single(),
+  completar: (id, completado) => supabase?.from('recordatorios').update({ completado }).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('recordatorios').delete().eq('id', id),
+}
+
 // ── Hospedajes ─────────────────────────────────────────────────────────────────
 export const hospedajesApi = {
   getAll: () => supabase?.from('hospedajes').select('*').eq('activa', true).order('nombre'),

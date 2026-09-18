@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { leadsApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
+import { leadsApi, excursionesApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
 import Badge from '../../components/ui/Badge.jsx'
+
+function hoyISO() { return new Date().toISOString().split('T')[0] }
 
 const COLUMNAS = ['nuevo', 'contactado', 'reservado', 'perdido']
 const estadosLead = {
@@ -30,21 +32,61 @@ export default function Leads() {
   const [guardandoLead, setGuardandoLead] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [colArrastrando, setColArrastrando] = useState(null)
+  const [recordatorios, setRecordatorios] = useState([])
+  const [nuevoRecFecha, setNuevoRecFecha] = useState(hoyISO())
+  const [nuevoRecNota, setNuevoRecNota] = useState('')
+  const [guardandoRec, setGuardandoRec] = useState(false)
 
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: l }, { data: e }] = await Promise.all([
+        const [{ data: l }, { data: e }, { data: r }] = await Promise.all([
           leadsApi.getAll(),
           excursionesApi.getAll(),
+          recordatoriosApi.getPendientes(),
         ])
         if (l) setLeads(l)
         if (e) setExcursiones(e)
+        if (r) setRecordatorios(r)
       } catch (_) {}
       setLoading(false)
     }
     cargar()
   }, [])
+
+  function recordatoriosDeLead(leadId) {
+    return recordatorios.filter(r => r.lead_id === leadId).sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }
+
+  function proximoRecordatorio(leadId) {
+    return recordatoriosDeLead(leadId)[0] || null
+  }
+
+  async function agregarRecordatorio() {
+    if (!seleccionado || !nuevoRecNota.trim() || !nuevoRecFecha) return
+    setGuardandoRec(true)
+    const { data } = await recordatoriosApi.create({
+      lead_id: seleccionado.id,
+      fecha: nuevoRecFecha,
+      nota: nuevoRecNota.trim(),
+    })
+    if (data) {
+      setRecordatorios(prev => [...prev, data])
+      setNuevoRecNota('')
+      setNuevoRecFecha(hoyISO())
+    }
+    setGuardandoRec(false)
+  }
+
+  async function completarRecordatorio(id) {
+    setRecordatorios(prev => prev.filter(r => r.id !== id))
+    await recordatoriosApi.completar(id, true)
+  }
+
+  async function eliminarRecordatorio(id) {
+    setRecordatorios(prev => prev.filter(r => r.id !== id))
+    await recordatoriosApi.delete(id)
+  }
 
   async function eliminarLead(id) {
     await leadsApi.delete(id)
@@ -227,6 +269,21 @@ export default function Leads() {
                           {new Date(lead.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
                         </span>
                       </div>
+                      {proximoRecordatorio(lead.id) && (
+                        <div className={`mt-2 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg ${
+                          proximoRecordatorio(lead.id).fecha < hoyISO()
+                            ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+                            : proximoRecordatorio(lead.id).fecha === hoyISO()
+                              ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400'
+                              : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'
+                        }`}>
+                          <span>⏰</span>
+                          <span className="truncate">
+                            {proximoRecordatorio(lead.id).fecha < hoyISO() ? 'Vencido' : proximoRecordatorio(lead.id).fecha === hoyISO() ? 'Hoy' : new Date(proximoRecordatorio(lead.id).fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                            {' · '}{proximoRecordatorio(lead.id).nota}
+                          </span>
+                        </div>
+                      )}
                       {lead.whatsapp && (
                         <button
                           onClick={e => { e.stopPropagation(); navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`) }}
@@ -418,6 +475,60 @@ export default function Leads() {
               >
                 {guardandoLead ? 'Guardando...' : 'Guardar cambios'}
               </button>
+
+              {/* Recordatorios de seguimiento */}
+              <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Recordatorios de seguimiento</p>
+
+                {recordatoriosDeLead(seleccionado.id).length === 0 && (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Sin recordatorios pendientes.</p>
+                )}
+
+                <div className="space-y-2">
+                  {recordatoriosDeLead(seleccionado.id).map(r => (
+                    <div key={r.id} className="flex items-start gap-2 bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-3 py-2">
+                      <button
+                        onClick={() => completarRecordatorio(r.id)}
+                        title="Marcar como hecho"
+                        className="mt-0.5 w-4 h-4 rounded border border-gray-300 dark:border-zinc-600 shrink-0 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 transition-colors"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${r.fecha < hoyISO() ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-zinc-300'}`}>
+                          {new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400 break-words">{r.nota}</p>
+                      </div>
+                      <button onClick={() => eliminarRecordatorio(r.id)} className="text-gray-300 dark:text-zinc-600 hover:text-red-400 dark:hover:text-red-400 shrink-0" title="Eliminar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={nuevoRecFecha}
+                    onChange={e => setNuevoRecFecha(e.target.value)}
+                    className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400 w-32 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={nuevoRecNota}
+                    onChange={e => setNuevoRecNota(e.target.value)}
+                    placeholder="Ej: Llamar para confirmar fechas"
+                    onKeyDown={e => e.key === 'Enter' && agregarRecordatorio()}
+                    className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                  <button
+                    onClick={agregarRecordatorio}
+                    disabled={guardandoRec || !nuevoRecNota.trim()}
+                    className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-xs font-semibold px-3 rounded-xl transition-colors shrink-0"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
               <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-3">
                 {/* Convertir a cliente */}

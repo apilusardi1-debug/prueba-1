@@ -408,6 +408,7 @@ export async function hashPassword(texto) {
 export const propuestasApi = {
   getAll: () => supabase?.from('propuestas').select('*').order('created_at', { ascending: false }),
   getByEstado: (estado) => supabase?.from('propuestas').select('*').eq('estado', estado).order('created_at', { ascending: false }),
+  getByWhatsapp: (whatsapp) => supabase?.from('propuestas').select('*').eq('cliente_whatsapp', whatsapp).order('created_at', { ascending: false }),
   create: (data) => supabase?.from('propuestas').insert(data).select().single(),
   update: (id, data) => supabase?.from('propuestas').update(data).eq('id', id).select().single(),
   actualizarEstado: (id, estado) => supabase?.from('propuestas').update({

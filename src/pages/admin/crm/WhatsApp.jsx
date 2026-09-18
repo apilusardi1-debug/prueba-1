@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, propuestasApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -45,6 +45,7 @@ function Avatar({ nombre, size = 'md' }) {
 }
 
 export default function WhatsAppCRM() {
+  const navigate = useNavigate()
   const [conversaciones, setConversaciones] = useState([])
   const [seleccionada, setSeleccionada] = useState(null)
   const [mensajes, setMensajes] = useState([])
@@ -62,6 +63,11 @@ export default function WhatsAppCRM() {
   const [filtroAsignacion, setFiltroAsignacion] = useState('todas') // todas | sin_asignar | mias
   const [respuestasRapidas, setRespuestasRapidas] = useState([])
   const [menuRespuestas, setMenuRespuestas] = useState(false)
+  const [panelCliente, setPanelCliente] = useState(false)
+  const [clienteVinculado, setClienteVinculado] = useState(null)
+  const [reservasCliente, setReservasCliente] = useState([])
+  const [propuestasCliente, setPropuestasCliente] = useState([])
+  const [cargandoCliente, setCargandoCliente] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -124,6 +130,33 @@ export default function WhatsAppCRM() {
       setSearchParams({}, { replace: true })
     }
   }, [conversaciones, searchParams])
+
+  // Buscar si la conversación corresponde a un cliente ya existente + su
+  // historial (reservas y propuestas), para mostrarlo dentro del chat.
+  useEffect(() => {
+    setPanelCliente(false)
+    setClienteVinculado(null)
+    setReservasCliente([])
+    setPropuestasCliente([])
+    if (!seleccionada) return
+
+    setCargandoCliente(true)
+    Promise.all([
+      clientesApi.getByWhatsapp(seleccionada.whatsapp),
+      propuestasApi.getByWhatsapp(seleccionada.whatsapp),
+    ]).then(([{ data: cliente }, { data: propuestas }]) => {
+      setPropuestasCliente(propuestas || [])
+      if (cliente) {
+        setClienteVinculado(cliente)
+        reservasClienteApi.getByCliente(cliente.id, seleccionada.whatsapp).then(({ data }) => {
+          setReservasCliente(data || [])
+          setCargandoCliente(false)
+        })
+      } else {
+        setCargandoCliente(false)
+      }
+    })
+  }, [seleccionada?.id])
 
   // Cargar mensajes + suscripción realtime al cambiar conversación
   useEffect(() => {
@@ -414,6 +447,19 @@ export default function WhatsAppCRM() {
               <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
             <div className="ml-auto flex items-center gap-3">
+              {/* Panel de cliente */}
+              <button
+                onClick={() => setPanelCliente(v => !v)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5 ${
+                  panelCliente
+                    ? 'bg-brand-600 dark:bg-brand-500 text-white border-transparent'
+                    : clienteVinculado
+                      ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 border-transparent'
+                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                }`}
+              >
+                {clienteVinculado ? 'Cliente' : 'Sin datos'}
+              </button>
               {/* Selector de asignación */}
               <div className="relative" ref={menuAsignarRef}>
                 <button
@@ -540,7 +586,10 @@ export default function WhatsAppCRM() {
                 title="Respuestas rápidas"
                 className="w-[42px] h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
               >
-                ⚡
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
+                </svg>
               </button>
               {menuRespuestas && (
                 <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[220px] max-w-[280px] max-h-64 overflow-y-auto">
@@ -597,6 +646,73 @@ export default function WhatsAppCRM() {
             <p className="text-6xl mb-4">💬</p>
             <p className="font-semibold text-lg text-gray-700 dark:text-zinc-300">WhatsApp CRM</p>
             <p className="text-sm mt-1 text-gray-400 dark:text-zinc-500">Seleccioná una conversación para ver los mensajes</p>
+          </div>
+        </div>
+      )}
+
+      {/* Panel derecho — ficha del cliente */}
+      {panelCliente && seleccionada && (
+        <div className="w-80 border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-y-auto">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
+            <p className="font-semibold text-gray-900 dark:text-zinc-100">Ficha del contacto</p>
+          </div>
+          <div className="p-5 space-y-5">
+            {cargandoCliente ? (
+              <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando...</p>
+            ) : clienteVinculado ? (
+              <div>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Cliente</p>
+                <p className="font-semibold text-gray-900 dark:text-zinc-100">{clienteVinculado.nombre}</p>
+                {(clienteVinculado.pais || clienteVinculado.ciudad) && (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+                    {[clienteVinculado.pais, clienteVinculado.ciudad].filter(Boolean).join(', ')}
+                  </p>
+                )}
+                {clienteVinculado.cantidad_pasajeros && (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">
+                    {clienteVinculado.cantidad_pasajeros} pasajero{clienteVinculado.cantidad_pasajeros !== 1 ? 's' : ''} habitual
+                  </p>
+                )}
+                <button
+                  onClick={() => navigate(`/admin/clientes?cliente=${clienteVinculado.id}`)}
+                  className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
+                >
+                  Ver perfil completo →
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-zinc-400">Todavía no es cliente — sigue siendo un contacto/lead.</p>
+            )}
+
+            {reservasCliente.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-2">Reservas ({reservasCliente.length})</p>
+                <div className="space-y-2">
+                  {reservasCliente.slice(0, 5).map(r => (
+                    <div key={r.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-gray-800 dark:text-zinc-200 truncate">{r.excursiones?.nombre || 'Excursión'}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-zinc-500 capitalize">
+                        {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'} · {r.estado}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {propuestasCliente.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide mb-2">Propuestas ({propuestasCliente.length})</p>
+                <div className="space-y-2">
+                  {propuestasCliente.slice(0, 5).map(p => (
+                    <div key={p.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-gray-800 dark:text-zinc-200">{p.moneda} {Number(p.total || 0).toLocaleString('es-AR')}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-zinc-500 capitalize">{p.estado}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

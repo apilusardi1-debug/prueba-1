@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
+import { supabase, conversacionesApi } from '../../lib/supabase.js'
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -189,7 +190,26 @@ function Sidebar() {
   const subMenuRefs = useRef({})
   const [subHeights, setSubHeights] = useState({})
   const [openSub, setOpenSub] = useState(null)
+  const [pendientesWhatsapp, setPendientesWhatsapp] = useState(0)
   const visible = isExpanded || isHovered || isMobileOpen
+
+  // Conversaciones sin leer del CRM — visible en el menú aunque no estés en esa página
+  useEffect(() => {
+    function contar(convs) {
+      setPendientesWhatsapp((convs || []).filter(c => c.no_leidos > 0).length)
+    }
+    conversacionesApi.getAll().then(({ data }) => contar(data))
+
+    if (!supabase) return
+    const channel = supabase
+      .channel('nav-conversaciones-pendientes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, () => {
+        conversacionesApi.getAll().then(({ data }) => contar(data))
+      })
+      .subscribe()
+
+    return () => channel.unsubscribe()
+  }, [])
 
   const rol = JSON.parse(localStorage.getItem('admin_session') || '{}').role
   const navVisible = NAV
@@ -281,12 +301,20 @@ function Sidebar() {
                       parentActive ? 'menu-item-active' : 'menu-item-inactive'
                     }`}
                   >
-                    <span className={`size-6 flex-shrink-0 ${parentActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                    <span className={`relative size-6 flex-shrink-0 ${parentActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
                       <item.icon />
+                      {item.label === 'CRM' && pendientesWhatsapp > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                      )}
                     </span>
                     {visible && (
                       <>
                         <span className="flex-1 text-left">{item.label}</span>
+                        {item.label === 'CRM' && pendientesWhatsapp > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                            {pendientesWhatsapp}
+                          </span>
+                        )}
                         <Icon.Chevron className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-500' : 'text-gray-400'}`} />
                       </>
                     )}
@@ -308,7 +336,12 @@ function Sidebar() {
                               }`}
                             >
                               <span className="size-4 flex-shrink-0"><s.icon /></span>
-                              {s.label}
+                              <span className="flex-1">{s.label}</span>
+                              {s.path === '/admin/crm/whatsapp' && pendientesWhatsapp > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                                  {pendientesWhatsapp}
+                                </span>
+                              )}
                             </Link>
                           </li>
                         ))}

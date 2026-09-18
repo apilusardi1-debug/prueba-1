@@ -921,10 +921,11 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     const textoTitTraslados = 'TRASLADOS PRIVADOS:'
     escribir(textoTitTraslados, textoX, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)
     // Precio: suma de "Valor de venta" de todos los tramos (Destinos), no uno
-    // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total).
-    // Respeta la "Pública" de cada tramo (valor_cliente_traslado_publica).
-    const totalTraslados = destinosValidos.reduce((suma, d) =>
-      suma + (d.valor_cliente_traslado_publica !== false ? (parseFloat(d.valor_cliente_traslado) || 0) : 0), 0)
+    // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total). Este
+    // total SIEMPRE se muestra (no depende del tilde "Pública" de cada tramo,
+    // que ahora arranca destildado por default) — mismo criterio que el resto
+    // de los totales de la propuesta, que son públicos siempre.
+    const totalTraslados = destinosValidos.reduce((suma, d) => suma + (parseFloat(d.valor_cliente_traslado) || 0), 0)
     if (totalTraslados > 0) {
       const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados + '  ', TIT_TRASLADOS_SIZE)
       escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, textoX + anchoTitTraslados, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)

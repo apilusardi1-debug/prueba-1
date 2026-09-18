@@ -1271,6 +1271,17 @@ export default function GeneradorPropuesta() {
                 </div>
               </div>
             ))}
+            {/* Suma en vivo de "Valor de venta" de todos los transfers — el
+                mismo total que se imprime en el PDF, una sola vez, al lado de
+                "TRASLADOS PRIVADOS:" (ver dibujarPaginaAereosGrupo en
+                pdfPlantillaAereos.js). Siempre público, no depende del tilde
+                "Pública" de cada transfer (igual que el resto de los totales). */}
+            <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 px-3 py-2.5 text-sm flex items-center justify-between">
+              <span className="text-gray-500 dark:text-zinc-400">Total de transfers (valor de venta):</span>
+              <span className="font-semibold text-gray-900 dark:text-zinc-100">
+                {simboloMoneda(monedaPropuesta)} {formatearNumero(destinos.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0))}
+              </span>
+            </div>
           </div>
         )}
       </div>

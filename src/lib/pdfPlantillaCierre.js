@@ -726,13 +726,21 @@ export async function generarPDFCierre(propuesta) {
     itemsDetalle.push({ segmentos: [{ texto: 'E-ticket del vuelo: ver documento.', bold: true }], link: linkAereo })
   }
 
-  // Alojamiento: noches + hospedaje + tipo de habitacion/pension elegidos.
-  if (hospedaje.nombre) {
-    const nochesTxt = hospedaje.noches ? `${hospedaje.noches} noches` : 'estadía'
-    const tipoHabitacion = hospedaje.habitacion_nombre || hospedaje.pension
+  // Alojamiento: noches + hospedaje + tipo de habitacion/pension elegidos —
+  // uno por hospedaje (antes listaba solo hospedajesElegidos[0]: en un viaje
+  // a varios destinos, el segundo y tercer hospedaje quedaban afuera de este
+  // checklist aunque sí aparecían en la sección de arriba). Con más de uno,
+  // se aclara el destino en la etiqueta para distinguirlos.
+  for (const h of hospedajesElegidos) {
+    if (!h.nombre) continue
+    const nochesTxt = h.noches ? `${h.noches} noches` : 'estadía'
+    const tipoHabitacion = h.habitacion_nombre || h.pension
+    const etiquetaAlojamiento = hospedajesElegidos.length > 1 && h.destino
+      ? `Alojamiento en ${h.destino.toUpperCase()}:`
+      : 'Alojamiento:'
     itemsDetalle.push({ segmentos: [
-      { texto: 'Alojamiento:' },
-      { texto: `${nochesTxt} en ${hospedaje.nombre}${tipoHabitacion ? ` (${tipoHabitacion})` : ''}.`, bold: true },
+      { texto: etiquetaAlojamiento },
+      { texto: `${nochesTxt} en ${h.nombre}${tipoHabitacion ? ` (${tipoHabitacion})` : ''}.`, bold: true },
     ] })
   }
   // Voucher del hospedaje: mismo criterio que el e-ticket del aereo.

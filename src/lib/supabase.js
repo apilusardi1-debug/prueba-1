@@ -257,6 +257,7 @@ export const conversacionesApi = {
   getAll: () => supabase?.from('conversaciones').select('*').order('ultimo_mensaje_at', { ascending: false }),
   marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
   updateEtiqueta: (id, etiqueta) => supabase?.from('conversaciones').update({ etiqueta }).eq('id', id),
+  asignar: (id, usuarioId) => supabase?.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', id),
 }
 
 // ── Mensajes ───────────────────────────────────────────────────────────────────

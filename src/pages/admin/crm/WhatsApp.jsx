@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -55,10 +55,29 @@ export default function WhatsAppCRM() {
   const [sincronizando, setSincronizando] = useState(false)
   const [etiquetando, setEtiquetando] = useState(false)
   const [menuEtiqueta, setMenuEtiqueta] = useState(false)
+  const [usuarios, setUsuarios] = useState([])
+  const [miUsuarioId, setMiUsuarioId] = useState(null)
+  const [asignando, setAsignando] = useState(false)
+  const [menuAsignar, setMenuAsignar] = useState(false)
+  const [filtroAsignacion, setFiltroAsignacion] = useState('todas') // todas | sin_asignar | mias
   const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
+  const menuAsignarRef = useRef(null)
+
+  // Cargar usuarios del panel (para asignar conversaciones) y resolver "mi usuario"
+  useEffect(() => {
+    usuariosAdminApi.getAll().then(({ ok, usuarios: lista }) => {
+      if (!ok) return
+      setUsuarios(lista || [])
+      try {
+        const sesion = JSON.parse(localStorage.getItem('admin_session') || '{}')
+        const yo = (lista || []).find(u => u.email === sesion.email)
+        if (yo) setMiUsuarioId(yo.id)
+      } catch (_) { /* sin sesión parseable, queda sin "mías" */ }
+    })
+  }, [])
 
   // Cargar conversaciones + suscripción realtime
   useEffect(() => {
@@ -135,11 +154,14 @@ export default function WhatsAppCRM() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
 
-  // Cerrar menú de etiqueta al hacer click afuera
+  // Cerrar menús de etiqueta/asignación al hacer click afuera
   useEffect(() => {
     function handler(e) {
       if (menuEtiquetaRef.current && !menuEtiquetaRef.current.contains(e.target)) {
         setMenuEtiqueta(false)
+      }
+      if (menuAsignarRef.current && !menuAsignarRef.current.contains(e.target)) {
+        setMenuAsignar(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -149,7 +171,23 @@ export default function WhatsAppCRM() {
   async function seleccionarConversacion(conv) {
     setSeleccionada(conv)
     setMenuEtiqueta(false)
+    setMenuAsignar(false)
     setTimeout(() => inputRef.current?.focus(), 100)
+  }
+
+  async function asignarA(usuarioId) {
+    if (!seleccionada || asignando) return
+    setMenuAsignar(false)
+    setAsignando(true)
+
+    const nuevo = seleccionada.asignado_a === usuarioId ? null : usuarioId
+
+    await conversacionesApi.asignar(seleccionada.id, nuevo)
+    const convActualizada = { ...seleccionada, asignado_a: nuevo }
+    setSeleccionada(convActualizada)
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? convActualizada : c))
+
+    setAsignando(false)
   }
 
   async function asignarEtiqueta(etiquetaId) {
@@ -231,10 +269,20 @@ export default function WhatsAppCRM() {
     setEnviando(false)
   }
 
-  const convsFiltradas = conversaciones.filter(c =>
-    c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.whatsapp?.includes(busqueda)
-  )
+  function usuarioPorId(id) {
+    return usuarios.find(u => u.id === id) || null
+  }
+
+  const convsFiltradas = conversaciones
+    .filter(c =>
+      c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.whatsapp?.includes(busqueda)
+    )
+    .filter(c => {
+      if (filtroAsignacion === 'sin_asignar') return !c.asignado_a
+      if (filtroAsignacion === 'mias') return c.asignado_a === miUsuarioId
+      return true
+    })
 
   return (
     <div className="flex h-full bg-white dark:bg-zinc-900">
@@ -258,6 +306,25 @@ export default function WhatsAppCRM() {
             onChange={e => setBusqueda(e.target.value)}
             className="w-full bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
           />
+          <div className="flex gap-1.5 mt-2.5">
+            {[
+              { id: 'todas', label: 'Todas' },
+              { id: 'mias', label: 'Mías' },
+              { id: 'sin_asignar', label: 'Sin asignar' },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFiltroAsignacion(f.id)}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                  filtroAsignacion === f.id
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -298,6 +365,14 @@ export default function WhatsAppCRM() {
                     )}
                   </div>
                 </div>
+                {conv.asignado_a && usuarioPorId(conv.asignado_a) && (
+                  <span
+                    title={`Asignada a ${usuarioPorId(conv.asignado_a).nombre}`}
+                    className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 text-[10px] font-bold flex items-center justify-center shrink-0"
+                  >
+                    {usuarioPorId(conv.asignado_a).nombre[0].toUpperCase()}
+                  </span>
+                )}
                 {conv.no_leidos > 0 && (
                   <span className="bg-green-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center font-medium shrink-0">
                     {conv.no_leidos}
@@ -320,6 +395,41 @@ export default function WhatsAppCRM() {
               <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
             <div className="ml-auto flex items-center gap-3">
+              {/* Selector de asignación */}
+              <div className="relative" ref={menuAsignarRef}>
+                <button
+                  onClick={() => setMenuAsignar(v => !v)}
+                  disabled={asignando}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                    seleccionada.asignado_a
+                      ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 border-transparent'
+                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  {seleccionada.asignado_a && usuarioPorId(seleccionada.asignado_a)
+                    ? `${usuarioPorId(seleccionada.asignado_a).nombre} ▾`
+                    : '＋ Asignar'}
+                </button>
+                {menuAsignar && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[160px] max-h-64 overflow-y-auto">
+                    {usuarios.filter(u => u.activo).map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => asignarA(u.id)}
+                        className={`w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-2 ${
+                          seleccionada.asignado_a === u.id ? 'font-semibold' : ''
+                        }`}
+                      >
+                        {u.nombre}
+                        {seleccionada.asignado_a === u.id && <span className="ml-auto text-gray-400 dark:text-zinc-500">✓</span>}
+                      </button>
+                    ))}
+                    {usuarios.filter(u => u.activo).length === 0 && (
+                      <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">Sin usuarios activos</p>
+                    )}
+                  </div>
+                )}
+              </div>
               {/* Selector de etiqueta */}
               <div className="relative" ref={menuEtiquetaRef}>
                 <button

@@ -527,45 +527,61 @@ export async function generarPDFCierre(propuesta) {
     // no entra el diseño grande de uno solo (foto de hospedaje + foto de
     // habitación lado a lado), pedido explícito: todos más chicos, apilados,
     // en el mismo espacio de la hoja (no una hoja aparte). Se tapa toda la
-    // zona (fotos de muestra + botones fijos de la plantilla incluidos) y se
-    // dibuja una fila compacta por hospedaje: foto chica + nombre + destino +
-    // servicios (pension), sin foto de habitación puntual (no entra el
-    // espacio) — esa sigue disponible en el diseño grande de un solo hospedaje.
-    // ZONA_TOP=430, no 495: el título "HOSPEDAJE" es fijo de la plantilla
-    // (x=31,y=441,tamaño 29 medido con pdfjs) y NO se toca — un ZONA_TOP más
-    // alto hacía que el tapado de esta zona lo borrara sin querer. 430 deja
-    // un margen de 3pt debajo de la base del título (441) para no pisarle ni
-    // la punta de las letras.
-    const ZONA_TOP = 430
+    // zona entera (título fijo "HOSPEDAJE" incluido, foto de muestra fija,
+    // columna "MEDIA PENSION/CUARTO SUPERIOR" y botones fijos de la
+    // plantilla) y se redibuja todo desde cero: un título compacto propio +
+    // una fila por hospedaje (foto chica + nombre + destino + servicios +
+    // botones "ver áreas externas/internas", igual que en el diseño grande
+    // de un solo hospedaje pero a escala reducida).
+    const ZONA_TOP_TAPADO = 495
     const ZONA_BOTTOM = 337
-    tapar(28, ZONA_BOTTOM, 536, ZONA_TOP - ZONA_BOTTOM + 8, CREMA_BG)
-    // Por encima de ZONA_TOP, la columna derecha (x≈308.5) todavía trae fijo
-    // "MEDIA PENSION" / "CUARTO SUPERIOR" (texto de muestra de la plantilla,
-    // hasta y≈469) — no entra en el tapado de arriba porque ZONA_TOP se bajó
-    // justo para no pisar el título "HOSPEDAJE", que está a esa misma altura
-    // pero en la columna izquierda (x=31). Se tapa aparte, angosto y a la
-    // derecha (x=250 en adelante), para no tocar el título.
-    tapar(250, ZONA_TOP, 314, 45, CREMA_BG)
+    tapar(28, ZONA_BOTTOM, 536, ZONA_TOP_TAPADO - ZONA_BOTTOM + 8, CREMA_BG)
+    // Título compacto: mismo estilo (bebas, NAVY_TXT, alineado a x=28 como
+    // AÉREOS/TRASLADOS) pero mas chico que el tamaño 29 fijo de la plantilla
+    // — con 2 o 3 hospedajes hace falta recuperar el espacio vertical que
+    // ocupaba el título grande para que entren las filas completas
+    // (foto + nombre + destino + botones) sin superponerse.
+    escribir('HOSPEDAJE', 28, 474, 16, NAVY_TXT)
+    const ZONA_TOP = 458
     const alto = (ZONA_TOP - ZONA_BOTTOM) / hospedajesElegidos.length
-    const fotoLado = Math.max(Math.min(alto - 10, 65), 24)
+    // Espacio reservado debajo de cada foto para los botones "ver áreas" +
+    // aire para la línea divisoria entre hospedajes (ver mas abajo) — se le
+    // resta a la foto en vez de sumarse aparte, así "alto" sigue siendo
+    // exactamente la altura real de cada fila.
+    const ALTO_BOTONES = 21
+    const fotoLado = Math.max(Math.min(alto - ALTO_BOTONES, 65), 20)
     const xFoto = 31.2
     const xTexto = xFoto + fotoLado + 14
     const anchoTexto = 550 - xTexto
-    // Tamaños de letra escalados a la altura real de cada fila: con el
-    // ZONA_TOP bajado (ver arriba) quedan ~46.5pt por fila con 2 hospedajes y
-    // ~31pt con 3 — bastante menos que los ~79/52.67pt para los que estaba
-    // pensado el texto fijo original (14/9/11 con gaps de 16/13), que a esta
-    // altura de fila se pisaba con la fila siguiente. "compacto" achica letra
-    // y gaps para 3 hospedajes; con 3 no entra la línea de servicios
-    // (pension) sin solaparse — se omite en ese caso (ya figura en el PDF de
-    // la propuesta original, no se pierde la info, solo no se repite acá).
-    const compacto = alto < 45
+    // Tamaños de letra escalados a la altura real de cada fila (con 2
+    // hospedajes quedan filas de ~60pt, con 3 de ~40pt — bastante menos que
+    // los ~79/52.67pt para los que estaba pensado el texto fijo original,
+    // que a esta altura de fila se pisaba con la fila siguiente). "compacto"
+    // achica letra y gaps para 3 hospedajes; con 3 no entra la línea de
+    // servicios (pension) sin solaparse — se omite en ese caso (ya figura en
+    // el PDF de la propuesta original, no se pierde la info, solo no se
+    // repite acá).
+    const compacto = alto < 50
     const tamNombre = compacto ? 10 : 13
     const gapNombre = compacto ? 11 : 14
     const tamDestino = compacto ? 7.5 : 9
     const gapDestino = compacto ? 9 : 12
     const tamPension = compacto ? 8 : 10
     const offsetInicial = compacto ? 8 : 10
+    const VERDE_LIMA = rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255)
+    // Botón mini "ver áreas ..." — misma paleta (navy + texto lima) que
+    // "VER ÁREAS EXTERNAS/INTERNAS" del diseño grande, a un tamaño de letra
+    // que entra en el espacio angosto (ALTO_BOTONES) que queda debajo de
+    // fotos chicas. Devuelve el ancho ocupado para poder encadenar el
+    // siguiente botón al lado.
+    function botonMini(texto, x, y) {
+      const tamano = 6
+      const ancho = helv.widthOfTextAtSize(texto, tamano)
+      const rect = { x, y, width: ancho + 8, height: 11 }
+      page.drawRectangle({ ...rect, color: NAVY_BG })
+      escribir(texto, x + 4, y + 3, tamano, VERDE_LIMA, helv)
+      return rect
+    }
     for (let i = 0; i < hospedajesElegidos.length; i++) {
       const h = hospedajesElegidos[i]
       const yTop = ZONA_TOP - i * alto
@@ -592,8 +608,23 @@ export async function generarPDFCierre(propuesta) {
       if (h.pension && yLinea > yFoto - 4) {
         reemplazarAjustado(h.pension, xTexto, yLinea, tamPension, anchoTexto, NAVY_TXT, bebas, CREMA_BG, 7)
       }
+      // Botones "ver áreas externas/internas" debajo de la foto — mismo link
+      // que en el diseño grande de un solo hospedaje (externas: galería
+      // general del hospedaje; internas: solo si hay una habitación puntual
+      // elegida).
+      if (h.id) {
+        const yBotones = yFoto - 3 - 11
+        const urlExternas = `${SITIO_URL}/hoteles/${h.id}?standalone=1`
+        const botonExt = botonMini('VER ÁREAS EXTERNAS ›', xFoto, yBotones)
+        agregarLink(page, doc, botonExt, urlExternas)
+        if (h.habitacion_id) {
+          const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${h.habitacion_id}&standalone=1`
+          const botonInt = botonMini('VER ÁREAS INTERNAS ›', botonExt.x + botonExt.width + 4, yBotones)
+          agregarLink(page, doc, botonInt, urlInternas)
+        }
+      }
       if (i < hospedajesElegidos.length - 1) {
-        page.drawLine({ start: { x: xFoto, y: yFoto - 7 }, end: { x: 550, y: yFoto - 7 }, thickness: 0.5, color: NAVY_TXT, opacity: 0.3 })
+        page.drawLine({ start: { x: xFoto, y: yFoto - 17 }, end: { x: 550, y: yFoto - 17 }, thickness: 0.5, color: NAVY_TXT, opacity: 0.3 })
       }
     }
   }

@@ -892,9 +892,12 @@ export default function GeneradorPropuesta() {
       if (i !== idx) return h
       const actuales = h.items.filter(Boolean)
       const items = actuales.includes(servicio) ? actuales.filter(it => it !== servicio) : [...actuales, servicio]
-      // "Pensión" ya no es un campo de texto libre aparte — sale sola de estas
-      // mismas cajitas (Pensión Completa gana si están las dos tildadas).
-      const pension = items.includes('Pensión Completa') ? 'Pensión Completa' : (items.includes('Media Pensión') ? 'Media Pensión' : '')
+      // Todo lo que esté tildado de estas cajitas (Desayuno/Sin desayuno/Media
+      // Pensión/Pensión Completa/Servicio de Limpieza) se junta acá — este
+      // campo (pension) es el que se imprime SIEMPRE en el PDF al lado del
+      // precio de cada hospedaje (pedido explícito), no solo cuando se tilda
+      // Media/Pensión Completa como antes.
+      const pension = SERVICIOS_HOSPEDAJE.filter(s => items.includes(s)).join(', ')
       return { ...h, items: items.length ? items : [''], pension }
     }))
   }

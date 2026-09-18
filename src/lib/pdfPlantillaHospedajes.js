@@ -196,7 +196,11 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
     escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
-    if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    // Servicios tildados (Desayuno/Sin desayuno/Media Pensión/Pensión
+    // Completa/Servicio de Limpieza) — SIEMPRE se imprime, sin el chequeo de
+    // espacio (y >= piso) que tienen las demás líneas opcionales: es
+    // información que el cliente necesita ver sí o sí en cada hospedaje.
+    if (h.pension) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 
     // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
     // departamento (hasta 4, elegidas en el Generador) — cada una necesita su

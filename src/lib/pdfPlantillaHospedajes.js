@@ -186,16 +186,15 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     }
 
     // Precio del PAQUETE completo (aéreo + traslado + este hospedaje, vía
-    // baseVueloTraslado) — se ve si está tildado "Pública" (checkbox propio
-    // de cada hospedaje en el Generador), en simple o combinada. Antes se
-    // mostraba solo el precio del hospedaje y el total del paquete vivía en
-    // una hoja final aparte (sacada del PDF, pedido explícito).
+    // baseVueloTraslado) — SIEMPRE se imprime, no depende del tilde "Pública"
+    // de cada hospedaje/habitación (ese tilde es para el precio individual,
+    // no para este total; el total del paquete es público siempre, pedido
+    // explícito). Antes se mostraba solo el precio del hospedaje y el total
+    // del paquete vivía en una hoja final aparte (sacada del PDF).
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (h.precio_publico !== false) {
-      const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
-      escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    }
+    const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
+    escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 

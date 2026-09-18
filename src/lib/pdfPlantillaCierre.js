@@ -232,7 +232,11 @@ export async function generarPDFCierre(propuesta) {
   }
 
   const vuelo = propuesta.vuelo || {}
-  const hospedaje = (propuesta.hospedajes_detalle || [])[0] || {}
+  // Uno por destino, cuando el viaje visita varios (ver PropuestasLista.jsx,
+  // hospedajesElegidos) — la mayoría de las propuestas siguen teniendo uno
+  // solo acá, y ese caso usa el diseño grande original sin cambios.
+  const hospedajesElegidos = propuesta.hospedajes_detalle || []
+  const hospedaje = hospedajesElegidos[0] || {}
   const total = Number(propuesta.total) || 0
   const sena = Number(propuesta.sena) || 0
   const saldo = Math.max(total - sena, 0)
@@ -407,115 +411,191 @@ export async function generarPDFCierre(propuesta) {
     }
   }
 
-  // Hospedaje — la foto empieza en x=157.7 (medido del PDF real), asi que el nombre
-  // tiene poco ancho real; si es largo se parte en varias lineas cortas en vez de
-  // desbordar sobre la foto.
-  if (hospedaje.nombre) {
-    reemplazarMultilinea(hospedaje.nombre.toUpperCase(), 31.2, 417.2, 14, 118, 14, NAVY_TXT, bebas, CREMA_BG, 3)
-  }
-  // Boton "VER RESERVA" — preferentemente el link de la reserva del hospedaje
-  // (hospedaje_link, cargado en el panel de Documentos); si no se cargó ese
-  // link pero si el voucher (hospedaje_voucher_url), usa ese como respaldo
-  // para que el boton no quede sin aparecer solo por eso. Va en la columna
-  // del nombre, a la misma altura que "VER ÁREAS EXTERNAS" de la foto de al lado.
-  const linkReserva = propuesta.hospedaje_link || propuesta.hospedaje_voucher_url
-  if (linkReserva) {
-    const textoReserva = 'VER RESERVA ›'
-    const tamanoReserva = 7.5
-    const anchoReserva = helvBold.widthOfTextAtSize(textoReserva, tamanoReserva)
-    const botonReserva = { x: 31.2, y: 347.5, width: anchoReserva + 10, height: 16 }
-    page.drawRectangle({ ...botonReserva, color: NAVY_BG })
-    escribir(textoReserva, botonReserva.x + 5, botonReserva.y + 4.5, tamanoReserva, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
-    agregarLink(page, doc, botonReserva, linkReserva)
-  }
-  // La plantilla real trae una foto de muestra fija ahi (no era la del hospedaje
-  // real, quedaba siempre la misma pileta sin importar cual se elija) — la tapamos
-  // y dibujamos la foto real del hospedaje con cover-fit, igual que en la pagina de
-  // Hospedajes.
-  const fotoHospedaje = { x: 157.7, y: 366.5, width: 115.7, height: 115.7 }
-  tapar(fotoHospedaje.x - 4, fotoHospedaje.y - 4, fotoHospedaje.width + 8, fotoHospedaje.height + 8, CREMA_BG)
-  const fotoHospedajeBytes = await bytesDeImagen(hospedaje.imagen)
-  if (fotoHospedajeBytes) {
-    try {
-      const img = await embedImagenAuto(doc, fotoHospedajeBytes)
-      dibujarImagenCover(page, img, fotoHospedaje)
-    } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
-  }
-  // Banda "VER ÁREAS EXTERNAS" pegada debajo de la foto general del hospedaje
-  // — mismo estilo (navy + texto lima) y mismo criterio que la pagina de
-  // Hospedajes de la propuesta inicial, para que ambos PDF queden consistentes
-  // (antes esta foto no tenia ningun link propio).
-  if (hospedaje.id) {
-    const urlExternas = `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
-    agregarLink(page, doc, fotoHospedaje, urlExternas)
-    const bandaExt = { x: fotoHospedaje.x, y: fotoHospedaje.y - 19, width: fotoHospedaje.width, height: 16 }
-    tapar(bandaExt.x - 4, bandaExt.y - 4, bandaExt.width + 8, bandaExt.height + 8, CREMA_BG)
-    page.drawRectangle({ ...bandaExt, color: NAVY_BG })
-    const textoExt = 'VER ÁREAS EXTERNAS >'
-    let tamanoExt = 7.5
-    while (tamanoExt > 5.5 && helv.widthOfTextAtSize(textoExt, tamanoExt) > bandaExt.width - 10) tamanoExt -= 0.5
-    escribir(textoExt, bandaExt.x + 5, bandaExt.y + (bandaExt.height - tamanoExt) / 2 + 1, tamanoExt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-    agregarLink(page, doc, bandaExt, urlExternas)
-  }
-  // Ancho real disponible antes de la foto de la habitacion (que arranca en
-  // x=434) — con 200 (el ancho viejo) el texto largo quedaba pisado por la
-  // foto en vez de cortarse antes. "pension" achica letra si hace falta;
-  // "habitacion_nombre" puede ser bastante mas largo (nombre real del tipo de
-  // cuarto, no una palabra corta), asi que ademas se parte en hasta 2 lineas.
-  const ANCHO_COL_HABITACION = 118
-  // Tapado previo generoso de toda la columna: la plantilla real trae texto de
-  // muestra ahi ("Media Pensión" / "Cuarto Superior") a un tamaño mas grande
-  // que el que se usa ahora — el tapado propio de reemplazarAjustado/
-  // reemplazarMultilinea (ajustado al tamaño final, mas chico) no llegaba a
-  // cubrirlo entero y quedaba asomando arriba.
-  // +25 (no +10): quedaba un resto de la plantilla real asomando justo a la
-  // derecha del tapado viejo (un caracter suelto tipo comilla/parentesis,
-  // visto en un PDF real generado sin foto de habitacion) — el tapado no
-  // llegaba a cubrirlo del todo.
-  tapar(308.5, 400, ANCHO_COL_HABITACION + 25, 70, CREMA_BG)
-  // El boton fijo "VER DETALLES" de la plantilla real (navy, debajo de esta
-  // columna de texto) queda tapado — se reemplaza por la banda "VER ÁREAS
-  // INTERNAS" debajo de la foto de la habitacion, mismo criterio que "VER
-  // ÁREAS EXTERNAS" de arriba.
-  tapar(302, 362, 105, 34, CREMA_BG)
-  if (hospedaje.pension) {
-    reemplazarAjustado(hospedaje.pension, 308.5, 444.1, 18, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 10)
-  }
-  if (hospedaje.habitacion_nombre) {
-    // Antes usaba reemplazarAjustado (solo achica la letra, nunca corta en
-    // lineas) — con un nombre largo ("Flat de 1 cuarto, balcón con vista
-    // parcial al mar") la letra llegaba al tamaño mínimo y el texto igual se
-    // desbordaba en una sola línea, pisando la foto de al lado. Con hasta 3
-    // líneas cortas entra completo.
-    reemplazarMultilinea(hospedaje.habitacion_nombre.toUpperCase(), 308.5, 414.1, 12, ANCHO_COL_HABITACION, 13, NAVY_TXT, bebas, CREMA_BG, 3)
-  }
-  // Foto chica de la habitacion elegida (no del hospedaje en general) — pedido
-  // explicito del usuario, no existia en la plantilla original. Mismo tamano que
-  // la foto del hospedaje (115.7x115.7) y misma altura Y, mas a la derecha —
-  // medido sobre una captura real que el usuario marco con un recuadro.
-  const fotoHabitacion = { x: 434, y: 366.5, width: 115.7, height: 115.7 }
-  const fotoHabitacionBytes = await bytesDeImagen(hospedaje.habitacion_imagen)
-  if (fotoHabitacionBytes) {
-    try {
-      const img = await embedImagenAuto(doc, fotoHabitacionBytes)
-      dibujarImagenCover(page, img, fotoHabitacion)
-    } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
-  }
-  // Banda "VER ÁREAS INTERNAS": solo si hay una unidad puntual elegida (con o
-  // sin foto propia cargada — el link vale igual). Pegada debajo de la foto
-  // de la habitacion, mismo patron exacto que "VER ÁREAS EXTERNAS" debajo de
-  // la foto del hospedaje (ancho de la banda = ancho de la foto).
-  if (hospedaje.id && hospedaje.habitacion_id) {
-    const urlInternas = `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
-    agregarLink(page, doc, fotoHabitacion, urlInternas)
-    const bandaInt = { x: fotoHabitacion.x, y: fotoHabitacion.y - 19, width: fotoHabitacion.width, height: 16 }
-    tapar(bandaInt.x - 4, bandaInt.y - 4, bandaInt.width + 8, bandaInt.height + 8, CREMA_BG)
-    page.drawRectangle({ ...bandaInt, color: NAVY_BG })
-    const textoInt = 'VER ÁREAS INTERNAS >'
-    let tamanoInt = 7.5
-    while (tamanoInt > 5.5 && helv.widthOfTextAtSize(textoInt, tamanoInt) > bandaInt.width - 10) tamanoInt -= 0.5
-    escribir(textoInt, bandaInt.x + 5, bandaInt.y + (bandaInt.height - tamanoInt) / 2 + 1, tamanoInt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-    agregarLink(page, doc, bandaInt, urlInternas)
+  if (hospedajesElegidos.length <= 1) {
+    // Hospedaje — la foto empieza en x=157.7 (medido del PDF real), asi que el nombre
+    // tiene poco ancho real; si es largo se parte en varias lineas cortas en vez de
+    // desbordar sobre la foto.
+    if (hospedaje.nombre) {
+      reemplazarMultilinea(hospedaje.nombre.toUpperCase(), 31.2, 417.2, 14, 118, 14, NAVY_TXT, bebas, CREMA_BG, 3)
+    }
+    // Boton "VER RESERVA" — preferentemente el link de la reserva del hospedaje
+    // (hospedaje_link, cargado en el panel de Documentos); si no se cargó ese
+    // link pero si el voucher (hospedaje_voucher_url), usa ese como respaldo
+    // para que el boton no quede sin aparecer solo por eso. Va en la columna
+    // del nombre, a la misma altura que "VER ÁREAS EXTERNAS" de la foto de al lado.
+    const linkReserva = propuesta.hospedaje_link || propuesta.hospedaje_voucher_url
+    if (linkReserva) {
+      const textoReserva = 'VER RESERVA ›'
+      const tamanoReserva = 7.5
+      const anchoReserva = helvBold.widthOfTextAtSize(textoReserva, tamanoReserva)
+      const botonReserva = { x: 31.2, y: 347.5, width: anchoReserva + 10, height: 16 }
+      page.drawRectangle({ ...botonReserva, color: NAVY_BG })
+      escribir(textoReserva, botonReserva.x + 5, botonReserva.y + 4.5, tamanoReserva, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helvBold)
+      agregarLink(page, doc, botonReserva, linkReserva)
+    }
+    // La plantilla real trae una foto de muestra fija ahi (no era la del hospedaje
+    // real, quedaba siempre la misma pileta sin importar cual se elija) — la tapamos
+    // y dibujamos la foto real del hospedaje con cover-fit, igual que en la pagina de
+    // Hospedajes.
+    const fotoHospedaje = { x: 157.7, y: 366.5, width: 115.7, height: 115.7 }
+    tapar(fotoHospedaje.x - 4, fotoHospedaje.y - 4, fotoHospedaje.width + 8, fotoHospedaje.height + 8, CREMA_BG)
+    const fotoHospedajeBytes = await bytesDeImagen(hospedaje.imagen)
+    if (fotoHospedajeBytes) {
+      try {
+        const img = await embedImagenAuto(doc, fotoHospedajeBytes)
+        dibujarImagenCover(page, img, fotoHospedaje)
+      } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
+    }
+    // Banda "VER ÁREAS EXTERNAS" pegada debajo de la foto general del hospedaje
+    // — mismo estilo (navy + texto lima) y mismo criterio que la pagina de
+    // Hospedajes de la propuesta inicial, para que ambos PDF queden consistentes
+    // (antes esta foto no tenia ningun link propio).
+    if (hospedaje.id) {
+      const urlExternas = `${SITIO_URL}/hoteles/${hospedaje.id}?standalone=1`
+      agregarLink(page, doc, fotoHospedaje, urlExternas)
+      const bandaExt = { x: fotoHospedaje.x, y: fotoHospedaje.y - 19, width: fotoHospedaje.width, height: 16 }
+      tapar(bandaExt.x - 4, bandaExt.y - 4, bandaExt.width + 8, bandaExt.height + 8, CREMA_BG)
+      page.drawRectangle({ ...bandaExt, color: NAVY_BG })
+      const textoExt = 'VER ÁREAS EXTERNAS >'
+      let tamanoExt = 7.5
+      while (tamanoExt > 5.5 && helv.widthOfTextAtSize(textoExt, tamanoExt) > bandaExt.width - 10) tamanoExt -= 0.5
+      escribir(textoExt, bandaExt.x + 5, bandaExt.y + (bandaExt.height - tamanoExt) / 2 + 1, tamanoExt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+      agregarLink(page, doc, bandaExt, urlExternas)
+    }
+    // Ancho real disponible antes de la foto de la habitacion (que arranca en
+    // x=434) — con 200 (el ancho viejo) el texto largo quedaba pisado por la
+    // foto en vez de cortarse antes. "pension" achica letra si hace falta;
+    // "habitacion_nombre" puede ser bastante mas largo (nombre real del tipo de
+    // cuarto, no una palabra corta), asi que ademas se parte en hasta 2 lineas.
+    const ANCHO_COL_HABITACION = 118
+    // Tapado previo generoso de toda la columna: la plantilla real trae texto de
+    // muestra ahi ("Media Pensión" / "Cuarto Superior") a un tamaño mas grande
+    // que el que se usa ahora — el tapado propio de reemplazarAjustado/
+    // reemplazarMultilinea (ajustado al tamaño final, mas chico) no llegaba a
+    // cubrirlo entero y quedaba asomando arriba.
+    // +25 (no +10): quedaba un resto de la plantilla real asomando justo a la
+    // derecha del tapado viejo (un caracter suelto tipo comilla/parentesis,
+    // visto en un PDF real generado sin foto de habitacion) — el tapado no
+    // llegaba a cubrirlo del todo.
+    tapar(308.5, 400, ANCHO_COL_HABITACION + 25, 70, CREMA_BG)
+    // El boton fijo "VER DETALLES" de la plantilla real (navy, debajo de esta
+    // columna de texto) queda tapado — se reemplaza por la banda "VER ÁREAS
+    // INTERNAS" debajo de la foto de la habitacion, mismo criterio que "VER
+    // ÁREAS EXTERNAS" de arriba.
+    tapar(302, 362, 105, 34, CREMA_BG)
+    if (hospedaje.pension) {
+      reemplazarAjustado(hospedaje.pension, 308.5, 444.1, 18, ANCHO_COL_HABITACION, NAVY_TXT, bebas, CREMA_BG, 10)
+    }
+    if (hospedaje.habitacion_nombre) {
+      // Antes usaba reemplazarAjustado (solo achica la letra, nunca corta en
+      // lineas) — con un nombre largo ("Flat de 1 cuarto, balcón con vista
+      // parcial al mar") la letra llegaba al tamaño mínimo y el texto igual se
+      // desbordaba en una sola línea, pisando la foto de al lado. Con hasta 3
+      // líneas cortas entra completo.
+      reemplazarMultilinea(hospedaje.habitacion_nombre.toUpperCase(), 308.5, 414.1, 12, ANCHO_COL_HABITACION, 13, NAVY_TXT, bebas, CREMA_BG, 3)
+    }
+    // Foto chica de la habitacion elegida (no del hospedaje en general) — pedido
+    // explicito del usuario, no existia en la plantilla original. Mismo tamano que
+    // la foto del hospedaje (115.7x115.7) y misma altura Y, mas a la derecha —
+    // medido sobre una captura real que el usuario marco con un recuadro.
+    const fotoHabitacion = { x: 434, y: 366.5, width: 115.7, height: 115.7 }
+    const fotoHabitacionBytes = await bytesDeImagen(hospedaje.habitacion_imagen)
+    if (fotoHabitacionBytes) {
+      try {
+        const img = await embedImagenAuto(doc, fotoHabitacionBytes)
+        dibujarImagenCover(page, img, fotoHabitacion)
+      } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
+    }
+    // Banda "VER ÁREAS INTERNAS": solo si hay una unidad puntual elegida (con o
+    // sin foto propia cargada — el link vale igual). Pegada debajo de la foto
+    // de la habitacion, mismo patron exacto que "VER ÁREAS EXTERNAS" debajo de
+    // la foto del hospedaje (ancho de la banda = ancho de la foto).
+    if (hospedaje.id && hospedaje.habitacion_id) {
+      const urlInternas = `${SITIO_URL}/hoteles/${hospedaje.id}?habitacion=${hospedaje.habitacion_id}&standalone=1`
+      agregarLink(page, doc, fotoHabitacion, urlInternas)
+      const bandaInt = { x: fotoHabitacion.x, y: fotoHabitacion.y - 19, width: fotoHabitacion.width, height: 16 }
+      tapar(bandaInt.x - 4, bandaInt.y - 4, bandaInt.width + 8, bandaInt.height + 8, CREMA_BG)
+      page.drawRectangle({ ...bandaInt, color: NAVY_BG })
+      const textoInt = 'VER ÁREAS INTERNAS >'
+      let tamanoInt = 7.5
+      while (tamanoInt > 5.5 && helv.widthOfTextAtSize(textoInt, tamanoInt) > bandaInt.width - 10) tamanoInt -= 0.5
+      escribir(textoInt, bandaInt.x + 5, bandaInt.y + (bandaInt.height - tamanoInt) / 2 + 1, tamanoInt, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
+      agregarLink(page, doc, bandaInt, urlInternas)
+    }
+  } else {
+    // 2 o 3 hospedajes elegidos (viaje a varios destinos, uno por destino) —
+    // no entra el diseño grande de uno solo (foto de hospedaje + foto de
+    // habitación lado a lado), pedido explícito: todos más chicos, apilados,
+    // en el mismo espacio de la hoja (no una hoja aparte). Se tapa toda la
+    // zona (fotos de muestra + botones fijos de la plantilla incluidos) y se
+    // dibuja una fila compacta por hospedaje: foto chica + nombre + destino +
+    // servicios (pension), sin foto de habitación puntual (no entra el
+    // espacio) — esa sigue disponible en el diseño grande de un solo hospedaje.
+    // ZONA_TOP=430, no 495: el título "HOSPEDAJE" es fijo de la plantilla
+    // (x=31,y=441,tamaño 29 medido con pdfjs) y NO se toca — un ZONA_TOP más
+    // alto hacía que el tapado de esta zona lo borrara sin querer. 430 deja
+    // un margen de 3pt debajo de la base del título (441) para no pisarle ni
+    // la punta de las letras.
+    const ZONA_TOP = 430
+    const ZONA_BOTTOM = 337
+    tapar(28, ZONA_BOTTOM, 536, ZONA_TOP - ZONA_BOTTOM + 8, CREMA_BG)
+    // Por encima de ZONA_TOP, la columna derecha (x≈308.5) todavía trae fijo
+    // "MEDIA PENSION" / "CUARTO SUPERIOR" (texto de muestra de la plantilla,
+    // hasta y≈469) — no entra en el tapado de arriba porque ZONA_TOP se bajó
+    // justo para no pisar el título "HOSPEDAJE", que está a esa misma altura
+    // pero en la columna izquierda (x=31). Se tapa aparte, angosto y a la
+    // derecha (x=250 en adelante), para no tocar el título.
+    tapar(250, ZONA_TOP, 314, 45, CREMA_BG)
+    const alto = (ZONA_TOP - ZONA_BOTTOM) / hospedajesElegidos.length
+    const fotoLado = Math.max(Math.min(alto - 10, 65), 24)
+    const xFoto = 31.2
+    const xTexto = xFoto + fotoLado + 14
+    const anchoTexto = 550 - xTexto
+    // Tamaños de letra escalados a la altura real de cada fila: con el
+    // ZONA_TOP bajado (ver arriba) quedan ~46.5pt por fila con 2 hospedajes y
+    // ~31pt con 3 — bastante menos que los ~79/52.67pt para los que estaba
+    // pensado el texto fijo original (14/9/11 con gaps de 16/13), que a esta
+    // altura de fila se pisaba con la fila siguiente. "compacto" achica letra
+    // y gaps para 3 hospedajes; con 3 no entra la línea de servicios
+    // (pension) sin solaparse — se omite en ese caso (ya figura en el PDF de
+    // la propuesta original, no se pierde la info, solo no se repite acá).
+    const compacto = alto < 45
+    const tamNombre = compacto ? 10 : 13
+    const gapNombre = compacto ? 11 : 14
+    const tamDestino = compacto ? 7.5 : 9
+    const gapDestino = compacto ? 9 : 12
+    const tamPension = compacto ? 8 : 10
+    const offsetInicial = compacto ? 8 : 10
+    for (let i = 0; i < hospedajesElegidos.length; i++) {
+      const h = hospedajesElegidos[i]
+      const yTop = ZONA_TOP - i * alto
+      const yFoto = yTop - fotoLado
+      const fotoBytes = await bytesDeImagen(h.imagen)
+      if (fotoBytes) {
+        try {
+          const img = await embedImagenAuto(doc, fotoBytes)
+          dibujarImagenCover(page, img, { x: xFoto, y: yFoto, width: fotoLado, height: fotoLado })
+        } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
+      }
+      if (h.id) {
+        agregarLink(page, doc, { x: xFoto, y: yFoto, width: fotoLado, height: fotoLado }, `${SITIO_URL}/hoteles/${h.id}?standalone=1`)
+      }
+      let yLinea = yTop - offsetInicial
+      if (h.nombre) {
+        reemplazarAjustado(h.nombre.toUpperCase(), xTexto, yLinea, tamNombre, anchoTexto, NAVY_TXT, bebas, CREMA_BG, 7)
+        yLinea -= gapNombre
+      }
+      if (h.destino) {
+        escribir(h.destino.toUpperCase(), xTexto, yLinea, tamDestino, NAVY_TXT, helv)
+        yLinea -= gapDestino
+      }
+      if (h.pension && yLinea > yFoto - 4) {
+        reemplazarAjustado(h.pension, xTexto, yLinea, tamPension, anchoTexto, NAVY_TXT, bebas, CREMA_BG, 7)
+      }
+      if (i < hospedajesElegidos.length - 1) {
+        page.drawLine({ start: { x: xFoto, y: yFoto - 7 }, end: { x: 550, y: yFoto - 7 }, thickness: 0.5, color: NAVY_TXT, opacity: 0.3 })
+      }
+    }
   }
 
   // El link "VER VOUCHER" que iba acá se sacó: el link al voucher ya aparece

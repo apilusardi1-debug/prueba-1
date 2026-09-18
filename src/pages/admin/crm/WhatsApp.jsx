@@ -71,6 +71,7 @@ export default function WhatsAppCRM() {
   const [cargandoCliente, setCargandoCliente] = useState(false)
   const [excursiones, setExcursiones] = useState([])
   const [modalReserva, setModalReserva] = useState(false)
+  const [convirtiendoCliente, setConvirtiendoCliente] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -112,6 +113,27 @@ export default function WhatsAppCRM() {
       setReservasCliente(prev => [data, ...prev])
       setModalReserva(false)
     }
+  }
+
+  // Convierte el contacto de la conversación en cliente sin salir del chat
+  // (antes esto solo se podía hacer desde Leads.jsx) — mismo criterio que
+  // convertirACliente() de Leads: si el whatsapp ya existe como cliente, solo
+  // lo vincula en vez de duplicarlo.
+  async function convertirEnCliente() {
+    if (!seleccionada || convirtiendoCliente) return
+    setConvirtiendoCliente(true)
+    const { data: existente } = await clientesApi.getByWhatsapp(seleccionada.whatsapp)
+    if (existente) {
+      setClienteVinculado(existente)
+      setConvirtiendoCliente(false)
+      return
+    }
+    const { data } = await clientesApi.create({
+      nombre: seleccionada.contacto_nombre || seleccionada.whatsapp,
+      whatsapp: seleccionada.whatsapp,
+    })
+    if (data) setClienteVinculado(data)
+    setConvirtiendoCliente(false)
   }
 
   // Cargar usuarios del panel (para asignar conversaciones) y resolver "mi usuario"
@@ -728,7 +750,16 @@ export default function WhatsAppCRM() {
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-zinc-400">Todavía no es cliente — sigue siendo un contacto/lead.</p>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-2">Todavía no es cliente — sigue siendo un contacto/lead.</p>
+                <button
+                  onClick={convertirEnCliente}
+                  disabled={convirtiendoCliente}
+                  className="w-full border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-50 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  {convirtiendoCliente ? 'Convirtiendo...' : 'Convertir a cliente'}
+                </button>
+              </div>
             )}
 
             {reservasCliente.length > 0 && (

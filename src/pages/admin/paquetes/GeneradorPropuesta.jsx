@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
@@ -374,6 +375,7 @@ export default function GeneradorPropuesta() {
   // campo `moneda` de cada hospedaje/habitación/equipaje opcional — no se
   // sacó ese campo del modelo de datos porque el PDF de Cierre
   // (ClientesPaquetes.jsx) lo sigue leyendo por su cuenta.
+  const [searchParams] = useSearchParams()
   const [monedaPropuesta, setMonedaPropuesta] = useState('ARS')
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -451,6 +453,25 @@ export default function GeneradorPropuesta() {
     cargar()
     excursionesApi.getAll()
   }, [])
+
+  // Prefill al llegar desde "+ Nueva propuesta" en el chat del CRM
+  // (crm/WhatsApp.jsx), que linkea con ?nombre=&whatsapp=&cliente= — evita
+  // retipear los datos del contacto que ya estaban en la conversación. Se
+  // engancha a `clientes` porque hasta que termina de cargar no se puede
+  // resolver el id contra la lista.
+  useEffect(() => {
+    const nombre = searchParams.get('nombre')
+    const whatsapp = searchParams.get('whatsapp')
+    const clienteId = searchParams.get('cliente')
+    if (!nombre && !whatsapp && !clienteId) return
+    const c = clienteId ? clientes.find(c => String(c.id) === clienteId) : null
+    if (c) {
+      elegirCliente(c)
+    } else {
+      if (nombre) setBusqCliente(nombre)
+      if (whatsapp) setClienteWhatsapp(whatsapp)
+    }
+  }, [clientes])
 
   // En combinada el traslado se carga por tramo en Destinos (destinos[].valor_agencia_traslado/
   // valor_cliente_traslado) — el de cada vuelo queda desactivado para no duplicar el dato.

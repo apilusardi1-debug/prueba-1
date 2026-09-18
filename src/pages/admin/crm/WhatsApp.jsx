@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, propuestasApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -68,6 +69,8 @@ export default function WhatsAppCRM() {
   const [reservasCliente, setReservasCliente] = useState([])
   const [propuestasCliente, setPropuestasCliente] = useState([])
   const [cargandoCliente, setCargandoCliente] = useState(false)
+  const [excursiones, setExcursiones] = useState([])
+  const [modalReserva, setModalReserva] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -81,6 +84,35 @@ export default function WhatsAppCRM() {
       setRespuestasRapidas((data || []).filter(r => r.activo))
     })
   }, [])
+
+  // Cargar excursiones (para el modal de Nueva reserva)
+  useEffect(() => {
+    excursionesApi.getAll().then(({ data }) => setExcursiones(data || []))
+  }, [])
+
+  async function crearReservaDesdeChat(form) {
+    const personas = (parseInt(form.adultos) || 0) + (parseInt(form.menores) || 0)
+    const { data } = await reservasApi.create({
+      cliente_nombre: form.cliente_nombre,
+      cliente_whatsapp: form.cliente_whatsapp.replace(/\D/g, ''),
+      cliente_id: form.cliente_id || null,
+      excursion_id: form.excursion_id || null,
+      fecha: form.fecha || null,
+      adultos: parseInt(form.adultos) || 0,
+      menores: parseInt(form.menores) || 0,
+      personas,
+      hospedaje: form.hospedaje || null,
+      ubicacion: form.ubicacion || null,
+      total: parseInt(form.total) || null,
+      moneda: form.moneda,
+      estado: form.estado,
+      notas: form.notas || null,
+    })
+    if (data) {
+      setReservasCliente(prev => [data, ...prev])
+      setModalReserva(false)
+    }
+  }
 
   // Cargar usuarios del panel (para asignar conversaciones) y resolver "mi usuario"
   useEffect(() => {
@@ -657,6 +689,21 @@ export default function WhatsAppCRM() {
             <p className="font-semibold text-gray-900 dark:text-zinc-100">Ficha del contacto</p>
           </div>
           <div className="p-5 space-y-5">
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setModalReserva(true)}
+                className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              >
+                + Nueva reserva
+              </button>
+              <button
+                onClick={() => navigate(`/admin/paquetes/generador?nombre=${encodeURIComponent(seleccionada.contacto_nombre || '')}&whatsapp=${seleccionada.whatsapp}${clienteVinculado ? `&cliente=${clienteVinculado.id}` : ''}`)}
+                className="w-full border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              >
+                + Nueva propuesta
+              </button>
+            </div>
+
             {cargandoCliente ? (
               <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando...</p>
             ) : clienteVinculado ? (
@@ -715,6 +762,19 @@ export default function WhatsAppCRM() {
             )}
           </div>
         </div>
+      )}
+
+      {modalReserva && seleccionada && (
+        <ModalNuevaReserva
+          excursiones={excursiones}
+          onGuardar={crearReservaDesdeChat}
+          onCerrar={() => setModalReserva(false)}
+          valoresIniciales={{
+            cliente_nombre: clienteVinculado?.nombre || seleccionada.contacto_nombre || '',
+            cliente_whatsapp: seleccionada.whatsapp || '',
+            cliente_id: clienteVinculado?.id || null,
+          }}
+        />
       )}
     </div>
   )

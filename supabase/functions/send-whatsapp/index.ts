@@ -1,8 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Número operativo (avisos automáticos a chofer/guía/cliente, solo plantillas)
 const META_TOKEN = Deno.env.get('META_WHATSAPP_TOKEN')
 const META_PHONE_NUMBER_ID = Deno.env.get('META_PHONE_NUMBER_ID')
+// Número de CRM (leads/clientes, texto libre — respuestas del inbox)
+const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
+const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const META_API_VERSION = 'v21.0'
 
 // Cada plantilla quedó registrada en Meta con el idioma que tenía seleccionado
@@ -40,39 +44,59 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, nombre, conversacion_id } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id } = await req.json()
     let phoneClean = phone.replace(/\D/g, '')
     // Argentina: 54 + número sin 9 (12 dígitos) → agregar 9 → 5492352560810
     if (phoneClean.startsWith('54') && !phoneClean.startsWith('549') && phoneClean.length === 12) {
       phoneClean = '549' + phoneClean.slice(2)
     }
 
-    console.log(`Enviando plantilla "${template}" a ${phoneClean} via Meta Cloud API`)
+    // Dos casos: "template" = aviso automático del número operativo (chofer/
+    // guía/cliente); "message" = respuesta de texto libre desde el inbox del
+    // CRM (número de leads/clientes). Cada uno usa su propio número/token de
+    // Meta — son apps y WABAs distintas.
+    const esTexto = !template && !!message
+    const metaToken = esTexto ? META_CRM_TOKEN : META_TOKEN
+    const metaPhoneNumberId = esTexto ? META_CRM_PHONE_NUMBER_ID : META_PHONE_NUMBER_ID
+
+    if (!metaToken || !metaPhoneNumberId) {
+      return new Response(JSON.stringify({
+        error: esTexto
+          ? 'Falta configurar META_CRM_WHATSAPP_TOKEN / META_CRM_PHONE_NUMBER_ID en los secrets de Supabase.'
+          : 'Falta configurar META_WHATSAPP_TOKEN / META_PHONE_NUMBER_ID en los secrets de Supabase.',
+      }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } })
+    }
+
+    const metaBody = esTexto
+      ? { messaging_product: 'whatsapp', to: phoneClean, type: 'text', text: { body: message, preview_url: false } }
+      : {
+          messaging_product: 'whatsapp',
+          to: phoneClean,
+          type: 'template',
+          template: {
+            name: template,
+            language: { code: TEMPLATE_LANGUAGES[template] || 'es_AR' },
+            components: [
+              {
+                type: 'body',
+                parameters: (params || []).map((text: unknown) => ({ type: 'text', text: String(text) })),
+              },
+            ],
+          },
+        }
+
+    console.log(esTexto ? `Enviando texto libre a ${phoneClean} (CRM)` : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
 
     const metaController = new AbortController()
     const metaTimer = setTimeout(() => metaController.abort(), 15000)
 
-    const res = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${META_PHONE_NUMBER_ID}/messages`, {
+    const res = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${metaPhoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${META_TOKEN}`,
+        'Authorization': `Bearer ${metaToken}`,
       },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: phoneClean,
-        type: 'template',
-        template: {
-          name: template,
-          language: { code: TEMPLATE_LANGUAGES[template] || 'es_AR' },
-          components: [
-            {
-              type: 'body',
-              parameters: (params || []).map((text: unknown) => ({ type: 'text', text: String(text) })),
-            },
-          ],
-        },
-      }),
+      body: JSON.stringify(metaBody),
       signal: metaController.signal,
     })
     clearTimeout(metaTimer)
@@ -90,7 +114,7 @@ serve(async (req) => {
     let data: unknown
     try { data = JSON.parse(responseText) } catch { data = { raw: responseText } }
 
-    const mensajeLegible = renderTemplate(template, params || [])
+    const mensajeLegible = esTexto ? message : renderTemplate(template, params || [])
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

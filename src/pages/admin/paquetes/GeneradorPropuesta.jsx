@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
-import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo, agregarPaginaTotalSimple } from '../../../lib/pdfPlantillaAereos.js'
+import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
 
 const NAVY = '#0d2438'
@@ -26,11 +26,11 @@ const VUELO_VACIO = {
   // Valor neto (lo que cuesta) y de venta (lo que se le cobra al cliente) del
   // vuelo — "venta_publica" decide si ese valor de venta se le muestra al
   // cliente o queda solo de uso interno. El neto nunca se exporta al PDF.
-  costo_neto: '', venta: '', venta_publica: true,
+  costo_neto: '', venta: '', venta_publica: false,
   // Mismo criterio para el traslado (aeropuerto-hotel / hotel-aeropuerto) de
   // esta propuesta simple — en combinada el equivalente vive por destino
   // (destinos[].valor_agencia_traslado / valor_cliente_traslado).
-  traslado_costo_neto: '', traslado_venta: '', traslado_venta_publica: true,
+  traslado_costo_neto: '', traslado_venta: '', traslado_venta_publica: false,
 }
 
 const EQUIPAJE_OPCIONES = [
@@ -39,7 +39,7 @@ const EQUIPAJE_OPCIONES = [
   { clave: 'carryOn', label: 'Carry on 10 kg' },
   { clave: 'valija23', label: 'Valija 23 kg' },
 ]
-const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS' }
+const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS', publica: false }
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
 const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
@@ -53,8 +53,12 @@ const INCLUYE_SIMPLE_OPCIONES = [
   'Traslado + Hospedaje',
 ]
 
+// Sentinel para la 4ta opción de "Qué pidió el cliente" (Cliente, más abajo)
+// que habilita el campo de texto libre en vez de uno de los 3 combos fijos.
+const PEDIDO_CLIENTE_OTRO = 'otro'
+
 const HOSPEDAJE_VACIO = {
-  id: null, nombre: '', subtitulo: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
+  id: null, nombre: '', subtitulo: '', destino: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
   // Vacío (antes traía "Aéreo + Hospedaje + Traslados" fijo): el campo se
   // deshabilitó en el formulario, pero con este default seguía imprimiéndose
   // en el PDF igual — así no aparece nada mientras no haga falta.
@@ -70,10 +74,11 @@ const HOSPEDAJE_VACIO = {
   // nunca se exporta al PDF.
   costo_interno: '',
   // Si el precio (valor de venta) de este hospedaje se le muestra al cliente
-  // o queda de uso interno — por defecto público, que es como se comportaba
-  // siempre (el precio se imprime en el PDF sin excepción, ver
-  // pdfPlantillaHospedajes.js).
-  precio_publico: true,
+  // o queda de uso interno — por defecto PRIVADO (pedido explícito): el que
+  // genera la propuesta tiene que tildar "Pública" a propósito si quiere que
+  // ese precio puntual se vea en el PDF. El total del paquete (por opción)
+  // es la única excepción, siempre se ve, no tiene este tilde.
+  precio_publico: false,
 }
 
 // valor_agencia_traslado/valor_cliente_traslado: valor neto (lo que paga la
@@ -81,7 +86,7 @@ const HOSPEDAJE_VACIO = {
 // destino — para ver el margen de ese trayecto puntual (cada destino puede
 // tener un traslado distinto). valor_cliente_traslado_publica decide si ese
 // valor de venta se le muestra al cliente. El neto nunca se exporta al PDF.
-const DESTINO_VACIO = { salida: '', destino: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: true }
+const DESTINO_VACIO = { salida: '', destino: '', valor_agencia_traslado: '', valor_cliente_traslado: '', valor_cliente_traslado_publica: false }
 const DESTINOS_PRECARGADOS = ['Recife', 'Maragogi', 'Maceió', 'Porto de Galinhas', 'Pipa', 'Tamandaré']
 
 function escapeHtml(str) {
@@ -112,6 +117,62 @@ function soloDigitos(valor) {
 function formatearMiles(valor) {
   const digitos = soloDigitos(valor)
   return digitos ? Number(digitos).toLocaleString('es-AR') : ''
+}
+
+// Cuando el hospedaje tiene habitaciones elegidas del catálogo, el precio real
+// es la SUMA de todas esas habitaciones (cada una con su propio Valor
+// neto/venta/moneda/Pública, ver alternarHabitacion) — si se cargan varias es
+// porque se reservan varias unidades de ese mismo hospedaje, no son
+// alternativas entre sí. Moneda/Pública se toman de la primera (no tiene
+// sentido mezclar monedas distintas en una misma tarjeta). Si no hay ninguna
+// habitación elegida (hospedaje cargado a mano, sin catálogo) se usa el
+// precio propio de la tarjeta, como antes. Único punto de lectura para total
+// y PDF, así no hace falta mantener los dos sincronizados a mano.
+function precioEfectivo(h) {
+  if (h.habitaciones?.length) {
+    const precio = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.precio) || 0), 0)
+    const costo_interno = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.costo_interno) || 0), 0)
+    const primera = h.habitaciones[0]
+    return { precio, costo_interno, moneda: primera.moneda, precio_publico: primera.precio_publico }
+  }
+  // parseFloat acá también: precio/costo_interno se guardan como string (solo
+  // dígitos, sin parsear) — sin esto, sumarlo con + contra un número (como el
+  // total del vuelo) concatena en vez de sumar (2000 + "1000" = "20001000").
+  return {
+    precio: parseFloat(h.precio) || 0,
+    costo_interno: parseFloat(h.costo_interno) || 0,
+    moneda: h.moneda,
+    precio_publico: h.precio_publico,
+  }
+}
+
+function simboloMoneda(moneda) {
+  return moneda === 'BRL' ? 'R$' : moneda === 'USD' ? 'U$D' : 'ARS$'
+}
+
+// Campo de valor con el símbolo de moneda fijo al lado — no seleccionable
+// (la moneda la define el selector único de arriba de todo, ver
+// monedaPropuesta), pero tiene que quedar a la vista siempre, no solo en el
+// placeholder (que desaparece apenas se escribe un número).
+function CampoValor({ value, onChange, placeholder, moneda, disabled, small }) {
+  return (
+    <div className={`flex items-center gap-1 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-2.5 focus-within:ring-2 focus-within:ring-brand-400 ${disabled ? 'opacity-50' : ''}`}>
+      <span className="text-xs text-gray-400 dark:text-zinc-500 select-none whitespace-nowrap">{simboloMoneda(moneda)}</span>
+      <input type="text" inputMode="numeric" value={value} onChange={onChange} placeholder={placeholder} disabled={disabled}
+        className={`w-full min-w-0 bg-transparent text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 pr-2.5 text-sm focus:outline-none ${small ? 'py-1.5' : 'py-2.5'}`} />
+    </div>
+  )
+}
+
+// Qué parte del paquete (aéreo/traslado) entra en el total de cada opción,
+// según lo que el cliente pidió (elegido arriba del todo, en Cliente) — si
+// pidió solo "Aéreo + Hospedaje" no tiene sentido sumarle el traslado aunque
+// esté cargado, y viceversa. "Otro" (texto libre) no se puede interpretar,
+// así que por default se comporta como si pidiera las 3 cosas.
+function componentesDePedido(pedido) {
+  if (pedido === 'Aéreo + Hospedaje') return { aereo: true, traslado: false }
+  if (pedido === 'Traslado + Hospedaje') return { aereo: false, traslado: true }
+  return { aereo: true, traslado: true }
 }
 
 function fechaLarga(iso) {
@@ -306,6 +367,14 @@ function htmlPaginaHospedajes(grupo) {
 }
 
 export default function GeneradorPropuesta() {
+  // Una sola moneda para toda la propuesta, elegida arriba del todo — antes
+  // se elegía suelta en cada valor (vuelo, hospedaje, habitación, equipaje
+  // opcional), lo que permitía mezclar monedas distintas en una misma
+  // propuesta sin querer. Se sincroniza sola (ver useEffect más abajo) en el
+  // campo `moneda` de cada hospedaje/habitación/equipaje opcional — no se
+  // sacó ese campo del modelo de datos porque el PDF de Cierre
+  // (ClientesPaquetes.jsx) lo sigue leyendo por su cuenta.
+  const [monedaPropuesta, setMonedaPropuesta] = useState('ARS')
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqCliente, setBusqCliente] = useState('')
@@ -319,17 +388,22 @@ export default function GeneradorPropuesta() {
   // carga edad en años, va como "BEBÉ" en el texto de pasajeros del PDF
   // (ej. "2 ADULTOS + BEBÉ") en vez de "1 MENOR". Array paralelo a edadesMenores.
   const [bebesMenores, setBebesMenores] = useState([])
-  const [presupuestoLimite, setPresupuestoLimite] = useState('')
+  // Reemplaza al viejo campo de texto libre "Presupuesto límite" — mismo
+  // combo de 3 opciones que usaba el viejo selector "Qué incluye cada
+  // opción" (ese se sacó, este lo reemplaza), con una 4ta opción "Otro" que
+  // habilita el campo de texto libre para casos que no encajan en los 3
+  // combos fijos.
+  const [pedidoClienteOpcion, setPedidoClienteOpcion] = useState(INCLUYE_SIMPLE_OPCIONES[0])
+  const [pedidoClienteLibre, setPedidoClienteLibre] = useState('')
+  // Reemplaza al viejo selector "Qué incluye cada opción" que vivía duplicado
+  // en la barra de Generar (más abajo) — se sacó de ahí, ahora se carga una
+  // sola vez acá arriba y este valor se reutiliza en el PDF y en el guardado.
+  const pedidoClienteValor = pedidoClienteOpcion === PEDIDO_CLIENTE_OTRO
+    ? (pedidoClienteLibre.trim() || INCLUYE_SIMPLE_OPCIONES[0])
+    : pedidoClienteOpcion
   // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
   const [tipoPropuesta, setTipoPropuesta] = useState('simple')
-  // Solo Propuesta Simple: qué combo de servicios incluye el total de cada
-  // hospedaje (mismo texto para todas las opciones) — el VALOR de cada una
-  // sale del "Valor de venta" que ya tiene esa tarjeta de hospedaje (son
-  // opciones alternativas con precio propio, no un total único: el cliente
-  // paga distinto según cuál elija). Va al final del PDF, una fila por
-  // hospedaje, en vez del desglose por servicio de Combinada.
-  const [incluyeSimple, setIncluyeSimple] = useState(INCLUYE_SIMPLE_OPCIONES[0])
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
   // Se puede agregar mas de un vuelo en cualquiera de los dos tipos de
   // propuesta: en simple son opciones alternativas (igual que con hospedaje),
@@ -407,6 +481,10 @@ export default function GeneradorPropuesta() {
       ...h,
       id: hDB.id,
       nombre: hDB.nombre,
+      // Se guarda aparte del subtitulo (que sigue mostrando "tipo · destino"
+      // como antes) — se usa para agrupar los hospedajes por destino en
+      // hojas separadas del PDF (Maragogi en una hoja, Maceió en otra, etc).
+      destino: hDB.destino || '',
       subtitulo: [hDB.tipo, hDB.destino].filter(Boolean).join(' · '),
       imagen: hDB.imagen || h.imagen,
       descripcion: hDB.descripcion || h.descripcion,
@@ -448,7 +526,15 @@ export default function GeneradorPropuesta() {
         if (h.habitaciones.length >= MAX_HABITACIONES) return h
         habitaciones = [...h.habitaciones, {
           id: hab.id, nombre: hab.nombre, imagen: hab.imagen || '', video: hab.video || '',
-          descripcion: hab.descripcion || '', amenities: hab.amenities || [], precio: '',
+          descripcion: hab.descripcion || '', amenities: hab.amenities || [],
+          // Cada habitación tiene su propio precio — Valor neto (costo, uso
+          // interno, nunca se exporta al PDF), Valor de venta y si ese valor
+          // de venta es público o privado. Reemplaza al viejo precio único
+          // compartido por todas las habitaciones del hospedaje. La moneda es
+          // la misma para toda la propuesta (arriba del todo), no se elige acá.
+          // Privado por defecto — el que genera la propuesta tilda "Pública"
+          // a propósito si quiere que este precio puntual se vea en el PDF.
+          precio: '', costo_interno: '', moneda: monedaPropuesta, precio_publico: false,
         }]
       }
       const primera = habitaciones[0]
@@ -474,10 +560,10 @@ export default function GeneradorPropuesta() {
     }))
   }
 
-  function setPrecioHabitacion(idx, habId, precio) {
+  function setCampoHabitacion(idx, habId, campo, valor) {
     setHospedajes(prev => prev.map((h, i) => i === idx ? {
       ...h,
-      habitaciones: h.habitaciones.map(hb => hb.id === habId ? { ...hb, precio } : hb),
+      habitaciones: h.habitaciones.map(hb => hb.id === habId ? { ...hb, [campo]: valor } : hb),
     } : h))
   }
 
@@ -504,7 +590,7 @@ export default function GeneradorPropuesta() {
   }
   function agregarEquipajeExtra(idx) {
     setVuelos(prev => prev.map((v, i) => i === idx
-      ? { ...v, equipaje: { ...v.equipaje, extras: [...(v.equipaje?.extras || []), { ...EQUIPAJE_EXTRA_VACIO }] } }
+      ? { ...v, equipaje: { ...v.equipaje, extras: [...(v.equipaje?.extras || []), { ...EQUIPAJE_EXTRA_VACIO, moneda: monedaPropuesta }] } }
       : v))
   }
   function quitarEquipajeExtra(idx, i) {
@@ -664,7 +750,7 @@ export default function GeneradorPropuesta() {
   function agregarHospedaje() {
     const totalPersonas = (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0)
     const noches = calcularNoches(vuelos[0]?.ida_fecha, vuelos[0]?.vuelta_fecha)
-    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''], personas: totalPersonas ? String(totalPersonas) : '', noches: noches ? String(noches) : '' }])
+    setHospedajes(prev => [...prev, { ...HOSPEDAJE_VACIO, items: [''], personas: totalPersonas ? String(totalPersonas) : '', noches: noches ? String(noches) : '', moneda: monedaPropuesta }])
   }
 
   // Mismo criterio que el scroll automatico de Vuelo: al agregar un hospedaje
@@ -709,6 +795,22 @@ export default function GeneradorPropuesta() {
       equipaje: { ...v.equipaje, ...Object.fromEntries(EQUIPAJE_POR_PASAJERO.map(clave => [clave, total])) },
     })))
   }, [cantidadAdultos, cantidadMenores])
+
+  // Una sola moneda para toda la propuesta (elegida arriba del todo) — se
+  // sincroniza sola en cada hospedaje, cada habitación de cada hospedaje, y
+  // cada equipaje opcional, para no tener que elegirla de nuevo en cada
+  // valor ni terminar con monedas mezcladas sin querer.
+  useEffect(() => {
+    setHospedajes(prev => prev.map(h => ({
+      ...h,
+      moneda: monedaPropuesta,
+      habitaciones: h.habitaciones.map(hb => ({ ...hb, moneda: monedaPropuesta })),
+    })))
+    setVuelos(prev => prev.map(v => ({
+      ...v,
+      equipaje: { ...v.equipaje, extras: (v.equipaje?.extras || []).map(ex => ({ ...ex, moneda: monedaPropuesta })) },
+    })))
+  }, [monedaPropuesta])
 
   function quitarHospedaje(idx) {
     setHospedajes(prev => prev.filter((_, i) => i !== idx))
@@ -774,10 +876,14 @@ export default function GeneradorPropuesta() {
   // cerrar) — cada una suma el mismo vuelo+traslado (un solo itinerario,
   // cargado una vez) más el precio propio de esa tarjeta. No tiene sentido
   // sumar las opciones entre sí: acá se muestra la primera como referencia.
-  const baseVueloTrasladoSimple = (parseFloat(vuelos[0]?.venta) || 0) + (parseFloat(vuelos[0]?.traslado_venta) || 0)
+  // Qué pidió el cliente (Cliente, arriba del todo) decide si el aéreo y/o el
+  // traslado entran en el total de cada opción — ver componentesDePedido.
+  const componentesPedido = componentesDePedido(pedidoClienteValor)
+  const baseVueloTrasladoSimple = (componentesPedido.aereo ? (parseFloat(vuelos[0]?.venta) || 0) : 0)
+    + (componentesPedido.traslado ? (parseFloat(vuelos[0]?.traslado_venta) || 0) : 0)
   const total = tipoPropuesta === 'combinada'
-    ? hospedajes.reduce((sum, h) => sum + (parseFloat(h.precio) || 0), 0)
-    : (baseVueloTrasladoSimple + (parseFloat(hospedajes[0]?.precio) || 0))
+    ? hospedajes.reduce((sum, h) => sum + (parseFloat(precioEfectivo(h).precio) || 0), 0)
+    : (baseVueloTrasladoSimple + (parseFloat(precioEfectivo(hospedajes[0] || {}).precio) || 0))
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
   // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
@@ -838,10 +944,22 @@ export default function GeneradorPropuesta() {
       // mas abajo, al guardar.
       const destinosParaPdf = tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null
 
-      // Moneda del vuelo (valor de venta) — no tiene campo propio, se toma del
-      // primer hospedaje cargado, mismo criterio que la moneda de la propuesta
-      // guardada en la base (ver mas abajo, "moneda: hospedajesValidos[0]...").
-      const monedaPdf = hospedajes.find(h => h.nombre.trim())?.moneda || 'ARS'
+      // Aéreo + traslado — se cargan una sola vez y son los mismos para todas
+      // las tarjetas de hospedaje. Se suma al precio de CADA hospedaje para
+      // mostrar el precio del paquete completo al lado de esa tarjeta, en la
+      // página de Hospedajes (antes esto vivía en una hoja aparte, sacada).
+      // Simple: un solo vuelo (vuelosConDatos[0]) + su traslado propio.
+      // Combinada: puede haber varios vuelos y varios tramos de traslado
+      // (Transfers/destinos) — se suman TODOS.
+      const baseVueloTraslado = tipoPropuesta === 'combinada'
+        ? vuelosConDatos.reduce((sum, v) => sum + (parseFloat(v.venta) || 0) + (parseFloat(v.traslado_venta) || 0), 0)
+          + (destinosParaPdf || []).reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
+        : (componentesPedido.aereo ? (parseFloat(vuelosConDatos[0]?.venta) || 0) : 0)
+          + (componentesPedido.traslado ? (parseFloat(vuelosConDatos[0]?.traslado_venta) || 0) : 0)
+
+      // Moneda del vuelo (valor de venta) — no tiene campo propio, usa la
+      // moneda única de la propuesta (elegida arriba del todo).
+      const monedaPdf = monedaPropuesta
 
       // El precio de cada servicio (vuelo, traslado, cada hospedaje) se
       // muestra en su propia sección si está tildado "Pública" — si está
@@ -868,49 +986,49 @@ export default function GeneradorPropuesta() {
         }
       }
 
-      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim())
+      // precioEfectivo pisa precio/costo_interno/moneda/precio_publico con los
+      // de la primera habitación elegida (si hay) — así el PDF de hospedajes
+      // lee el valor correcto sin tocar esos otros archivos/cálculos.
+      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim()).map(h => ({ ...h, ...precioEfectivo(h) }))
       const hospedajesParaPdf = await Promise.all(
         hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
       )
 
       // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes
       // por hoja, igual que el diseño original) con los datos tapados y reescritos.
-      let bebasHosp, helvHosp
+      // El precio que se imprime al lado de cada hospedaje es el del PAQUETE
+      // completo (aéreo + traslado + ese hospedaje, vía baseVueloTraslado) —
+      // antes esto vivía en una hoja final aparte (navy con letras blancas),
+      // que se sacó del PDF (pedido explícito).
+      //
+      // Agrupados por destino (h.destino) antes de paginar — cada destino
+      // arranca hoja nueva y nunca se mezcla con otro en la misma hoja
+      // (pedido explícito: Maragogi en una hoja, Maceió en otra, etc), aunque
+      // eso dejé huecos en una hoja de 4. Los que no tengan destino cargado
+      // (hospedaje a mano, sin catálogo) quedan agrupados aparte, entre sí.
+      const gruposPorDestino = []
+      const indicePorDestino = new Map()
+      for (const h of hospedajesParaPdf) {
+        const clave = h.destino || ''
+        if (!indicePorDestino.has(clave)) {
+          indicePorDestino.set(clave, gruposPorDestino.length)
+          gruposPorDestino.push([])
+        }
+        gruposPorDestino[indicePorDestino.get(clave)].push(h)
+      }
+
       if (hospedajesParaPdf.length) {
         const plantillaHospBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
         const plantillaHospDoc = await PDFDocument.load(plantillaHospBytes)
         const bebasBytes = await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer())
-        bebasHosp = await doc.embedFont(bebasBytes)
-        helvHosp = await doc.embedFont(StandardFonts.Helvetica)
-        for (let i = 0; i < hospedajesParaPdf.length; i += 4) {
-          const grupo = hospedajesParaPdf.slice(i, i + 4)
-          await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo)
+        const bebasHosp = await doc.embedFont(bebasBytes)
+        const helvHosp = await doc.embedFont(StandardFonts.Helvetica)
+        for (const grupoDestino of gruposPorDestino) {
+          for (let i = 0; i < grupoDestino.length; i += 4) {
+            const grupo = grupoDestino.slice(i, i + 4)
+            await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, baseVueloTraslado)
+          }
         }
-      }
-
-      // Hoja final con UNA fila por hospedaje (son opciones alternativas,
-      // cada una con su propio total) — en las dos modalidades, Simple Y
-      // Combinada. Esta hoja siempre suma vuelo + traslado + hospedaje, se
-      // vean o no esos precios por separado más arriba (eso lo decide el
-      // tilde Pública/Privada de cada uno, no cambia esta suma). El vuelo y
-      // el traslado son los mismos elija el hospedaje que elija — se suman
-      // al precio propio de CADA hospedaje, no se vuelven a cargar por
-      // opción.
-      // Simple: un solo vuelo (vuelosConDatos[0]) + su traslado propio.
-      // Combinada: puede haber varios vuelos y varios tramos de traslado
-      // (Transfers/destinos) — se suman TODOS.
-      const baseVueloTraslado = tipoPropuesta === 'combinada'
-        ? vuelosConDatos.reduce((sum, v) => sum + (parseFloat(v.venta) || 0) + (parseFloat(v.traslado_venta) || 0), 0)
-          + (destinosParaPdf || []).reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
-        : (parseFloat(vuelosConDatos[0]?.venta) || 0) + (parseFloat(vuelosConDatos[0]?.traslado_venta) || 0)
-      const opciones = hospedajesValidos
-        .filter(h => parseFloat(h.precio) > 0)
-        .map(h => ({ nombre: h.nombre, total: baseVueloTraslado + (parseFloat(h.precio) || 0), moneda: monedaPdf }))
-      if (opciones.length) {
-        await agregarPaginaTotalSimple(doc, bebasHosp || primerGrupo.bebas, helvHosp || await doc.embedFont(StandardFonts.Helvetica), {
-          clienteNombre: cliente.nombre, opciones,
-          incluye: tipoPropuesta === 'combinada' ? INCLUYE_SIMPLE_OPCIONES[0] : incluyeSimple,
-        })
       }
 
       const pdfBytes = await doc.save()
@@ -936,14 +1054,14 @@ export default function GeneradorPropuesta() {
         cantidad_adultos: parseInt(cantidadAdultos) || null,
         cantidad_menores: parseInt(cantidadMenores) || null,
         edades_menores: edadesMenoresTexto || null,
-        presupuesto_limite: parseFloat(presupuestoLimite) || null,
+        pedido_cliente: pedidoClienteOpcion === PEDIDO_CLIENTE_OTRO ? (pedidoClienteLibre.trim() || null) : pedidoClienteOpcion,
         sena: 0,
         tipo_propuesta: tipoPropuesta,
         // Solo simple: qué combo de servicios incluye el total de cada
         // hospedaje (mismo texto para todas las opciones). El valor de cada
         // una ya viaja en hospedajes_detalle (su propio "precio") — no hace
         // falta un total aparte, son opciones alternativas con precio propio.
-        incluye_simple: tipoPropuesta === 'simple' ? incluyeSimple : null,
+        incluye_simple: tipoPropuesta === 'simple' ? pedidoClienteValor : null,
         destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
         // "vuelo" queda como el primero, para todo lo que ya lee ese campo
         // (modal de cierre, PDF de cierre) sin cambios. "vuelos" es el array
@@ -953,7 +1071,7 @@ export default function GeneradorPropuesta() {
         hospedajes_detalle: hospedajesValidos,
         items: [],
         total,
-        moneda: hospedajesValidos[0]?.moneda === 'ARS' ? 'ARS' : (hospedajesValidos[0]?.moneda || 'BRL'),
+        moneda: monedaPropuesta,
         estado: 'enviada',
       })
       if (errorGuardado) throw errorGuardado
@@ -966,8 +1084,8 @@ export default function GeneradorPropuesta() {
       setCantidadMenores('')
       setEdadesMenores([])
       setBebesMenores([])
-      setPresupuestoLimite('')
-      setIncluyeSimple(INCLUYE_SIMPLE_OPCIONES[0])
+      setPedidoClienteOpcion(INCLUYE_SIMPLE_OPCIONES[0])
+      setPedidoClienteLibre('')
       setTipoPropuesta('simple')
       setDestinos([{ ...DESTINO_VACIO }])
       setVuelos([{ ...VUELO_VACIO }])
@@ -984,9 +1102,25 @@ export default function GeneradorPropuesta() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Generador de propuesta</h2>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Cargá el vuelo y los hospedajes, y generá el PDF "Paquete de viaje" para enviar al cliente</p>
+      {/* Siempre en el DOM (no solo en combinada) — la usan tanto los
+          Transfers como el campo "Destino" de cada hospedaje. */}
+      <datalist id="destinos-precargados">
+        {DESTINOS_PRECARGADOS.map(d => <option key={d} value={d} />)}
+      </datalist>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Generador de propuesta</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Cargá el vuelo y los hospedajes, y generá el PDF "Paquete de viaje" para enviar al cliente</p>
+        </div>
+        <div className="flex-shrink-0">
+          <label className="block text-xs text-gray-400 dark:text-zinc-500 mb-1">Moneda de la propuesta</label>
+          <select value={monedaPropuesta} onChange={e => setMonedaPropuesta(e.target.value)}
+            className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+            <option value="ARS">Pesos argentinos (ARS$)</option>
+            <option value="USD">Dólares (U$D)</option>
+            <option value="BRL">Real (R$)</option>
+          </select>
+        </div>
       </div>
 
       {/* Cliente */}
@@ -1056,14 +1190,25 @@ export default function GeneradorPropuesta() {
             ))}
           </div>
         )}
-        <input
-          type="text"
-          inputMode="numeric"
-          value={formatearMiles(presupuestoLimite)}
-          onChange={e => setPresupuestoLimite(soloDigitos(e.target.value))}
-          placeholder="Presupuesto límite (R$)"
-          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-        />
+        <div>
+          <select
+            value={pedidoClienteOpcion}
+            onChange={e => setPedidoClienteOpcion(e.target.value)}
+            className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            {INCLUYE_SIMPLE_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+            <option value={PEDIDO_CLIENTE_OTRO}>Otro (escribir)</option>
+          </select>
+          {pedidoClienteOpcion === PEDIDO_CLIENTE_OTRO && (
+            <input
+              type="text"
+              value={pedidoClienteLibre}
+              onChange={e => setPedidoClienteLibre(e.target.value)}
+              placeholder="Escribí qué pidió el cliente"
+              className="mt-2 w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
+          )}
+        </div>
       </div>
 
       {/* Tipo de propuesta */}
@@ -1096,9 +1241,6 @@ export default function GeneradorPropuesta() {
                 + Agregar transfer
               </button>
             </div>
-            <datalist id="destinos-precargados">
-              {DESTINOS_PRECARGADOS.map(d => <option key={d} value={d} />)}
-            </datalist>
             {destinos.map((d, idx) => (
               <div key={idx} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1118,14 +1260,12 @@ export default function GeneradorPropuesta() {
                 <div>
                   <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta de este transfer — el neto es uso interno, nunca se exporta al PDF</p>
                   <div className="grid sm:grid-cols-3 gap-3">
-                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto"
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                    <input type="text" inputMode="numeric" value={formatearMiles(d.valor_cliente_traslado)} onChange={e => setDestinoCampo(idx, 'valor_cliente_traslado', soloDigitos(e.target.value))} placeholder="Valor de venta"
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(d.valor_agencia_traslado)} onChange={e => setDestinoCampo(idx, 'valor_agencia_traslado', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(d.valor_cliente_traslado)} onChange={e => setDestinoCampo(idx, 'valor_cliente_traslado', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                     <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                       <input type="checkbox" checked={!!d.valor_cliente_traslado_publica} onChange={() => setDestinoCampo(idx, 'valor_cliente_traslado_publica', !d.valor_cliente_traslado_publica)}
                         className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                      {d.valor_cliente_traslado_publica ? 'Pública' : 'Privada'}
+                      Pública
                     </label>
                   </div>
                 </div>
@@ -1279,7 +1419,7 @@ export default function GeneradorPropuesta() {
                   </button>
                 </div>
                 {(v.equipaje?.extras || []).map((ex, i) => (
-                  <div key={i} className="grid sm:grid-cols-[1fr_90px_1fr_100px_auto] gap-2 mb-2">
+                  <div key={i} className="grid sm:grid-cols-[1fr_90px_1fr_auto_auto] gap-2 mb-2 items-center">
                     <select value={ex.tipo || 'carryOn'} onChange={e => setEquipajeExtraCampo(idx, i, 'tipo', e.target.value)}
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
                       <option value="carryOn">Carry on 10 kg</option>
@@ -1288,14 +1428,13 @@ export default function GeneradorPropuesta() {
                     <input type="number" min="1" value={ex.cantidad || 1}
                       onChange={e => setEquipajeExtraCampo(idx, i, 'cantidad', Math.max(1, parseInt(e.target.value) || 1))}
                       className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                    <input type="text" inputMode="numeric" value={formatearMiles(ex.precio)}
-                      onChange={e => setEquipajeExtraCampo(idx, i, 'precio', soloDigitos(e.target.value))} placeholder="Valor del opcional"
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                    <select value={ex.moneda || 'ARS'} onChange={e => setEquipajeExtraCampo(idx, i, 'moneda', e.target.value)}
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                      <option value="ARS">ARS$</option>
-                      <option value="USD">U$D</option>
-                    </select>
+                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(ex.precio)}
+                      onChange={e => setEquipajeExtraCampo(idx, i, 'precio', soloDigitos(e.target.value))} placeholder="Valor del opcional" />
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer whitespace-nowrap">
+                      <input type="checkbox" checked={ex.publica !== false} onChange={() => setEquipajeExtraCampo(idx, i, 'publica', ex.publica === false)}
+                        className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                      Pública
+                    </label>
                     <button type="button" onClick={() => quitarEquipajeExtra(idx, i)}
                       className="text-gray-400 hover:text-red-500 px-2" title="Quitar">
                       ✕
@@ -1307,14 +1446,12 @@ export default function GeneradorPropuesta() {
             <div className="border-t border-gray-100 dark:border-zinc-800 pt-3">
               <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del vuelo — el neto es uso interno, nunca se exporta al PDF</p>
               <div className="grid sm:grid-cols-3 gap-3">
-                <input type="text" inputMode="numeric" value={formatearMiles(v.costo_neto)} onChange={e => setVueloCampo(idx, 'costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                <input type="text" inputMode="numeric" value={formatearMiles(v.venta)} onChange={e => setVueloCampo(idx, 'venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.costo_neto)} onChange={e => setVueloCampo(idx, 'costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.venta)} onChange={e => setVueloCampo(idx, 'venta', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                 <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                   <input type="checkbox" checked={!!v.venta_publica} onChange={() => setVueloCampo(idx, 'venta_publica', !v.venta_publica)}
                     className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  {v.venta_publica ? 'Pública' : 'Privada'}
+                  Pública
                 </label>
               </div>
             </div>
@@ -1345,14 +1482,12 @@ export default function GeneradorPropuesta() {
                 <div className="mt-3">
                   <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta del traslado — el neto es uso interno, nunca se exporta al PDF</p>
                   <div className="grid sm:grid-cols-3 gap-3">
-                    <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_costo_neto)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto"
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-100 dark:disabled:bg-zinc-900" />
-                    <input type="text" inputMode="numeric" value={formatearMiles(v.traslado_venta)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta"
-                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-100 dark:disabled:bg-zinc-900" />
+                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.traslado_costo_neto)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_costo_neto', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                    <CampoValor moneda={monedaPropuesta} value={formatearMiles(v.traslado_venta)} disabled={v.traslado_activo === false} onChange={e => setVueloCampo(idx, 'traslado_venta', soloDigitos(e.target.value))} placeholder="Valor de venta" />
                     <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
                       <input type="checkbox" checked={!!v.traslado_venta_publica} disabled={v.traslado_activo === false} onChange={() => setVueloCampo(idx, 'traslado_venta_publica', !v.traslado_venta_publica)}
                         className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                      {v.traslado_venta_publica ? 'Pública' : 'Privada'}
+                      Pública
                     </label>
                   </div>
                 </div>
@@ -1437,6 +1572,12 @@ export default function GeneradorPropuesta() {
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
 
+            {/* Se completa solo al elegir un hospedaje del catálogo (trae su
+                destino), pero se puede editar/cargar a mano — se usa para
+                agrupar los hospedajes por destino en hojas separadas del PDF. */}
+            <input value={h.destino} onChange={e => setHospedajeCampo(idx, 'destino', e.target.value)} placeholder="Destino (Ej: Maragogi)" list="destinos-precargados"
+              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+
             {propietarioPorHospedaje[h.id]?.nombre_dueno && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 🔒 {propietarioPorHospedaje[h.id].nombre_dueno}
@@ -1495,10 +1636,19 @@ export default function GeneradorPropuesta() {
                           {elegida && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                         </button>
                         {elegida && (
-                          <div onClick={e => e.stopPropagation()}>
-                            <input type="text" inputMode="numeric" value={formatearMiles(elegida.precio)}
-                              onChange={e => setPrecioHabitacion(idx, hab.id, soloDigitos(e.target.value))} placeholder="Precio de esta habitación"
-                              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                          <div onClick={e => e.stopPropagation()} className="space-y-1">
+                            <p className="text-[10px] text-gray-400 dark:text-zinc-500">Valor neto (costo) y de venta de esta habitación — el neto es uso interno, nunca se exporta al PDF</p>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <CampoValor small moneda={monedaPropuesta} value={formatearMiles(elegida.costo_interno)}
+                                onChange={e => setCampoHabitacion(idx, hab.id, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                              <CampoValor small moneda={monedaPropuesta} value={formatearMiles(elegida.precio)}
+                                onChange={e => setCampoHabitacion(idx, hab.id, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta" />
+                              <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                                <input type="checkbox" checked={!!elegida.precio_publico} onChange={() => setCampoHabitacion(idx, hab.id, 'precio_publico', !elegida.precio_publico)}
+                                  className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                                Pública
+                              </label>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1518,32 +1668,24 @@ export default function GeneradorPropuesta() {
               </p>
             </div>
 
-            <div>
-              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta — el neto es uso interno, nunca se exporta al PDF</p>
-              <div className="grid sm:grid-cols-4 gap-3">
-                <input type="text" inputMode="numeric" value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                <input type="text" inputMode="numeric" value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta"
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
-                <select value={h.moneda} onChange={e => setHospedajeCampo(idx, 'moneda', e.target.value)}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  <option value="ARS">ARS$</option>
-                  <option value="BRL">R$</option>
-                  <option value="USD">U$D</option>
-                </select>
-                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
-                  <input type="checkbox" checked={!!h.precio_publico} onChange={() => setHospedajeCampo(idx, 'precio_publico', !h.precio_publico)}
-                    className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
-                  {h.precio_publico ? 'Pública' : 'Privada'}
-                </label>
+            {/* Solo cuando no hay habitaciones de catálogo para elegir (hospedaje
+                cargado a mano) — si las hay, el precio se carga por habitación
+                más arriba y estos campos generales de la tarjeta no se usan. */}
+            {!(habitacionesPorHospedaje[h.id] || []).length && (
+              <div>
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1">Valor neto (costo) y de venta — el neto es uso interno, nunca se exporta al PDF</p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <CampoValor moneda={monedaPropuesta} value={formatearMiles(h.costo_interno)} onChange={e => setHospedajeCampo(idx, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />
+                  <CampoValor moneda={monedaPropuesta} value={formatearMiles(h.precio)} onChange={e => setHospedajeCampo(idx, 'precio', soloDigitos(e.target.value))} placeholder="Valor de venta" />
+                  <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400 cursor-pointer">
+                    <input type="checkbox" checked={!!h.precio_publico} onChange={() => setHospedajeCampo(idx, 'precio_publico', !h.precio_publico)}
+                      className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500" />
+                    Pública
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Deshabilitado (no borrado): por ahora no sirve, cada servicio ya
-                muestra su propio precio por separado en el PDF en vez de un
-                total combinado bajo esta leyenda. */}
-            <input value={h.incluye} disabled placeholder="Incluye (Ej: Aéreo + Hospedaje + Traslados)"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-zinc-600 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm cursor-not-allowed" />
             <textarea value={h.descripcion} onChange={e => setHospedajeCampo(idx, 'descripcion', e.target.value)} rows={3} placeholder="Descripción"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />
 
@@ -1577,43 +1719,34 @@ export default function GeneradorPropuesta() {
                 })}
               </div>
             </div>
+
+            {/* Total de ESTA opción (esta tarjeta de hospedaje, con todas sus
+                habitaciones sumadas) + aéreo y traslado — que ya se cargan una
+                sola vez, arriba, y son los mismos para todas las tarjetas. En
+                Simple cada tarjeta es una opción alternativa (no se suma con
+                las demás tarjetas); en Combinada cada una es una etapa del
+                viaje, se suma aparte al total general. */}
+            {(() => {
+              const efectivo = precioEfectivo(h)
+              const totalOpcion = tipoPropuesta === 'simple' ? baseVueloTrasladoSimple + efectivo.precio : efectivo.precio
+              return (
+                <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 px-3 py-2.5 text-sm flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-zinc-400">
+                    {tipoPropuesta === 'simple' ? `Total de esta opción (${pedidoClienteValor}):` : 'Aporta al total (hospedaje):'}
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-zinc-100">{simboloMoneda(efectivo.moneda)} {formatearNumero(totalOpcion)}</span>
+                </div>
+              )
+            })()}
           </div>
         ))}
       </div>
 
       {/* Generar */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg space-y-3">
-        {/* Solo Propuesta Simple. El total de CADA opción = vuelo + traslado
-            (un solo itinerario, cargado una vez en la sección Vuelo) + el
-            "Valor de venta" propio de esa tarjeta de hospedaje (alternativas
-            con precio propio, no un total único) — acá solo se elige la
-            leyenda de qué incluye, compartida por todas. En Combinada cada
-            servicio ya tiene su propio precio en detalle, no aplica. Va en
-            esta barra fija para que no quede perdido de vista si hay varios
-            hospedajes cargados antes. */}
-        {tipoPropuesta === 'simple' && (
-          <div className="border-b border-gray-100 dark:border-zinc-800 pb-3 space-y-2">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Qué incluye cada opción</h3>
-              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
-                El total de cada opción = "Valor de venta" del vuelo + del traslado (Vuelo, más arriba, el mismo para todas) + "Valor de venta" de esa tarjeta de hospedaje. Acá elegís la leyenda de qué incluye, igual para todas. Al final del PDF queda una fila por hospedaje: nombre + esta leyenda + el total sumado.
-              </p>
-            </div>
-            <select value={incluyeSimple} onChange={e => setIncluyeSimple(e.target.value)}
-              className="w-full sm:w-64 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-              {INCLUYE_SIMPLE_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
-            </select>
-          </div>
-        )}
         {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
         {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ PDF descargado y propuesta guardada.</p>}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400 dark:text-zinc-500">{hospedajes.filter(h => h.nombre.trim()).length} hospedaje{hospedajes.filter(h => h.nombre.trim()).length !== 1 ? 's' : ''}</p>
-            <p className="text-xl font-bold text-gray-900 dark:text-zinc-100">
-              {tipoPropuesta === 'simple' && hospedajes.filter(h => h.nombre.trim()).length > 1 ? 'Desde' : 'Total'}: {formatearNumero(total)}
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={generar}
             disabled={generando}

@@ -1,52 +1,47 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
+// Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
+// jsonData estilo Baileys) — ese número se migró a Meta directo, sin BSP, porque
+// nadie del equipo dependía de seguir usando la app de WhatsApp Business en el
+// celular. El número operativo (avisos a chofer/guía/cliente) es un número y una
+// app de Meta distintos, no tocados por este archivo.
+const META_VERIFY_TOKEN = Deno.env.get('META_VERIFY_TOKEN')
+
 serve(async (req) => {
+  const url = new URL(req.url)
+
+  // Meta llama una vez con GET para verificar la URL al configurar el webhook.
+  if (req.method === 'GET') {
+    const mode = url.searchParams.get('hub.mode')
+    const token = url.searchParams.get('hub.verify_token')
+    const challenge = url.searchParams.get('hub.challenge')
+    if (mode === 'subscribe' && token === META_VERIFY_TOKEN) {
+      return new Response(challenge ?? '', { status: 200 })
+    }
+    return new Response('Forbidden', { status: 403 })
+  }
+
   try {
-    const rawBody = await req.text()
+    const body = await req.json()
+    const value = body?.entry?.[0]?.changes?.[0]?.value
+    const message = value?.messages?.[0]
 
-    // WuzAPI envía form-encoded: instanceName=xxx&jsonData=xxx&userID=xxx
-    const params = new URLSearchParams(rawBody)
-    const jsonDataStr = params.get('jsonData')
-    if (!jsonDataStr) return new Response('ok', { status: 200 })
+    // Los webhooks de "statuses" (entregado/leído) llegan al mismo endpoint
+    // sin "messages" — no son mensajes nuevos, los ignoramos.
+    if (!message) return new Response('ok', { status: 200 })
 
-    const payload = JSON.parse(jsonDataStr)
-
-    if (payload.type !== 'Message') return new Response('ok', { status: 200 })
-
-    const event = payload.event
-    if (!event) return new Response('ok', { status: 200 })
-
-    const info = event.Info
-    if (!info) return new Response('ok', { status: 200 })
-
-    if (info.IsFromMe) return new Response('ok', { status: 200 })
-    if (info.IsGroup) return new Response('ok', { status: 200 })
-
-    const chatJid = info.Chat || ''
-    if (chatJid.includes('@g.us') || chatJid.includes('@broadcast')) {
-      return new Response('ok', { status: 200 })
-    }
-
-    // SenderAlt tiene el número real incluso para contactos @lid
-    let phone = ''
-    if (info.SenderAlt) {
-      phone = info.SenderAlt.split(':')[0].split('@')[0]
-    } else {
-      phone = chatJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@lid', '').split(':')[0]
-    }
-
+    const phone: string | undefined = message.from
     if (!phone) return new Response('ok', { status: 200 })
 
-    const nombre = info.PushName || 'Sin nombre'
-    const msg = event.Message
-    const mensaje =
-      msg?.conversation ||
-      msg?.extendedTextMessage?.text ||
-      msg?.imageMessage?.caption ||
-      '[Mensaje multimedia]'
+    const texto: string =
+      message.text?.body ??
+      message.button?.text ??
+      message.interactive?.button_reply?.title ??
+      `[Mensaje de tipo ${message.type}]`
 
-    if (!mensaje) return new Response('ok', { status: 200 })
+    const nombre: string = value?.contacts?.[0]?.profile?.name || 'Sin nombre'
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -60,7 +55,7 @@ serve(async (req) => {
       await supabase.from('leads').insert({
         nombre,
         whatsapp: phone,
-        notas: mensaje,
+        notas: texto,
         origen: 'WhatsApp',
         estado: 'nuevo',
       })
@@ -74,7 +69,7 @@ serve(async (req) => {
     if (convExistente) {
       await supabase.from('conversaciones').update({
         contacto_nombre: nombre,
-        ultimo_mensaje: mensaje,
+        ultimo_mensaje: texto,
         ultimo_mensaje_at: new Date().toISOString(),
         no_leidos: (convExistente.no_leidos || 0) + 1,
       }).eq('id', convExistente.id)
@@ -85,7 +80,7 @@ serve(async (req) => {
         .insert({
           whatsapp: phone,
           contacto_nombre: nombre,
-          ultimo_mensaje: mensaje,
+          ultimo_mensaje: texto,
           ultimo_mensaje_at: new Date().toISOString(),
           no_leidos: 1,
         })
@@ -106,13 +101,15 @@ serve(async (req) => {
     await supabase.from('mensajes').insert({
       conversacion_id: convId,
       whatsapp: phone,
-      texto: mensaje,
+      texto,
       direccion: 'entrante',
     })
 
     return new Response('ok', { status: 200 })
   } catch (err) {
+    // Devolvemos 200 igual aunque falle: si respondemos error, Meta reintenta
+    // la entrega con reintentos/backoff y puede terminar duplicando el mensaje.
     console.error('webhook-whatsapp error:', err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return new Response('ok', { status: 200 })
   }
 })

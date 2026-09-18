@@ -125,7 +125,12 @@ export default function PropuestasLista({ estado }) {
   // decisiones que hay que tomar al cerrar.
   const [cerrandoPropuesta, setCerrandoPropuesta] = useState(null)
   const [vueloIdx, setVueloIdx] = useState(0)
-  const [hospedajeIdx, setHospedajeIdx] = useState(0)
+  // Un hospedaje elegido POR DESTINO, no uno solo para toda la propuesta — si
+  // el viaje visita varios destinos (Maragogi, Porto de Galinhas, etc, cada
+  // hospedaje trae su propio h.destino desde el Generador) puede haber una
+  // elección independiente en cada uno. Objeto { [destino]: índice dentro de
+  // ese grupo }, ver gruposHospedajesPorDestino más abajo.
+  const [hospedajeIdxPorDestino, setHospedajeIdxPorDestino] = useState({})
   const [trasladosIncluidos, setTrasladosIncluidos] = useState(true)
   // Equipaje opcional: en el Generador se pueden cargar varios tipos a la vez
   // (ej. carry on + valija 23), como opciones ofrecidas al cliente. Acá se
@@ -221,7 +226,7 @@ export default function PropuestasLista({ estado }) {
   function abrirDetalle(p) {
     setCerrandoPropuesta(p)
     setVueloIdx(0)
-    setHospedajeIdx(0)
+    setHospedajeIdxPorDestino({})
     setTrasladosIncluidos(p.traslados_incluidos ?? true)
     setEquipajeOpcionalElegido([])
     setSeguroViaje(p.seguro_viaje ?? false)
@@ -261,7 +266,6 @@ export default function PropuestasLista({ estado }) {
     setGenerandoCierre(true)
     setErrorCierre('')
     try {
-      const hospedajeElegido = (cerrandoPropuesta.hospedajes_detalle || [])[hospedajeIdx]
       const vuelosDisponibles = cerrandoPropuesta.vuelos?.length ? cerrandoPropuesta.vuelos : (cerrandoPropuesta.vuelo ? [cerrandoPropuesta.vuelo] : [])
       const vueloDisponible = vuelosDisponibles[vueloIdx]
       // El equipaje opcional puede tener varias opciones cargadas (ej. carry
@@ -281,12 +285,14 @@ export default function PropuestasLista({ estado }) {
         seguro_viaje_valor: seguroViaje && seguroViajeValor ? parseFloat(seguroViajeValor) : null,
         sena: parseFloat(sena) || 0,
         valor_congelado_brl: valorCongeladoBrl ? parseFloat(valorCongeladoBrl) : null,
-        // Guardamos solo el vuelo y el hospedaje que el cliente eligio (si habia
-        // mas de una opcion ofrecida) — asi el PDF de cierre y la propuesta ya
-        // cerrada quedan con el dato correcto, sin ambiguedad.
+        // Guardamos solo el vuelo y el/los hospedaje/s que el cliente eligio (si
+        // habia mas de una opcion ofrecida) — asi el PDF de cierre y la
+        // propuesta ya cerrada quedan con el dato correcto, sin ambiguedad. Si
+        // el viaje visita varios destinos, queda uno por destino (ver
+        // hospedajesElegidos / gruposHospedajesPorDestino).
         vuelo: vueloElegido || cerrandoPropuesta.vuelo,
         vuelos: vueloElegido ? [vueloElegido] : cerrandoPropuesta.vuelos,
-        hospedajes_detalle: hospedajeElegido ? [hospedajeElegido] : cerrandoPropuesta.hospedajes_detalle,
+        hospedajes_detalle: hospedajesElegidos.length ? hospedajesElegidos : cerrandoPropuesta.hospedajes_detalle,
         // El PDF de cierre (generarPDFCierre) lee "total" tal cual de la base,
         // no lo recalcula — sin esto quedaba el total guardado al CREAR la
         // propuesta (con el primer hospedaje/opción), no el de la opción que
@@ -355,6 +361,30 @@ export default function PropuestasLista({ estado }) {
   const vuelosOpciones = cerrandoPropuesta?.vuelos?.length ? cerrandoPropuesta.vuelos : (cerrandoPropuesta?.vuelo ? [cerrandoPropuesta.vuelo] : [])
   const vuelo = vuelosOpciones[vueloIdx] || cerrandoPropuesta?.vuelo || {}
   const hospedajesOpciones = cerrandoPropuesta?.hospedajes_detalle || []
+  // Agrupados por destino (h.destino, cargado desde el Generador) — un viaje
+  // que visita varios destinos puede tener un hospedaje elegido en CADA uno,
+  // no uno solo para toda la propuesta. Si todos comparten destino (o no
+  // tienen cargado ninguno) queda un solo grupo, mismo comportamiento de
+  // siempre.
+  const gruposHospedajesPorDestino = (() => {
+    const grupos = []
+    const indices = new Map()
+    hospedajesOpciones.forEach((h, i) => {
+      const clave = h.destino || ''
+      if (!indices.has(clave)) {
+        indices.set(clave, grupos.length)
+        grupos.push({ destino: clave, opciones: [] })
+      }
+      grupos[indices.get(clave)].opciones.push({ h, i })
+    })
+    return grupos
+  })()
+  // Uno por destino — el que esté tildado en ese grupo (o el primero, por
+  // default). Reemplaza al viejo hospedajeElegidoPago (uno solo para toda la
+  // propuesta).
+  const hospedajesElegidos = gruposHospedajesPorDestino
+    .map(grupo => grupo.opciones[hospedajeIdxPorDestino[grupo.destino] ?? 0]?.h)
+    .filter(Boolean)
   const tramoIda = resumenTramo(vuelo.ida_fecha, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.ida_sale, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.ida_llega, vuelo.ida_escala_ciudad, vuelo.ida_escala_codigo, vuelo.ida_escala_llega, vuelo.ida_escala_sale)
   const tramoVuelta = resumenTramo(vuelo.vuelta_fecha, vuelo.destino_ciudad, vuelo.destino_codigo, vuelo.vuelta_sale, vuelo.origen_ciudad, vuelo.origen_codigo, vuelo.vuelta_llega, vuelo.vuelta_escala_ciudad, vuelo.vuelta_escala_codigo, vuelo.vuelta_escala_llega, vuelo.vuelta_escala_sale)
   // Ruta fija de los traslados en propuesta simple (aeropuerto-hotel) — se
@@ -366,17 +396,17 @@ export default function PropuestasLista({ estado }) {
   const puedeAbrir = estado === 'enviada' || estado === 'cerrada'
 
   // Pago: mismo criterio que el Generador — en simple los hospedajes cargados
-  // son opciones alternativas (se toma el elegido), en combinada se suman.
-  const hospedajeElegidoPago = hospedajesOpciones[hospedajeIdx]
+  // son opciones alternativas (se toma el elegido); si hay varios destinos,
+  // se suma el elegido de CADA destino (hospedajesElegidos, más arriba).
   // Suma de los mismos items que se listan en el desglose "Costos (neto / venta)"
   // de Datos internos — da el gasto real total vs. lo que se le cobra al cliente.
   const gastoNetoTotal = (parseFloat(vuelo.costo_neto) || 0)
     + (parseFloat(vuelo.traslado_costo_neto) || 0)
-    + (parseFloat(hospedajeElegidoPago?.costo_interno) || 0)
+    + hospedajesElegidos.reduce((sum, h) => sum + (parseFloat(h?.costo_interno) || 0), 0)
     + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_agencia_traslado) || 0), 0)
   const valorVentaTotalInterno = (parseFloat(vuelo.venta) || 0)
     + (parseFloat(vuelo.traslado_venta) || 0)
-    + (parseFloat(hospedajeElegidoPago?.precio) || 0)
+    + hospedajesElegidos.reduce((sum, h) => sum + (parseFloat(h?.precio) || 0), 0)
     + trayectosTransfer.reduce((sum, d) => sum + (parseFloat(d.valor_cliente_traslado) || 0), 0)
   // Equipaje opcional confirmado por el cliente (puede ser más de un tipo a
   // la vez, ej. carry on + valija 23) — se suma aparte porque no forma parte
@@ -737,37 +767,50 @@ export default function PropuestasLista({ estado }) {
               </div>
             )}
 
-            {/* Hospedaje elegido por el cliente — seleccionable si todavia esta enviada,
-                de lo contrario solo se muestra el que quedo elegido. */}
+            {/* Hospedaje elegido por el cliente — seleccionable si todavia esta
+                enviada, de lo contrario solo se muestra el que quedo elegido.
+                Agrupados por destino (h.destino, cargado desde el Generador):
+                si el viaje visita varios, cada uno tiene su propio título y su
+                propia elección independiente — no es una sola elección para
+                toda la propuesta. */}
             {hospedajesOpciones.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">
-                  {estado === 'enviada' && hospedajesOpciones.length > 1 ? 'Hospedaje que eligió el cliente' : 'Hospedaje'}
-                </p>
-                <div className="space-y-2">
-                  {hospedajesOpciones.map((h, i) => {
-                    const seleccionado = hospedajeIdx === i
-                    const Elemento = estado === 'enviada' ? 'button' : 'div'
-                    return (
-                      <Elemento key={i} type={estado === 'enviada' ? 'button' : undefined}
-                        onClick={estado === 'enviada' ? () => setHospedajeIdx(i) : undefined}
-                        className={`w-full flex items-center gap-3 border rounded-xl p-2.5 text-left transition-colors ${
-                          seleccionado ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700'
-                        } ${estado === 'enviada' ? 'hover:border-brand-300' : ''}`}>
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
-                          {h.imagen && <img src={h.imagen} alt="" className="w-full h-full object-cover" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{h.nombre}</p>
-                          <p className="text-xs text-gray-400 dark:text-zinc-500">
-                            {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}{h.precio_publico === false ? ' (privada)' : ''}
-                          </p>
-                        </div>
-                        {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
-                      </Elemento>
-                    )
-                  })}
-                </div>
+              <div className="space-y-4">
+                {gruposHospedajesPorDestino.map(grupo => (
+                  <div key={grupo.destino || '__sin_destino'}>
+                    {gruposHospedajesPorDestino.length > 1 && (
+                      <p className="text-xs font-semibold text-gray-700 dark:text-zinc-200 mb-1">
+                        {grupo.destino || 'Sin destino'}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">
+                      {estado === 'enviada' && grupo.opciones.length > 1 ? 'Hospedaje que eligió el cliente' : 'Hospedaje'}
+                    </p>
+                    <div className="space-y-2">
+                      {grupo.opciones.map(({ h, i }, idxEnGrupo) => {
+                        const seleccionado = (hospedajeIdxPorDestino[grupo.destino] ?? 0) === idxEnGrupo
+                        const Elemento = estado === 'enviada' ? 'button' : 'div'
+                        return (
+                          <Elemento key={i} type={estado === 'enviada' ? 'button' : undefined}
+                            onClick={estado === 'enviada' ? () => setHospedajeIdxPorDestino(prev => ({ ...prev, [grupo.destino]: idxEnGrupo })) : undefined}
+                            className={`w-full flex items-center gap-3 border rounded-xl p-2.5 text-left transition-colors ${
+                              seleccionado ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-zinc-700'
+                            } ${estado === 'enviada' ? 'hover:border-brand-300' : ''}`}>
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800 flex-shrink-0">
+                              {h.imagen && <img src={h.imagen} alt="" className="w-full h-full object-cover" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{h.nombre}</p>
+                              <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                {formatPrecio(h.precio, h.moneda === 'ARS' ? 'ARS' : 'BRL')}{h.precio_publico === false ? ' (privada)' : ''}
+                              </p>
+                            </div>
+                            {seleccionado && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
+                          </Elemento>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1011,13 +1054,13 @@ export default function PropuestasLista({ estado }) {
                       {vuelo.traslado_venta && `Venta: ${formatearNumero(vuelo.traslado_venta)}`}
                     </p>
                   )}
-                  {hospedajeElegidoPago && (hospedajeElegidoPago.costo_interno || hospedajeElegidoPago.precio) && (
-                    <p className="text-xs text-gray-600 dark:text-zinc-300">
-                      Hospedaje — {hospedajeElegidoPago.costo_interno && `Neto: ${formatearNumero(hospedajeElegidoPago.costo_interno)}`}
-                      {hospedajeElegidoPago.costo_interno && hospedajeElegidoPago.precio && ' · '}
-                      {hospedajeElegidoPago.precio && `Venta: ${formatearNumero(hospedajeElegidoPago.precio)}`}
+                  {hospedajesElegidos.map((h, i) => (h.costo_interno || h.precio) && (
+                    <p key={i} className="text-xs text-gray-600 dark:text-zinc-300">
+                      Hospedaje{h.destino ? ` (${h.destino})` : ''} — {h.costo_interno && `Neto: ${formatearNumero(h.costo_interno)}`}
+                      {h.costo_interno && h.precio && ' · '}
+                      {h.precio && `Venta: ${formatearNumero(h.precio)}`}
                     </p>
-                  )}
+                  ))}
                   {trayectosTransfer.map((d, i) => (
                     (d.valor_agencia_traslado || d.valor_cliente_traslado) && (
                       <p key={i} className="text-xs text-gray-600 dark:text-zinc-300">

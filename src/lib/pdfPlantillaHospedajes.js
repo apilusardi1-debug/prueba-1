@@ -4,6 +4,11 @@ import { embedImagenAuto } from './pdfImagen.js'
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const NAVY_TXT = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
 const CREMA_BG = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
+// Mismo tono que CREMA_BG, pero usado como color de TEXTO sobre el fondo
+// navy del encabezado (no existía en este archivo porque "HOSPEDAJES" viene
+// impreso en la plantilla real, no se dibuja por código — hace falta para
+// escribir el destino al lado, en el mismo renglón).
+const CREMA_TXT = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
 
 function formatearNumero(n) {
   return Number(n || 0).toLocaleString('es-AR')
@@ -109,7 +114,7 @@ function crearSlot(fila) {
 
 const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo) {
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, baseVueloTraslado = 0) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -118,6 +123,30 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
   }
   function escribir(texto, x, y, size, color, font, opciones = {}) {
     paginaPlantilla.drawText(texto, { x, y, size, font, color, ...opciones })
+  }
+
+  // Destino al lado de "HOSPEDAJES", mismo renglón y tipografía — coordenadas
+  // de "HOSPEDAJES" sacadas de la plantilla real (x=67, y=789, tamaño 30,
+  // Bebas Neue) inspeccionando el PDF con pdfjs, porque ese título viene
+  // impreso en la plantilla, no se dibuja por código. Un solo destino por
+  // hoja (los hospedajes ya vienen agrupados por destino antes de llamar acá,
+  // ver GeneradorPropuesta.jsx) — se toma del primero del grupo. Se achica si
+  // no entra antes del ícono decorativo de la derecha (no hay coordenada
+  // exacta de ese ícono en la plantilla, así que el límite es conservador).
+  const destino = grupo[0]?.destino
+  if (destino) {
+    const HOSPEDAJES_X = 67
+    const HOSPEDAJES_Y = 789
+    const HOSPEDAJES_SIZE = 30
+    const GAP = 18
+    // Verificado renderizando la plantilla real: el ícono decorativo de la
+    // derecha empieza cerca de x=522 — se deja margen hasta acá.
+    const LIMITE_DERECHO = 505
+    const xDestino = HOSPEDAJES_X + bebas.widthOfTextAtSize('HOSPEDAJES', HOSPEDAJES_SIZE) + GAP
+    let tamanoDestino = HOSPEDAJES_SIZE
+    const textoDestino = destino.toUpperCase()
+    while (tamanoDestino > 12 && xDestino + bebas.widthOfTextAtSize(textoDestino, tamanoDestino) > LIMITE_DERECHO) tamanoDestino -= 0.5
+    escribir(textoDestino, xDestino, HOSPEDAJES_Y, tamanoDestino, CREMA_TXT, bebas)
   }
 
   // La plantilla real trae 2 hospedajes de muestra fijos (para el diseño de 2 por
@@ -156,13 +185,17 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
 
-    // Precio individual del hospedaje — se ve si está tildado "Pública"
-    // (checkbox propio de cada hospedaje en el Generador), en simple o
-    // combinada. Si está "Privada" no se ve acá; igual entra en la suma de
-    // la hoja final (agregarPaginaTotalSimple en pdfPlantillaAereos.js).
+    // Precio del PAQUETE completo (aéreo + traslado + este hospedaje, vía
+    // baseVueloTraslado) — se ve si está tildado "Pública" (checkbox propio
+    // de cada hospedaje en el Generador), en simple o combinada. Antes se
+    // mostraba solo el precio del hospedaje y el total del paquete vivía en
+    // una hoja final aparte (sacada del PDF, pedido explícito).
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (h.precio_publico !== false) { escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.precio_publico !== false) {
+      const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
+      escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
+    }
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     if (h.pension && y >= piso) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
 

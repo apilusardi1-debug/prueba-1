@@ -1009,8 +1009,16 @@ export default function GeneradorPropuesta() {
 
       // precioEfectivo pisa precio/costo_interno/moneda/precio_publico con los
       // de la primera habitación elegida (si hay) — así el PDF de hospedajes
-      // lee el valor correcto sin tocar esos otros archivos/cálculos.
-      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim()).map(h => ({ ...h, ...precioEfectivo(h) }))
+      // lee el valor correcto sin tocar esos otros archivos/cálculos. "incluye"
+      // (leyenda al lado del total, en la plantilla) toma lo que se eligió en
+      // Cliente ("Aéreo + Traslado + Hospedaje", etc) — mismo criterio que la
+      // tarjeta de cada hospedaje en pantalla, que solo lo muestra en Simple
+      // (en Combinada cada servicio ya va con su propio precio por separado).
+      const hospedajesValidos = hospedajes.filter(h => h.nombre.trim()).map(h => ({
+        ...h,
+        ...precioEfectivo(h),
+        incluye: tipoPropuesta === 'simple' ? pedidoClienteValor : '',
+      }))
       const hospedajesParaPdf = await Promise.all(
         hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
       )

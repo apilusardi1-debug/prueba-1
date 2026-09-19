@@ -17,6 +17,7 @@ import Hoteles from './pages/public/Hoteles.jsx'
 import HotelDetalle from './pages/public/HotelDetalle.jsx'
 import Marea from './pages/public/Marea.jsx'
 import Nosotros from './pages/public/Nosotros.jsx'
+import Privacidad from './pages/public/Privacidad.jsx'
 
 // Páginas admin
 import Login from './pages/admin/Login.jsx'
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
       { path: '/traslados',             element: <Catalogo categoria="traslados" /> },
       { path: '/marea',                 element: <Marea /> },
       { path: '/nosotros',              element: <Nosotros /> },
+      { path: '/privacidad',            element: <Privacidad /> },
     ],
   },
 

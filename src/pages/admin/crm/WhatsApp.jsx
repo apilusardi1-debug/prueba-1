@@ -82,7 +82,19 @@ export default function WhatsAppCRM() {
   const [miUsuarioId, setMiUsuarioId] = useState(null)
   const [asignando, setAsignando] = useState(false)
   const [menuAsignar, setMenuAsignar] = useState(false)
-  const [filtroAsignacion, setFiltroAsignacion] = useState('todas') // todas | sin_asignar | mias
+  // todas | sin_asignar | mias — se recuerda entre visitas para que quien trabaja
+  // solo con "Mías" no tenga que volver a elegirlo cada vez.
+  const [filtroAsignacion, setFiltroAsignacion] = useState(() => {
+    try {
+      const guardado = localStorage.getItem('crm_filtro_asignacion')
+      return ['todas', 'mias', 'sin_asignar'].includes(guardado) ? guardado : 'todas'
+    } catch { return 'todas' }
+  })
+
+  function elegirFiltro(id) {
+    setFiltroAsignacion(id)
+    try { localStorage.setItem('crm_filtro_asignacion', id) } catch { /* sin almacenamiento */ }
+  }
   const [respuestasRapidas, setRespuestasRapidas] = useState([])
   const [menuRespuestas, setMenuRespuestas] = useState(false)
   const [panelCliente, setPanelCliente] = useState(false)
@@ -533,20 +545,20 @@ export default function WhatsAppCRM() {
           />
           <div className="flex gap-1.5 mt-2.5">
             {[
-              { id: 'todas', label: 'Todas' },
-              { id: 'mias', label: 'Mías' },
-              { id: 'sin_asignar', label: 'Sin asignar' },
+              { id: 'todas', label: 'Todas', cantidad: conversaciones.length },
+              { id: 'mias', label: 'Mías', cantidad: conversaciones.filter(c => miUsuarioId && c.asignado_a === miUsuarioId).length },
+              { id: 'sin_asignar', label: 'Sin asignar', cantidad: conversaciones.filter(c => !c.asignado_a).length },
             ].map(f => (
               <button
                 key={f.id}
-                onClick={() => setFiltroAsignacion(f.id)}
+                onClick={() => elegirFiltro(f.id)}
                 className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
                   filtroAsignacion === f.id
                     ? 'bg-green-600 text-white'
                     : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700'
                 }`}
               >
-                {f.label}
+                {f.label} <span className="opacity-70">{f.cantidad}</span>
               </button>
             ))}
           </div>

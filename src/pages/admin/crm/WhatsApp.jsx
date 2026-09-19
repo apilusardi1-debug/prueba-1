@@ -87,7 +87,7 @@ export default function WhatsAppCRM() {
   const [filtroAsignacion, setFiltroAsignacion] = useState(() => {
     try {
       const guardado = localStorage.getItem('crm_filtro_asignacion')
-      return ['todas', 'mias', 'sin_asignar'].includes(guardado) ? guardado : 'todas'
+      return ['todas', 'mias', 'sin_asignar'].includes(guardado) || guardado?.startsWith('u:') ? guardado : 'todas'
     } catch { return 'todas' }
   })
 
@@ -193,7 +193,8 @@ export default function WhatsAppCRM() {
       setUsuarios(lista || [])
       try {
         const sesion = JSON.parse(localStorage.getItem('admin_session') || '{}')
-        const yo = (lista || []).find(u => u.email === sesion.email)
+        const emailSesion = String(sesion.email || '').trim().toLowerCase()
+        const yo = (lista || []).find(u => String(u.email || '').trim().toLowerCase() === emailSesion)
         if (yo) setMiUsuarioId(yo.id)
       } catch (_) { /* sin sesión parseable, queda sin "mías" */ }
     })
@@ -518,6 +519,7 @@ export default function WhatsAppCRM() {
     .filter(c => {
       if (filtroAsignacion === 'sin_asignar') return !c.asignado_a
       if (filtroAsignacion === 'mias') return c.asignado_a === miUsuarioId
+      if (filtroAsignacion.startsWith('u:')) return c.asignado_a === filtroAsignacion.slice(2)
       return true
     })
 
@@ -562,6 +564,23 @@ export default function WhatsAppCRM() {
               </button>
             ))}
           </div>
+          <select
+            value={filtroAsignacion.startsWith('u:') ? filtroAsignacion.slice(2) : ''}
+            onChange={e => elegirFiltro(e.target.value ? `u:${e.target.value}` : 'todas')}
+            className="w-full mt-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
+          >
+            <option value="">Ver las asignadas a otra persona...</option>
+            {usuarios.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.nombre} ({conversaciones.filter(c => c.asignado_a === u.id).length})
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1.5">
+            {miUsuarioId && usuarioPorId(miUsuarioId)
+              ? `Mías = asignadas a ${usuarioPorId(miUsuarioId).nombre}`
+              : 'No se pudo identificar tu usuario: "Mías" no va a mostrar nada.'}
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto">

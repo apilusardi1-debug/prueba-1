@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 
@@ -619,7 +620,8 @@ export default function WhatsAppCRM() {
                     ? 'bg-[#dcf8c6] dark:bg-green-800 text-gray-900 dark:text-zinc-100 rounded-br-sm'
                     : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-bl-sm'
                 } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
-                  <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
+                  {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
+                  {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
                   <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1 text-right">
                     {formatHora(msg.created_at)}
                     {msg.direccion === 'saliente' && (

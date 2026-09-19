@@ -89,7 +89,7 @@ async function enviarMeta(cuerpo: Record<string, unknown>) {
 }
 
 async function guardarMensajeBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, texto: string) {
-  await supabase.from('mensajes').insert({ conversacion_id: convId, whatsapp: phone, texto, direccion: 'saliente', origen: 'bot' })
+  await supabase.from('mensajes').insert({ conversacion_id: convId, whatsapp: phone, texto, direccion: 'saliente', origen: 'bot', cobro: 'servicio' })
 }
 
 async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: string, phone: string, intro: string) {

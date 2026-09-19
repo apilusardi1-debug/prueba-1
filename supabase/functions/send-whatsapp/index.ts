@@ -11,6 +11,13 @@ const META_API_VERSION = 'v21.0'
 const MEDIA_BUCKET = 'whatsapp-media'
 const TIPOS_MEDIA_SALIENTE = ['image', 'video', 'audio', 'document']
 const ETIQUETA_MEDIA: Record<string, string> = { image: 'Imagen', video: 'Video', audio: 'Audio', document: 'Documento' }
+// Categoría de cobro de Meta de cada plantilla, para estimar el gasto en el
+// Dashboard. Si Meta clasificara alguna distinto (p. ej. marketing), se corrige acá.
+const COBRO_PLANTILLA: Record<string, string> = {
+  aviso_guia: 'utilidad',
+  aviso_chofer: 'utilidad',
+  aviso_cliente: 'utilidad',
+}
 
 // Cada plantilla quedó registrada en Meta con el idioma que tenía seleccionado
 // el dropdown al momento de crearla (no todas quedaron en Español (ARG) por
@@ -219,6 +226,9 @@ serve(async (req) => {
         whatsapp: phoneClean,
         texto: mensajeLegible,
         direccion: 'saliente',
+        // Respuesta libre dentro de la ventana de 24 hs = servicio (sin costo);
+        // una plantilla se cobra según su categoría.
+        cobro: template ? (COBRO_PLANTILLA[template] || 'utilidad') : 'servicio',
         ...(esMedia ? {
           tipo: media.tipo,
           media_path: media.path,

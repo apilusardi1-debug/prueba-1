@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, propuestasApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
+import MetricasCRM from '../../components/admin/MetricasCRM.jsx'
 
 const ESTADOS_PROPUESTA = [
   { key: 'enviada',   label: 'Enviadas',   color: '#f59e0b' },
@@ -246,6 +247,8 @@ export default function Dashboard() {
         <StatCard icon="📤" label="Salidas totales" value={formatPrecio(salidasTotales)} sub="Movimientos confirmados" valueClass="text-red-500 dark:text-red-400" badgeClass="bg-red-50 dark:bg-red-950/40" to="/admin/finanzas" />
         <StatCard icon="⚙️" label="Costos operativos del mes" value={formatPrecio(costosOperativosMes)} sub="Según chofer asignado por reserva" valueClass="text-orange-500 dark:text-orange-400" badgeClass="bg-orange-50 dark:bg-orange-950/40" to="/admin/reservas" />
       </div>
+
+      <MetricasCRM esAdmin={session.role === 'admin'} />
 
       <div className="grid lg:grid-cols-3 gap-6 mb-6">
         {/* Reservas por mes y excursión */}

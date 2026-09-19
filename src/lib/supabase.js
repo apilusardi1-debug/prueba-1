@@ -96,7 +96,9 @@ export const leadsApi = {
   getAll: () => supabase?.from('leads').select('*').order('created_at', { ascending: false }),
   getByWhatsapp: (whatsapp) => supabase?.from('leads').select('id').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
-  updateEstado: (id, estado, notas) => supabase?.from('leads').update({ estado, notas }).eq('id', id).select().single(),
+  // Sin notas (null/undefined) solo cambia el estado: antes se guardaba notas = null
+  // y arrastrar una tarjeta entre columnas del tablero borraba las notas del lead.
+  updateEstado: (id, estado, notas) => supabase?.from('leads').update(notas == null ? { estado } : { estado, notas }).eq('id', id).select().single(),
   update: (id, data) => supabase?.from('leads').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }
@@ -391,6 +393,19 @@ export const respuestasRapidasApi = {
   create: (data) => supabase?.from('respuestas_rapidas').insert(data).select().single(),
   update: (id, data) => supabase?.from('respuestas_rapidas').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('respuestas_rapidas').delete().eq('id', id),
+}
+
+// ── Métricas del CRM para el Dashboard ───────────────────────────────────────────
+// crm_metricas devuelve todo en un JSON; desde/hasta son instantes ISO (el límite
+// de "hoy" se calcula en la zona horaria del navegador, no en UTC).
+export const crmMetricasApi = {
+  get: (desde, hasta, tz = 'America/Bahia') => supabase?.rpc('crm_metricas', { p_desde: desde, p_hasta: hasta, p_tz: tz }),
+}
+
+// Tarifas (BRL) con las que se estima el gasto en mensajes; son editables.
+export const tarifasMensajeApi = {
+  getAll: () => supabase?.from('tarifas_mensaje').select('*').order('valor'),
+  update: (cobro, valor) => supabase?.from('tarifas_mensaje').update({ valor }).eq('cobro', cobro).select().single(),
 }
 
 // ── Asistente automático del CRM (menú Paquetes / Paseos + reparto en turnos) ───

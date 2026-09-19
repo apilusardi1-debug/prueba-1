@@ -393,6 +393,15 @@ export const respuestasRapidasApi = {
   delete: (id) => supabase?.from('respuestas_rapidas').delete().eq('id', id),
 }
 
+// ── Asistente automático del CRM (menú Paquetes / Paseos + reparto en turnos) ───
+export const botApi = {
+  getConfig: () => supabase?.from('bot_config').select('*').eq('id', 1).maybeSingle(),
+  saveConfig: (data) => supabase?.from('bot_config').update(data).eq('id', 1).select().single(),
+  getReparto: () => supabase?.from('bot_reparto').select('*'),
+  addMiembro: (grupo, usuarioId) => supabase?.from('bot_reparto').insert({ grupo, usuario_id: usuarioId }).select().single(),
+  removeMiembro: (id) => supabase?.from('bot_reparto').delete().eq('id', id),
+}
+
 // ── Usuarios del panel admin ─────────────────────────────────────────────────────
 // La tabla usuarios_admin tiene RLS activado sin políticas (bloqueada
 // para anon) — todo el acceso pasa por la Edge Function usuarios-admin,

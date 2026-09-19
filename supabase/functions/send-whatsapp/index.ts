@@ -228,6 +228,15 @@ serve(async (req) => {
       })
     }
 
+    // Si una persona ya escribió a mano, el asistente automático no interviene
+    // más en esa conversación (ni saluda ni pregunta el menú).
+    if (esCrm && convId) {
+      await supabase.from('conversaciones')
+        .update({ bot_estado: 'humano' })
+        .eq('id', convId)
+        .or('bot_estado.is.null,bot_estado.eq.esperando')
+    }
+
     return new Response(JSON.stringify(data), {
       headers: { 'Content-Type': 'application/json', ...CORS },
     })

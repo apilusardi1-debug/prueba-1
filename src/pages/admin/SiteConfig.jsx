@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
-import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi } from '../../lib/supabase.js'
+import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi, botApi } from '../../lib/supabase.js'
 import { ROLES } from '../../lib/roles.js'
 
 const SECTION = {
@@ -526,6 +526,156 @@ function TabRespuestasRapidas() {
   )
 }
 
+const GRUPOS_BOT = [
+  { id: 'paquetes', titulo: 'Paquetes', detalle: 'Cuando el contacto elige Paquetes (o escribe "paquete").' },
+  { id: 'paseos', titulo: 'Paseos', detalle: 'Cuando el contacto elige Paseos (o escribe "paseo", "excursión" o "tour").' },
+]
+
+const CLASE_CAMPO = 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none'
+
+function TabAsistente() {
+  const [cfg, setCfg] = useState(null)
+  const [reparto, setReparto] = useState([])
+  const [usuarios, setUsuarios] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [textos, setTextos] = useState({ saludo: '', mensaje_derivacion: '', mensaje_sin_asignar: '' })
+  const [guardando, setGuardando] = useState(false)
+  const [estado, setEstado] = useState(null) // 'ok' | 'error'
+
+  useEffect(() => {
+    Promise.all([botApi.getConfig(), botApi.getReparto(), usuariosAdminApi.getAll()]).then(([c, r, u]) => {
+      const datos = c?.data || null
+      setCfg(datos)
+      if (datos) setTextos({ saludo: datos.saludo, mensaje_derivacion: datos.mensaje_derivacion, mensaje_sin_asignar: datos.mensaje_sin_asignar })
+      setReparto(r?.data || [])
+      setUsuarios(u?.ok ? (u.usuarios || []).filter(x => x.activo !== false) : [])
+      setLoading(false)
+    })
+  }, [])
+
+  async function toggleActivo() {
+    const { data } = await botApi.saveConfig({ activo: !cfg.activo })
+    if (data) setCfg(data)
+  }
+
+  async function guardarTextos() {
+    setGuardando(true)
+    const { data, error } = await botApi.saveConfig({
+      saludo: textos.saludo.trim(),
+      mensaje_derivacion: textos.mensaje_derivacion.trim(),
+      mensaje_sin_asignar: textos.mensaje_sin_asignar.trim(),
+    })
+    if (data) setCfg(data)
+    setEstado(error ? 'error' : 'ok')
+    setGuardando(false)
+    setTimeout(() => setEstado(null), 3000)
+  }
+
+  async function toggleMiembro(grupo, usuarioId) {
+    const existente = reparto.find(m => m.grupo === grupo && m.usuario_id === usuarioId)
+    if (existente) {
+      await botApi.removeMiembro(existente.id)
+      setReparto(prev => prev.filter(m => m.id !== existente.id))
+    } else {
+      const { data } = await botApi.addMiembro(grupo, usuarioId)
+      if (data) setReparto(prev => [...prev, data])
+    }
+  }
+
+  if (loading) return <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando...</p>
+  if (!cfg) {
+    return (
+      <div className="max-w-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-2xl p-5">
+        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Falta preparar la base de datos</p>
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Hay que correr la migración del asistente en Supabase (20260919160000_bot_asistente.sql) para poder configurarlo.</p>
+      </div>
+    )
+  }
+
+  const sinPersonas = GRUPOS_BOT.filter(g => !reparto.some(m => m.grupo === g.id))
+
+  return (
+    <div className="max-w-xl space-y-5">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Asistente automático</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">
+          Al primer mensaje de un contacto nuevo pregunta si busca Paquetes o Paseos y le asigna la conversación a alguien de ese grupo, en turnos.
+          Deja de intervenir apenas una persona responde a mano.
+        </p>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5 flex items-center gap-4">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200">Estado del asistente</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            {cfg.activo ? 'Encendido: responde a los contactos nuevos.' : 'Apagado: las conversaciones llegan sin asignar, como hasta ahora.'}
+          </p>
+        </div>
+        <button
+          onClick={toggleActivo}
+          className={`text-xs font-semibold px-4 py-2 rounded-full shrink-0 ${cfg.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
+        >
+          {cfg.activo ? 'Activo - apagar' : 'Apagado - encender'}
+        </button>
+      </div>
+
+      {cfg.activo && sinPersonas.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl px-4 py-3">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            {sinPersonas.map(g => g.titulo).join(' y ')} no tiene personas asignadas: quien elija esa opción va a quedar sin asignar.
+          </p>
+        </div>
+      )}
+
+      {GRUPOS_BOT.map(g => (
+        <div key={g.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+          <div className="px-5 pt-4 pb-3">
+            <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200">{g.titulo}</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{g.detalle} Se reparte en turnos entre las personas tildadas.</p>
+          </div>
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800 border-t border-gray-50 dark:border-zinc-800">
+            {usuarios.length === 0 && <p className="px-5 py-3 text-xs text-gray-400 dark:text-zinc-500">No hay usuarios activos.</p>}
+            {usuarios.map(u => (
+              <label key={u.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                <input
+                  type="checkbox"
+                  checked={reparto.some(m => m.grupo === g.id && m.usuario_id === u.id)}
+                  onChange={() => toggleMiembro(g.id, u.id)}
+                  className="w-4 h-4 accent-[#002147]"
+                />
+                <span className="text-sm text-gray-800 dark:text-zinc-200">{u.nombre}</span>
+                <span className="text-xs text-gray-400 dark:text-zinc-500 truncate">{u.email}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Saludo (se envía con los botones Paquetes / Paseos)</label>
+          <textarea rows={2} value={textos.saludo} onChange={e => setTextos(t => ({ ...t, saludo: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje al derivar (usa {'{nombre}'} y {'{grupo}'})</label>
+          <textarea rows={2} value={textos.mensaje_derivacion} onChange={e => setTextos(t => ({ ...t, mensaje_derivacion: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje cuando no se pudo derivar</label>
+          <textarea rows={2} value={textos.mensaje_sin_asignar} onChange={e => setTextos(t => ({ ...t, mensaje_sin_asignar: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <button
+          onClick={guardarTextos}
+          disabled={guardando || !textos.saludo.trim() || !textos.mensaje_derivacion.trim() || !textos.mensaje_sin_asignar.trim()}
+          className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          {guardando ? 'Guardando...' : estado === 'ok' ? 'Guardado' : estado === 'error' ? 'No se pudo guardar' : 'Guardar textos'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SiteConfig() {
   const { config, saveConfig, loading } = useSiteConfig()
   const [form, setForm] = useState(config)
@@ -568,7 +718,7 @@ export default function SiteConfig() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }, { id: 'respuestas', label: 'Respuestas rápidas' }].map(t => (
+        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }, { id: 'respuestas', label: 'Respuestas rápidas' }, { id: 'asistente', label: 'Asistente' }].map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -587,6 +737,7 @@ export default function SiteConfig() {
       {tab === 'accesos' && <TabAccesos />}
       {tab === 'conceptos' && <TabConceptos />}
       {tab === 'respuestas' && <TabRespuestasRapidas />}
+      {tab === 'asistente' && <TabAsistente />}
 
       {tab === 'sitio' && (
         <>

@@ -583,6 +583,16 @@ export default function WhatsAppCRM() {
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <p className="text-xs text-gray-400 dark:text-zinc-500 truncate flex-1">{conv.ultimo_mensaje || '–'}</p>
+                    {conv.grupo && (
+                      <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 capitalize">
+                        {conv.grupo}
+                      </span>
+                    )}
+                    {conv.bot_estado === 'esperando' && (
+                      <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                        Asistente
+                      </span>
+                    )}
                     {conv.etiqueta && ETIQUETAS[conv.etiqueta] && (
                       <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ETIQUETAS[conv.etiqueta].color}`}>
                         {ETIQUETAS[conv.etiqueta].label}
@@ -738,6 +748,9 @@ export default function WhatsAppCRM() {
                     ? 'bg-[#dcf8c6] dark:bg-green-800 text-gray-900 dark:text-zinc-100 rounded-br-sm'
                     : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-bl-sm'
                 } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
+                  {msg.origen === 'bot' && (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-300 mb-1">Asistente automático</p>
+                  )}
                   {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
                   {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
                   <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1 text-right">

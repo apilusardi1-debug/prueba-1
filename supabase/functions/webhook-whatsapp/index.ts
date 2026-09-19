@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { detectarInteres } from '../_shared/interes.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -234,8 +235,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // El interés (tipo de servicio + destino) se detecta por palabras clave en
+    // cada mensaje. Solo se completa lo que falta: lo que ya tenía el lead, ya
+    // sea detectado antes o cargado a mano, no se pisa.
+    const interes = detectarInteres(texto)
+
     const { data: leadExistente } = await supabase
-      .from('leads').select('id').eq('whatsapp', phone).maybeSingle()
+      .from('leads').select('id, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()
 
     if (!leadExistente) {
       await supabase.from('leads').insert({
@@ -244,7 +250,14 @@ serve(async (req) => {
         notas: texto,
         origen: 'WhatsApp',
         estado: 'nuevo',
+        interes_tipo: interes.tipo,
+        interes_destino: interes.destino,
       })
+    } else {
+      const cambios: Record<string, string> = {}
+      if (interes.tipo && !leadExistente.interes_tipo) cambios.interes_tipo = interes.tipo
+      if (interes.destino && !leadExistente.interes_destino) cambios.interes_destino = interes.destino
+      if (Object.keys(cambios).length) await supabase.from('leads').update(cambios).eq('id', leadExistente.id)
     }
 
     const { data: convExistente } = await supabase

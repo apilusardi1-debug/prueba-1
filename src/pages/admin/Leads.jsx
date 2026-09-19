@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { leadsApi, excursionesApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
+import { leadsApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
+import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Badge from '../../components/ui/Badge.jsx'
 
 function hoyISO() { return new Date().toISOString().split('T')[0] }
@@ -13,12 +14,42 @@ const estadosLead = {
   perdido:    { label: 'Perdido',    color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
 }
 
-const FORM_VACIO = { nombre: '', whatsapp: '', excursion_id: '', notas: '' }
+const FORM_VACIO = { nombre: '', whatsapp: '', interes_tipo: '', interes_destino: '', notas: '' }
+
+// Tipo de servicio + destino. El destino es texto libre con sugerencias, porque
+// un lead puede interesarse en más de uno ("Porto de Galinhas + Maragogi").
+function CampoInteres({ tipo, destino, onChange, ayuda, grande }) {
+  const campo = grande
+    ? 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400'
+    : 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]'
+  return (
+    <div>
+      <label className={grande ? 'text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1' : 'text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1'}>Interés</label>
+      <div className="grid grid-cols-2 gap-2">
+        <select value={tipo || ''} onChange={e => onChange({ interes_tipo: e.target.value })} className={campo}>
+          <option value="">— Tipo</option>
+          {TIPOS_INTERES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <input
+          type="text"
+          list="destinos-interes"
+          value={destino || ''}
+          onChange={e => onChange({ interes_destino: e.target.value })}
+          placeholder="Destino"
+          className={campo}
+        />
+      </div>
+      <datalist id="destinos-interes">
+        {DESTINOS_INTERES.map(d => <option key={d} value={d} />)}
+      </datalist>
+      {ayuda && <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">{ayuda}</p>}
+    </div>
+  )
+}
 
 export default function Leads() {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
-  const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [vista, setVista] = useState('kanban')
   const [seleccionado, setSeleccionado] = useState(null)
@@ -40,13 +71,11 @@ export default function Leads() {
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: l }, { data: e }, { data: r }] = await Promise.all([
+        const [{ data: l }, { data: r }] = await Promise.all([
           leadsApi.getAll(),
-          excursionesApi.getAll(),
           recordatoriosApi.getPendientes(),
         ])
         if (l) setLeads(l)
-        if (e) setExcursiones(e)
         if (r) setRecordatorios(r)
       } catch (_) {}
       setLoading(false)
@@ -111,12 +140,13 @@ export default function Leads() {
   async function registrarLead() {
     if (!formLead.nombre.trim() || !formLead.whatsapp.trim()) return
     setEnviando(true)
-    const excursionNombre = excursiones.find(e => e.id === formLead.excursion_id)?.nombre || ''
+    // Si no se eligió el interés, se intenta reconocer en las notas del lead.
+    const detectado = detectarInteres(formLead.notas)
     const { data, error } = await leadsApi.create({
       nombre: formLead.nombre,
       whatsapp: formLead.whatsapp,
-      excursion_interes: excursionNombre,
-      excursion_id: formLead.excursion_id || null,
+      interes_tipo: formLead.interes_tipo || detectado.tipo || null,
+      interes_destino: formLead.interes_destino.trim() || detectado.destino || null,
       notas: formLead.notas,
       origen: 'WhatsApp',
       estado: 'nuevo',
@@ -139,8 +169,8 @@ export default function Leads() {
       nombre: lead.nombre || '',
       whatsapp: lead.whatsapp || '',
       email: lead.email || '',
-      excursion_interes: lead.excursion_interes || '',
-      excursion_id: lead.excursion_id || '',
+      interes_tipo: lead.interes_tipo || '',
+      interes_destino: lead.interes_destino || '',
       origen: lead.origen || '',
       estado: lead.estado || 'nuevo',
       notas: lead.notas || '',
@@ -150,7 +180,11 @@ export default function Leads() {
   async function guardarLead() {
     if (!editForm.nombre.trim()) return
     setGuardandoLead(true)
-    const { data } = await leadsApi.update(seleccionado.id, editForm)
+    const { data } = await leadsApi.update(seleccionado.id, {
+      ...editForm,
+      interes_tipo: editForm.interes_tipo || null,
+      interes_destino: editForm.interes_destino.trim() || null,
+    })
     if (data) {
       setLeads(prev => prev.map(l => l.id === data.id ? data : l))
       setSeleccionado(data)
@@ -262,7 +296,7 @@ export default function Leads() {
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{lead.excursion_interes}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{etiquetaInteres(lead)}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-gray-400 dark:text-zinc-500">{lead.origen}</span>
                         <span className="ml-auto text-xs text-gray-400 dark:text-zinc-500">
@@ -306,7 +340,7 @@ export default function Leads() {
             <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3 text-left">Nombre</th>
-                <th className="px-5 py-3 text-left">Excursión</th>
+                <th className="px-5 py-3 text-left">Interés</th>
                 <th className="px-5 py-3 text-left">Origen</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Estado</th>
@@ -319,7 +353,7 @@ export default function Leads() {
                 return (
                   <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
                     <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</td>
-                    <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{lead.excursion_interes}</td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{etiquetaInteres(lead)}</td>
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{lead.origen}</td>
                     <td className="px-5 py-3 text-gray-400 dark:text-zinc-500 text-xs">{new Date(lead.created_at).toLocaleDateString('es-AR')}</td>
                     <td className="px-5 py-3">
@@ -373,16 +407,13 @@ export default function Leads() {
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   placeholder="Ej: 5491112345678" />
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Excursión de interés</label>
-                <select value={formLead.excursion_id} onChange={e => setFormLead({...formLead, excursion_id: e.target.value})}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  <option value="">— Sin especificar</option>
-                  {excursiones.map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre}</option>
-                  ))}
-                </select>
-              </div>
+              <CampoInteres
+                tipo={formLead.interes_tipo}
+                destino={formLead.interes_destino}
+                onChange={cambios => setFormLead(p => ({ ...p, ...cambios }))}
+                ayuda="Si lo dejás vacío se reconoce solo a partir de las notas."
+                grande
+              />
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Notas</label>
                 <textarea value={formLead.notas} onChange={e => setFormLead({...formLead, notas: e.target.value})}
@@ -430,20 +461,13 @@ export default function Leads() {
                 </div>
               ))}
 
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Excursión de interés</label>
-                <select
-                  value={editForm.excursion_id}
-                  onChange={e => {
-                    const nombre = excursiones.find(x => x.id === e.target.value)?.nombre || ''
-                    setEditForm(p => ({ ...p, excursion_id: e.target.value, excursion_interes: nombre }))
-                  }}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
-                >
-                  <option value="">— Sin especificar</option>
-                  {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                </select>
-              </div>
+              <CampoInteres
+                tipo={editForm.interes_tipo}
+                destino={editForm.interes_destino}
+                onChange={cambios => setEditForm(p => ({ ...p, ...cambios }))}
+                ayuda={!seleccionado.interes_tipo && !seleccionado.interes_destino && seleccionado.excursion_interes
+                  ? 'Antes: ' + seleccionado.excursion_interes : undefined}
+              />
 
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Estado</label>

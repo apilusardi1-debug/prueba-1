@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, propuestasApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
+import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 
 const ESTADOS_PROPUESTA = [
   { key: 'enviada',   label: 'Enviadas',   color: '#f59e0b' },
@@ -304,7 +305,7 @@ export default function Dashboard() {
                 <div key={lead.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</p>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500">{lead.excursion_interes}</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500">{etiquetaInteres(lead)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estado.color}`}>

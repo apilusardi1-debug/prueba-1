@@ -10,6 +10,11 @@ const LIMITE_ADJUNTO_MB = { image: 5, video: 16, audio: 16, document: 50 }
 const NOMBRE_TIPO_ADJUNTO = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'documentos' }
 const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg']
 
+// Una conversación sin respuesta humana se marca en amarillo a las 12 hs y en
+// rojo a las 18 hs, contadas desde el primer mensaje del cliente que quedó sin atender.
+const HORAS_ALERTA_AMARILLA = 12
+const HORAS_ALERTA_ROJA = 18
+
 function tipoAdjunto(file) {
   if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
   if (file.type === 'video/mp4' || file.type === 'video/3gpp') return 'video'
@@ -73,6 +78,7 @@ export default function WhatsAppCRM() {
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
+  const [esperandoDesde, setEsperandoDesde] = useState({}) // conversacion_id -> desde cuándo espera respuesta
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
@@ -118,6 +124,17 @@ export default function WhatsAppCRM() {
     const t = setInterval(() => setAhora(Date.now()), 60000)
     return () => clearInterval(t)
   }, [])
+
+  // Qué conversaciones esperan respuesta humana. Se recalcula cuando cambia la
+  // actividad de la lista y cada minuto (el reloj `ahora` ya corre por minuto).
+  const claveActividad = conversaciones.map(c => `${c.id}:${c.ultimo_mensaje_at}`).join('|')
+  useEffect(() => {
+    conversacionesApi.sinResponder()?.then(({ data }) => {
+      const mapa = {}
+      for (const fila of data || []) mapa[fila.conversacion_id] = fila.desde
+      setEsperandoDesde(mapa)
+    })
+  }, [claveActividad, Math.floor(ahora / 60000)])
 
   // Vista previa de la imagen adjunta (se libera la URL al quitarla)
   useEffect(() => {
@@ -454,6 +471,8 @@ export default function WhatsAppCRM() {
     // WhatsApp no admite pie de foto en los audios: el texto va como mensaje aparte.
     if (tipo === 'audio' && caption) await enviarWhatsApp({ ...datosContacto, message: caption })
 
+    limpiarEspera(seleccionada.id)
+
     setAdjunto(null)
     setTexto('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
@@ -495,6 +514,8 @@ export default function WhatsAppCRM() {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
       alert(await textoErrorEnvio(error))
+    } else {
+      limpiarEspera(seleccionada.id)
     }
 
     setEnviando(false)
@@ -510,6 +531,23 @@ export default function WhatsAppCRM() {
   const ultimoEntrante = [...mensajes].reverse().find(m => m.direccion === 'entrante')
   const ventanaCerrada = mensajes.length > 0 &&
     (!ultimoEntrante || ahora - new Date(ultimoEntrante.created_at).getTime() > VENTANA_MS)
+
+  function limpiarEspera(convId) {
+    setEsperandoDesde(prev => {
+      if (!prev[convId]) return prev
+      const { [convId]: _, ...resto } = prev
+      return resto
+    })
+  }
+
+  function alertaDeEspera(convId) {
+    const desde = esperandoDesde[convId]
+    if (!desde) return null
+    const horas = (ahora - new Date(desde).getTime()) / 3600000
+    if (horas >= HORAS_ALERTA_ROJA) return { nivel: 'roja', horas: Math.floor(horas) }
+    if (horas >= HORAS_ALERTA_AMARILLA) return { nivel: 'amarilla', horas: Math.floor(horas) }
+    return null
+  }
 
   const convsFiltradas = conversaciones
     .filter(c =>
@@ -597,12 +635,18 @@ export default function WhatsAppCRM() {
             </div>
           )}
 
-          {convsFiltradas.map(conv => (
+          {convsFiltradas.map(conv => {
+            const alerta = alertaDeEspera(conv.id)
+            const claseAlerta = !alerta ? '' : alerta.nivel === 'roja'
+              ? 'ring-2 ring-inset ring-red-500 bg-red-50 dark:bg-red-950/30'
+              : 'ring-2 ring-inset ring-yellow-400 bg-yellow-50 dark:bg-yellow-950/30'
+            return (
             <button
               key={conv.id}
               onClick={() => seleccionarConversacion(conv)}
-              className={`w-full text-left px-4 py-3 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${
-                seleccionada?.id === conv.id ? 'bg-green-50 dark:bg-green-950/20 border-l-2 border-l-green-500' : ''
+              title={alerta ? `Hace ${alerta.horas} h que el cliente espera una respuesta` : undefined}
+              className={`w-full text-left px-4 py-3 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${claseAlerta} ${
+                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-green-50 dark:bg-green-950/20'} border-l-2 border-l-green-500` : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -610,7 +654,13 @@ export default function WhatsAppCRM() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <p className="font-semibold text-sm text-gray-900 dark:text-zinc-100 truncate">{conv.contacto_nombre}</p>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{formatTiempo(conv.ultimo_mensaje_at)}</p>
+                    {alerta ? (
+                      <p className={`text-xs font-semibold shrink-0 ${alerta.nivel === 'roja' ? 'text-red-600 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                        {alerta.horas} h sin responder
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{formatTiempo(conv.ultimo_mensaje_at)}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <p className="text-xs text-gray-400 dark:text-zinc-500 truncate flex-1">{conv.ultimo_mensaje || '–'}</p>
@@ -646,7 +696,8 @@ export default function WhatsAppCRM() {
                 )}
               </div>
             </button>
-          ))}
+            )
+          })}
         </div>
       </div>
 

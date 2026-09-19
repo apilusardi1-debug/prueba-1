@@ -53,6 +53,7 @@ export default function WhatsAppCRM() {
   const [mensajes, setMensajes] = useState([])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [ahora, setAhora] = useState(Date.now())
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
@@ -79,6 +80,12 @@ export default function WhatsAppCRM() {
   const menuEtiquetaRef = useRef(null)
   const menuAsignarRef = useRef(null)
   const menuRespuestasRef = useRef(null)
+
+  // Reloj para que el aviso de ventana de 24 hs aparezca solo al vencer
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 60000)
+    return () => clearInterval(t)
+  }, [])
 
   // Cargar respuestas rápidas activas
   useEffect(() => {
@@ -370,7 +377,20 @@ export default function WhatsAppCRM() {
     if (error) {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
-      alert('Error al enviar el mensaje: ' + (error?.message || 'Sin respuesta del servidor. Revisá que Evolution API esté activa.'))
+
+      // La función devuelve el error de Meta en el cuerpo de la respuesta: el
+      // mensaje genérico de supabase-js no dice nada útil.
+      let detalleMeta = ''
+      try {
+        const cuerpo = await error.context?.json()
+        const crudo = cuerpo?.detail || cuerpo?.error || ''
+        try { detalleMeta = JSON.parse(crudo)?.error?.message || crudo } catch { detalleMeta = crudo }
+        if (String(crudo).includes('131047')) detalleMeta = 'VENTANA'
+      } catch { /* sin cuerpo legible */ }
+
+      alert(detalleMeta === 'VENTANA'
+        ? 'No se pudo enviar: pasaron más de 24 horas desde el último mensaje del contacto. Meta solo permite responder con texto libre dentro de esas 24 horas.'
+        : 'Error al enviar el mensaje: ' + (detalleMeta || error?.message || 'Sin respuesta del servidor.'))
     }
 
     setEnviando(false)
@@ -379,6 +399,13 @@ export default function WhatsAppCRM() {
   function usuarioPorId(id) {
     return usuarios.find(u => u.id === id) || null
   }
+
+  // Meta solo permite texto libre dentro de las 24 hs del último mensaje del
+  // contacto; pasado ese plazo hace falta una plantilla aprobada.
+  const VENTANA_MS = 24 * 60 * 60 * 1000
+  const ultimoEntrante = [...mensajes].reverse().find(m => m.direccion === 'entrante')
+  const ventanaCerrada = mensajes.length > 0 &&
+    (!ultimoEntrante || ahora - new Date(ultimoEntrante.created_at).getTime() > VENTANA_MS)
 
   const convsFiltradas = conversaciones
     .filter(c =>
@@ -635,6 +662,14 @@ export default function WhatsAppCRM() {
           </div>
 
           {/* Input de envío */}
+          {ventanaCerrada ? (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-900 px-6 py-4">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Pasaron más de 24 horas desde el último mensaje de este contacto</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Meta solo permite responder con texto libre dentro de las 24 horas. Cuando el contacto vuelva a escribir se habilita de nuevo; para retomarlo antes hace falta una plantilla aprobada.
+              </p>
+            </div>
+          ) : (
           <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
             <div className="relative shrink-0" ref={menuRespuestasRef}>
               <button
@@ -695,6 +730,7 @@ export default function WhatsAppCRM() {
               {enviando ? '...' : 'Enviar'}
             </button>
           </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#f0ebe3' }}>

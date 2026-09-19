@@ -275,12 +275,27 @@ export const mensajesApi = {
 }
 
 // ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────
-export async function enviarWhatsApp({ phone, message, nombre, conversacionId }) {
+export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media }) {
   if (!supabase) return { error: 'Sin conexión' }
   const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-    body: { phone, message, nombre, conversacion_id: conversacionId },
+    body: { phone, message, nombre, conversacion_id: conversacionId, media },
   })
   return { data, error }
+}
+
+// Sube un archivo del CRM al bucket privado: la función devuelve una URL de
+// subida firmada de un solo uso (la clave pública no tiene permiso de escritura).
+export async function subirAdjuntoCRM(conversacionId, file) {
+  if (!supabase) return { error: new Error('Sin conexión') }
+  const { data: prep, error } = await supabase.functions.invoke('send-whatsapp', {
+    body: { accion: 'subida', conversacion_id: conversacionId, filename: file.name },
+  })
+  if (error || !prep?.token) return { error: error || new Error(prep?.error || 'No se pudo preparar la subida') }
+  const { error: errSubida } = await supabase.storage
+    .from('whatsapp-media')
+    .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type || 'application/octet-stream' })
+  if (errSubida) return { error: errSubida }
+  return { path: prep.path }
 }
 
 // ── Descargar una imagen server-side y devolverla como data URI ────────────────

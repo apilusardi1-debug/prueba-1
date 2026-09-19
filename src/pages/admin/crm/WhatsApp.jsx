@@ -1,8 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
+
+// Límites de tamaño de WhatsApp por tipo de archivo (MB). Los documentos
+// admiten más en WhatsApp, pero el bucket de Supabase corta en 50.
+const LIMITE_ADJUNTO_MB = { image: 5, video: 16, audio: 16, document: 50 }
+const NOMBRE_TIPO_ADJUNTO = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'documentos' }
+const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg']
+
+function tipoAdjunto(file) {
+  if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
+  if (file.type === 'video/mp4' || file.type === 'video/3gpp') return 'video'
+  if (AUDIOS_WHATSAPP.includes(file.type)) return 'audio'
+  return 'document'
+}
+
+function formatoTamano(bytes) {
+  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -54,6 +71,8 @@ export default function WhatsAppCRM() {
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [ahora, setAhora] = useState(Date.now())
+  const [adjunto, setAdjunto] = useState(null)
+  const [adjuntoPreview, setAdjuntoPreview] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
@@ -75,6 +94,7 @@ export default function WhatsAppCRM() {
   const [modalReserva, setModalReserva] = useState(false)
   const [convirtiendoCliente, setConvirtiendoCliente] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
@@ -86,6 +106,16 @@ export default function WhatsAppCRM() {
     const t = setInterval(() => setAhora(Date.now()), 60000)
     return () => clearInterval(t)
   }, [])
+
+  // Vista previa de la imagen adjunta (se libera la URL al quitarla)
+  useEffect(() => {
+    if (adjunto && adjunto.type.startsWith('image/')) {
+      const url = URL.createObjectURL(adjunto)
+      setAdjuntoPreview(url)
+      return () => URL.revokeObjectURL(url)
+    }
+    setAdjuntoPreview(null)
+  }, [adjunto])
 
   // Cargar respuestas rápidas activas
   useEffect(() => {
@@ -224,6 +254,7 @@ export default function WhatsAppCRM() {
   useEffect(() => {
     if (!seleccionada) return
     setMensajes([])
+    setAdjunto(null)
 
     mensajesApi.getByConversacion(seleccionada.id).then(({ data }) => {
       if (data) setMensajes(data)
@@ -348,9 +379,82 @@ export default function WhatsAppCRM() {
     })
   }
 
+  // La función devuelve el error de Meta en el cuerpo de la respuesta: el
+  // mensaje genérico de supabase-js no dice nada útil.
+  async function textoErrorEnvio(error) {
+    let detalle = ''
+    let fueraDeVentana = false
+    try {
+      const cuerpo = await error.context?.json()
+      const crudo = cuerpo?.detail || cuerpo?.error || ''
+      fueraDeVentana = String(crudo).includes('131047')
+      try { detalle = JSON.parse(crudo)?.error?.message || crudo } catch { detalle = crudo }
+    } catch { /* sin cuerpo legible */ }
+    if (fueraDeVentana) {
+      return 'No se pudo enviar: pasaron más de 24 horas desde el último mensaje del contacto. Meta solo permite responder con texto libre dentro de esas 24 horas.'
+    }
+    return 'Error al enviar el mensaje: ' + (detalle || error?.message || 'Sin respuesta del servidor.')
+  }
+
+  function elegirArchivo(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const tipo = tipoAdjunto(file)
+    const limite = LIMITE_ADJUNTO_MB[tipo]
+    if (file.size > limite * 1024 * 1024) {
+      alert(`El archivo pesa ${formatoTamano(file.size)}. El máximo para ${NOMBRE_TIPO_ADJUNTO[tipo]} es ${limite} MB.`)
+      return
+    }
+    setAdjunto(file)
+    inputRef.current?.focus()
+  }
+
+  async function enviarAdjunto(caption) {
+    const file = adjunto
+    const tipo = tipoAdjunto(file)
+    setEnviando(true)
+
+    const { path, error: errSubida } = await subirAdjuntoCRM(seleccionada.id, file)
+    if (errSubida) {
+      setEnviando(false)
+      alert('No se pudo subir el archivo: ' + (errSubida.message || 'error desconocido'))
+      return
+    }
+
+    const datosContacto = {
+      phone: seleccionada.whatsapp,
+      nombre: seleccionada.contacto_nombre,
+      conversacionId: seleccionada.id,
+    }
+    const { error } = await enviarWhatsApp({
+      ...datosContacto,
+      message: caption,
+      media: { path, tipo, mime: file.type, nombre: file.name },
+    })
+    if (error) {
+      setEnviando(false)
+      alert(await textoErrorEnvio(error))
+      return
+    }
+
+    // WhatsApp no admite pie de foto en los audios: el texto va como mensaje aparte.
+    if (tipo === 'audio' && caption) await enviarWhatsApp({ ...datosContacto, message: caption })
+
+    setAdjunto(null)
+    setTexto('')
+    if (inputRef.current) inputRef.current.style.height = 'auto'
+    setEnviando(false)
+  }
+
   async function enviar() {
     const textoEnviar = texto.trim()
-    if (!textoEnviar || !seleccionada || enviando) return
+    if ((!textoEnviar && !adjunto) || !seleccionada || enviando) return
+
+    if (adjunto) {
+      await enviarAdjunto(textoEnviar)
+      return
+    }
 
     setTexto('')
     setEnviando(true)
@@ -377,20 +481,7 @@ export default function WhatsAppCRM() {
     if (error) {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
-
-      // La función devuelve el error de Meta en el cuerpo de la respuesta: el
-      // mensaje genérico de supabase-js no dice nada útil.
-      let detalleMeta = ''
-      try {
-        const cuerpo = await error.context?.json()
-        const crudo = cuerpo?.detail || cuerpo?.error || ''
-        try { detalleMeta = JSON.parse(crudo)?.error?.message || crudo } catch { detalleMeta = crudo }
-        if (String(crudo).includes('131047')) detalleMeta = 'VENTANA'
-      } catch { /* sin cuerpo legible */ }
-
-      alert(detalleMeta === 'VENTANA'
-        ? 'No se pudo enviar: pasaron más de 24 horas desde el último mensaje del contacto. Meta solo permite responder con texto libre dentro de esas 24 horas.'
-        : 'Error al enviar el mensaje: ' + (detalleMeta || error?.message || 'Sin respuesta del servidor.'))
+      alert(await textoErrorEnvio(error))
     }
 
     setEnviando(false)
@@ -670,6 +761,26 @@ export default function WhatsAppCRM() {
               </p>
             </div>
           ) : (
+          <>
+          {adjunto && (
+            <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
+              {adjuntoPreview && <img src={adjuntoPreview} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{adjunto.name}</p>
+                <p className="text-xs text-gray-400 dark:text-zinc-500">
+                  {formatoTamano(adjunto.size)}
+                  {tipoAdjunto(adjunto) === 'audio' ? ' - el texto se envía como mensaje aparte' : ' - podés escribir un texto para acompañarlo'}
+                </p>
+              </div>
+              <button
+                onClick={() => setAdjunto(null)}
+                disabled={enviando}
+                className="text-xs text-gray-500 dark:text-zinc-400 hover:text-red-500 disabled:opacity-40 font-medium shrink-0"
+              >
+                Quitar
+              </button>
+            </div>
+          )}
           <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
             <div className="relative shrink-0" ref={menuRespuestasRef}>
               <button
@@ -703,6 +814,23 @@ export default function WhatsAppCRM() {
                 </div>
               )}
             </div>
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept="image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              onChange={elegirArchivo}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={enviando}
+              title="Adjuntar foto, documento, audio o video"
+              className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
             <textarea
               ref={inputRef}
               rows={1}
@@ -724,12 +852,13 @@ export default function WhatsAppCRM() {
             />
             <button
               onClick={enviar}
-              disabled={enviando || !texto.trim()}
+              disabled={enviando || (!texto.trim() && !adjunto)}
               className="bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0"
             >
               {enviando ? '...' : 'Enviar'}
             </button>
           </div>
+          </>
           )}
         </div>
       ) : (

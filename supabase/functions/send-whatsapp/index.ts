@@ -8,6 +8,9 @@ const META_PHONE_NUMBER_ID = Deno.env.get('META_PHONE_NUMBER_ID')
 const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
 const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const META_API_VERSION = 'v21.0'
+const MEDIA_BUCKET = 'whatsapp-media'
+const TIPOS_MEDIA_SALIENTE = ['image', 'video', 'audio', 'document']
+const ETIQUETA_MEDIA: Record<string, string> = { image: 'Imagen', video: 'Video', audio: 'Audio', document: 'Documento' }
 
 // Cada plantilla quedó registrada en Meta con el idioma que tenía seleccionado
 // el dropdown al momento de crearla (no todas quedaron en Español (ARG) por
@@ -44,7 +47,35 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename } = await req.json()
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    // Paso previo a enviar un archivo desde el CRM: se devuelve una URL de
+    // subida firmada de un solo uso, así el navegador sube directo al bucket
+    // privado sin que la clave pública tenga permiso de escritura.
+    if (accion === 'subida') {
+      if (!conversacion_id || !filename) {
+        return new Response(JSON.stringify({ error: 'Faltan conversacion_id o filename' }), {
+          status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      const seguro = String(filename).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]/g, '_').slice(-80)
+      const path = `${conversacion_id}/out-${Date.now()}-${seguro}`
+      const { data: subida, error: errSubida } = await supabase.storage.from(MEDIA_BUCKET).createSignedUploadUrl(path)
+      if (errSubida || !subida) {
+        return new Response(JSON.stringify({ error: 'No se pudo preparar la subida', detail: errSubida?.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      return new Response(JSON.stringify({ path: subida.path, token: subida.token }), {
+        headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
+
     let phoneClean = phone.replace(/\D/g, '')
     // Argentina: 54 + número sin 9 (12 dígitos) → agregar 9 → 5492352560810
     if (phoneClean.startsWith('54') && !phoneClean.startsWith('549') && phoneClean.length === 12) {
@@ -55,19 +86,53 @@ serve(async (req) => {
     // guía/cliente); "message" = respuesta de texto libre desde el inbox del
     // CRM (número de leads/clientes). Cada uno usa su propio número/token de
     // Meta — son apps y WABAs distintas.
-    const esTexto = !template && !!message
-    const metaToken = esTexto ? META_CRM_TOKEN : META_TOKEN
-    const metaPhoneNumberId = esTexto ? META_CRM_PHONE_NUMBER_ID : META_PHONE_NUMBER_ID
+    const esMedia = !template && !!media
+    const esTexto = !template && !esMedia && !!message
+    const esCrm = esTexto || esMedia
+    const metaToken = esCrm ? META_CRM_TOKEN : META_TOKEN
+    const metaPhoneNumberId = esCrm ? META_CRM_PHONE_NUMBER_ID : META_PHONE_NUMBER_ID
 
     if (!metaToken || !metaPhoneNumberId) {
       return new Response(JSON.stringify({
-        error: esTexto
+        error: esCrm
           ? 'Falta configurar META_CRM_WHATSAPP_TOKEN / META_CRM_PHONE_NUMBER_ID en los secrets de Supabase.'
           : 'Falta configurar META_WHATSAPP_TOKEN / META_PHONE_NUMBER_ID en los secrets de Supabase.',
       }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } })
     }
 
-    const metaBody = esTexto
+    // Archivo del CRM: solo se aceptan rutas subidas con la acción "subida" de
+    // esta misma conversación, y se le da a Meta un link firmado que vence en
+    // 10 minutos para que lo descargue.
+    let urlArchivo = ''
+    const captionMedia: string = esMedia && media.tipo !== 'audio' ? (message || '') : ''
+    if (esMedia) {
+      const ruta = String(media.path || '')
+      if (!TIPOS_MEDIA_SALIENTE.includes(media.tipo) || !conversacion_id || !ruta.startsWith(`${conversacion_id}/out-`) || ruta.includes('..')) {
+        return new Response(JSON.stringify({ error: 'Archivo inválido' }), {
+          status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      const { data: firmada, error: errFirma } = await supabase.storage.from(MEDIA_BUCKET).createSignedUrl(ruta, 600)
+      if (errFirma || !firmada?.signedUrl) {
+        return new Response(JSON.stringify({ error: 'No se pudo leer el archivo subido', detail: errFirma?.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      urlArchivo = firmada.signedUrl
+    }
+
+    const metaBody = esMedia
+      ? {
+          messaging_product: 'whatsapp',
+          to: phoneClean,
+          type: media.tipo,
+          [media.tipo]: {
+            link: urlArchivo,
+            ...(captionMedia ? { caption: captionMedia } : {}),
+            ...(media.tipo === 'document' && media.nombre ? { filename: media.nombre } : {}),
+          },
+        }
+      : esTexto
       ? { messaging_product: 'whatsapp', to: phoneClean, type: 'text', text: { body: message, preview_url: false } }
       : {
           messaging_product: 'whatsapp',
@@ -85,7 +150,7 @@ serve(async (req) => {
           },
         }
 
-    console.log(esTexto ? `Enviando texto libre a ${phoneClean} (CRM)` : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
+    console.log(esMedia ? `Enviando ${media.tipo} a ${phoneClean} (CRM)` : esTexto ? `Enviando texto libre a ${phoneClean} (CRM)` : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
 
     const metaController = new AbortController()
     const metaTimer = setTimeout(() => metaController.abort(), 15000)
@@ -114,12 +179,9 @@ serve(async (req) => {
     let data: unknown
     try { data = JSON.parse(responseText) } catch { data = { raw: responseText } }
 
-    const mensajeLegible = esTexto ? message : renderTemplate(template, params || [])
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    const mensajeLegible = esMedia
+      ? (captionMedia || `${ETIQUETA_MEDIA[media.tipo]}${media.tipo === 'document' && media.nombre ? `: ${media.nombre}` : ''}`)
+      : esTexto ? message : renderTemplate(template, params || [])
 
     let convId = conversacion_id
     if (convId) {
@@ -157,6 +219,12 @@ serve(async (req) => {
         whatsapp: phoneClean,
         texto: mensajeLegible,
         direccion: 'saliente',
+        ...(esMedia ? {
+          tipo: media.tipo,
+          media_path: media.path,
+          media_mime: media.mime ?? null,
+          media_nombre: media.nombre ?? null,
+        } : {}),
       })
     }
 

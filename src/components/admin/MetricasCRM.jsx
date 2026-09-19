@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { crmMetricasApi, tarifasMensajeApi } from '../../lib/supabase.js'
 
@@ -38,6 +39,13 @@ function formatoReales(v) {
 
 function formatoFecha(d) {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+}
+
+// "hoy 08:00" si escribió hoy, "19 sept 15:30" si fue otro día
+function formatoCuando(iso) {
+  const d = new Date(iso)
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  return d.toDateString() === new Date().toDateString() ? `hoy ${hora}` : `${formatoFecha(d)} ${hora}`
 }
 
 function Tarjeta({ titulo, valor, detalle, claseValor }) {
@@ -110,7 +118,11 @@ export default function MetricasCRM({ esAdmin }) {
       ['Tiempo de respuesta humana - promedio (seg)', num(datos.respuesta.promedio_seg)],
       ['Tiempo de respuesta humana - mediana (seg)', num(datos.respuesta.mediana_seg)],
       ['Consultas respondidas', datos.respuesta.respondidos],
-      ['Consultas sin responder', datos.respuesta.sin_responder],
+      ['Consultas sin responder (del periodo)', datos.respuesta.sin_responder],
+      ['Espera promedio incluyendo las sin responder (seg)', num(datos.respuesta.espera_promedio_seg)],
+      ['Esperando respuesta ahora (ultimos 7 dias)', datos.respuesta.pendientes.cantidad],
+      ['Espera mas larga ahora (seg)', num(datos.respuesta.pendientes.max_seg)],
+      ['Espera promedio de las que esperan ahora (seg)', num(datos.respuesta.pendientes.promedio_seg)],
       ['Gasto estimado en mensajes (BRL)', num(Number(datos.costo.total).toFixed(2))],
       [],
       ['Dia', 'Conversaciones nuevas', 'Mensajes recibidos', 'Gasto estimado (BRL)'],
@@ -126,6 +138,7 @@ export default function MetricasCRM({ esAdmin }) {
     URL.revokeObjectURL(url)
   }
 
+  const pendientes = datos?.respuesta?.pendientes
   const costo = datos?.costo
   const pagos = costo ? Object.entries(costo.detalle || {}).filter(([cobro]) => cobro !== 'servicio') : []
   const cantidadPagos = pagos.reduce((s, [, v]) => s + v.cantidad, 0)
@@ -195,8 +208,8 @@ export default function MetricasCRM({ esAdmin }) {
               titulo="Tiempo de respuesta humana"
               valor={formatoDuracion(datos?.respuesta.promedio_seg)}
               detalle={datos && (datos.respuesta.respondidos > 0
-                ? `Promedio de ${datos.respuesta.respondidos} consultas · mediana ${formatoDuracion(datos.respuesta.mediana_seg)} · ${datos.respuesta.sin_responder} sin responder`
-                : `Sin consultas respondidas · ${datos.respuesta.sin_responder} sin responder`)}
+                ? `Solo consultas ya respondidas (${datos.respuesta.respondidos}) · mediana ${formatoDuracion(datos.respuesta.mediana_seg)} · contando también las que siguen sin respuesta: ${formatoDuracion(datos.respuesta.espera_promedio_seg)}`
+                : `Ninguna consulta respondida todavía · contando las que esperan: ${formatoDuracion(datos.respuesta.espera_promedio_seg)}`)}
             />
             <Tarjeta
               titulo="Leads cerrados"
@@ -217,6 +230,45 @@ export default function MetricasCRM({ esAdmin }) {
               detalle={datos && `${cantidadPagos} plantillas pagas · ${gratis} mensajes de servicio sin costo`}
             />
           </div>
+
+          {pendientes && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20 mt-4 overflow-hidden">
+              <div className="px-5 py-4 flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-50 dark:border-zinc-800">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-zinc-200 text-sm">Sin responder ahora</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+                    Tiempo desde que escribió el cliente hasta este momento. Cuenta los últimos 7 días y no depende del período elegido.
+                  </p>
+                </div>
+                <p className={`text-sm font-semibold ${pendientes.cantidad > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {pendientes.cantidad > 0
+                    ? `${pendientes.cantidad} esperando · la más antigua ${formatoDuracion(pendientes.max_seg)} · promedio ${formatoDuracion(pendientes.promedio_seg)}`
+                    : 'Todas las consultas están respondidas'}
+                </p>
+              </div>
+              {pendientes.lista.length > 0 && (
+                <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+                  {pendientes.lista.map(p => (
+                    <div key={p.conversacion_id} className="flex items-center gap-3 px-5 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">{p.nombre || p.whatsapp}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">Escribió {formatoCuando(p.desde)}</p>
+                      </div>
+                      <span className="text-sm font-semibold text-red-500 dark:text-red-400 tabular-nums shrink-0">{formatoDuracion(p.seg)}</span>
+                      <Link to={`/admin/crm/whatsapp?phone=${p.whatsapp}`} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline shrink-0">
+                        Abrir
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {pendientes.cantidad > pendientes.lista.length && (
+                <p className="px-5 py-2.5 text-xs text-gray-400 dark:text-zinc-500 border-t border-gray-50 dark:border-zinc-800">
+                  y {pendientes.cantidad - pendientes.lista.length} más
+                </p>
+              )}
+            </div>
+          )}
 
           {serie.length > 1 && (
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20 mt-4 p-5">

@@ -3,17 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
+import { nivelEspera } from '../../../lib/alertasEspera.js'
 
 // Límites de tamaño de WhatsApp por tipo de archivo (MB). Los documentos
 // admiten más en WhatsApp, pero el bucket de Supabase corta en 50.
 const LIMITE_ADJUNTO_MB = { image: 5, video: 16, audio: 16, document: 50 }
 const NOMBRE_TIPO_ADJUNTO = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'documentos' }
 const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg']
-
-// Una conversación sin respuesta humana se marca en amarillo a las 12 hs y en
-// rojo a las 18 hs, contadas desde el primer mensaje del cliente que quedó sin atender.
-const HORAS_ALERTA_AMARILLA = 12
-const HORAS_ALERTA_ROJA = 18
 
 function tipoAdjunto(file) {
   if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
@@ -544,9 +540,8 @@ export default function WhatsAppCRM() {
     const desde = esperandoDesde[convId]
     if (!desde) return null
     const horas = (ahora - new Date(desde).getTime()) / 3600000
-    if (horas >= HORAS_ALERTA_ROJA) return { nivel: 'roja', horas: Math.floor(horas) }
-    if (horas >= HORAS_ALERTA_AMARILLA) return { nivel: 'amarilla', horas: Math.floor(horas) }
-    return null
+    const nivel = nivelEspera(horas)
+    return nivel ? { nivel, horas: Math.floor(horas) } : null
   }
 
   const convsFiltradas = conversaciones

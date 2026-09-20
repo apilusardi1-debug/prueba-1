@@ -4,7 +4,11 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, propuestasApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
-import MetricasCRM from '../../components/admin/MetricasCRM.jsx'
+import Ic from '../../components/admin/dashboard/Ic.jsx'
+import {
+  useMetricasCRM, Encabezado,
+  TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
+} from '../../components/admin/dashboard/CRMCards.jsx'
 
 const ESTADOS_PROPUESTA = [
   { key: 'enviada',   label: 'Enviadas',   color: '#f59e0b' },
@@ -22,37 +26,8 @@ function formatFechaRelativa(iso) {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-function puntoCirculo(cx, cy, r, deg) {
-  const rad = (deg * Math.PI) / 180
-  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)]
-}
-
-function pathDomo(cx, cy, r) {
-  const [x0, y0] = puntoCirculo(cx, cy, r, 180)
-  const [x1, y1] = puntoCirculo(cx, cy, r, 360)
-  return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`
-}
-
-function GaugeMedioCirculo({ pct, color, label, sub }) {
-  const size = 120, r = 46, cx = 60, cy = 58, grosor = 11
-  const longitud = Math.PI * r
-  const d = pathDomo(cx, cy, r)
-  return (
-    <div className="flex flex-col items-center">
-      <svg width={size} height={72} viewBox={`0 0 ${size} 72`}>
-        <path d={d} fill="none" stroke="currentColor" strokeWidth={grosor} strokeLinecap="round" className="text-gray-100 dark:text-zinc-800" />
-        <path d={d} fill="none" stroke={color} strokeWidth={grosor} strokeLinecap="round"
-          strokeDasharray={longitud} strokeDashoffset={longitud * (1 - pct / 100)} />
-        <text x={cx} y={cy - 2} textAnchor="middle" className="fill-gray-900 dark:fill-zinc-100" style={{ fontSize: 18, fontWeight: 700 }}>{Math.round(pct)}%</text>
-      </svg>
-      <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 -mt-1">{label}</p>
-      <p className="text-xs text-gray-400 dark:text-zinc-500">{sub}</p>
-    </div>
-  )
-}
-
 const estadosLead = {
-  nuevo:      { label: 'Nuevo',      color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  nuevo:      { label: 'Nuevo',      color: 'bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-zinc-200' },
   contactado: { label: 'Contactado', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
   reservado:  { label: 'Reservado',  color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
   perdido:    { label: 'Perdido',    color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
@@ -84,13 +59,13 @@ function serieMensualExcursiones(reservas) {
 function TooltipExcursiones({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg dark:shadow-black/40 px-3 py-2 text-xs min-w-[140px]">
-      <p className="font-semibold text-gray-700 dark:text-zinc-300 mb-1.5">{label}</p>
+    <div className="min-w-[140px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-white/15 dark:bg-zinc-900 dark:shadow-black/40">
+      <p className="mb-1.5 font-semibold text-gray-700 dark:text-zinc-200">{label}</p>
       {payload.map(p => (
         <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
           <span className="text-gray-500 dark:text-zinc-400">{p.name}</span>
-          <span className="ml-auto font-semibold text-gray-800 dark:text-zinc-200">{p.value}</span>
+          <span className="ml-auto font-semibold text-gray-800 dark:text-white">{p.value}</span>
         </div>
       ))}
     </div>
@@ -101,10 +76,10 @@ function GraficoMensualExcursiones({ datos }) {
   const hayDatos = datos.some(fila => RANKING_EXCURSIONES.some(r => fila[r.key] > 0))
 
   return (
-    <div>
-      <div className="text-gray-300 dark:text-zinc-700">
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={datos} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+    <div className="flex h-full flex-col">
+      <div className="min-h-[260px] flex-1 text-gray-300 dark:text-zinc-700">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={datos} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <defs>
               {RANKING_EXCURSIONES.map(r => (
                 <linearGradient key={r.key} id={`grad-${r.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -114,8 +89,8 @@ function GraficoMensualExcursiones({ datos }) {
               ))}
             </defs>
             <CartesianGrid stroke="currentColor" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="mes" tick={{ fill: 'currentColor', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis allowDecimals={false} tick={{ fill: 'currentColor', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+            <XAxis dataKey="mes" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
             <Tooltip content={<TooltipExcursiones />} />
             {RANKING_EXCURSIONES.map(r => (
               <Area
@@ -134,12 +109,12 @@ function GraficoMensualExcursiones({ datos }) {
         </ResponsiveContainer>
       </div>
       {!hayDatos && (
-        <p className="text-center text-sm text-gray-400 dark:text-zinc-600 -mt-8">Sin reservas todavía este año para estas excursiones.</p>
+        <p className="-mt-8 text-center text-sm text-gray-400 dark:text-zinc-600">Sin reservas todavía este año para estas excursiones.</p>
       )}
-      <div className="flex items-center justify-center gap-6 mt-2">
+      <div className="mt-2 flex items-center justify-center gap-6">
         {RANKING_EXCURSIONES.map(r => (
           <div key={r.key} className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
             <span className="text-xs text-gray-500 dark:text-zinc-400">{r.label}</span>
           </div>
         ))}
@@ -155,18 +130,45 @@ function limitesMesActual() {
   return { desde, hasta }
 }
 
-function StatCard({ icon, label, value, sub, to, valueClass, badgeClass }) {
-  const content = (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm dark:shadow-black/20 border border-gray-100 dark:border-zinc-800 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-500 dark:text-zinc-400 font-medium">{label}</span>
-        <span className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 ${badgeClass || 'bg-gray-100 dark:bg-zinc-800'}`}>{icon}</span>
+/* ─── Piezas de la pantalla ─────────────────────────────────────── */
+function StatCard({ icon, label, value, hint, to }) {
+  return (
+    <Link to={to} className="dash-card relative block px-[18px] py-4 transition-all hover:shadow-md dark:hover:border-white/20">
+      <p className="pr-11 text-[11.5px] font-semibold text-gray-500 dark:text-zinc-400">{label}</p>
+      <p className="mt-1 whitespace-nowrap text-[22px] font-extrabold tracking-tight text-gray-900 dark:text-white">{value}</p>
+      <p className="mt-0.5 text-[11px] text-gray-400 dark:text-zinc-500">{hint}</p>
+      <span className="absolute right-3.5 top-3.5 grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 dark:border dark:border-white/10 dark:from-zinc-700 dark:to-zinc-800 dark:text-zinc-100">
+        <Ic n={icon} />
+      </span>
+    </Link>
+  )
+}
+
+function GaugePropuestas({ estados, total }) {
+  const cerradas = estados.find(e => e.key === 'cerrada')
+  const arco = 'M20 100 A80 80 0 0 1 180 100'
+  let acumulado = 0
+  return (
+    <div className="relative mx-auto my-auto w-full max-w-[250px]">
+      <svg viewBox="0 0 200 112" role="img" aria-label={`Propuestas: ${estados.map(e => `${e.cantidad} ${e.label.toLowerCase()}`).join(', ')}`} className="block w-full">
+        <path d={arco} pathLength="100" fill="none" strokeWidth="15" className="stroke-gray-100 dark:stroke-white/10" />
+        {estados.map(e => {
+          const largo = (e.cantidad / total) * 100
+          const inicio = acumulado
+          acumulado += largo
+          if (largo <= 0) return null
+          return (
+            <path key={e.key} d={arco} pathLength="100" fill="none" stroke={e.color} strokeWidth="15"
+              strokeDasharray={`${Math.max(largo - 1.6, 0.1)} 200`} strokeDashoffset={-inicio} />
+          )
+        })}
+      </svg>
+      <div className="absolute inset-x-0 bottom-[8%] text-center">
+        <b className="block text-[34px] font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">{Math.round(cerradas.pct)}%</b>
+        <span className="text-[11px] text-gray-500 dark:text-zinc-400">de las propuestas se cerraron</span>
       </div>
-      <p className={`text-3xl font-bold ${valueClass || 'text-gray-900 dark:text-zinc-100'}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{sub}</p>}
     </div>
   )
-  return to ? <Link to={to}>{content}</Link> : content
 }
 
 export default function Dashboard() {
@@ -178,6 +180,8 @@ export default function Dashboard() {
   const [movimientos, setMovimientos] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [periodo, setPeriodo] = useState('semana')
+  const metricas = useMetricasCRM(periodo)
 
   useEffect(() => {
     async function cargar() {
@@ -218,7 +222,6 @@ export default function Dashboard() {
   const serieMensual = serieMensualExcursiones(reservas)
 
   const leadsRecientes = [...leads].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 5)
-
   const movimientosRecientes = [...movimientos]
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
     .slice(0, 5)
@@ -231,126 +234,190 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando...</div>
 
+  const nombre = String(session.nombre || session.email || '').split(' ')[0]
+  const pendientesCRM = metricas.datos?.respuesta?.pendientes?.cantidad
+  const pl = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Dashboard</h1>
-        <p className="text-gray-400 dark:text-zinc-500 text-sm mt-1">Bienvenido, {session.email}</p>
+    <div className="space-y-4 md:space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="mt-1.5 max-w-3xl text-sm text-gray-500 dark:text-zinc-400">
+          Bienvenido de nuevo, <b className="text-gray-800 dark:text-white">{nombre}</b>.{' '}
+          Hoy hay{' '}
+          {pendientesCRM != null && (<><b className="text-gray-800 dark:text-white">{pl(pendientesCRM, 'consulta esperando', 'consultas esperando')}</b> respuesta y </>)}
+          <b className="text-gray-800 dark:text-white">{pl(reservasPendientes, 'reserva', 'reservas')}</b> por confirmar.{' '}
+          <Link to="/admin/crm/whatsapp" className="font-semibold text-brand-600 hover:underline dark:text-zinc-100">Abrir el CRM</Link>
+        </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <StatCard icon="🎯" label="Leads nuevos" value={leadsNuevos} sub="Sin contactar" to="/admin/leads" badgeClass="bg-blue-50 dark:bg-blue-950/40" />
-        <StatCard icon="📋" label="Reservas pendientes" value={reservasPendientes} sub="Sin confirmar" to="/admin/reservas" badgeClass="bg-purple-50 dark:bg-purple-950/40" />
-        <StatCard icon="👥" label="Clientes" value={clientes.length} sub="Registrados" to="/admin/clientes" badgeClass="bg-gray-100 dark:bg-zinc-800" />
-        <StatCard icon="💰" label="Ingresos totales" value={formatPrecio(ingresosTotales)} sub="Movimientos confirmados" valueClass="text-green-600 dark:text-green-400" badgeClass="bg-green-50 dark:bg-green-950/40" to="/admin/finanzas" />
-        <StatCard icon="📤" label="Salidas totales" value={formatPrecio(salidasTotales)} sub="Movimientos confirmados" valueClass="text-red-500 dark:text-red-400" badgeClass="bg-red-50 dark:bg-red-950/40" to="/admin/finanzas" />
-        <StatCard icon="⚙️" label="Costos operativos del mes" value={formatPrecio(costosOperativosMes)} sub="Según chofer asignado por reserva" valueClass="text-orange-500 dark:text-orange-400" badgeClass="bg-orange-50 dark:bg-orange-950/40" to="/admin/reservas" />
-      </div>
-
-      <MetricasCRM esAdmin={session.role === 'admin'} />
-
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
-        {/* Reservas por mes y excursión */}
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
-            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Reservas por mes y excursión</h2>
-          </div>
-          <div className="p-5">
-            <GraficoMensualExcursiones datos={serieMensual} />
-          </div>
+      {metricas.error && !metricas.cargando && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">No se pudieron cargar las métricas del CRM</p>
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Falta correr la migración de métricas en Supabase, o hay un problema de conexión.</p>
         </div>
+      )}
 
-        {/* Movimientos recientes */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
-            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Movimientos recientes</h2>
-            <Link to="/admin/finanzas" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Ver todos</Link>
-          </div>
-          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-            {movimientosRecientes.length === 0 && (
-              <p className="px-5 py-6 text-sm text-gray-400 dark:text-zinc-600">Sin movimientos todavía.</p>
-            )}
-            {movimientosRecientes.map(m => (
-              <div key={m.id} className="px-5 py-3 flex items-center gap-3">
-                <span className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 ${
-                  m.tipo === 'ingreso' ? 'bg-green-50 dark:bg-green-950/40' : 'bg-red-50 dark:bg-red-950/40'
-                }`}>
-                  {m.tipo === 'ingreso' ? '💰' : '📤'}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-zinc-100 truncate">{m.concepto}</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">{formatFechaRelativa(m.created_at)}</p>
-                </div>
-                <p className={`text-sm font-semibold shrink-0 ${m.tipo === 'ingreso' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                  {m.tipo === 'ingreso' ? '+' : '-'} {formatPrecio(m.monto, m.moneda)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Indicadores */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+        <StatCard icon="wallet" label="Ingresos totales" value={formatPrecio(ingresosTotales)} hint="Movimientos confirmados" to="/admin/finanzas" />
+        <StatCard icon="cash" label="Salidas totales" value={formatPrecio(salidasTotales)} hint="Movimientos confirmados" to="/admin/finanzas" />
+        <StatCard icon="target" label="Leads nuevos" value={leadsNuevos} hint="Sin contactar" to="/admin/leads" />
+        <StatCard icon="cal" label="Reservas pendientes" value={reservasPendientes} hint="Sin confirmar" to="/admin/reservas" />
+        <StatCard icon="users" label="Clientes" value={clientes.length} hint="Registrados" to="/admin/clientes" />
+        <StatCard icon="gear" label="Costos operativos" value={formatPrecio(costosOperativosMes)} hint="Del mes, según chofer por reserva" to="/admin/reservas" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Leads recientes */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
-            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Leads recientes</h2>
-            <Link to="/admin/leads" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Ver todos</Link>
-          </div>
-          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-            {leadsRecientes.length === 0 && (
-              <p className="px-5 py-6 text-sm text-gray-400 dark:text-zinc-600">Sin leads todavía.</p>
-            )}
-            {leadsRecientes.map((lead) => {
-              const estado = estadosLead[lead.estado] || estadosLead.nuevo
-              return (
-                <div key={lead.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</p>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500">{etiquetaInteres(lead)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estado.color}`}>
-                      {estado.label}
+      {/* Atención al cliente: espera, tiempo de respuesta, propuestas */}
+      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-[1.25fr_1fr_1fr] md:gap-5">
+        <div className="lg:col-span-2 2xl:col-span-1"><TarjetaSinResponder datos={metricas.datos} cargando={metricas.cargando} /></div>
+        <TarjetaTiempoRespuesta datos={metricas.datos} cargando={metricas.cargando} periodo={periodo} />
+
+        <div className="dash-card flex flex-col">
+          <Encabezado titulo="Propuestas" sub="Enviadas, cerradas y rechazadas" />
+          {totalPropuestas === 0 ? (
+            <p className="py-10 text-center text-sm text-gray-400 dark:text-zinc-600">Sin propuestas todavía.</p>
+          ) : (
+            <>
+              <div className="flex flex-1 items-center py-3"><GaugePropuestas estados={estadosPropuesta} total={totalPropuestas} /></div>
+              <div className="grid grid-cols-3 gap-2">
+                {estadosPropuesta.map(e => (
+                  <div key={e.key} className="rounded-xl bg-gray-50 px-2 py-2 text-center dark:bg-white/[0.04]">
+                    <b className="block text-[17px] font-extrabold text-gray-900 dark:text-white">{e.cantidad}</b>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-zinc-400">
+                      <i className="h-[7px] w-[7px] rounded-full" style={{ background: e.color }} />{e.label}
                     </span>
-                    <a
-                      href={`https://wa.me/${lead.whatsapp}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-500 hover:text-green-600 text-lg"
-                      title="WhatsApp"
-                    >
-                      💬
-                    </a>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Reservas por mes + actividad del CRM */}
+      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr] 2xl:grid-cols-[1.9fr_1fr] md:gap-5">
+        <div className="dash-card flex flex-col">
+          <Encabezado titulo="Reservas por mes y excursión" sub="Del año en curso" />
+          <div className="mt-3 flex-1"><GraficoMensualExcursiones datos={serieMensual} /></div>
+        </div>
+        <TarjetaActividad metricas={metricas} periodo={periodo} setPeriodo={setPeriodo} />
+      </div>
+
+      {/* Leads y movimientos */}
+      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr] 2xl:grid-cols-[1.9fr_1fr] md:gap-5">
+        <div className="dash-card">
+          <Encabezado
+            titulo="Leads recientes"
+            sub={`${leadsNuevos} ${leadsNuevos === 1 ? 'lead nuevo' : 'leads nuevos'} sin contactar`}
+            derecha={<Link to="/admin/leads" className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/[0.08]">Ver todos</Link>}
+          />
+          {leadsRecientes.length === 0 ? (
+            <p className="py-6 text-sm text-gray-400 dark:text-zinc-600">Sin leads todavía.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[520px] border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 dark:border-white/[0.07] dark:text-zinc-500">
+                    <th className="px-2.5 py-2">Lead</th>
+                    <th className="px-2.5 py-2">Interés</th>
+                    <th className="px-2.5 py-2">Estado</th>
+                    <th className="px-2.5 py-2">Ingreso</th>
+                    <th className="px-2.5 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {leadsRecientes.map(lead => {
+                    const estado = estadosLead[lead.estado] || estadosLead.nuevo
+                    return (
+                      <tr key={lead.id} className="border-b border-gray-50 last:border-0 dark:border-white/[0.04]">
+                        <td className="px-2.5 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[10px] bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-extrabold text-gray-700 dark:from-zinc-600 dark:to-zinc-800 dark:text-white">
+                              {(lead.nombre || '?')[0].toUpperCase()}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-[12.5px] font-bold text-gray-900 dark:text-white">{lead.nombre}</p>
+                              <p className="text-[11px] text-gray-400 dark:text-zinc-500">{lead.whatsapp}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2.5 text-[12.5px] text-gray-700 dark:text-zinc-200">{etiquetaInteres(lead) || '—'}</td>
+                        <td className="px-2.5 py-2.5"><span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${estado.color}`}>{estado.label}</span></td>
+                        <td className="whitespace-nowrap px-2.5 py-2.5 text-[12.5px] text-gray-500 dark:text-zinc-400">{formatFechaRelativa(lead.created_at)}</td>
+                        <td className="px-2.5 py-2.5 text-right">
+                          <a
+                            href={`https://wa.me/${lead.whatsapp}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Abrir WhatsApp de ${lead.nombre}`}
+                            className="inline-grid h-[30px] w-[30px] place-items-center rounded-[10px] bg-green-50 text-green-600 transition-colors hover:bg-green-100 dark:bg-green-500/15 dark:text-green-400 dark:hover:bg-green-500/25"
+                          >
+                            <Ic n="chat" className="h-4 w-4" />
+                          </a>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* Excursiones con pocos cupos */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
-            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Cupos disponibles</h2>
-            <Link to="/admin/excursiones" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Gestionar</Link>
-          </div>
-          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-            {excursiones.length === 0 && (
-              <p className="px-5 py-6 text-sm text-gray-400 dark:text-zinc-600">Sin excursiones todavía.</p>
-            )}
-            {excursiones.map((ex) => {
+        <div className="dash-card">
+          <Encabezado
+            titulo="Movimientos recientes"
+            sub="Últimos ingresos y egresos"
+            derecha={<Link to="/admin/finanzas" className="text-xs font-semibold text-brand-600 hover:underline dark:text-zinc-200">Ver todos</Link>}
+          />
+          {movimientosRecientes.length === 0 ? (
+            <p className="py-6 text-sm text-gray-400 dark:text-zinc-600">Sin movimientos todavía.</p>
+          ) : (
+            <div className="mt-3">
+              {movimientosRecientes.map((m, i) => (
+                <div key={m.id} className="relative flex items-center gap-3 py-2.5">
+                  {i < movimientosRecientes.length - 1 && <span className="absolute left-[15px] top-10 -bottom-2 w-px bg-gray-200 dark:bg-white/10" />}
+                  <span className={`relative z-10 grid h-[31px] w-[31px] shrink-0 place-items-center rounded-full ${
+                    m.tipo === 'ingreso' ? 'bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400' : 'bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400'
+                  }`}>
+                    <Ic n={m.tipo === 'ingreso' ? 'up' : 'down'} className="h-[15px] w-[15px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12.5px] font-bold text-gray-900 dark:text-white">{m.concepto}</p>
+                    <p className="text-[11px] text-gray-400 dark:text-zinc-500">{formatFechaRelativa(m.created_at)}</p>
+                  </div>
+                  <p className={`whitespace-nowrap text-[12.5px] font-extrabold ${m.tipo === 'ingreso' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                    {m.tipo === 'ingreso' ? '+' : '-'} {formatPrecio(m.monto, m.moneda)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Cupos y gasto */}
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] md:gap-5">
+        <div className="dash-card">
+          <Encabezado
+            titulo="Cupos disponibles"
+            sub="Ocupación de cada excursión"
+            derecha={<Link to="/admin/excursiones" className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/[0.08]">Gestionar</Link>}
+          />
+          {excursiones.length === 0 && <p className="py-6 text-sm text-gray-400 dark:text-zinc-600">Sin excursiones todavía.</p>}
+          <div className="mt-2">
+            {excursiones.map(ex => {
               const pct = ex.cupos > 0 ? Math.round(((ex.cupos - ex.cuposDisponibles) / ex.cupos) * 100) : 0
               return (
-                <div key={ex.id} className="px-5 py-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate flex-1 mr-2">{ex.nombre}</p>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{ex.cuposDisponibles} libre{ex.cuposDisponibles !== 1 ? 's' : ''}</p>
+                <div key={ex.id} className="py-2.5">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <p className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-gray-800 dark:text-white">{ex.nombre}</p>
+                    <p className="shrink-0 text-[11.5px] text-gray-500 dark:text-zinc-400">{ex.cuposDisponibles} libre{ex.cuposDisponibles !== 1 ? 's' : ''}</p>
                   </div>
-                  <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
                     <div
-                      className={`h-1.5 rounded-full ${pct >= 80 ? 'bg-red-400' : pct >= 50 ? 'bg-yellow-400' : 'bg-green-400'}`}
+                      className={`h-1.5 rounded-full ${pct >= 80 ? 'bg-gradient-to-r from-red-400 to-red-500' : pct >= 50 ? 'bg-gradient-to-r from-amber-300 to-amber-400' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -360,24 +427,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Propuestas: enviadas / cerradas / rechazadas */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm dark:shadow-black/20">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
-            <h2 className="font-semibold text-gray-800 dark:text-zinc-200">Propuestas</h2>
-            <Link to="/admin/paquetes/clientes" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Ver todas</Link>
-          </div>
-          <div className="p-5">
-            {totalPropuestas === 0 ? (
-              <p className="text-center text-sm text-gray-400 dark:text-zinc-600 py-6">Sin propuestas todavía.</p>
-            ) : (
-              <div className="flex items-start justify-around">
-                {estadosPropuesta.map(e => (
-                  <GaugeMedioCirculo key={e.key} pct={e.pct} color={e.color} label={e.label} sub={`${e.cantidad} propuesta${e.cantidad !== 1 ? 's' : ''}`} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <TarjetaGasto
+          datos={metricas.datos}
+          cargando={metricas.cargando}
+          periodo={periodo}
+          esAdmin={session.role === 'admin'}
+          alCambiarTarifa={metricas.recargar}
+        />
       </div>
     </div>
   )

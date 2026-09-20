@@ -269,9 +269,12 @@ function Sidebar() {
       {/* Logo */}
       <div className={`flex items-center py-6 px-5 border-b border-gray-100 dark:border-zinc-800 ${!visible ? 'justify-center' : ''}`}>
         {visible ? (
-          <div>
-            <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">Panel interno</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-zinc-100">DREAMTOURS</p>
+          <div className="w-full">
+            <img src="/logo-panel.png" alt="Dream Tours" className="mx-auto hidden h-auto w-[132px] dark:block" />
+            <div className="dark:hidden">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Panel interno</p>
+              <p className="text-lg font-bold text-gray-900">DREAMTOURS</p>
+            </div>
           </div>
         ) : (
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">

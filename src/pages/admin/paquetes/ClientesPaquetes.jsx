@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { propuestasApi, clientesApi } from '../../../lib/supabase.js'
+import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
 
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
@@ -137,7 +138,7 @@ export default function ClientesPaquetes() {
                       <p className="font-medium text-gray-900 dark:text-zinc-100">{p.cliente_nombre}</p>
                       {p.cliente_whatsapp && (
                         <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          className="text-xs text-green-600 dark:text-green-400 hover:underline">💬 {p.cliente_whatsapp}</a>
+                          className="text-xs text-green-600 dark:text-green-400 hover:underline"><IcTxt n="chat" />{p.cliente_whatsapp}</a>
                       )}
                     </td>
                     <td className="px-5 py-3 text-gray-600 dark:text-zinc-300 max-w-[220px]">
@@ -353,8 +354,8 @@ function TarjetaPropuesta({ p, onAbrir }) {
 
       {expandido && (
         <div className="mt-1 pt-2 space-y-1 text-xs text-gray-500 dark:text-zinc-400" onClick={e => e.stopPropagation()}>
-          <p>🏨 <span className="font-medium text-gray-700 dark:text-zinc-300">{p.hospedajes || '—'}</span></p>
-          <p>✈️ Vuelos: {fechaCorta(p.fecha_ida)} → {fechaCorta(p.fecha_vuelta)}</p>
+          <p><IcTxt n="hotel" /><span className="font-medium text-gray-700 dark:text-zinc-300">{p.hospedajes || '—'}</span></p>
+          <p><IcTxt n="send" />Vuelos: {fechaCorta(p.fecha_ida)} → {fechaCorta(p.fecha_vuelta)}</p>
           <p>Saldo total: <span className="font-medium text-gray-700 dark:text-zinc-300">{formatPrecio(p.total, p.moneda)}</span> — Señado: <span className="font-medium text-gray-700 dark:text-zinc-300">{formatPrecio(p.sena, p.moneda)}</span></p>
           <p className="font-semibold text-brand-700 dark:text-brand-400">Restante: {formatPrecio(restante, p.moneda)}</p>
         </div>

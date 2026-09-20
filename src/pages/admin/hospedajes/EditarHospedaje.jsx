@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi, propietariosApi } from '../../../lib/supabase.js'
 import HospedajeForm, { EMPTY_HOSPEDAJE, datosDesdeForm } from '../../../components/admin/HospedajeForm.jsx'
 import HabitacionForm, { EMPTY_HABITACION, datosDesdeFormHabitacion } from '../../../components/admin/HabitacionForm.jsx'
+import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
 
 export default function EditarHospedaje() {
   const { id } = useParams()
@@ -199,7 +200,7 @@ export default function EditarHospedaje() {
                       </p>
                       {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
                         <p className="text-xs text-amber-600 dark:text-amber-400">
-                          🔒 {propietariosPorHabitacion[hab.id].nombre_dueno}
+                          <IcTxt n="lock" />{propietariosPorHabitacion[hab.id].nombre_dueno}
                           {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
                         </p>
                       )}

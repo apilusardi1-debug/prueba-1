@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { hospedajesApi, habitacionesApi, propietariosApi } from '../../lib/supabase.js'
 import { TIPOS, ORIGENES } from '../../components/admin/HospedajeForm.jsx'
+import { IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 async function loadImgDataUrl(url) {
   return new Promise(resolve => {
@@ -405,7 +406,7 @@ export default function Hospedajes() {
                     estaSeleccionado ? 'bg-brand-500 border-brand-500' : 'bg-white/80 border-gray-300'
                   }`}>
                     {estaSeleccionado && (
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="w-3 h-3 text-white dark:text-zinc-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12"/>
                       </svg>
                     )}
@@ -579,7 +580,7 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
               <h2 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mt-1 mb-2 leading-snug">{h.nombre}</h2>
               {direccionCompleta && (
                 <p className="text-sm text-gray-500 dark:text-zinc-400 flex items-center flex-wrap gap-x-1.5 mb-4">
-                  <span>📍 {direccionCompleta}</span>
+                  <span><IcTxt n="pin" />{direccionCompleta}</span>
                   {mapsUrl && (
                     <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline font-medium">
                       Ver mapa
@@ -591,11 +592,11 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
                 <p className="text-sm text-gray-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line mb-5">{h.descripcion}</p>
               )}
               {h.capacidad > 0 && (
-                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">👥 Hasta {h.capacidad} personas</p>
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4"><IcTxt n="users" />Hasta {h.capacidad} personas</p>
               )}
               {propietarioHospedaje?.nombre_dueno && (
                 <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
-                  🔒 Dueño: {propietarioHospedaje.nombre_dueno}
+                  <IcTxt n="lock" />Dueño: {propietarioHospedaje.nombre_dueno}
                   {propietarioHospedaje.contacto_dueno && ` · ${propietarioHospedaje.contacto_dueno}`}
                 </p>
               )}
@@ -677,7 +678,7 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
                         {hab.vista && <p className="text-xs text-gray-400 dark:text-zinc-500">{hab.vista}</p>}
                         {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
                           <p className="text-xs text-amber-600 dark:text-amber-400">
-                            🔒 {propietariosPorHabitacion[hab.id].nombre_dueno}
+                            <IcTxt n="lock" />{propietariosPorHabitacion[hab.id].nombre_dueno}
                             {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
                           </p>
                         )}

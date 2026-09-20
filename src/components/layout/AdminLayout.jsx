@@ -278,7 +278,7 @@ function Sidebar() {
           </div>
         ) : (
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">D</span>
+            <span className="text-white dark:text-zinc-900 font-bold text-sm">D</span>
           </div>
         )}
       </div>
@@ -462,7 +462,7 @@ function Header({ dark, setDark }) {
         </button>
 
         <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
-          <span className="text-white text-xs font-semibold">A</span>
+          <span className="text-white dark:text-zinc-900 text-xs font-semibold">A</span>
         </div>
       </div>
     </header>

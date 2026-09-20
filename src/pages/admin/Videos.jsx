@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { agenciaVideosApi } from '../../lib/supabase.js'
 import VideoAgenciaForm, { EMPTY_VIDEO_AGENCIA, datosDesdeFormVideo } from '../../components/admin/VideoAgenciaForm.jsx'
+import Ic from '../../components/admin/dashboard/Ic.jsx'
 
 export default function Videos() {
   const [videos, setVideos] = useState([])
@@ -153,7 +154,7 @@ export default function Videos() {
                   <div className="flex gap-1">
                     <button onClick={() => toggleActivo(v)} title={v.activo ? 'Ocultar' : 'Mostrar'}
                       className="text-[11px] font-medium py-1 px-2 rounded-md border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 transition-colors">
-                      {v.activo ? '👁' : '🚫'}
+                      <Ic n={v.activo ? 'eye' : 'eyeoff'} className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => abrirEditar(v)}
                       className="text-[11px] font-medium py-1 px-2 rounded-md border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-brand-400 hover:text-brand-600 transition-colors">

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { choferesApi, guiasApi, vendedoresApi } from '../../lib/supabase.js'
+import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 const TABS = [
-  { id: 'choferes',   label: 'Choferes',   icono: '🚗', api: choferesApi },
-  { id: 'guias',      label: 'Guías',      icono: '🧭', api: guiasApi },
-  { id: 'vendedores', label: 'Vendedores', icono: '💼', api: vendedoresApi },
+  { id: 'choferes',   label: 'Choferes',   icono: 'car', api: choferesApi },
+  { id: 'guias',      label: 'Guías',      icono: 'compass', api: guiasApi },
+  { id: 'vendedores', label: 'Vendedores', icono: 'briefcase', api: vendedoresApi },
 ]
 
 const EMPTY = { nombre: '', whatsapp: '', codigo_referido: '' }
@@ -119,7 +120,7 @@ export default function Equipo() {
                 : 'text-gray-500 dark:text-zinc-500 hover:text-gray-800 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800'
             }`}
           >
-            {t.icono} {t.label}
+            <Ic n={t.icono} className="h-4 w-4" />{t.label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${tabActiva === t.id ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500'}`}>
               {datos[t.id]?.length || 0}
             </span>
@@ -158,7 +159,7 @@ export default function Equipo() {
         <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div>
       ) : filtrados.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-zinc-600">
-          <p className="text-4xl mb-3">{tab.icono}</p>
+          <IcGrande n={tab.icono} />
           <p className="font-medium">No hay {tab.label.toLowerCase()} registrados.</p>
           <button onClick={abrirNuevo} className="mt-4 text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium underline">
             Agregar el primero
@@ -179,7 +180,7 @@ export default function Equipo() {
             <tbody>
               {filtrados.map((item) => (
                 <tr key={item.id} className="border-b border-gray-50 dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">{tab.icono} {item.nombre}</td>
+                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100"><IcTxt n={tab.icono} />{item.nombre}</td>
                   <td className="px-5 py-3">
                     <a
                       href={`https://wa.me/${item.whatsapp}`}
@@ -187,7 +188,7 @@ export default function Equipo() {
                       rel="noopener noreferrer"
                       className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium inline-flex items-center gap-1"
                     >
-                      💬 {item.whatsapp}
+                      <IcTxt n="chat" />{item.whatsapp}
                     </a>
                   </td>
                   {tabActiva === 'vendedores' && (
@@ -215,7 +216,7 @@ export default function Equipo() {
                         onClick={() => abrirEditar(item)}
                         className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium"
                       >
-                        ✏️ Editar
+                        Editar
                       </button>
                       <a
                         href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
@@ -238,14 +239,14 @@ export default function Equipo() {
             <div key={item.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm px-5 py-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-zinc-100">{tab.icono} {item.nombre}</p>
+                  <p className="font-semibold text-gray-900 dark:text-zinc-100"><IcTxt n={tab.icono} />{item.nombre}</p>
                   <a
                     href={`https://wa.me/${item.whatsapp}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium mt-0.5 inline-flex items-center gap-1"
                   >
-                    💬 {item.whatsapp}
+                    <IcTxt n="chat" />{item.whatsapp}
                   </a>
                   {tabActiva === 'vendedores' && item.codigo_referido && (
                     <div className="mt-1.5 inline-flex items-center gap-1.5 bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-800 rounded-lg px-2.5 py-1">
@@ -269,7 +270,7 @@ export default function Equipo() {
                   onClick={() => abrirEditar(item)}
                   className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium"
                 >
-                  ✏️ Editar
+                  Editar
                 </button>
                 <a
                   href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}

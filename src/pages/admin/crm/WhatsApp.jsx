@@ -4,6 +4,7 @@ import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
+import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 
 // Límites de tamaño de WhatsApp por tipo de archivo (MB). Los documentos
 // admiten más en WhatsApp, pero el bucket de Supabase corta en 50.
@@ -562,7 +563,7 @@ export default function WhatsAppCRM() {
       <div className="w-80 border-r border-gray-200 dark:border-zinc-800 flex flex-col shrink-0">
         <div className="px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="font-bold text-gray-900 dark:text-zinc-100 text-lg">💬 WhatsApp</h1>
+            <h1 className="font-bold text-gray-900 dark:text-zinc-100 text-lg">WhatsApp</h1>
             <button
               onClick={sincronizar}
               disabled={sincronizando}
@@ -623,7 +624,7 @@ export default function WhatsAppCRM() {
 
           {!loading && convsFiltradas.length === 0 && (
             <div className="text-center py-12 text-gray-400 dark:text-zinc-500 px-4">
-              <p className="text-3xl mb-2">💬</p>
+              <IcGrande n="chat" />
               <p className="text-sm">
                 {busqueda ? 'Sin resultados' : 'Aún no hay conversaciones. Aparecerán cuando llegue un mensaje de WhatsApp.'}
               </p>
@@ -698,7 +699,7 @@ export default function WhatsAppCRM() {
 
       {/* Panel derecho — chat */}
       {seleccionada ? (
-        <div className="flex-1 flex flex-col" style={{ backgroundImage: 'radial-gradient(circle, #e5ddd5 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundColor: '#f0ebe3' }}>
+        <div className="chat-fondo flex-1 flex flex-col">
           {/* Header del chat */}
           <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex items-center gap-3 shadow-sm dark:shadow-black/20">
             <Avatar nombre={seleccionada.contacto_nombre} />
@@ -833,7 +834,7 @@ export default function WhatsAppCRM() {
                   <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1 text-right">
                     {formatHora(msg.created_at)}
                     {msg.direccion === 'saliente' && (
-                      <span className="ml-1">{msg.id?.toString().startsWith('temp-') ? '🕐' : '✓✓'}</span>
+                      <span className="ml-1">{msg.id?.toString().startsWith('temp-') ? <Ic n="clock" className="inline-block h-3 w-3" /> : '✓✓'}</span>
                     )}
                   </p>
                 </div>
@@ -952,9 +953,9 @@ export default function WhatsAppCRM() {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#f0ebe3' }}>
+        <div className="chat-fondo flex-1 flex items-center justify-center">
           <div className="text-center text-gray-500 dark:text-zinc-400">
-            <p className="text-6xl mb-4">💬</p>
+            <span className="mb-4 flex justify-center text-gray-300 dark:text-zinc-600"><Ic n="chat" className="h-14 w-14" /></span>
             <p className="font-semibold text-lg text-gray-700 dark:text-zinc-300">WhatsApp CRM</p>
             <p className="text-sm mt-1 text-gray-400 dark:text-zinc-500">Seleccioná una conversación para ver los mensajes</p>
           </div>

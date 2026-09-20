@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { propuestasApi, subirDocumentoPropuesta } from '../../../lib/supabase.js'
 import { generarPDFCierre, generarPDFDetallesYServicios } from '../../../lib/pdfPlantillaCierre.js'
 import { EQUIPAJE_LABELS } from '../../../lib/pdfPlantillaAereos.js'
+import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
 
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
@@ -535,7 +536,7 @@ export default function PropuestasLista({ estado }) {
                           <p className="font-medium text-gray-900 dark:text-zinc-100 text-sm truncate">{p.cliente_nombre || '–'}</p>
                           {p.cliente_whatsapp && (
                             <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                              className="text-green-600 dark:text-green-400 hover:underline text-xs">💬 {p.cliente_whatsapp}</a>
+                              className="text-green-600 dark:text-green-400 hover:underline text-xs"><IcTxt n="chat" />{p.cliente_whatsapp}</a>
                           )}
                         </div>
                       </div>
@@ -547,8 +548,8 @@ export default function PropuestasLista({ estado }) {
                       {fechasViaje(p) || '–'}
                     </td>
                     <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs whitespace-nowrap">
-                      {adultos > 0 && <span>👤 {adultos} ad.</span>}
-                      {menores > 0 && <span className="ml-1">👶 {menores} men.</span>}
+                      {adultos > 0 && <span><IcTxt n="user" />{adultos} ad.</span>}
+                      {menores > 0 && <span className="ml-1"><IcTxt n="user" />{menores} men.</span>}
                       {!adultos && !menores && '–'}
                     </td>
                     <td className="px-5 py-3">
@@ -655,7 +656,7 @@ export default function PropuestasLista({ estado }) {
                               <p className="font-medium text-gray-900 dark:text-zinc-100 text-sm truncate">{p.cliente_nombre || '–'}</p>
                               {p.cliente_whatsapp && (
                                 <a href={`https://wa.me/${p.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer"
-                                  className="text-green-600 dark:text-green-400 hover:underline text-xs">💬 {p.cliente_whatsapp}</a>
+                                  className="text-green-600 dark:text-green-400 hover:underline text-xs"><IcTxt n="chat" />{p.cliente_whatsapp}</a>
                               )}
                             </div>
                           </div>

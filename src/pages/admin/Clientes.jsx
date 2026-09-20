@@ -5,6 +5,7 @@ import {
   actividadApi, notasClienteApi, excursionesApi, reservasApi,
 } from '../../lib/supabase.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
+import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 /* ─── helpers ─── */
 function iniciales(nombre = '') {
@@ -40,15 +41,15 @@ function estadoEfectivo(r) {
 
 /* ─── iconos de actividad ─── */
 const ACTIVIDAD_ICON = {
-  lead_recibido:        { icon: '🎯', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
-  lead_convertido:      { icon: '✅', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
-  reserva_creada:       { icon: '📋', color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' },
-  reserva_confirmada:   { icon: '✔️', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
-  pago_registrado:      { icon: '💳', color: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' },
-  excursion_completada: { icon: '🗺️', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
-  mensaje_enviado:      { icon: '💬', color: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' },
-  nota_agregada:        { icon: '📝', color: 'bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
-  reserva_cancelada:    { icon: '❌', color: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400' },
+  lead_recibido:        { icon: 'target', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
+  lead_convertido:      { icon: 'checkcircle', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
+  reserva_creada:       { icon: 'file', color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' },
+  reserva_confirmada:   { icon: 'check', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
+  pago_registrado:      { icon: 'card', color: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' },
+  excursion_completada: { icon: 'map', color: 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' },
+  mensaje_enviado:      { icon: 'chat', color: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' },
+  nota_agregada:        { icon: 'pencil', color: 'bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400' },
+  reserva_cancelada:    { icon: 'xcircle', color: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400' },
 }
 
 /* ════════════════════════════════════════════════
@@ -112,7 +113,7 @@ export default function Clientes() {
         </div>
         <button
           onClick={() => setModalNuevo(true)}
-          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm"
+          className="flex items-center gap-2 text-sm font-semibold text-white bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-brand-700 dark:hover:bg-zinc-200 transition-colors shadow-sm"
         >
           <span className="text-base leading-none">+</span> Nuevo cliente
         </button>
@@ -135,7 +136,7 @@ export default function Clientes() {
           <div className="text-center py-16 text-gray-400 dark:text-zinc-600 text-sm">Cargando...</div>
         ) : filtrados.length === 0 ? (
           <div className="text-center py-16 text-gray-400 dark:text-zinc-600">
-            <p className="text-4xl mb-2">👥</p>
+            <IcGrande n="users" />
             <p className="text-sm">No hay clientes que coincidan.</p>
           </div>
         ) : (
@@ -277,7 +278,7 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
                 value={form[key]}
                 onChange={e => set(key, e.target.value)}
                 placeholder={placeholder}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
             </div>
           ))}
@@ -285,7 +286,7 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
           <button
             type="submit"
             disabled={guardando}
-            className="w-full bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+            className="w-full bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-brand-700 dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
           >
             {guardando ? 'Guardando...' : 'Crear cliente'}
           </button>
@@ -426,7 +427,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       onClick={() => { onCerrar(); navigate(`/admin/crm/whatsapp?phone=${cliente.whatsapp}`) }}
                       className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1"
                     >
-                      💬 {cliente.whatsapp}
+                      <IcTxt n="chat" />{cliente.whatsapp}
                     </button>
                   )}
                   {cliente.email && <span className="text-xs text-gray-400 dark:text-zinc-600">{cliente.email}</span>}
@@ -438,7 +439,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                 onClick={() => setEditando(!editando)}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
               >
-                {editando ? 'Cancelar' : '✏️ Editar'}
+                {editando ? 'Cancelar' : 'Editar'}
               </button>
               <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg transition-colors">×</button>
             </div>
@@ -527,14 +528,14 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                   <div className="px-6 py-3 flex justify-end">
                     <button
                       onClick={() => setModalReserva(true)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 rounded-lg px-3 py-1.5 transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-brand-700 dark:hover:bg-zinc-200 rounded-lg px-3 py-1.5 transition-colors"
                     >
                       <span className="text-sm leading-none">+</span> Nueva reserva
                     </button>
                   </div>
                   {reservas.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-                      <p className="text-3xl mb-2">📋</p>
+                      <IcGrande n="file" />
                       <p className="text-sm">Sin reservas registradas</p>
                     </div>
                   ) : reservas.map(r => {
@@ -548,9 +549,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                             {r.excursiones?.nombre || 'Excursión'}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
-                            📅 {fmtFecha(r.fecha)} · 👥 {r.personas} {r.personas === 1 ? 'persona' : 'personas'}
+                            <IcTxt n="cal" />{fmtFecha(r.fecha)} · <IcTxt n="users" />{r.personas} {r.personas === 1 ? 'persona' : 'personas'}
                           </p>
-                          {r.hospedaje && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">🏨 {r.hospedaje}</p>}
+                          {r.hospedaje && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5"><IcTxt n="hotel" />{r.hospedaje}</p>}
                         </div>
                         <div className="text-right flex-shrink-0">
                           <span className={`text-xs font-medium px-2 py-1 rounded-full border ${ESTADO_RESERVA[estado] || 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 border-gray-100 dark:border-zinc-700'}`}>
@@ -586,7 +587,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                 <div className="divide-y divide-gray-50 dark:divide-zinc-800">
                   {pagos.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-                      <p className="text-3xl mb-2">💳</p>
+                      <IcGrande n="card" />
                       <p className="text-sm">Sin pagos registrados</p>
                     </div>
                   ) : pagos.map(p => (
@@ -613,7 +614,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                 <div className="px-6 py-4">
                   {actividad.length === 0 ? (
                     <div className="text-center py-8 text-gray-400 dark:text-zinc-600">
-                      <p className="text-3xl mb-2">📜</p>
+                      <IcGrande n="file" />
                       <p className="text-sm">Sin actividad registrada aún</p>
                     </div>
                   ) : (
@@ -621,11 +622,11 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-100 dark:bg-zinc-800" />
                       <div className="space-y-4">
                         {actividad.map(a => {
-                          const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: '•', color: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500' }
+                          const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: 'dot', color: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500' }
                           return (
                             <div key={a.id} className="flex gap-3">
                               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 -ml-3.5 z-10 ${cfg.color}`}>
-                                {cfg.icon}
+                                <Ic n={cfg.icon} className="h-3.5 w-3.5" />
                               </div>
                               <div className="flex-1 pb-4">
                                 <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{a.titulo}</p>
@@ -765,7 +766,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Excursión <span className="text-red-400">*</span></label>
               <select value={form.excursion_id} onChange={e => set('excursion_id', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500">
                 <option value="">— Seleccionar</option>
                 {excursiones.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
               </select>
@@ -773,7 +774,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Fecha <span className="text-red-400">*</span></label>
               <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
             </div>
           </div>
@@ -782,13 +783,13 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Adultos</label>
               <input type="number" min="0" value={form.adultos} onChange={e => set('adultos', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Menores</label>
               <input type="number" min="0" value={form.menores} onChange={e => set('menores', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
             </div>
           </div>
@@ -797,7 +798,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
             <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Hospedaje / Pickup</label>
             <input type="text" value={form.hospedaje} onChange={e => set('hospedaje', e.target.value)}
               placeholder="Hotel, dirección..."
-              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
             />
           </div>
 
@@ -806,13 +807,13 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Total</label>
               <input type="number" min="0" value={form.total} onChange={e => set('total', e.target.value)}
                 placeholder="0"
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Moneda</label>
               <select value={form.moneda} onChange={e => set('moneda', e.target.value)}
-                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+                className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500">
                 <option value="BRL">BRL</option>
                 <option value="USD">USD</option>
                 <option value="ARS">ARS</option>
@@ -823,7 +824,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
           <div>
             <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Estado</label>
             <select value={form.estado} onChange={e => set('estado', e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]">
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500">
               <option value="pendiente">Pendiente</option>
               <option value="confirmada">Confirmada</option>
             </select>
@@ -833,14 +834,14 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
             <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Notas</label>
             <textarea rows={2} value={form.notas} onChange={e => set('notas', e.target.value)}
               placeholder="Observaciones..."
-              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
+              className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500 resize-none"
             />
           </div>
 
           {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
 
           <button type="submit" disabled={guardando}
-            className="w-full bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 hover:bg-[#003366] dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors">
+            className="w-full bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-brand-700 dark:hover:bg-zinc-200 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors">
             {guardando ? 'Guardando...' : 'Crear reserva'}
           </button>
         </form>

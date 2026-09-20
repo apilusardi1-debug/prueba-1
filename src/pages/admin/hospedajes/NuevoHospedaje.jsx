@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi, propietariosApi } from '../../../lib/supabase.js'
 import HospedajeForm, { EMPTY_HOSPEDAJE, datosDesdeForm } from '../../../components/admin/HospedajeForm.jsx'
 import HabitacionForm, { EMPTY_HABITACION, datosDesdeFormHabitacion } from '../../../components/admin/HabitacionForm.jsx'
+import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
 
 export default function NuevoHospedaje() {
   const navigate = useNavigate()
@@ -125,7 +126,7 @@ export default function NuevoHospedaje() {
                   </p>
                   {hab.nombre_dueno && (
                     <p className="text-xs text-amber-600 dark:text-amber-400">
-                      🔒 {hab.nombre_dueno}{hab.contacto_dueno && ` · ${hab.contacto_dueno}`}
+                      <IcTxt n="lock" />{hab.nombre_dueno}{hab.contacto_dueno && ` · ${hab.contacto_dueno}`}
                     </p>
                   )}
                 </div>

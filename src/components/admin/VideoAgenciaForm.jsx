@@ -47,7 +47,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
         ) : (
           <button type="button" onClick={() => videoRef.current?.click()} disabled={subiendoVideo}
             className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50">
-            {subiendoVideo ? '⏳ Subiendo... (puede tardar según el tamaño)' : '🎬 Subir video (máx. 50MB)'}
+            {subiendoVideo ? 'Subiendo... (puede tardar según el tamaño)' : 'Subir video (máx. 50MB)'}
           </button>
         )}
       </div>
@@ -64,7 +64,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
         ) : (
           <button type="button" onClick={() => thumbRef.current?.click()} disabled={subiendoThumb}
             className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium disabled:opacity-50">
-            {subiendoThumb ? '⏳ Subiendo...' : '+ Agregar miniatura'}
+            {subiendoThumb ? 'Subiendo...' : '+ Agregar miniatura'}
           </button>
         )}
         <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Si no cargás una, se muestra el video directamente como miniatura.</p>

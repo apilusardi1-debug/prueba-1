@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi } from '../../lib/supabase.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
+import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -254,7 +255,7 @@ export default function Agenda() {
           </div>
 
           {vista === 'tabla' && (
-            <button className="flex items-center gap-2 text-sm font-semibold text-white bg-[#002147] dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm">
+            <button className="flex items-center gap-2 text-sm font-semibold text-white bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl px-4 py-2 hover:bg-brand-700 dark:hover:bg-zinc-200 transition-colors shadow-sm">
               <span className="text-base leading-none">+</span>
               Nueva Reserva
             </button>
@@ -429,7 +430,7 @@ function VistaTabla({ reservasNorm, cargando }) {
               <tr><td colSpan={10} className="py-16 text-center text-gray-400 dark:text-zinc-600 text-sm">Cargando reservas...</td></tr>
             ) : filas.length === 0 ? (
               <tr><td colSpan={10} className="py-16 text-center text-gray-400 dark:text-zinc-600">
-                <p className="text-3xl mb-2">📋</p>
+                <IcGrande n="file" />
                 <p className="text-sm">No hay reservas en esta categoría</p>
               </td></tr>
             ) : filas.map((reserva, idx) => {
@@ -579,7 +580,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                 const salidasDia = salidas(esMesActual)
 
                 const CHIP_COLORS = [
-                  'bg-[#002147] text-white',
+                  'bg-brand-600 text-white',
                   'bg-blue-500 text-white',
                   'bg-indigo-500 text-white',
                   'bg-blue-700 text-white',
@@ -592,9 +593,9 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                       esHoy
                         ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
                         : seleccionado
-                        ? 'bg-[#002147] text-white font-semibold'
+                        ? 'bg-brand-600 text-white font-semibold'
                         : esNueva
-                        ? 'ring-2 ring-[#002147] text-[#002147] font-semibold'
+                        ? 'ring-2 ring-brand-500 text-brand-600 font-semibold'
                         : esMesActual
                         ? 'text-gray-700 dark:text-zinc-300'
                         : 'text-gray-300 dark:text-zinc-700'
@@ -646,7 +647,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                   <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-gray-900 dark:text-zinc-100 text-sm">{salida.excursion.nombre}</h4>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">🕐 {horario.partida} — Regreso estimado {horario.regreso}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="clock" />{horario.partida} — Regreso estimado {horario.regreso}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 rounded-full px-2.5 py-1">
@@ -830,7 +831,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
             <p className="text-sm text-gray-400 dark:text-zinc-500 mt-0.5 capitalize">{formatFechaLarga(fecha)}</p>
             {excursion.cupos > 0 && (
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-sm font-semibold text-[#002147] dark:text-zinc-300">{paxReservados}/{excursion.cupos} personas</span>
+                <span className="text-sm font-semibold text-brand-600 dark:text-zinc-300">{paxReservados}/{excursion.cupos} personas</span>
                 <div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5 w-24">
                   <div className={`h-1.5 rounded-full transition-all ${
                     paxReservados / excursion.cupos >= 0.8 ? 'bg-red-400' :
@@ -855,7 +856,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                 : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 bg-white dark:bg-zinc-800'
             }`}
           >
-            <option value="">🧭 Asignar guía para toda la operación...</option>
+            <option value="">Asignar guía para toda la operación...</option>
             {guias.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
           </select>
           {guiaAsignado && (
@@ -866,7 +867,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         <div className="overflow-y-auto flex-1">
           {pasajeros.length === 0 ? (
             <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-              <p className="text-3xl mb-2">👤</p>
+              <IcGrande n="user" />
               <p className="text-sm">Sin pasajeros reservados</p>
             </div>
           ) : (
@@ -878,13 +879,13 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">{r.clienteNombre}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">📞 +{r.clienteWhatsapp}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">🏨 {r.hospedaje || '—'}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="phone" />+{r.clienteWhatsapp}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="hotel" />{r.hospedaje || '—'}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-semibold text-[#002147] dark:text-zinc-300">{r.personas} pax</p>
+                        <p className="text-xs font-semibold text-brand-600 dark:text-zinc-300">{r.personas} pax</p>
                         <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPrecio(r.total)}</p>
-                        <a href={`https://wa.me/${r.clienteWhatsapp}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-400 text-sm">💬</a>
+                        <a href={`https://wa.me/${r.clienteWhatsapp}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-400 text-sm"><Ic n="chat" className="h-4 w-4" /></a>
                       </div>
                     </div>
                     <select
@@ -896,7 +897,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                           : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800'
                       }`}
                     >
-                      <option value="">🚗 Asignar chofer...</option>
+                      <option value="">Asignar chofer...</option>
                       {choferes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
                     {choferAsignado && (
@@ -914,7 +915,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
             <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resultado del envío</p>
             {resultados.map((r, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
-                <span>{r.ok ? '✅' : '❌'}</span>
+                <span className={r.ok ? 'text-green-500' : 'text-red-500'}><Ic n={r.ok ? 'checkcircle' : 'xcircle'} className="h-4 w-4" /></span>
                 <div>
                   <span className="font-medium text-gray-800 dark:text-zinc-200">{r.destino}</span>
                   <span className="text-gray-400 dark:text-zinc-500 ml-1">({r.phone})</span>
@@ -929,17 +930,17 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
           <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between gap-3">
             <div className="text-sm text-gray-400 dark:text-zinc-500 space-y-0.5">
               <p>{conChofer.length}/{pasajeros.length} con chofer asignado</p>
-              {!guiaAsignado && <p className="text-yellow-500 dark:text-yellow-400 text-xs">⚠ Falta asignar guía</p>}
-              {guiaAsignado && !guiaAsignado.whatsapp && <p className="text-red-500 dark:text-red-400 text-xs">⚠ Guía sin número de WhatsApp</p>}
+              {!guiaAsignado && <p className="text-yellow-500 dark:text-yellow-400 text-xs"><IcTxt n="alert" />Falta asignar guía</p>}
+              {guiaAsignado && !guiaAsignado.whatsapp && <p className="text-red-500 dark:text-red-400 text-xs"><IcTxt n="alert" />Guía sin número de WhatsApp</p>}
               {conChofer.some((r) => { const c = choferes.find((ch) => ch.id === asignaciones[r.id]); return c && !c.whatsapp }) && (
-                <p className="text-orange-500 dark:text-orange-400 text-xs">⚠ Hay choferes sin WhatsApp guardado</p>
+                <p className="text-orange-500 dark:text-orange-400 text-xs"><IcTxt n="alert" />Hay choferes sin WhatsApp guardado</p>
               )}
             </div>
             <button onClick={cerrarOperacion} disabled={!listoParaCerrar || enviando}
               className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors ${
                 listoParaCerrar && !enviando ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
               }`}>
-              {enviando ? '⏳ Enviando...' : '🚀 Cerrar operación'}
+              {enviando ? 'Enviando...' : 'Cerrar operación'}
             </button>
           </div>
         )}

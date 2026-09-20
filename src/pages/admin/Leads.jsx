@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { leadsApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Badge from '../../components/ui/Badge.jsx'
+import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 function hoyISO() { return new Date().toISOString().split('T')[0] }
 
@@ -21,7 +22,7 @@ const FORM_VACIO = { nombre: '', whatsapp: '', interes_tipo: '', interes_destino
 function CampoInteres({ tipo, destino, onChange, ayuda, grande }) {
   const campo = grande
     ? 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400'
-    : 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]'
+    : 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500'
   return (
     <div>
       <label className={grande ? 'text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1' : 'text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1'}>Interés</label>
@@ -240,7 +241,7 @@ export default function Leads() {
             onClick={() => setMostrarFormLead(true)}
             className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
           >
-            📲 Lead de WhatsApp
+            Lead de WhatsApp
           </button>
           {['kanban','tabla'].map(v => (
             <button key={v} onClick={() => setVista(v)}
@@ -253,7 +254,7 @@ export default function Leads() {
 
       {leads.length === 0 && (
         <div className="text-center py-20 text-gray-400 dark:text-zinc-500">
-          <p className="text-4xl mb-3">🎯</p>
+          <IcGrande n="target" />
           <p>Aún no hay leads. Aparecerán acá cuando alguien complete el formulario de reserva.</p>
         </div>
       )}
@@ -311,7 +312,7 @@ export default function Leads() {
                               ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400'
                               : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'
                         }`}>
-                          <span>⏰</span>
+                          <Ic n="clock" className="h-3 w-3" />
                           <span className="truncate">
                             {proximoRecordatorio(lead.id).fecha < hoyISO() ? 'Vencido' : proximoRecordatorio(lead.id).fecha === hoyISO() ? 'Hoy' : new Date(proximoRecordatorio(lead.id).fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
                             {' · '}{proximoRecordatorio(lead.id).nota}
@@ -322,7 +323,7 @@ export default function Leads() {
                         <button
                           onClick={e => { e.stopPropagation(); navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`) }}
                           className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
-                          💬 WhatsApp
+                          <IcTxt n="chat" />WhatsApp
                         </button>
                       )}
                     </div>
@@ -364,7 +365,7 @@ export default function Leads() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        {lead.whatsapp && <button onClick={() => navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`)} className="text-green-500 dark:text-green-400">💬</button>}
+                        {lead.whatsapp && <button onClick={() => navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`)} className="text-green-500 dark:text-green-400"><Ic n="chat" className="h-4 w-4" /></button>}
                         <button onClick={() => abrirLead(lead)} className="text-xs font-medium text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100">Ver</button>
                         {eliminandoId === lead.id ? (
                           <div className="flex items-center gap-1.5">
@@ -391,7 +392,7 @@ export default function Leads() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">📲 Nuevo lead</h2>
+              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Nuevo lead</h2>
               <button onClick={() => setMostrarFormLead(false)} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
             </div>
             <div className="space-y-4">
@@ -424,7 +425,7 @@ export default function Leads() {
             </div>
             <button onClick={registrarLead} disabled={enviando}
               className="mt-5 w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
-              {enviando ? 'Guardando...' : '✅ Guardar lead'}
+              {enviando ? 'Guardando...' : 'Guardar lead'}
             </button>
           </div>
         </div>
@@ -456,7 +457,7 @@ export default function Leads() {
                     value={editForm[key]}
                     onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
                   />
                 </div>
               ))}
@@ -474,7 +475,7 @@ export default function Leads() {
                 <select
                   value={editForm.estado}
                   onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147]"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
                 >
                   {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
@@ -487,7 +488,7 @@ export default function Leads() {
                   value={editForm.notas}
                   onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))}
                   placeholder="Observaciones, preferencias, detalles..."
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#002147]/20 focus:border-[#002147] resize-none"
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500 resize-none"
                 />
               </div>
 
@@ -558,20 +559,20 @@ export default function Leads() {
                 {/* Convertir a cliente */}
                 {convertidoMsg === 'ok' && (
                   <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm px-4 py-3 rounded-xl">
-                    ✅ Convertido a cliente correctamente
+                    Convertido a cliente correctamente
                   </div>
                 )}
                 {convertidoMsg === 'ya_existe' && (
                   <div className="bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400 text-sm px-4 py-3 rounded-xl">
-                    ⚠️ Ya existe como cliente con ese WhatsApp
+                    Ya existe como cliente con ese WhatsApp
                   </div>
                 )}
                 <button
                   onClick={() => convertirACliente(seleccionado)}
                   disabled={convirtiendo || convertidoMsg === 'ok'}
-                  className="w-full flex items-center justify-center gap-2 bg-[#002147] dark:bg-zinc-100 hover:bg-[#003366] dark:hover:bg-zinc-200 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-zinc-100 hover:bg-brand-700 dark:hover:bg-zinc-200 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
                 >
-                  {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? '✅ Ya es cliente' : '👤 Convertir a cliente'}
+                  {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? 'Ya es cliente' : 'Convertir a cliente'}
                 </button>
 
                 {clienteConvertidoId && (
@@ -579,7 +580,7 @@ export default function Leads() {
                     onClick={() => navigate(`/admin/clientes?cliente=${clienteConvertidoId}`)}
                     className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
                   >
-                    🧑‍💼 Ver perfil del cliente
+                    Ver perfil del cliente
                   </button>
                 )}
 
@@ -588,7 +589,7 @@ export default function Leads() {
                     onClick={() => { setSeleccionado(null); setConvertidoMsg(''); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
                     className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
                   >
-                    💬 Abrir en WhatsApp
+                    Abrir en WhatsApp
                   </button>
                 )}
               </div>

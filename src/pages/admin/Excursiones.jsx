@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { excursionesApi, normalizarExcursion, subirImagen } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
+import { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 const EMPTY = {
   nombre: '', destino: '', categoria: 'excursiones', precio: '',
@@ -169,7 +170,7 @@ export default function Excursiones() {
 
       {excursiones.length === 0 && (
         <div className="text-center py-20 text-gray-400 dark:text-zinc-600">
-          <p className="text-4xl mb-3">🌊</p>
+          <IcGrande n="waves" />
           <p>No hay excursiones. Creá la primera.</p>
         </div>
       )}
@@ -241,7 +242,7 @@ export default function Excursiones() {
                     disabled={subiendoImg}
                     className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50"
                   >
-                    {subiendoImg ? '⏳ Subiendo...' : '📷 Subir imagen desde tu dispositivo'}
+                    {subiendoImg ? 'Subiendo...' : 'Subir imagen desde tu dispositivo'}
                   </button>
                 )}
               </div>
@@ -254,7 +255,7 @@ export default function Excursiones() {
                   <div className="relative">
                     {form.opcionales_imagen.toLowerCase().endsWith('.pdf') ? (
                       <div className="w-full h-32 flex items-center justify-center gap-2 rounded-lg bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-sm">
-                        📄 PDF cargado
+                        <IcTxt n="file" />PDF cargado
                       </div>
                     ) : (
                       <img src={form.opcionales_imagen} alt="preview opcionales" className="w-full h-32 object-cover rounded-lg" />
@@ -272,7 +273,7 @@ export default function Excursiones() {
                     disabled={subiendoOpcionalesImg}
                     className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50"
                   >
-                    {subiendoOpcionalesImg ? '⏳ Subiendo...' : '📎 Subir imagen o PDF de opcionales'}
+                    {subiendoOpcionalesImg ? 'Subiendo...' : 'Subir imagen o PDF de opcionales'}
                   </button>
                 )}
               </div>
@@ -307,7 +308,7 @@ export default function Excursiones() {
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm text-left hover:border-brand-400 dark:hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-colors"
                 >
                   {form.fechas
-                    ? `📅 ${form.fechas}`
+                    ? form.fechas
                     : <span className="text-gray-400 dark:text-zinc-500">Seleccionar fechas...</span>}
                 </button>
               </div>

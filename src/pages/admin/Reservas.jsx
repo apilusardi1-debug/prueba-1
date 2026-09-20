@@ -4,6 +4,7 @@ import { reservasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import ModalNuevaReserva from '../../components/ui/ModalNuevaReserva.jsx'
+import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 const ESTADOS = {
   pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
@@ -141,7 +142,7 @@ export default function Reservas() {
         </div>
         <button
           onClick={() => setModalNueva(true)}
-          className="flex items-center gap-2 text-sm font-semibold text-white dark:text-zinc-900 bg-[#002147] dark:bg-zinc-100 rounded-xl px-4 py-2 hover:bg-[#003366] dark:hover:bg-zinc-200 transition-colors shadow-sm"
+          className="flex items-center gap-2 text-sm font-semibold text-white dark:text-zinc-900 bg-brand-600 dark:bg-zinc-100 rounded-xl px-4 py-2 hover:bg-brand-700 dark:hover:bg-zinc-200 transition-colors shadow-sm"
         >
           <span className="text-base leading-none">+</span> Nueva reserva
         </button>
@@ -239,7 +240,7 @@ export default function Reservas() {
 
       {filtradas.length === 0 ? (
         <div className="text-center py-20 text-gray-400 dark:text-zinc-500">
-          <p className="text-4xl mb-3">📋</p>
+          <IcGrande n="file" />
           <p>No hay reservas{(filtroEstado || hayFiltrosExtra) ? ' con estos filtros' : ''}. Aparecerán cuando alguien reserve desde la app.</p>
         </div>
       ) : (
@@ -284,7 +285,7 @@ export default function Reservas() {
                       <p className="font-medium text-gray-900 dark:text-zinc-100 text-sm">{r.cliente_nombre || '–'}</p>
                       <a href={`https://wa.me/${r.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer"
                         className="text-green-600 dark:text-green-400 hover:underline text-xs">
-                        💬 {r.cliente_whatsapp}
+                        <IcTxt n="chat" />{r.cliente_whatsapp}
                       </a>
                     </td>
                     <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 max-w-[180px]">
@@ -294,8 +295,8 @@ export default function Reservas() {
                       {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : '–'}
                     </td>
                     <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs">
-                      {r.adultos > 0 && <span>👤 {r.adultos} ad.</span>}
-                      {r.menores > 0 && <span className="ml-1">👶 {r.menores} men.</span>}
+                      {r.adultos > 0 && <span><IcTxt n="user" />{r.adultos} ad.</span>}
+                      {r.menores > 0 && <span className="ml-1"><IcTxt n="user" />{r.menores} men.</span>}
                     </td>
                     <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 text-xs whitespace-nowrap">
                       {formatPrecio(r.total, r.moneda)}
@@ -324,7 +325,7 @@ export default function Reservas() {
                         <a href={`https://wa.me/${r.cliente_whatsapp}?text=Hola!%20Te%20contactamos%20por%20tu%20reserva%20de%20${encodeURIComponent(r.excursiones?.nombre || '')}`}
                           target="_blank" rel="noopener noreferrer"
                           className="text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 text-lg">
-                          💬
+                          <Ic n="chat" className="h-[18px] w-[18px]" />
                         </a>
                         {eliminandoId === r.id ? (
                           <div className="flex items-center gap-1.5">

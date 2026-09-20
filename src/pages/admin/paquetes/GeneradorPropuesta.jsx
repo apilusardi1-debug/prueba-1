@@ -6,6 +6,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
 import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
+import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -1510,7 +1511,7 @@ export default function GeneradorPropuesta() {
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Traslados privados</p>
                 <button type="button" disabled={tipoPropuesta === 'combinada'} onClick={() => alternarTrasladoVuelo(idx)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${v.traslado_activo === false ? 'bg-gray-300 dark:bg-zinc-600' : 'bg-brand-600'} ${tipoPropuesta === 'combinada' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${v.traslado_activo === false ? 'bg-gray-300 dark:bg-zinc-600' : 'bg-brand-600 dark:bg-emerald-500'} ${tipoPropuesta === 'combinada' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v.traslado_activo === false ? 'translate-x-0.5' : 'translate-x-4'}`} />
                 </button>
               </div>
@@ -1631,7 +1632,7 @@ export default function GeneradorPropuesta() {
 
             {propietarioPorHospedaje[h.id]?.nombre_dueno && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                🔒 {propietarioPorHospedaje[h.id].nombre_dueno}
+                <IcTxt n="lock" />{propietarioPorHospedaje[h.id].nombre_dueno}
                 {propietarioPorHospedaje[h.id].contacto_dueno && ` · ${propietarioPorHospedaje[h.id].contacto_dueno}`}
               </p>
             )}
@@ -1679,7 +1680,7 @@ export default function GeneradorPropuesta() {
                             </p>
                             {propietariosPorHabitacion[hab.id]?.nombre_dueno && (
                               <p className="text-xs text-amber-600 dark:text-amber-400 truncate">
-                                🔒 {propietariosPorHabitacion[hab.id].nombre_dueno}
+                                <IcTxt n="lock" />{propietariosPorHabitacion[hab.id].nombre_dueno}
                                 {propietariosPorHabitacion[hab.id].contacto_dueno && ` · ${propietariosPorHabitacion[hab.id].contacto_dueno}`}
                               </p>
                             )}

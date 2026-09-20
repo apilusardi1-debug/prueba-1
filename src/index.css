@@ -4,6 +4,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Paleta "brand" ──────────────────────────────────────────────────────
+   La web pública sigue usando el azul de siempre (valores por defecto en :root).
+   El panel (.admin-ui, y el Login con .admin-login) la reemplaza por una escala
+   de grises: casi negro en claro y casi blanco en oscuro. Los botones con fondo
+   brand llevan texto blanco, así que en oscuro (fondo claro) se invierte abajo. */
+:root {
+  --brand-25: 242 247 255;
+  --brand-50: 236 243 255;
+  --brand-100: 221 233 255;
+  --brand-200: 194 214 255;
+  --brand-300: 156 185 255;
+  --brand-400: 117 146 255;
+  --brand-500: 70 95 255;
+  --brand-600: 54 65 245;
+  --brand-700: 42 49 216;
+  --brand-800: 37 45 174;
+  --brand-900: 38 46 137;
+  --brand-950: 22 25 80;
+}
+
+.admin-ui,
+.admin-login {
+  --brand-25: 250 250 250;
+  --brand-50: 244 244 245;
+  --brand-100: 228 228 231;
+  --brand-200: 212 212 216;
+  --brand-300: 161 161 170;
+  --brand-400: 113 113 122;
+  --brand-500: 63 63 70;
+  --brand-600: 24 24 27;
+  --brand-700: 9 9 11;
+  --brand-800: 9 9 11;
+  --brand-900: 9 9 11;
+  --brand-950: 9 9 11;
+}
+
+.dark .admin-ui,
+.admin-login {
+  --brand-25: 39 39 42;
+  --brand-50: 39 39 42;
+  --brand-100: 39 39 42;
+  --brand-200: 63 63 70;
+  --brand-300: 228 228 231;
+  --brand-400: 212 212 216;
+  --brand-500: 244 244 245;
+  --brand-600: 228 228 231;
+  --brand-700: 212 212 216;
+  --brand-800: 63 63 70;
+  --brand-900: 63 63 70;
+  --brand-950: 63 63 70;
+}
+
+/* Texto oscuro sobre los botones que en modo oscuro quedan con fondo claro */
+.dark .admin-ui .bg-brand-500,
+.dark .admin-ui .bg-brand-600,
+.dark .admin-ui .dark\:bg-brand-500,
+.dark .admin-ui .dark\:bg-brand-600,
+.admin-login .bg-brand-600 {
+  color: #09090b;
+}
+
 @layer base {
   .admin-ui {
     font-family: 'Outfit', sans-serif;
@@ -38,12 +99,23 @@
   }
   .dark .dash-card {
     border-color: rgba(255, 255, 255, 0.07);
-    background: linear-gradient(127deg, rgba(22, 22, 22, 0.96) 19%, rgba(15, 15, 15, 0.86) 77%);
+    background: linear-gradient(127deg, #161616 19%, #0f0f0f 77%);
     box-shadow: none;
   }
   .menu-dropdown-item-inactive {
     @apply text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
+}
+
+/* Fondo del chat de WhatsApp: beige punteado en claro, casi negro en oscuro */
+.chat-fondo {
+  background-color: #f0ebe3;
+  background-image: radial-gradient(circle, #e5ddd5 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.dark .chat-fondo {
+  background-color: #0d0d0d;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
 @layer utilities {

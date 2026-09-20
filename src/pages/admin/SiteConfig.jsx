@@ -5,16 +5,16 @@ import { ROLES } from '../../lib/roles.js'
 
 const SECTION = {
   title: (t) => (
-    <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1rem', color: '#1C1208', marginBottom: 4 }}>{t}</h2>
+    <h2 className="mb-1 text-base font-bold tracking-tight text-gray-900 dark:text-white">{t}</h2>
   ),
   label: (t) => (
-    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#555', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t}</label>
+    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400">{t}</label>
   ),
 }
 
 function Field({ label, type = 'text', value, onChange, placeholder, hint }) {
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div className="mb-[18px]">
       {SECTION.label(label)}
       {type === 'textarea' ? (
         <textarea
@@ -22,26 +22,22 @@ function Field({ label, type = 'text', value, onChange, placeholder, hint }) {
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           rows={3}
-          style={{ width: '100%', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', color: '#1C1208', resize: 'vertical', outline: 'none', background: 'white', boxSizing: 'border-box' }}
-          onFocus={e => e.target.style.borderColor = '#b07420'}
-          onBlur={e => e.target.style.borderColor = '#e8d09a'}
+          className={`${CLASE_CAMPO} resize-y`}
         />
       ) : type === 'color' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <input
             type="color"
             value={value}
             onChange={e => onChange(e.target.value)}
-            style={{ width: 48, height: 40, border: '1.5px solid #e8d09a', borderRadius: 8, padding: 2, cursor: 'pointer', background: 'white' }}
+            className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-800"
           />
           <input
             type="text"
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder="#000000"
-            style={{ flex: 1, border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', color: '#1C1208', outline: 'none', background: 'white' }}
-            onFocus={e => e.target.style.borderColor = '#b07420'}
-            onBlur={e => e.target.style.borderColor = '#e8d09a'}
+            className={`${CLASE_CAMPO} flex-1`}
           />
         </div>
       ) : (
@@ -50,12 +46,10 @@ function Field({ label, type = 'text', value, onChange, placeholder, hint }) {
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          style={{ width: '100%', border: '1.5px solid #e8d09a', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', color: '#1C1208', outline: 'none', background: 'white', boxSizing: 'border-box' }}
-          onFocus={e => e.target.style.borderColor = '#b07420'}
-          onBlur={e => e.target.style.borderColor = '#e8d09a'}
+          className={CLASE_CAMPO}
         />
       )}
-      {hint && <p style={{ fontSize: '0.72rem', color: '#999', marginTop: 4 }}>{hint}</p>}
+      {hint && <p className="mt-1 text-[11.5px] text-gray-400 dark:text-zinc-500">{hint}</p>}
     </div>
   )
 }
@@ -641,7 +635,7 @@ function TabAsistente() {
                   type="checkbox"
                   checked={reparto.some(m => m.grupo === g.id && m.usuario_id === u.id)}
                   onChange={() => toggleMiembro(g.id, u.id)}
-                  className="w-4 h-4 accent-[#002147]"
+                  className="w-4 h-4 accent-brand-600"
                 />
                 <span className="text-sm text-gray-800 dark:text-zinc-200">{u.nombre}</span>
                 <span className="text-xs text-gray-400 dark:text-zinc-500 truncate">{u.email}</span>
@@ -705,31 +699,37 @@ export default function SiteConfig() {
     setForm(CONFIG_DEFAULTS)
   }
 
-  const card = { background: 'white', borderRadius: 16, border: '1px solid #e8d09a', padding: '24px 28px', marginBottom: 20 }
+  const TABS = [
+    { id: 'sitio', label: 'Sitio público' },
+    { id: 'accesos', label: 'Accesos' },
+    { id: 'conceptos', label: 'Conceptos' },
+    { id: 'respuestas', label: 'Respuestas rápidas' },
+    { id: 'asistente', label: 'Asistente' },
+  ]
 
   return (
-    <div style={{ maxWidth: tab === 'sitio' ? 720 : 960, margin: '0 auto', padding: '32px 24px' }}>
+    <div className={tab === 'sitio' ? 'max-w-[720px]' : 'max-w-[960px]'}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 6 }}>Panel interno</p>
-        <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.8rem', color: '#1C1208' }}>Configuración</h1>
-        <p style={{ fontSize: '0.85rem', color: '#888', marginTop: 4 }}>Sitio público, accesos, roles y conceptos del panel.</p>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configuración</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">Sitio público, accesos, roles y conceptos del panel.</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[{ id: 'sitio', label: 'Sitio público' }, { id: 'accesos', label: 'Accesos' }, { id: 'conceptos', label: 'Conceptos' }, { id: 'respuestas', label: 'Respuestas rápidas' }, { id: 'asistente', label: 'Asistente' }].map(t => (
+      <div className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist">
+        {TABS.map(x => (
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              padding: '9px 18px', borderRadius: 10, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-              border: tab === t.id ? 'none' : '1.5px solid #e8d09a',
-              background: tab === t.id ? '#1C1208' : 'white',
-              color: tab === t.id ? '#f9f3e3' : '#8a581e',
-            }}
+            key={x.id}
+            role="tab"
+            aria-selected={tab === x.id}
+            onClick={() => setTab(x.id)}
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
+              tab === x.id
+                ? 'bg-gray-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900'
+                : 'text-gray-500 hover:text-gray-800 dark:text-zinc-400 dark:hover:text-white'
+            }`}
           >
-            {t.label}
+            {x.label}
           </button>
         ))}
       </div>
@@ -742,9 +742,9 @@ export default function SiteConfig() {
       {tab === 'sitio' && (
         <>
       {/* 1. Hero */}
-      <div style={card}>
-        <div style={{ marginBottom: 4 }}>{SECTION.title('🖼️  Banner principal (Hero)')}</div>
-        <p style={{ fontSize: '0.78rem', color: '#999', marginBottom: 20 }}>
+      <div className="dash-card mb-5 p-6">
+        <div className="mb-1">{SECTION.title('Banner principal (Hero)')}</div>
+        <p className="mb-5 text-xs text-gray-400 dark:text-zinc-500">
           El título y subtítulo del banner se traducen automáticamente según el idioma del visitante. Podés cambiar la foto de fondo y el texto del botón.
         </p>
         <Field label="Texto del botón" value={form.hero_cta} onChange={set('hero_cta')} placeholder="Ver paquetes" />
@@ -766,8 +766,8 @@ export default function SiteConfig() {
       </div>
 
       {/* 2. Colores */}
-      <div style={card}>
-        <div style={{ marginBottom: 20 }}>{SECTION.title('🎨  Paleta de colores')}</div>
+      <div className="dash-card mb-5 p-6">
+        <div className="mb-5">{SECTION.title('Paleta de colores')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field
             label="Color primario (botones, precios)"
@@ -792,8 +792,8 @@ export default function SiteConfig() {
       </div>
 
       {/* 3. Contacto */}
-      <div style={card}>
-        <div style={{ marginBottom: 20 }}>{SECTION.title('📞  Contacto y redes')}</div>
+      <div className="dash-card mb-5 p-6">
+        <div className="mb-5">{SECTION.title('Contacto y redes')}</div>
         <Field
           label="Número de WhatsApp"
           value={form.whatsapp}
@@ -810,37 +810,35 @@ export default function SiteConfig() {
       </div>
 
       {/* Botones */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
-          style={{ background: '#1C1208', color: '#f9f3e3', fontWeight: 700, padding: '12px 28px', borderRadius: 12, border: 'none', fontSize: '0.9rem', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, transition: 'background 0.15s' }}
-          onMouseEnter={e => { if (!saving) e.target.style.background = '#b07420' }}
-          onMouseLeave={e => { e.target.style.background = '#1C1208' }}
+          className="rounded-xl bg-brand-600 px-7 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
-          {saving ? '⏳ Guardando...' : '💾 Guardar cambios'}
+          {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
 
         <button
           onClick={handleReset}
-          style={{ background: 'white', color: '#888', fontWeight: 600, padding: '12px 20px', borderRadius: 12, border: '1.5px solid #e8d09a', fontSize: '0.85rem', cursor: 'pointer' }}
+          className="rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           Restablecer defaults
         </button>
 
         {status === 'ok' && (
-          <span style={{ color: '#2e7d32', fontSize: '0.85rem', fontWeight: 600 }}>✓ Guardado correctamente</span>
+          <span className="text-sm font-semibold text-green-600 dark:text-green-400">Guardado correctamente</span>
         )}
         {status === 'error' && (
-          <span style={{ color: '#c0392b', fontSize: '0.85rem', fontWeight: 600 }}>✕ Error — ¿Supabase conectado?</span>
+          <span className="text-sm font-semibold text-red-600 dark:text-red-400">Error: ¿Supabase conectado?</span>
         )}
       </div>
 
       {/* Nota Supabase */}
-      <div style={{ marginTop: 28, background: '#fdf8ee', border: '1px solid #e8d09a', borderRadius: 12, padding: '14px 18px' }}>
-        <p style={{ fontSize: '0.78rem', color: '#8a581e', lineHeight: 1.6 }}>
-          <strong>⚠️  ¿Los cambios no persisten?</strong> Necesitás conectar Supabase. Corré el siguiente SQL en el <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#b07420', fontWeight: 600 }}>SQL Editor de Supabase</a>:<br />
-          <code style={{ display: 'block', marginTop: 8, background: '#1C1208', color: '#f2e4c0', padding: '10px 14px', borderRadius: 8, fontSize: '0.75rem', whiteSpace: 'pre' }}>{`create table if not exists site_config (
+      <div className="mt-7 rounded-xl border border-amber-200 bg-amber-50 px-[18px] py-3.5 dark:border-amber-900 dark:bg-amber-950/30">
+        <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+          <strong>¿Los cambios no persisten?</strong> Necesitás conectar Supabase. Corré el siguiente SQL en el <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="font-semibold underline">SQL Editor de Supabase</a>:<br />
+          <code className="mt-2 block whitespace-pre rounded-lg bg-zinc-900 px-3.5 py-2.5 text-xs text-amber-100">{`create table if not exists site_config (
   id integer primary key default 1,
   hero_titulo text,
   hero_subtitulo text,

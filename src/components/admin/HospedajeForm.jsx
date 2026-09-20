@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { subirImagen, subirVideoHospedaje, hospedajesApi } from '../../lib/supabase.js'
+import { IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 export const TIPOS = ['Hotel', 'Posada', 'Departamento']
 export const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
@@ -86,7 +87,7 @@ export default function HospedajeForm({ form, setForm, error }) {
         ) : (
           <button type="button" onClick={() => fileRef.current?.click()} disabled={subiendoImg}
             className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50">
-            {subiendoImg ? '⏳ Subiendo...' : '📷 Subir foto principal'}
+            {subiendoImg ? 'Subiendo...' : 'Subir foto principal'}
           </button>
         )}
       </div>
@@ -108,7 +109,7 @@ export default function HospedajeForm({ form, setForm, error }) {
         )}
         <button type="button" onClick={() => galeriaFileRef.current?.click()} disabled={subiendoGaleria}
           className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium disabled:opacity-50">
-          {subiendoGaleria ? '⏳ Subiendo...' : '+ Agregar fotos'}
+          {subiendoGaleria ? 'Subiendo...' : '+ Agregar fotos'}
         </button>
       </div>
 
@@ -125,7 +126,7 @@ export default function HospedajeForm({ form, setForm, error }) {
         ) : (
           <button type="button" onClick={() => videoFileRef.current?.click()} disabled={subiendoVideo}
             className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50">
-            {subiendoVideo ? '⏳ Subiendo...' : '🎬 Subir video'}
+            {subiendoVideo ? 'Subiendo...' : 'Subir video'}
           </button>
         )}
       </div>
@@ -251,7 +252,7 @@ export default function HospedajeForm({ form, setForm, error }) {
       </div>
 
       <div className="border-t border-dashed border-gray-200 dark:border-zinc-700 pt-3 mt-1">
-        <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-2">🔒 Datos del propietario — uso interno, nunca se muestran en el sitio público</p>
+        <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-2"><IcTxt n="lock" />Datos del propietario — uso interno, nunca se muestran en el sitio público</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Nombre del dueño</label>

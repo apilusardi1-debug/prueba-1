@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi } from '../../lib/supabase.js'
+import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -364,9 +365,9 @@ export default function Finanzas() {
       {/* Tabs */}
       <div className="flex gap-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-1.5 w-fit">
         {[
-          { id: 'movimientos', label: '📋 Movimientos' },
-          { id: 'costos', label: '⚙️ Costos operativos' },
-          { id: 'mercadopago', label: '💳 Mercado Pago' },
+          { id: 'movimientos', label: 'Movimientos' },
+          { id: 'costos', label: 'Costos operativos' },
+          { id: 'mercadopago', label: 'Mercado Pago' },
         ].map(t => (
           <button
             key={t.id}
@@ -409,7 +410,7 @@ export default function Finanzas() {
             <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div>
           ) : movimientosFiltrados.length === 0 ? (
             <div className="text-center py-16 text-gray-400 dark:text-zinc-600">
-              <p className="text-4xl mb-3">💰</p>
+              <IcGrande n="wallet" />
               <p className="font-medium">No hay movimientos en este período.</p>
               <button onClick={() => { setForm(FORM_EMPTY); setModalMovimiento(true) }} className="mt-3 text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium underline">
                 Registrar el primero
@@ -629,7 +630,7 @@ export default function Finanzas() {
                     className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
                       form.estado === e ? 'bg-brand-600 dark:bg-brand-500 text-white border-brand-600 dark:border-brand-500' : 'border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
                     }`}>
-                    {e === 'confirmado' ? '✅ Confirmado' : '⏳ Pendiente'}
+                    {e === 'confirmado' ? 'Confirmado' : 'Pendiente'}
                   </button>
                 ))}
               </div>
@@ -772,7 +773,7 @@ function TabMercadoPago({ movimientos }) {
 
         {pagosMp.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-            <p className="text-3xl mb-2">💳</p>
+            <IcGrande n="card" />
             <p className="text-sm">Aún no hay pagos registrados via MP QR</p>
           </div>
         ) : (
@@ -1009,7 +1010,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
       <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
         {!excSeleccionada ? (
           <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-            <p className="text-3xl mb-2">⚙️</p>
+            <IcGrande n="gear" />
             <p className="text-sm">Seleccioná una excursión para ver sus costos</p>
           </div>
         ) : (

@@ -34,7 +34,7 @@ function formatoDuracion(seg) {
 }
 
 function formatoReales(v) {
-  return Number(v || 0).toLocaleString('es-AR', { style: 'currency', currency: 'BRL' })
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function formatoFecha(d) {

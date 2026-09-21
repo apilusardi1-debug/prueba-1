@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
 import { supabase, conversacionesApi } from '../../lib/supabase.js'
+import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
+import Ic from '../admin/dashboard/Ic.jsx'
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -211,6 +213,14 @@ function Sidebar() {
     return () => channel.unsubscribe()
   }, [])
 
+  // Cantidad de conversaciones sin leer en el título de la pestaña: se ve aunque
+  // el panel esté en segundo plano
+  useEffect(() => {
+    const sinNumero = () => document.title.replace(/^\(\d+\)\s*/, '')
+    document.title = pendientesWhatsapp > 0 ? `(${pendientesWhatsapp}) ${sinNumero()}` : sinNumero()
+    return () => { document.title = sinNumero() }
+  }, [pendientesWhatsapp])
+
   const rol = JSON.parse(localStorage.getItem('admin_session') || '{}').role
   const navVisible = NAV
     .map(item => {
@@ -397,7 +407,7 @@ function Sidebar() {
 }
 
 /* ─── Header ────────────────────────────────────────────────────── */
-function Header({ dark, setDark }) {
+function Header({ dark, setDark, avisos, puedeAvisos }) {
   const { toggleSidebar, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
 
@@ -441,6 +451,22 @@ function Header({ dark, setDark }) {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        {/* Avisos de mensajes nuevos del CRM (sonido y notificación) */}
+        {puedeAvisos && (
+          <button
+            onClick={avisos.alternar}
+            aria-pressed={avisos.activo}
+            title={avisos.activo ? 'Avisos de mensajes nuevos: activados. Clic para desactivarlos' : 'Activar avisos de mensajes nuevos (sonido y notificación)'}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${
+              avisos.activo
+                ? 'border-gray-300 bg-gray-100 text-gray-900 dark:border-zinc-600 dark:bg-white/[0.08] dark:text-white'
+                : 'border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <Ic n={avisos.activo ? 'bell' : 'bellOff'} className="h-4 w-4" />
+          </button>
+        )}
+
         {/* Toggle dark mode */}
         <button
           onClick={() => setDark(!dark)}
@@ -485,6 +511,9 @@ function Backdrop() {
 function LayoutContent() {
   const { isExpanded, isHovered } = useSidebar()
   const [dark, setDark] = useDarkMode()
+  const navigate = useNavigate()
+  const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
+  const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 admin-ui transition-colors">
@@ -493,7 +522,7 @@ function LayoutContent() {
       <div className={`transition-all duration-300 ease-in-out ${
         isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
       }`}>
-        <Header dark={dark} setDark={setDark} />
+        <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} />
         <main className="p-4 md:p-6 max-w-screen-2xl mx-auto">
           <Outlet />
         </main>

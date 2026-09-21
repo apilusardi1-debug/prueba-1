@@ -4,6 +4,7 @@ import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
+import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
@@ -345,6 +346,13 @@ export default function WhatsAppCRM() {
       .subscribe()
 
     return () => channel.unsubscribe()
+  }, [seleccionada?.id])
+
+  // Le avisa al sistema de avisos qué conversación se está mirando, para no
+  // notificar lo que ya se ve en pantalla
+  useEffect(() => {
+    setConversacionAbierta(seleccionada?.id || null)
+    return () => setConversacionAbierta(null)
   }, [seleccionada?.id])
 
   // Scroll al último mensaje

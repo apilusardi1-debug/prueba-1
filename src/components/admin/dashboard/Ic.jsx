@@ -37,6 +37,8 @@ const TRAZOS = {
   alert: <><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.4" /></>,
   dot: <circle cx="12" cy="12" r="2.2" />,
   checks: <path d="M2 12.5l4.5 4.5L15 8M10 15.5l1.5 1.5L22 7.5" />,
+  bell: <><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10 20a2 2 0 0 0 4 0" /></>,
+  bellOff: <><path d="M8.5 5.2A6 6 0 0 1 18 9c0 3 .7 4.9 1.5 6M6 9c0 6-2.5 7.5-2.5 7.5H15" /><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16" /></>,
 }
 
 export default function Ic({ n, className = 'w-[18px] h-[18px]' }) {

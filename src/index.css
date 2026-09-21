@@ -107,6 +107,16 @@
   }
 }
 
+/* Cartel de aviso de mensaje nuevo: entra desde la derecha */
+@keyframes aviso-cartel-entra {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+.aviso-cartel { animation: aviso-cartel-entra 0.28s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .aviso-cartel { animation: none; }
+}
+
 /* Fondo del chat de WhatsApp: beige punteado en claro, casi negro en oscuro */
 .chat-fondo {
   background-color: #f0ebe3;

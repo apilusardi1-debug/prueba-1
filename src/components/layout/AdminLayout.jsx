@@ -5,6 +5,7 @@ import { tieneAcceso } from '../../lib/roles.js'
 import { supabase, conversacionesApi } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
 import MenuAvisos from './MenuAvisos.jsx'
+import AvisosCarteles from './AvisosCarteles.jsx'
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -501,11 +502,16 @@ function LayoutContent() {
   const navigate = useNavigate()
   const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
   const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
+  const abrirCartel = c => {
+    navigate(`/admin/crm/whatsapp?phone=${c.whatsapp}`)
+    avisos.cerrarCartel(c.id)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 admin-ui transition-colors">
       <Sidebar />
       <Backdrop />
+      {puedeAvisos && <AvisosCarteles carteles={avisos.carteles} alCerrar={avisos.cerrarCartel} alAbrir={abrirCartel} />}
       <div className={`transition-all duration-300 ease-in-out ${
         isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
       }`}>

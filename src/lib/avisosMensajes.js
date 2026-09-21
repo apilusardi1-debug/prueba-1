@@ -1,5 +1,6 @@
-// Avisos de mensaje nuevo del CRM: sonido y notificación del navegador. Se
-// engancha desde el layout del panel, así funciona en cualquier pantalla.
+// Avisos de mensaje nuevo del CRM: sonido, cartel dentro de la página y, si la
+// persona está en otra ventana, notificación del navegador y título parpadeando.
+// Se engancha desde el layout del panel, así funciona en cualquier pantalla.
 // Solo avisa mientras el panel esté abierto en alguna pestaña.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, conversacionesApi, usuariosAdminApi } from './supabase.js'
@@ -64,6 +65,32 @@ function tienePestanaEnfoque() {
   return document.visibilityState === 'visible' && document.hasFocus()
 }
 
+// Con el panel en otra ventana o pestaña, el título de la pestaña parpadea con el
+// aviso hasta que la persona vuelve. Sirve aunque el sistema bloquee las
+// notificaciones.
+let parpadeo = null
+function detenerParpadeo() {
+  if (!parpadeo) return
+  clearInterval(parpadeo.intervalo)
+  window.removeEventListener('focus', parpadeo.alVolver)
+  document.removeEventListener('visibilitychange', parpadeo.alVolver)
+  document.title = parpadeo.tituloOriginal
+  parpadeo = null
+}
+function parpadearTitulo(texto) {
+  detenerParpadeo()
+  const tituloOriginal = document.title
+  let alterna = false
+  const intervalo = setInterval(() => {
+    alterna = !alterna
+    document.title = alterna ? texto : tituloOriginal
+  }, 1000)
+  const alVolver = () => { if (tienePestanaEnfoque()) detenerParpadeo() }
+  window.addEventListener('focus', alVolver)
+  document.addEventListener('visibilitychange', alVolver)
+  parpadeo = { intervalo, alVolver, tituloOriginal }
+}
+
 // Qué está listo y qué no en este navegador, para mostrarlo en el panel de la
 // campana. Sonido "pendiente" = el navegador lo bloquea hasta el primer clic o
 // tecla en la página.
@@ -97,6 +124,20 @@ export function useAvisosMensajes({ habilitado, navigate }) {
   const [configurado, setConfigurado] = useState(leerConfigurado)
   const [, setVersion] = useState(0)
   const refrescar = useCallback(() => setVersion(v => v + 1), [])
+  // Carteles dentro de la página: se ven aunque el sistema bloquee las notificaciones
+  const [carteles, setCarteles] = useState([])
+  const cerrarCartel = useCallback(id => setCarteles(prev => prev.filter(c => c.id !== id)), [])
+  const mostrarCartel = useCallback((aviso, conv) => {
+    const nuevo = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      convId: conv.id,
+      whatsapp: conv.whatsapp || null,
+      titulo: aviso.titulo,
+      cuerpo: aviso.cuerpo,
+    }
+    // Un mensaje nuevo de la misma conversación reemplaza a su cartel; el más nuevo va arriba
+    setCarteles(prev => [nuevo, ...prev.filter(c => c.convId !== conv.id)].slice(0, 4))
+  }, [])
   const yoId = useRef(null)
   const conversaciones = useRef(new Map())
   const ultimoSonido = useRef(0)
@@ -128,8 +169,9 @@ export function useAvisosMensajes({ habilitado, navigate }) {
     })
 
     function avisar(aviso, conv) {
+      const enfocado = tienePestanaEnfoque()
       // Lo que se está mirando en este momento no hace falta avisarlo
-      if (conversacionAbierta === conv.id && tienePestanaEnfoque()) return
+      if (conversacionAbierta === conv.id && enfocado) return
 
       const ahora = Date.now()
       if (ahora - ultimoSonido.current > 1500) { // varios mensajes seguidos: un solo sonido
@@ -137,14 +179,17 @@ export function useAvisosMensajes({ habilitado, navigate }) {
         sonar()
       }
 
-      // La notificación del sistema es para cuando no se está mirando el chat
-      const viendoElCRM = window.location.pathname.startsWith(RUTA_CRM) && tienePestanaEnfoque()
-      if (viendoElCRM) return
-      mostrarNotificacion({
-        ...aviso,
-        tag: `crm-${conv.id}`,
-        alHacerClic: () => irA.current?.(`${RUTA_CRM}?phone=${conv.whatsapp}`),
-      })
+      mostrarCartel(aviso, conv)
+
+      // Si la persona está en otra ventana: notificación del sistema y título parpadeando
+      if (!enfocado) {
+        mostrarNotificacion({
+          ...aviso,
+          tag: `crm-${conv.id}`,
+          alHacerClic: () => irA.current?.(`${RUTA_CRM}?phone=${conv.whatsapp}`),
+        })
+        parpadearTitulo(aviso.titulo)
+      }
     }
 
     const canal = supabase
@@ -175,7 +220,7 @@ export function useAvisosMensajes({ habilitado, navigate }) {
       window.removeEventListener('pointerdown', destrabar)
       window.removeEventListener('keydown', destrabar)
     }
-  }, [habilitado, activo, refrescar])
+  }, [habilitado, activo, refrescar, mostrarCartel])
 
   // Activar pide el permiso de notificaciones (el navegador solo lo permite en
   // respuesta a un clic) y hace sonar un aviso para confirmar y destrabar el audio.
@@ -201,16 +246,18 @@ export function useAvisosMensajes({ habilitado, navigate }) {
     refrescar()
   }, [refrescar])
 
-  // Prueba a mano lo mismo que pasa cuando llega un mensaje
+  // Prueba a mano lo que pasa cuando llega un mensaje: sonido, cartel y
+  // notificación del sistema, para que se vea cuál de los tres funciona
   const probar = useCallback(() => {
     sonar()
+    mostrarCartel({ titulo: 'Aviso de prueba', cuerpo: 'Si ves este cartel y escuchaste el sonido, los avisos funcionan.' }, { id: 'prueba' })
     mostrarNotificacion({
       titulo: 'Aviso de prueba',
-      cuerpo: 'Si ves esto y escuchaste el sonido, los avisos funcionan.',
+      cuerpo: 'Si ves esta notificación, el sistema también las está mostrando.',
       tag: 'crm-prueba',
     })
     setTimeout(refrescar, 300)
-  }, [refrescar])
+  }, [mostrarCartel, refrescar])
 
-  return { activo, configurado, alternar, permitirNotificaciones, probar, refrescar }
+  return { activo, configurado, alternar, permitirNotificaciones, probar, refrescar, carteles, cerrarCartel }
 }

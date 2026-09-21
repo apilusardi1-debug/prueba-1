@@ -76,7 +76,7 @@ export default function MenuAvisos({ avisos }) {
             <div>
               <p className="text-sm font-bold text-gray-900 dark:text-white">Avisos de mensajes nuevos</p>
               <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
-                Suena y muestra una notificación cuando escribe alguien de tus conversaciones o llega una sin asignar. Solo avisa con el panel abierto.
+                Cuando escribe alguien de tus conversaciones o llega una sin asignar: suena y muestra un cartel en la página. Si estás en otra ventana, también hace parpadear la pestaña y muestra una notificación del navegador. Solo avisa con el panel abierto.
               </p>
             </div>
             <button
@@ -100,13 +100,20 @@ export default function MenuAvisos({ avisos }) {
                 <div>
                   <dt className="font-semibold text-gray-500 dark:text-zinc-400">Notificaciones del navegador</dt>
                   <dd className={`mt-0.5 font-medium ${notificaciones.clase}`}>{notificaciones.texto}</dd>
+                  {estado.notificaciones === 'activadas' && (
+                    <dd className="mt-1 text-[11px] leading-relaxed text-gray-400 dark:text-zinc-500">
+                      Si no las ves, puede que tu sistema las esté bloqueando (por ejemplo, el modo No molestar). El cartel dentro de la página funciona igual.
+                    </dd>
+                  )}
                   {estado.notificaciones === 'sin-permitir' && (
-                    <button
-                      onClick={avisos.permitirNotificaciones}
-                      className="mt-1.5 rounded-lg border border-gray-200 px-2.5 py-1 font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    >
-                      Permitir notificaciones
-                    </button>
+                    <dd>
+                      <button
+                        onClick={avisos.permitirNotificaciones}
+                        className="mt-1.5 rounded-lg border border-gray-200 px-2.5 py-1 font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        Permitir notificaciones
+                      </button>
+                    </dd>
                   )}
                 </div>
               </dl>

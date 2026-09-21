@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
@@ -134,6 +134,8 @@ export default function WhatsAppCRM() {
   const [modalReserva, setModalReserva] = useState(false)
   const [convirtiendoCliente, setConvirtiendoCliente] = useState(false)
   const [marcandoAtendida, setMarcandoAtendida] = useState(false)
+  const [cambiandoAsistente, setCambiandoAsistente] = useState(false)
+  const [botGeneral, setBotGeneral] = useState(null) // null = sin saber, false = apagado para todos los chats
   // Cantidad de adultos, de menores y sus edades, leídas de lo que escribió el contacto
   const datosViaje = useMemo(
     () => extraerDatosViaje(mensajes.filter(m => m.direccion === 'entrante' && m.texto).map(m => m.texto)),
@@ -271,6 +273,13 @@ export default function WhatsAppCRM() {
       .subscribe()
 
     return () => channel.unsubscribe()
+  }, [])
+
+  // ¿Está apagado el asistente para todos los chats? Entonces el interruptor de cada chat no aplica.
+  useEffect(() => {
+    botApi.getConfig()?.then(({ data }) => {
+      if (data) setBotGeneral(!!data.activo)
+    })
   }, [])
 
   // Auto-seleccionar conversación si viene ?phone= desde Leads
@@ -619,6 +628,28 @@ export default function WhatsAppCRM() {
     (!convActual.ultimo_mensaje_at || new Date(convActual.atendida_at) >= new Date(convActual.ultimo_mensaje_at))
   const atendidaPor = convActual?.atendida_por ? usuarios.find(u => u.id === convActual.atendida_por)?.nombre : null
 
+  // Asistente automático en este chat: viene prendido y se pausa a mano. El
+  // interruptor solo se muestra si la base ya tiene la columna (migración corrida).
+  const botDisponible = !!convActual && 'bot_pausado' in convActual
+  const asistentePausado = !!convActual?.bot_pausado
+
+  // Es un interruptor aparte de bot_estado (por dónde iba la conversación):
+  // pausar y reactivar no lo toca, al reactivar sigue donde estaba.
+  async function alternarAsistente() {
+    if (!seleccionada || cambiandoAsistente) return
+    const id = seleccionada.id
+    const pausar = !asistentePausado
+    setCambiandoAsistente(true)
+    const { error } = await conversacionesApi.pausarAsistente(id, pausar)
+    setCambiandoAsistente(false)
+    if (error) {
+      alert('No se pudo cambiar el asistente de este chat. Probá de nuevo en un momento.')
+      return
+    }
+    setSeleccionada(prev => (prev && prev.id === id ? { ...prev, bot_pausado: pausar } : prev))
+    setConversaciones(prev => prev.map(c => c.id === id ? { ...c, bot_pausado: pausar } : c))
+  }
+
   // "Nueva propuesta": lleva el nombre y el WhatsApp del contacto y, si ya los dijo
   // en el chat, la cantidad de adultos, de menores y la edad de cada uno
   // (edades: 5,b,8 donde b es bebé)
@@ -769,7 +800,14 @@ export default function WhatsAppCRM() {
                         {conv.grupo}
                       </span>
                     )}
-                    {conv.bot_estado === 'esperando' && (
+                    {conv.bot_pausado ? (
+                      <span
+                        title="El asistente automático está pausado en este chat: solo responde el equipo"
+                        className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300"
+                      >
+                        Sin asistente
+                      </span>
+                    ) : conv.bot_estado === 'esperando' && (
                       <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
                         Asistente
                       </span>
@@ -836,6 +874,37 @@ export default function WhatsAppCRM() {
                   </button>
                 </span>
               )}
+              {/* Asistente automático en este chat: viene prendido y se pausa cuando solo debe responder el equipo */}
+              {botDisponible && (botGeneral === false ? (
+                <span
+                  title="El asistente está apagado para todos los chats. Se enciende en Configuración > Asistente."
+                  className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500"
+                >
+                  <Ic n="bot" className="h-3.5 w-3.5" />
+                  Asistente apagado
+                </span>
+              ) : (
+                <button
+                  role="switch"
+                  aria-checked={!asistentePausado}
+                  onClick={alternarAsistente}
+                  disabled={cambiandoAsistente}
+                  title={asistentePausado
+                    ? 'El asistente automático está pausado en este chat: solo responde el equipo. Tocá para volver a prenderlo.'
+                    : 'El asistente automático responde en este chat. Tocá para pausarlo y que solo responda el equipo.'}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                    asistentePausado
+                      ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50'
+                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  <Ic n="bot" className="h-3.5 w-3.5" />
+                  {asistentePausado ? 'Asistente pausado' : 'Asistente activo'}
+                  <span aria-hidden="true" className={`relative h-4 w-7 rounded-full transition-colors ${asistentePausado ? 'bg-amber-300 dark:bg-amber-700' : 'bg-green-500'}`}>
+                    <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${asistentePausado ? 'left-0.5' : 'left-3.5'}`} />
+                  </span>
+                </button>
+              ))}
               {/* Panel de cliente */}
               <button
                 onClick={() => setPanelCliente(v => !v)}

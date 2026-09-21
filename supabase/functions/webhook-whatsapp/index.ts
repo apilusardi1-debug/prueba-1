@@ -52,7 +52,8 @@ async function guardarMedia(supabase: ReturnType<typeof createClient>, mediaId: 
 // ── Asistente automático ─────────────────────────────────────────────────────
 // Saluda al primer mensaje de una conversación, pregunta Paquetes o Paseos y
 // asigna la conversación en turnos entre las personas de ese grupo (tabla
-// bot_reparto). Se apaga solo cuando alguien queda asignado o responde a mano.
+// bot_reparto). Se apaga solo cuando alguien queda asignado o responde a mano, y
+// se puede pausar en un chat puntual (conversaciones.bot_pausado).
 const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const NOMBRE_GRUPO: Record<string, string> = { paquetes: 'Paquetes', paseos: 'Paseos' }
 const TEXTO_REINTENTO = 'Para derivarte con la persona indicada, tocá una de estas opciones:'
@@ -200,9 +201,12 @@ async function ejecutarBot(supabase: ReturnType<typeof createClient>, convId: st
   const { data: cfg } = await supabase.from('bot_config').select('*').eq('id', 1).maybeSingle()
   if (!cfg?.activo) return
 
+  // select('*'): así funciona igual antes y después de correr la migración de bot_pausado
   const { data: conv } = await supabase
-    .from('conversaciones').select('id, asignado_a, bot_estado, bot_intentos').eq('id', convId).maybeSingle()
+    .from('conversaciones').select('*').eq('id', convId).maybeSingle()
   if (!conv || conv.asignado_a) return
+  // Chat pausado a mano desde el CRM: solo responde el equipo (ni saluda ni deriva)
+  if (conv.bot_pausado) return
   if (['derivado', 'sin_asignar', 'humano'].includes(conv.bot_estado)) return
 
   const esperando = conv.bot_estado === 'esperando'

@@ -18,14 +18,15 @@ export function recortar(texto, max = 110) {
 //  - Conversación asignada a mí: me avisa a mí y a nadie más.
 //  - Sin asignar: avisa a todos, salvo mientras el asistente automático espera
 //    que el contacto elija Paquetes o Paseos (ahí todavía no le toca a nadie:
-//    cuando lo derive, avisa a quien corresponda).
+//    cuando lo derive, avisa a quien corresponda). Si el asistente está pausado
+//    en ese chat nadie lo está atendiendo, así que sí avisa.
 export function avisoPorMensaje(conv, texto, yoId) {
   if (!conv) return null
   const nombre = nombreDe(conv)
   if (conv.asignado_a) {
     return yoId && conv.asignado_a === yoId ? { titulo: `Mensaje de ${nombre}`, cuerpo: texto } : null
   }
-  if (conv.bot_estado === 'esperando') return null
+  if (conv.bot_estado === 'esperando' && !conv.bot_pausado) return null
   return { titulo: `Sin asignar: ${nombre}`, cuerpo: texto }
 }
 

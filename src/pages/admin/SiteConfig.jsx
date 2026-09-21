@@ -596,7 +596,7 @@ function TabAsistente() {
         <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Asistente automático</h2>
         <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">
           Al primer mensaje de un contacto nuevo pregunta si busca Paquetes o Paseos y le asigna la conversación a alguien de ese grupo, en turnos.
-          Deja de intervenir apenas una persona responde a mano.
+          Deja de intervenir apenas una persona responde a mano. En un chat puntual se puede pausar con el interruptor «Asistente» del encabezado de la conversación.
         </p>
       </div>
 

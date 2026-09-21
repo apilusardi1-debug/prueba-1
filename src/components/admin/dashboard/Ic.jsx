@@ -45,6 +45,7 @@ const TRAZOS = {
   trash: <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />,
   bolt: <path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" />,
   bellOff: <><path d="M8.5 5.2A6 6 0 0 1 18 9c0 3 .7 4.9 1.5 6M6 9c0 6-2.5 7.5-2.5 7.5H15" /><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16" /></>,
+  bot: <><rect x="4.5" y="8" width="15" height="11" rx="3" /><path d="M12 8V5M12 4.5h.01M9 13h.01M15 13h.01M2.5 12.5v3M21.5 12.5v3" /></>,
 }
 
 export default function Ic({ n, className = 'w-[18px] h-[18px]' }) {

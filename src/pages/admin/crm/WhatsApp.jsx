@@ -130,6 +130,7 @@ export default function WhatsAppCRM() {
   const [excursiones, setExcursiones] = useState([])
   const [modalReserva, setModalReserva] = useState(false)
   const [convirtiendoCliente, setConvirtiendoCliente] = useState(false)
+  const [marcandoAtendida, setMarcandoAtendida] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
@@ -146,13 +147,16 @@ export default function WhatsAppCRM() {
 
   // Qué conversaciones esperan respuesta humana. Se recalcula cuando cambia la
   // actividad de la lista y cada minuto (el reloj `ahora` ya corre por minuto).
-  const claveActividad = conversaciones.map(c => `${c.id}:${c.ultimo_mensaje_at}`).join('|')
-  useEffect(() => {
+  const claveActividad = conversaciones.map(c => `${c.id}:${c.ultimo_mensaje_at}:${c.atendida_at}`).join('|')
+  function cargarEspera() {
     conversacionesApi.sinResponder()?.then(({ data }) => {
       const mapa = {}
       for (const fila of data || []) mapa[fila.conversacion_id] = fila.desde
       setEsperandoDesde(mapa)
     })
+  }
+  useEffect(() => {
+    cargarEspera()
   }, [claveActividad, Math.floor(ahora / 60000)])
 
   // Vista previa de la imagen adjunta (se libera la URL al quitarla)
@@ -393,6 +397,38 @@ export default function WhatsAppCRM() {
     setAsignando(false)
   }
 
+  // Cierra la espera de esta conversación sin mandar nada (un "gracias" final,
+  // algo resuelto por teléfono...). Si el contacto vuelve a escribir, se reabre sola.
+  async function marcarAtendida() {
+    if (!seleccionada || marcandoAtendida) return
+    setMarcandoAtendida(true)
+    const { data: cuando, error } = await conversacionesApi.marcarAtendida(seleccionada.id, miUsuarioId)
+    setMarcandoAtendida(false)
+    if (error || !cuando) {
+      alert('No se pudo marcar como atendida. Probá de nuevo en un momento.')
+      return
+    }
+    const cambios = { atendida_at: cuando, atendida_por: miUsuarioId || null }
+    setSeleccionada(prev => (prev && prev.id === seleccionada.id ? { ...prev, ...cambios } : prev))
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, ...cambios } : c))
+    limpiarEspera(seleccionada.id)
+  }
+
+  async function deshacerAtendida() {
+    if (!seleccionada || marcandoAtendida) return
+    setMarcandoAtendida(true)
+    const { error } = await conversacionesApi.desmarcarAtendida(seleccionada.id)
+    setMarcandoAtendida(false)
+    if (error) {
+      alert('No se pudo deshacer. Probá de nuevo en un momento.')
+      return
+    }
+    const cambios = { atendida_at: null, atendida_por: null }
+    setSeleccionada(prev => (prev && prev.id === seleccionada.id ? { ...prev, ...cambios } : prev))
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, ...cambios } : c))
+    cargarEspera()
+  }
+
   async function asignarEtiqueta(etiquetaId) {
     if (!seleccionada || etiquetando) return
     setMenuEtiqueta(false)
@@ -559,6 +595,14 @@ export default function WhatsAppCRM() {
   const ultimoEntrante = [...mensajes].reverse().find(m => m.direccion === 'entrante')
   const ventanaCerrada = mensajes.length > 0 &&
     (!ultimoEntrante || ahora - new Date(ultimoEntrante.created_at).getTime() > VENTANA_MS)
+
+  // "Atendida" sigue vigente hasta que llegue cualquier mensaje posterior
+  // (del contacto o de una persona del equipo). Se lee de la lista y no de
+  // `seleccionada`, que es una copia que no se actualiza sola.
+  const convActual = seleccionada ? (conversaciones.find(c => c.id === seleccionada.id) || seleccionada) : null
+  const atendidaVigente = !!convActual?.atendida_at &&
+    (!convActual.ultimo_mensaje_at || new Date(convActual.atendida_at) >= new Date(convActual.ultimo_mensaje_at))
+  const atendidaPor = convActual?.atendida_por ? usuarios.find(u => u.id === convActual.atendida_por)?.nombre : null
 
   function limpiarEspera(convId) {
     setEsperandoDesde(prev => {
@@ -738,7 +782,31 @@ export default function WhatsAppCRM() {
               <p className="font-semibold text-gray-900 dark:text-zinc-100">{seleccionada.contacto_nombre}</p>
               <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+              {/* Marcar como atendida: quita la conversación de "sin responder" sin enviar nada */}
+              {esperandoDesde[seleccionada.id] ? (
+                <button
+                  onClick={marcarAtendida}
+                  disabled={marcandoAtendida}
+                  title="Quita esta conversación de «sin responder» sin enviar ningún mensaje. Si el contacto vuelve a escribir, se reabre sola."
+                  className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  <Ic n="checkcircle" className="h-3.5 w-3.5" />
+                  {marcandoAtendida ? 'Guardando...' : 'Marcar como atendida'}
+                </button>
+              ) : atendidaVigente && (
+                <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                  <Ic n="checkcircle" className="h-3.5 w-3.5" />
+                  {atendidaPor ? `Atendida por ${atendidaPor}` : 'Atendida'}
+                  <button
+                    onClick={deshacerAtendida}
+                    disabled={marcandoAtendida}
+                    className="ml-1 underline decoration-green-700/40 hover:decoration-current disabled:opacity-50"
+                  >
+                    Deshacer
+                  </button>
+                </span>
+              )}
               {/* Panel de cliente */}
               <button
                 onClick={() => setPanelCliente(v => !v)}

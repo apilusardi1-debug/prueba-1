@@ -271,6 +271,10 @@ export const conversacionesApi = {
   asignar: (id, usuarioId) => supabase?.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', id),
   // Conversaciones esperando respuesta humana y desde cuándo (filas { conversacion_id, desde })
   sinResponder: () => supabase?.rpc('crm_sin_responder'),
+  // "Marcar como atendida": cierra la espera sin mandar mensaje. La hora la pone
+  // el servidor y la función la devuelve (data = atendida_at).
+  marcarAtendida: (id, usuarioId) => supabase?.rpc('crm_marcar_atendida', { p_conversacion: id, p_usuario: usuarioId || null }),
+  desmarcarAtendida: (id) => supabase?.from('conversaciones').update({ atendida_at: null, atendida_por: null }).eq('id', id),
 }
 
 // ── Mensajes ───────────────────────────────────────────────────────────────────

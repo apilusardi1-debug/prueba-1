@@ -474,6 +474,26 @@ export default function GeneradorPropuesta() {
     }
   }, [clientes])
 
+  // También trae lo que el contacto ya dijo en el chat: ?adultos=&menores=&edades=
+  // (edades separadas por coma; b = bebé, por ejemplo edades=5,b,8). El CRM lo
+  // arma leyendo sus mensajes; acá solo se vuelca en el formulario.
+  useEffect(() => {
+    const entero = clave => {
+      const n = parseInt(searchParams.get(clave), 10)
+      return Number.isFinite(n) && n >= 0 ? n : null
+    }
+    const edades = String(searchParams.get('edades') || '').split(',').map(s => s.trim()).filter(Boolean)
+      .map(s => (s === 'b' ? 'b' : parseInt(s, 10))).filter(e => e === 'b' || Number.isFinite(e))
+    const adultos = entero('adultos')
+    const menores = entero('menores') ?? (edades.length ? edades.length : null)
+    if (adultos !== null) setCantidadAdultos(String(adultos))
+    if (menores !== null) setCantidadMenores(String(menores))
+    if (edades.length) {
+      setEdadesMenores(edades.map(e => (e === 'b' ? '' : String(e))))
+      setBebesMenores(edades.map(e => e === 'b'))
+    }
+  }, [])
+
   // En combinada el traslado se carga por tramo en Destinos (destinos[].valor_agencia_traslado/
   // valor_cliente_traslado) — el de cada vuelo queda desactivado para no duplicar el dato.
   useEffect(() => {

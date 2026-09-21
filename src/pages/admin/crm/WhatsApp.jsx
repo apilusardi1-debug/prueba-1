@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
+import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
+import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp } from '../../../lib/supabase.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
@@ -132,6 +134,11 @@ export default function WhatsAppCRM() {
   const [modalReserva, setModalReserva] = useState(false)
   const [convirtiendoCliente, setConvirtiendoCliente] = useState(false)
   const [marcandoAtendida, setMarcandoAtendida] = useState(false)
+  // Cantidad de adultos, de menores y sus edades, leídas de lo que escribió el contacto
+  const datosViaje = useMemo(
+    () => extraerDatosViaje(mensajes.filter(m => m.direccion === 'entrante' && m.texto).map(m => m.texto)),
+    [mensajes],
+  )
   const [searchParams, setSearchParams] = useSearchParams()
   const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
@@ -612,6 +619,20 @@ export default function WhatsAppCRM() {
     (!convActual.ultimo_mensaje_at || new Date(convActual.atendida_at) >= new Date(convActual.ultimo_mensaje_at))
   const atendidaPor = convActual?.atendida_por ? usuarios.find(u => u.id === convActual.atendida_por)?.nombre : null
 
+  // "Nueva propuesta": lleva el nombre y el WhatsApp del contacto y, si ya los dijo
+  // en el chat, la cantidad de adultos, de menores y la edad de cada uno
+  // (edades: 5,b,8 donde b es bebé)
+  function urlNuevaPropuesta() {
+    const q = new URLSearchParams()
+    q.set('nombre', datosViaje.nombre || seleccionada.contacto_nombre || '')
+    q.set('whatsapp', seleccionada.whatsapp)
+    if (clienteVinculado) q.set('cliente', clienteVinculado.id)
+    if (datosViaje.adultos !== null) q.set('adultos', String(datosViaje.adultos))
+    if (datosViaje.menores !== null) q.set('menores', String(datosViaje.menores))
+    if (datosViaje.edadesMenores.length) q.set('edades', edadesATexto(datosViaje.edadesMenores))
+    return `/admin/paquetes/generador?${q.toString()}`
+  }
+
   function limpiarEspera(convId) {
     setEsperandoDesde(prev => {
       if (!prev[convId]) return prev
@@ -1081,6 +1102,7 @@ export default function WhatsAppCRM() {
             <p className="font-semibold text-gray-900 dark:text-zinc-100">Ficha del contacto</p>
           </div>
           <div className="p-5 space-y-5">
+            <DatosDeLaConversacion datos={datosViaje} />
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setModalReserva(true)}
@@ -1089,7 +1111,7 @@ export default function WhatsAppCRM() {
                 + Nueva reserva
               </button>
               <button
-                onClick={() => navigate(`/admin/paquetes/generador?nombre=${encodeURIComponent(seleccionada.contacto_nombre || '')}&whatsapp=${seleccionada.whatsapp}${clienteVinculado ? `&cliente=${clienteVinculado.id}` : ''}`)}
+                onClick={() => navigate(urlNuevaPropuesta())}
                 className="w-full border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 text-sm font-semibold py-2.5 rounded-xl transition-colors"
               >
                 + Nueva propuesta
@@ -1171,9 +1193,11 @@ export default function WhatsAppCRM() {
           onGuardar={crearReservaDesdeChat}
           onCerrar={() => setModalReserva(false)}
           valoresIniciales={{
-            cliente_nombre: clienteVinculado?.nombre || seleccionada.contacto_nombre || '',
+            cliente_nombre: clienteVinculado?.nombre || datosViaje.nombre || seleccionada.contacto_nombre || '',
             cliente_whatsapp: seleccionada.whatsapp || '',
             cliente_id: clienteVinculado?.id || null,
+            ...(datosViaje.adultos !== null ? { adultos: datosViaje.adultos } : {}),
+            ...(datosViaje.menores !== null ? { menores: datosViaje.menores } : {}),
           }}
         />
       )}

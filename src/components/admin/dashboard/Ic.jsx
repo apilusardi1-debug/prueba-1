@@ -43,6 +43,7 @@ const TRAZOS = {
   search: <><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   trash: <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />,
+  bolt: <path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" />,
   bellOff: <><path d="M8.5 5.2A6 6 0 0 1 18 9c0 3 .7 4.9 1.5 6M6 9c0 6-2.5 7.5-2.5 7.5H15" /><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16" /></>,
 }
 

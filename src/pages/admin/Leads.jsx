@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { leadsApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
+import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa } from '../../lib/embudo.js'
+import AutomatizacionesEmbudo from '../../components/leads/AutomatizacionesEmbudo.jsx'
 
 function hoyISO() { return new Date().toISOString().split('T')[0] }
 
@@ -156,6 +157,8 @@ export default function Leads() {
   const [rapido, setRapido] = useState({ nombre: '', whatsapp: '' })
   const [guardandoRapido, setGuardandoRapido] = useState(false)
   const [verMas, setVerMas] = useState({}) // clave de etapa -> tarjetas visibles
+  const [usuarios, setUsuarios] = useState([])
+  const [panelAuto, setPanelAuto] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -171,6 +174,24 @@ export default function Leads() {
     }
     cargar()
   }, [])
+
+  // Personas del panel: para mostrar el responsable de cada lead
+  useEffect(() => {
+    usuariosAdminApi.getAll().then(({ ok, usuarios: lista }) => { if (ok) setUsuarios(lista || []) })
+  }, [])
+
+  // Las automatizaciones del embudo se cumplen en la base cuando el lead entra a
+  // una etapa (recordatorios creados, responsable asignado): se relee el lead y
+  // los recordatorios para verlo al instante. Solo si la migración ya está.
+  async function refrescarLead(id) {
+    if (!(leads[0] && 'responsable_id' in leads[0])) return
+    const [{ data: lead }, { data: recs }] = await Promise.all([leadsApi.getById(id), recordatoriosApi.getPendientes()])
+    if (lead) {
+      setLeads(prev => prev.map(l => l.id === id ? lead : l))
+      setSeleccionado(prev => (prev && prev.id === id ? lead : prev))
+    }
+    if (recs) setRecordatorios(recs)
+  }
 
   function recordatoriosDeLead(leadId) {
     return recordatorios.filter(r => r.lead_id === leadId).sort((a, b) => a.fecha.localeCompare(b.fecha))
@@ -216,6 +237,7 @@ export default function Leads() {
   async function cambiarEstado(id, nuevoEstado) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
     await leadsApi.updateEstado(id, nuevoEstado, null)
+    refrescarLead(id)
   }
 
   function soltarEnColumna(e, col) {
@@ -246,6 +268,7 @@ export default function Leads() {
     if (!error && data) {
       setLeads(prev => [data, ...prev])
       cerrarRapido()
+      refrescarLead(data.id)
     } else {
       alert('No se pudo guardar el lead. Revisá la conexión.')
     }
@@ -279,6 +302,7 @@ export default function Leads() {
     })
     if (!error && data) {
       setLeads(prev => [data, ...prev])
+      refrescarLead(data.id)
       setMostrarFormLead(false)
       setFormLead(FORM_VACIO)
     } else {
@@ -302,6 +326,7 @@ export default function Leads() {
       notas: lead.notas || '',
       valor: lead.valor ?? 0,
       etiquetas: lead.etiquetas || [],
+      responsable_id: lead.responsable_id || '',
     })
   }
 
@@ -309,10 +334,11 @@ export default function Leads() {
     if (!editForm.nombre.trim()) return
     setGuardandoLead(true)
     // valor y etiquetas solo se mandan si la base ya tiene esas columnas
-    const { valor, etiquetas, ...basicos } = editForm
+    const { valor, etiquetas, responsable_id, ...basicos } = editForm
     const extras = 'valor' in seleccionado
       ? { valor: Math.max(0, Number(String(valor).replace(',', '.')) || 0), etiquetas }
       : {}
+    if ('responsable_id' in seleccionado) extras.responsable_id = responsable_id || null
     const { data } = await leadsApi.update(seleccionado.id, {
       ...basicos,
       ...extras,
@@ -322,6 +348,7 @@ export default function Leads() {
     if (data) {
       setLeads(prev => prev.map(l => l.id === data.id ? data : l))
       setSeleccionado(data)
+      if (data.estado !== seleccionado.estado) refrescarLead(data.id)
     }
     setGuardandoLead(false)
   }
@@ -362,13 +389,16 @@ export default function Leads() {
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando leads...</div>
 
+  const nombreUsuario = id => (id ? usuarios.find(u => u.id === id)?.nombre || '' : '')
+  const autoDisponibles = leads.length > 0 && 'responsable_id' in leads[0]
+
   // Etapas a mostrar y leads que pasan el filtro. "Activos" oculta las perdidas.
   const etapasVisibles = etapas.filter(e => !soloActivos || e.tipo !== 'perdida')
   const textoBusqueda = busqueda.trim().toLowerCase()
   const visibles = leads.filter(l => {
     if (soloActivos && etapaDe(etapas, claveVisible(etapas, l.estado))?.tipo === 'perdida') return false
     if (!textoBusqueda) return true
-    return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l), (l.etiquetas || []).join(' ')].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
+    return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l), (l.etiquetas || []).join(' '), nombreUsuario(l.responsable_id)].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
   })
   const totalValor = visibles.reduce((t, l) => t + (Number(l.valor) || 0), 0)
   // Las columnas nuevas (valor, etiquetas) existen recién cuando se aplicó la migración
@@ -424,8 +454,16 @@ export default function Leads() {
         </div>
 
         <button
+          onClick={() => setPanelAuto(true)}
+          title="Acciones que el sistema hace solo cuando un lead entra a una etapa"
+          className="ml-auto flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        >
+          <Ic n="bolt" className="h-4 w-4" />Automatizar
+        </button>
+
+        <button
           onClick={() => setMostrarFormLead(true)}
-          className="ml-auto flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
           <Ic n="plus" className="h-4 w-4" />Nuevo lead
         </button>
@@ -555,6 +593,14 @@ export default function Leads() {
                             </span>
                           )}
                           {seguimiento && <span title={seguimiento.texto} className={`h-2 w-2 shrink-0 rounded-full ${seguimiento.color}`} />}
+                          {nombreUsuario(lead.responsable_id) && (
+                            <span
+                              title={`Responsable: ${nombreUsuario(lead.responsable_id)}`}
+                              className="grid h-[18px] w-[18px] shrink-0 place-content-center rounded-full bg-gray-200 text-[10px] font-extrabold text-gray-700 dark:bg-white/15 dark:text-zinc-100"
+                            >
+                              {nombreUsuario(lead.responsable_id)[0].toUpperCase()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     )
@@ -752,6 +798,21 @@ export default function Leads() {
                 </>
               )}
 
+              {autoDisponibles && (
+                <div>
+                  <label htmlFor="responsable-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Responsable</label>
+                  <select
+                    id="responsable-lead"
+                    value={editForm.responsable_id}
+                    onChange={e => setEditForm(p => ({ ...p, responsable_id: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                  >
+                    <option value="">Sin responsable</option>
+                    {usuarios.filter(u => u.activo !== false).map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etapa del embudo</label>
                 <select
@@ -879,6 +940,8 @@ export default function Leads() {
           </div>
         </div>
       )}
+
+      {panelAuto && <AutomatizacionesEmbudo etapas={etapas} usuarios={usuarios} alCerrar={() => setPanelAuto(false)} />}
     </div>
   )
 }

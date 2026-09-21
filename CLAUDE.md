@@ -48,7 +48,7 @@ git push origin main   # Vercel despliega automáticamente
 - `mp-qr` — genera QR de Mercado Pago
 - `mp-webhook` — recibe notificaciones de pago de Mercado Pago
 - `sync-whatsapp`, `whatsapp-status`, `health-check` — heredadas de WuzAPI (desconectado)
-- Código compartido entre funciones y frontend: `supabase/functions/_shared/` (detección de interés, estados de entrega)
+- Código compartido entre funciones y frontend: `supabase/functions/_shared/` (detección de interés, estados de entrega, etiquetas del asistente)
 
 ### Secrets en Supabase
 - `META_CRM_WHATSAPP_TOKEN`, `META_CRM_PHONE_NUMBER_ID`, `META_CRM_REGISTRATION_PIN`, `META_VERIFY_TOKEN` — Meta Cloud API, número del CRM y webhook
@@ -125,6 +125,6 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - [ ] CRM: tiempos de respuesta por persona y gasto real en el Dashboard (Meta informa el costo de cada mensaje en los avisos de estado)
 - [ ] Plan para migrar el número real de Kommo al CRM propio
 - [ ] Investigar cómo exportar los 5.832 leads de Kommo e importarlos al embudo (consultar con Florencia). Antes hay que paginar el listado de leads: la base entrega como máximo 1.000 filas por consulta
-- [ ] Embudo de Leads: falta el botón "Automatiza" y varios embudos, según lo que usen en Kommo
+- [ ] Embudo de Leads: falta saber si usan más de un embudo en Kommo y qué otras automatizaciones necesitan (hoy hay dos acciones por etapa: crear un recordatorio y asignar responsable; el envío de mensajes de WhatsApp espera lo de las plantillas)
 - [ ] Email de contacto real en `/privacidad`
 - [ ] Configurar Evolution API en VPS (alternativa a WuzAPI)

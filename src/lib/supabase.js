@@ -94,6 +94,7 @@ export const reservasApi = {
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export const leadsApi = {
   getAll: () => supabase?.from('leads').select('*').order('created_at', { ascending: false }),
+  getById: (id) => supabase?.from('leads').select('*').eq('id', id).single(),
   getByWhatsapp: (whatsapp) => supabase?.from('leads').select('id').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   // Sin notas (null/undefined) solo cambia el estado: antes se guardaba notas = null
@@ -104,6 +105,14 @@ export const leadsApi = {
 }
 
 // Etapas del embudo de ventas (Leads). leads.estado guarda la clave de la etapa.
+// Automatizaciones por etapa: se cumplen en la base cuando un lead entra a la etapa
+export const embudoAutoApi = {
+  getAll: () => supabase?.from('embudo_automatizaciones').select('*').order('created_at'),
+  create: (data) => supabase?.from('embudo_automatizaciones').insert(data).select().single(),
+  update: (id, data) => supabase?.from('embudo_automatizaciones').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('embudo_automatizaciones').delete().eq('id', id),
+}
+
 export const embudoApi = {
   getAll: () => supabase?.from('embudo_etapas').select('*').order('orden'),
   create: (data) => supabase?.from('embudo_etapas').insert(data).select().single(),

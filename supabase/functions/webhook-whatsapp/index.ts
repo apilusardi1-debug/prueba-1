@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { detectarInteres } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
+import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -166,6 +167,7 @@ async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto
   const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
   await guardarMensajeBot(supabase, convId, phone, texto, wamid)
   await supabase.from('conversaciones').update({ bot_estado: 'sin_asignar', ...(grupo ? { grupo } : {}) }).eq('id', convId)
+  await etiquetarLeadPorGrupo(supabase, phone, grupo)
 }
 
 // Elige a quien lleva más tiempo sin recibir una conversación del grupo.
@@ -189,6 +191,7 @@ async function derivar(supabase: ReturnType<typeof createClient>, mensaje: strin
     .replaceAll('{grupo}', NOMBRE_GRUPO[grupo])
   const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
   await guardarMensajeBot(supabase, convId, phone, texto, wamid)
+  await etiquetarLeadPorGrupo(supabase, phone, grupo)
   return true
 }
 

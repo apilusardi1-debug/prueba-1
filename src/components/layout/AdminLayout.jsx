@@ -156,7 +156,8 @@ const NAV = [
   {
     label: 'CRM', icon: Icon.CRM,
     sub: [
-      { path: '/admin/leads',        label: 'Leads',     icon: Icon.Leads },
+      { path: '/admin/leads',        label: 'Embudo de paquetes', icon: Icon.Leads, exact: true },
+      { path: '/admin/leads/paseos', label: 'Embudo de paseos',   icon: Icon.Leads },
       { path: '/admin/crm/whatsapp', label: 'WhatsApp',  icon: Icon.WhatsApp },
     ],
   },
@@ -419,7 +420,8 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
 
   function getTitle() {
     if (pathname === '/admin') return 'Dashboard'
-    if (pathname.startsWith('/admin/leads')) return 'Leads'
+    if (pathname.startsWith('/admin/leads/paseos')) return 'Embudo de paseos'
+    if (pathname.startsWith('/admin/leads')) return 'Embudo de paquetes'
     if (pathname.startsWith('/admin/clientes')) return 'Clientes'
     if (pathname.startsWith('/admin/crm/whatsapp')) return 'WhatsApp'
     if (pathname.startsWith('/admin/reservas')) return 'Reservas'

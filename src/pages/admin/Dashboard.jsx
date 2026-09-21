@@ -5,7 +5,7 @@ import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, pro
 import { formatPrecio } from '../../data/mockData.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
-import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa } from '../../lib/embudo.js'
+import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, clavesDeEntrada } from '../../lib/embudo.js'
 import {
   useMetricasCRM, Encabezado,
   TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
@@ -199,7 +199,8 @@ export default function Dashboard() {
     cargar()
   }, [])
 
-  const leadsNuevos = leads.filter(l => l.estado === 'nuevo').length
+  const entradas = clavesDeEntrada(etapas)
+  const leadsNuevos = leads.filter(l => entradas.includes(l.estado)).length
   const reservasPendientes = reservas.filter(r => r.estado === 'pendiente').length
 
   const ingresosTotales = movimientos

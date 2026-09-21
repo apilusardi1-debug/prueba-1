@@ -33,6 +33,7 @@ git push origin main   # Vercel despliega automáticamente
 | Equipo / Vendedores | `/admin/equipo` | ✅ Activo |
 | Finanzas + Mercado Pago | `/admin/finanzas` | ✅ Activo |
 | Hospedajes | `/admin/hospedajes` | ✅ Activo |
+| Embudo de paseos (Leads) | `/admin/leads/paseos` | Activo (el de paquetes es `/admin/leads`) |
 | CRM WhatsApp | `/admin/crm/whatsapp` | Activo, en pruebas con número propio |
 
 ## Supabase
@@ -125,6 +126,6 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - [ ] CRM: tiempos de respuesta por persona y gasto real en el Dashboard (Meta informa el costo de cada mensaje en los avisos de estado)
 - [ ] Plan para migrar el número real de Kommo al CRM propio
 - [ ] Investigar cómo exportar los 5.832 leads de Kommo e importarlos al embudo (consultar con Florencia). Antes hay que paginar el listado de leads: la base entrega como máximo 1.000 filas por consulta
-- [ ] Embudo de Leads: falta saber si usan más de un embudo en Kommo y qué otras automatizaciones necesitan (hoy hay dos acciones por etapa: crear un recordatorio y asignar responsable; el envío de mensajes de WhatsApp espera lo de las plantillas)
+- [ ] Embudos de Leads: hay dos, Paquetes y Paseos (como en Kommo). Falta decidir si los leads que el asistente deriva a Paseos entran directo al embudo de Paseos (hoy entran siempre a Paquetes) y qué otras automatizaciones necesitan (hoy hay dos acciones por etapa: crear un recordatorio y asignar responsable; el envío de mensajes de WhatsApp espera lo de las plantillas)
 - [ ] Email de contacto real en `/privacidad`
 - [ ] Configurar Evolution API en VPS (alternativa a WuzAPI)

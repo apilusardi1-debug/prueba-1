@@ -69,7 +69,8 @@ const router = createBrowserRouter([
     element: <ProtectedRoute><AdminLayout /></ProtectedRoute>,
     children: [
       { path: '/admin',               element: <Dashboard /> },
-      { path: '/admin/leads',         element: <Leads /> },
+      { path: '/admin/leads',         element: <Leads key="paquetes" embudo="paquetes" /> },
+      { path: '/admin/leads/paseos',  element: <Leads key="paseos" embudo="paseos" /> },
       { path: '/admin/clientes',      element: <Clientes /> },
       { path: '/admin/reservas',      element: <Reservas /> },
       { path: '/admin/excursiones',   element: <Excursiones /> },

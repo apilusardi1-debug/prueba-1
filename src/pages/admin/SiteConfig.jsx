@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
 import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi, botApi, embudoApi, supabase } from '../../lib/supabase.js'
 import { ROLES } from '../../lib/roles.js'
-import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA } from '../../lib/embudo.js'
+import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA, EMBUDOS, etapasDelEmbudo } from '../../lib/embudo.js'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
 
 const SECTION = {
@@ -751,6 +751,8 @@ function FilaEtapa({ etapa, indice, total, fija, cantidad, ocupado, alCambiar, a
 
 function TabEmbudo() {
   const { etapas, cargando, recargar } = useEtapas()
+  const [embudo, setEmbudo] = useState('paquetes')
+  const lista = etapasDelEmbudo(etapas, embudo)
   const [cantidades, setCantidades] = useState({})
   const [nueva, setNueva] = useState({ nombre: '', color: '#8b8fe8', tipo: 'abierta' })
   const [ocupado, setOcupado] = useState(false)
@@ -783,8 +785,8 @@ function TabEmbudo() {
   const cambiar = (clave, cambios) => ejecutar(() => embudoApi.update(clave, cambios))
 
   function mover(indice, delta) {
-    const a = etapas[indice]
-    const b = etapas[indice + delta]
+    const a = lista[indice]
+    const b = lista[indice + delta]
     if (!a || !b) return
     ejecutar(async () => {
       await embudoApi.update(a.clave, { orden: b.orden })
@@ -804,22 +806,23 @@ function TabEmbudo() {
   function agregar() {
     const nombre = nueva.nombre.trim()
     if (!nombre) return
-    let clave = slugEtapa(nombre) || 'etapa'
+    // Las claves son únicas en todo el sistema: las de Paseos llevan el prefijo del embudo
+    let clave = (embudo === 'paquetes' ? '' : `${embudo}_`) + (slugEtapa(nombre) || 'etapa')
     while (etapas.some(e => e.clave === clave)) clave += '_2'
-    const ultimaEnCurso = Math.max(0, ...etapas.filter(e => e.tipo !== 'perdida').map(e => e.orden))
+    const ultimaEnCurso = Math.max(0, ...lista.filter(e => e.tipo !== 'perdida').map(e => e.orden))
     ejecutar(async () => {
       // La etapa nueva va antes de las perdidas, que quedan siempre al final
-      for (const e of etapas.filter(x => x.tipo === 'perdida')) await embudoApi.update(e.clave, { orden: e.orden + 1 })
-      return embudoApi.create({ clave, nombre, color: nueva.color, tipo: nueva.tipo, orden: ultimaEnCurso + 1 })
+      for (const e of lista.filter(x => x.tipo === 'perdida')) await embudoApi.update(e.clave, { orden: e.orden + 1 })
+      return embudoApi.create({ clave, nombre, color: nueva.color, tipo: nueva.tipo, orden: ultimaEnCurso + 1, embudo })
     }, 'Etapa agregada')
     setNueva({ nombre: '', color: nueva.color, tipo: 'abierta' })
   }
 
   return (
     <div className="dash-card mb-5 p-6">
-      {SECTION.title('Etapas del embudo de ventas')}
+      {SECTION.title('Etapas de los embudos de ventas')}
       <p className="mb-5 max-w-[720px] text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
-        Son las columnas de Leads. Podés cambiar el nombre y el color, subir o bajar cada etapa y agregar las que necesites.
+        Son las columnas de cada embudo (Paquetes y Paseos). Podés cambiar el nombre y el color, subir o bajar cada etapa y agregar las que necesites.
         El tipo define cómo se cuenta en el Dashboard: <strong>En curso</strong> es una consulta abierta; <strong>Ganada</strong> es una venta cerrada
         (se cuenta una sola vez, la primera vez que un lead llega a una etapa ganada, aunque después pase por otras); <strong>Perdida</strong> es
         un lead que no compró y se oculta con el filtro «Leads activos».
@@ -833,16 +836,34 @@ function TabEmbudo() {
         </p>
       )}
 
+      <div className="mb-4 inline-flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist" aria-label="Embudo">
+        {EMBUDOS.map(e => (
+          <button
+            key={e.clave}
+            role="tab"
+            aria-selected={embudo === e.clave}
+            onClick={() => { setEmbudo(e.clave); setMensaje(null) }}
+            className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-colors ${embudo === e.clave ? 'bg-gray-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900' : 'text-gray-500 hover:text-gray-800 dark:text-zinc-400 dark:hover:text-white'}`}
+          >
+            {e.nombre}
+          </button>
+        ))}
+      </div>
+
       {cargando ? (
         <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando etapas...</p>
+      ) : lista.length === 0 ? (
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          Este embudo todavía no existe en la base de datos. Falta aplicar la migración de los embudos.
+        </p>
       ) : (
         <div className="grid gap-2">
-          {etapas.map((e, i) => (
+          {lista.map((e, i) => (
             <FilaEtapa
               key={e.clave}
               etapa={e}
               indice={i}
-              total={etapas.length}
+              total={lista.length}
               fija={CLAVES_FIJAS.includes(e.clave)}
               cantidad={cantidades[e.clave]}
               ocupado={ocupado}
@@ -890,7 +911,7 @@ function TabEmbudo() {
           </button>
         </div>
         <p className="mt-3 text-[11.5px] text-gray-400 dark:text-zinc-500">
-          Nueva consulta, Ya pagó y Perdido son etapas fijas: el sistema las usa (ahí entran los leads nuevos, ahí pasa un lead al convertirlo en cliente y ahí van los que no compraron). Se les puede cambiar el nombre y el color, pero no borrarlas.
+          La primera etapa, la ganada (Ya pagó o Confirmada) y Perdido de cada embudo son fijas: el sistema las usa (ahí entran los leads nuevos, ahí pasa un lead al convertirlo en cliente y ahí van los que no compraron). Se les puede cambiar el nombre y el color, pero no borrarlas.
         </p>
       </div>
     </div>

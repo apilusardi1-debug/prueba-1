@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Ic from '../admin/dashboard/Ic.jsx'
 import { embudoAutoApi } from '../../lib/supabase.js'
+import { etapasDelEmbudo, nombreEmbudo } from '../../lib/embudo.js'
 
 const CAMPO = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500'
 const ETIQUETA = 'mb-1 block text-xs font-medium text-gray-500 dark:text-zinc-400'
@@ -9,6 +10,7 @@ const ETIQUETA = 'mb-1 block text-xs font-medium text-gray-500 dark:text-zinc-40
 const SUGERIDAS = [
   {
     id: 'seguimiento',
+    embudo: 'paquetes',
     etapa: 'propuesta_enviada',
     titulo: 'Seguimiento después de enviar la propuesta',
     tipo: 'recordatorio',
@@ -18,7 +20,26 @@ const SUGERIDAS = [
   },
   {
     id: 'asignacion',
+    embudo: 'paquetes',
     etapa: 'negociacion',
+    titulo: 'Asignar cuando empieza la negociación',
+    tipo: 'asignar',
+    explicacion: 'Cuando un lead entra a «{etapa}», queda asignado a la persona que elijas y su inicial aparece en la tarjeta.',
+  },
+  {
+    id: 'seguimiento_paseos',
+    embudo: 'paseos',
+    etapa: 'paseos_oferta_hecha',
+    titulo: 'Seguimiento después de hacer la oferta',
+    tipo: 'recordatorio',
+    dias: 1,
+    nota: 'Consultar si vio la oferta',
+    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el día siguiente: «Consultar si vio la oferta». Ningún lead se queda sin próximo paso: el punto naranja de la tarjeta pasa a verde.',
+  },
+  {
+    id: 'asignacion_paseos',
+    embudo: 'paseos',
+    etapa: 'paseos_negociacion',
     titulo: 'Asignar cuando empieza la negociación',
     tipo: 'asignar',
     explicacion: 'Cuando un lead entra a «{etapa}», queda asignado a la persona que elijas y su inicial aparece en la tarjeta.',
@@ -56,14 +77,15 @@ function Interruptor({ activo, onChange, etiqueta, deshabilitado }) {
 // Panel "Automatizar" del embudo: acciones que el sistema hace solo cuando un
 // lead entra a una etapa. Las reglas se cumplen en la base, así que valen sin
 // importar cómo llegue el lead a la etapa.
-export default function AutomatizacionesEmbudo({ etapas, usuarios, alCerrar }) {
+export default function AutomatizacionesEmbudo({ embudo = 'paquetes', etapas, usuarios, alCerrar }) {
+  const etapasEmbudo = etapasDelEmbudo(etapas, embudo)
   const [lista, setLista] = useState([])
   const [disponible, setDisponible] = useState(null) // null = cargando
   const [ocupado, setOcupado] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [personaSugerida, setPersonaSugerida] = useState('')
   const [borrando, setBorrando] = useState(null)
-  const [nueva, setNueva] = useState({ etapa: 'nuevo', tipo: 'recordatorio', dias: 2, nota: '', usuario: '' })
+  const [nueva, setNueva] = useState({ etapa: etapasEmbudo[0]?.clave || 'nuevo', tipo: 'recordatorio', dias: 2, nota: '', usuario: '' })
 
   const personas = usuarios.filter(u => u.activo !== false)
   const nombreEtapa = clave => etapas.find(e => e.clave === clave)?.nombre || clave
@@ -140,9 +162,10 @@ export default function AutomatizacionesEmbudo({ etapas, usuarios, alCerrar }) {
 
   // Una sugerida cuenta como activa si ya hay una igual (aunque esté apagada, se ve en la lista)
   const yaExiste = s => lista.some(a => a.etapa_clave === s.etapa && a.tipo === s.tipo && (s.tipo === 'asignar' || a.nota === s.nota))
-  const sugeridas = SUGERIDAS.filter(s => etapas.some(e => e.clave === s.etapa))
-  const ordenEtapa = clave => etapas.find(e => e.clave === clave)?.orden ?? 999
-  const ordenadas = [...lista].sort((a, b) => ordenEtapa(a.etapa_clave) - ordenEtapa(b.etapa_clave) || String(a.created_at).localeCompare(String(b.created_at)))
+  const sugeridas = SUGERIDAS.filter(s => s.embudo === embudo && etapasEmbudo.some(e => e.clave === s.etapa))
+  const ordenEtapa = clave => etapasEmbudo.find(e => e.clave === clave)?.orden ?? 999
+  // Solo las de este embudo
+  const ordenadas = lista.filter(a => etapasEmbudo.some(e => e.clave === a.etapa_clave)).sort((a, b) => ordenEtapa(a.etapa_clave) - ordenEtapa(b.etapa_clave) || String(a.created_at).localeCompare(String(b.created_at)))
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={alCerrar}>
@@ -155,7 +178,10 @@ export default function AutomatizacionesEmbudo({ etapas, usuarios, alCerrar }) {
         <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-5 dark:border-zinc-800">
           <div className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-content-center rounded-xl bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-zinc-100"><Ic n="bolt" className="h-[18px] w-[18px]" /></span>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Automatizaciones del embudo</h2>
+            <div>
+              <h2 className="text-lg font-bold leading-tight text-gray-900 dark:text-zinc-100">Automatizaciones del embudo</h2>
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Embudo de {nombreEmbudo(embudo).toLowerCase()}</p>
+            </div>
           </div>
           <button onClick={alCerrar} aria-label="Cerrar" className="text-xl text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300">✕</button>
         </div>
@@ -278,7 +304,7 @@ export default function AutomatizacionesEmbudo({ etapas, usuarios, alCerrar }) {
                     <div>
                       <label htmlFor="auto-etapa" className={ETIQUETA}>Cuando el lead entra a</label>
                       <select id="auto-etapa" value={nueva.etapa} onChange={e => setNueva(p => ({ ...p, etapa: e.target.value }))} className={CAMPO}>
-                        {etapas.map(e => <option key={e.clave} value={e.clave}>{e.nombre}</option>)}
+                        {etapasEmbudo.map(e => <option key={e.clave} value={e.clave}>{e.nombre}</option>)}
                       </select>
                     </div>
                     <div>

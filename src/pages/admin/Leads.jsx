@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
-import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa } from '../../lib/embudo.js'
+import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS } from '../../lib/embudo.js'
 import AutomatizacionesEmbudo from '../../components/leads/AutomatizacionesEmbudo.jsx'
 
 function hoyISO() { return new Date().toISOString().split('T')[0] }
@@ -130,7 +130,16 @@ function CampoEtiquetas({ etiquetas, onChange, sugerencias }) {
   )
 }
 
-export default function Leads() {
+// Opciones de un selector de etapa. Con más de un embudo se agrupan por embudo, así
+// también sirve para pasar un lead de un embudo a otro.
+function OpcionesEtapas({ etapas, claseOpcion }) {
+  const grupos = EMBUDOS.map(e => ({ ...e, lista: etapasDelEmbudo(etapas, e.clave) })).filter(g => g.lista.length)
+  const opcion = e => <option key={e.clave} value={e.clave} className={claseOpcion}>{e.nombre}</option>
+  if (grupos.length <= 1) return etapas.map(opcion)
+  return grupos.map(g => <optgroup key={g.clave} label={g.nombre}>{g.lista.map(opcion)}</optgroup>)
+}
+
+export default function Leads({ embudo = 'paquetes' }) {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -151,6 +160,11 @@ export default function Leads() {
   const [nuevoRecNota, setNuevoRecNota] = useState('')
   const [guardandoRec, setGuardandoRec] = useState(false)
   const { etapas } = useEtapas()
+  const etapasEmbudo = etapasDelEmbudo(etapas, embudo)
+  const entrada = etapasEmbudo[0]?.clave // donde entran los leads nuevos de este embudo
+  const nombreDelEmbudo = nombreEmbudo(embudo)
+  const [menuEmbudo, setMenuEmbudo] = useState(false)
+  const menuEmbudoRef = useRef(null)
   const [busqueda, setBusqueda] = useState('')
   const [soloActivos, setSoloActivos] = useState(true)
   const [rapidoAbierto, setRapidoAbierto] = useState(false)
@@ -159,6 +173,19 @@ export default function Leads() {
   const [verMas, setVerMas] = useState({}) // clave de etapa -> tarjetas visibles
   const [usuarios, setUsuarios] = useState([])
   const [panelAuto, setPanelAuto] = useState(false)
+
+  // El menú para cambiar de embudo se cierra al hacer clic afuera o con Escape
+  useEffect(() => {
+    if (!menuEmbudo) return
+    const fuera = e => { if (menuEmbudoRef.current && !menuEmbudoRef.current.contains(e.target)) setMenuEmbudo(false) }
+    const tecla = e => { if (e.key === 'Escape') setMenuEmbudo(false) }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', tecla)
+    return () => {
+      document.removeEventListener('mousedown', fuera)
+      document.removeEventListener('keydown', tecla)
+    }
+  }, [menuEmbudo])
 
   useEffect(() => {
     async function cargar() {
@@ -263,7 +290,7 @@ export default function Leads() {
       nombre,
       whatsapp: digitos || null,
       origen: 'Manual',
-      estado: 'nuevo',
+      estado: entrada || 'nuevo',
     })
     if (!error && data) {
       setLeads(prev => [data, ...prev])
@@ -298,7 +325,7 @@ export default function Leads() {
       interes_destino: formLead.interes_destino.trim() || detectado.destino || null,
       notas: formLead.notas,
       origen: 'WhatsApp',
-      estado: 'nuevo',
+      estado: entrada || 'nuevo',
     })
     if (!error && data) {
       setLeads(prev => [data, ...prev])
@@ -374,8 +401,9 @@ export default function Leads() {
     })
 
     if (data) {
-      await cambiarEstado(lead.id, 'reservado')
-      setSeleccionado(p => ({ ...p, estado: 'reservado' }))
+      const ganada = etapasEmbudo.find(e => e.tipo === 'ganada')?.clave || 'reservado'
+      await cambiarEstado(lead.id, ganada)
+      setSeleccionado(p => ({ ...p, estado: ganada }))
       setConvertidoMsg('ok')
       setClienteConvertidoId(data.id)
     }
@@ -393,10 +421,12 @@ export default function Leads() {
   const autoDisponibles = leads.length > 0 && 'responsable_id' in leads[0]
 
   // Etapas a mostrar y leads que pasan el filtro. "Activos" oculta las perdidas.
-  const etapasVisibles = etapas.filter(e => !soloActivos || e.tipo !== 'perdida')
+  const etapasVisibles = etapasEmbudo.filter(e => !soloActivos || e.tipo !== 'perdida')
   const textoBusqueda = busqueda.trim().toLowerCase()
   const visibles = leads.filter(l => {
-    if (soloActivos && etapaDe(etapas, claveVisible(etapas, l.estado))?.tipo === 'perdida') return false
+    const etapaLead = etapaDe(etapas, claveVisible(etapas, l.estado))
+    if (embudoDeEtapa(etapaLead) !== embudo) return false
+    if (soloActivos && etapaLead?.tipo === 'perdida') return false
     if (!textoBusqueda) return true
     return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l), (l.etiquetas || []).join(' '), nombreUsuario(l.responsable_id)].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
   })
@@ -409,11 +439,37 @@ export default function Leads() {
     <div>
       {/* Barra superior: título, vista, filtro y alta */}
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="mr-1">
-          <h1 className="text-base font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">Embudo de ventas</h1>
+        <div className="relative mr-1" ref={menuEmbudoRef}>
+          <h1 className="text-base font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">
+            <button
+              onClick={() => setMenuEmbudo(v => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuEmbudo}
+              title="Cambiar de embudo"
+              className="flex items-center gap-1.5 uppercase"
+            >
+              Embudo de {nombreDelEmbudo}
+              <Ic n="down" className="h-3.5 w-3.5 text-gray-500 dark:text-zinc-400" />
+            </button>
+          </h1>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
             {visibles.length} {visibles.length === 1 ? 'lead' : 'leads'}{soloActivos ? ' activos' : ''}: {formatoReales(totalValor)}
           </p>
+          {menuEmbudo && (
+            <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40">
+              {EMBUDOS.map(e => (
+                <button
+                  key={e.clave}
+                  role="menuitem"
+                  onClick={() => { setMenuEmbudo(false); if (e.clave !== embudo) navigate(e.ruta) }}
+                  className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800 ${e.clave === embudo ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-zinc-300'}`}
+                >
+                  Embudo de {e.nombre.toLowerCase()}
+                  {e.clave === embudo && <Ic n="check" className="h-4 w-4" />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5 rounded-xl bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist" aria-label="Vista">
@@ -469,6 +525,12 @@ export default function Leads() {
         </button>
       </div>
 
+      {etapasEmbudo.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-12 text-center text-sm text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
+          Este embudo todavía no existe en la base de datos. Falta aplicar la migración de los embudos.
+        </div>
+      )}
+
       {vista === 'kanban' && (
         <div className="flex items-start gap-3 overflow-x-auto pb-4">
           {etapasVisibles.map(etapa => {
@@ -490,7 +552,7 @@ export default function Leads() {
                 </div>
 
                 <div className="max-h-[calc(100vh-17rem)] min-h-[5rem] space-y-2 overflow-y-auto pb-1">
-                  {etapa.clave === 'nuevo' && (
+                  {etapa.clave === entrada && (
                     rapidoAbierto ? (
                       <div className="rounded-lg border border-gray-300 bg-white p-2.5 shadow-sm dark:border-white/15 dark:bg-zinc-900">
                         <input
@@ -664,7 +726,7 @@ export default function Leads() {
                       <select value={claveVisible(etapas, lead.estado)} onChange={e => cambiarEstado(lead.id, e.target.value)}
                         style={etapa ? estiloFondoEtapa(etapa.color) : undefined}
                         className="max-w-[220px] cursor-pointer rounded-full border-0 px-2.5 py-1 text-xs font-bold text-gray-800 outline-none dark:text-zinc-100">
-                        {etapas.map(e => <option key={e.clave} value={e.clave} className="bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100">{e.nombre}</option>)}
+                        <OpcionesEtapas etapas={etapas} claseOpcion="bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100" />
                       </select>
                     </td>
                     <td className="px-5 py-3">
@@ -820,7 +882,7 @@ export default function Leads() {
                   onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
                 >
-                  {etapas.map(e => <option key={e.clave} value={e.clave}>{e.nombre}</option>)}
+                  <OpcionesEtapas etapas={etapas} />
                 </select>
               </div>
 
@@ -941,7 +1003,7 @@ export default function Leads() {
         </div>
       )}
 
-      {panelAuto && <AutomatizacionesEmbudo etapas={etapas} usuarios={usuarios} alCerrar={() => setPanelAuto(false)} />}
+      {panelAuto && <AutomatizacionesEmbudo embudo={embudo} etapas={etapas} usuarios={usuarios} alCerrar={() => setPanelAuto(false)} />}
     </div>
   )
 }

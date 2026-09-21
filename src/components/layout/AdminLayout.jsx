@@ -4,7 +4,7 @@ import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
 import { supabase, conversacionesApi } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
-import Ic from '../admin/dashboard/Ic.jsx'
+import MenuAvisos from './MenuAvisos.jsx'
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -452,20 +452,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
 
       <div className="flex items-center gap-2">
         {/* Avisos de mensajes nuevos del CRM (sonido y notificación) */}
-        {puedeAvisos && (
-          <button
-            onClick={avisos.alternar}
-            aria-pressed={avisos.activo}
-            title={avisos.activo ? 'Avisos de mensajes nuevos: activados. Clic para desactivarlos' : 'Activar avisos de mensajes nuevos (sonido y notificación)'}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${
-              avisos.activo
-                ? 'border-gray-300 bg-gray-100 text-gray-900 dark:border-zinc-600 dark:bg-white/[0.08] dark:text-white'
-                : 'border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
-            }`}
-          >
-            <Ic n={avisos.activo ? 'bell' : 'bellOff'} className="h-4 w-4" />
-          </button>
-        )}
+        {puedeAvisos && <MenuAvisos avisos={avisos} />}
 
         {/* Toggle dark mode */}
         <button

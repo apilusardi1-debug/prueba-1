@@ -3,13 +3,18 @@
 // Solo avisa mientras el panel esté abierto en alguna pestaña.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, conversacionesApi, usuariosAdminApi } from './supabase.js'
-import { avisoPorMensaje, avisoPorDerivacion, recortar } from './avisosReglas.js'
+import { avisoPorMensaje, avisoPorDerivacion, avisoPorSinAsignar, recortar } from './avisosReglas.js'
 
 const CLAVE = 'crm_avisos'
 const RUTA_CRM = '/admin/crm/whatsapp'
 
 function leerPreferencia() {
   try { return localStorage.getItem(CLAVE) === 'on' } catch { return false }
+}
+// "Configurado" = la persona ya eligió alguna vez (activar o desactivar). Sirve
+// para señalar la campana solo a quien todavía no la tocó.
+function leerConfigurado() {
+  try { return localStorage.getItem(CLAVE) !== null } catch { return true }
 }
 function guardarPreferencia(activo) {
   try { localStorage.setItem(CLAVE, activo ? 'on' : 'off') } catch { /* sin almacenamiento */ }
@@ -59,8 +64,39 @@ function tienePestanaEnfoque() {
   return document.visibilityState === 'visible' && document.hasFocus()
 }
 
+// Qué está listo y qué no en este navegador, para mostrarlo en el panel de la
+// campana. Sonido "pendiente" = el navegador lo bloquea hasta el primer clic o
+// tecla en la página.
+export function leerEstadoAvisos() {
+  const AC = window.AudioContext || window.webkitAudioContext
+  const sonido = !AC ? 'no-disponible' : contextoAudio?.state === 'running' ? 'listo' : 'pendiente'
+  const notificaciones =
+    typeof Notification === 'undefined' ? 'no-disponibles'
+    : Notification.permission === 'granted' ? 'activadas'
+    : Notification.permission === 'denied' ? 'bloqueadas'
+    : 'sin-permitir'
+  return { sonido, notificaciones }
+}
+
+function mostrarNotificacion({ titulo, cuerpo, tag, alHacerClic }) {
+  if (!notificacionesPermitidas()) return
+  const n = new Notification(titulo, {
+    body: cuerpo,
+    tag,          // un aviso nuevo con el mismo tag reemplaza al anterior
+    silent: true, // el sonido ya lo pone la app
+  })
+  n.onclick = () => {
+    window.focus()
+    alHacerClic?.()
+    n.close()
+  }
+}
+
 export function useAvisosMensajes({ habilitado, navigate }) {
   const [activo, setActivo] = useState(leerPreferencia)
+  const [configurado, setConfigurado] = useState(leerConfigurado)
+  const [, setVersion] = useState(0)
+  const refrescar = useCallback(() => setVersion(v => v + 1), [])
   const yoId = useRef(null)
   const conversaciones = useRef(new Map())
   const ultimoSonido = useRef(0)
@@ -71,9 +107,10 @@ export function useAvisosMensajes({ habilitado, navigate }) {
     if (!habilitado || !activo || !supabase) return
 
     // Si la página se abrió ya con los avisos activados, el audio queda bloqueado
-    // hasta el primer gesto: se destraba con el primer clic o toque.
-    const destrabar = () => { audio()?.resume?.().catch(() => {}) }
+    // hasta el primer gesto: se destraba con el primer clic o tecla.
+    const destrabar = () => { audio()?.resume?.().then(refrescar).catch(() => {}) }
     window.addEventListener('pointerdown', destrabar, { once: true })
+    window.addEventListener('keydown', destrabar, { once: true })
 
     // "Yo" = el usuario del panel que coincide con el email de la sesión
     usuariosAdminApi.getAll().then(({ ok, usuarios }) => {
@@ -102,17 +139,12 @@ export function useAvisosMensajes({ habilitado, navigate }) {
 
       // La notificación del sistema es para cuando no se está mirando el chat
       const viendoElCRM = window.location.pathname.startsWith(RUTA_CRM) && tienePestanaEnfoque()
-      if (viendoElCRM || !notificacionesPermitidas()) return
-      const n = new Notification(aviso.titulo, {
-        body: aviso.cuerpo,
-        tag: `crm-${conv.id}`, // un aviso nuevo de la misma conversación reemplaza al anterior
-        silent: true,          // el sonido ya lo pone la app
+      if (viendoElCRM) return
+      mostrarNotificacion({
+        ...aviso,
+        tag: `crm-${conv.id}`,
+        alHacerClic: () => irA.current?.(`${RUTA_CRM}?phone=${conv.whatsapp}`),
       })
-      n.onclick = () => {
-        window.focus()
-        irA.current?.(`${RUTA_CRM}?phone=${conv.whatsapp}`)
-        n.close()
-      }
     }
 
     const canal = supabase
@@ -133,7 +165,7 @@ export function useAvisosMensajes({ habilitado, navigate }) {
         const anterior = conversaciones.current.get(nueva.id)
         conversaciones.current.set(nueva.id, nueva)
         if (eventType !== 'UPDATE') return
-        const aviso = avisoPorDerivacion(anterior, nueva, yoId.current)
+        const aviso = avisoPorDerivacion(anterior, nueva, yoId.current) || avisoPorSinAsignar(anterior, nueva)
         if (aviso) avisar(aviso, nueva)
       })
       .subscribe()
@@ -141,10 +173,14 @@ export function useAvisosMensajes({ habilitado, navigate }) {
     return () => {
       canal.unsubscribe()
       window.removeEventListener('pointerdown', destrabar)
+      window.removeEventListener('keydown', destrabar)
     }
-  }, [habilitado, activo])
+  }, [habilitado, activo, refrescar])
 
+  // Activar pide el permiso de notificaciones (el navegador solo lo permite en
+  // respuesta a un clic) y hace sonar un aviso para confirmar y destrabar el audio.
   const alternar = useCallback(async () => {
+    setConfigurado(true)
     if (activo) {
       guardarPreferencia(false)
       setActivo(false)
@@ -152,15 +188,29 @@ export function useAvisosMensajes({ habilitado, navigate }) {
     }
     guardarPreferencia(true)
     setActivo(true)
-    sonar() // confirma que suena y destraba el audio del navegador
-
-    if (typeof Notification === 'undefined') return
-    let permiso = Notification.permission
-    if (permiso === 'default') permiso = await Notification.requestPermission()
-    if (permiso === 'denied') {
-      alert('El navegador tiene bloqueadas las notificaciones de este sitio, así que solo va a sonar el aviso. Para ver también la notificación, habilitala desde el candado de la barra de direcciones.')
+    sonar()
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      await Notification.requestPermission()
     }
-  }, [activo])
+    refrescar()
+  }, [activo, refrescar])
 
-  return { activo, alternar }
+  const permitirNotificaciones = useCallback(async () => {
+    if (typeof Notification === 'undefined') return
+    await Notification.requestPermission()
+    refrescar()
+  }, [refrescar])
+
+  // Prueba a mano lo mismo que pasa cuando llega un mensaje
+  const probar = useCallback(() => {
+    sonar()
+    mostrarNotificacion({
+      titulo: 'Aviso de prueba',
+      cuerpo: 'Si ves esto y escuchaste el sonido, los avisos funcionan.',
+      tag: 'crm-prueba',
+    })
+    setTimeout(refrescar, 300)
+  }, [refrescar])
+
+  return { activo, configurado, alternar, permitirNotificaciones, probar, refrescar }
 }

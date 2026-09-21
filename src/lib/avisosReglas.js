@@ -30,9 +30,21 @@ export function avisoPorMensaje(conv, texto, yoId) {
 }
 
 // El asistente derivó una conversación. Solo avisa a la persona elegida y solo
-// en el momento de la derivación (no cuando alguien asigna a mano).
+// en el momento de la derivación (no cuando alguien asigna a mano). Hace falta
+// conocer el estado anterior: sin él no se puede saber si es un cambio o
+// cualquier otra actualización de una conversación ya derivada.
 export function avisoPorDerivacion(anterior, nueva, yoId) {
-  if (!yoId || nueva?.asignado_a !== yoId || nueva?.bot_estado !== 'derivado') return null
-  if (anterior?.bot_estado === 'derivado') return null
+  if (!anterior || !yoId || nueva?.asignado_a !== yoId || nueva?.bot_estado !== 'derivado') return null
+  if (anterior.bot_estado === 'derivado') return null
   return { titulo: `Te derivaron a ${nombreDe(nueva)}`, cuerpo: 'El asistente te asignó esta conversación.' }
+}
+
+// El asistente se rindió: no entendió qué busca el contacto (o no había a quién
+// derivar), le avisó que alguien del equipo le va a responder y la dejó sin
+// asignar. En ese momento hay que avisar a todos, porque el mensaje que provocó
+// el cambio llegó mientras el asistente todavía estaba a cargo y no sonó.
+export function avisoPorSinAsignar(anterior, nueva) {
+  if (!anterior || nueva?.asignado_a || nueva?.bot_estado !== 'sin_asignar') return null
+  if (anterior.bot_estado === 'sin_asignar') return null
+  return { titulo: `Sin asignar: ${nombreDe(nueva)}`, cuerpo: recortar(nueva.ultimo_mensaje) || 'Necesita que alguien del equipo le responda.' }
 }

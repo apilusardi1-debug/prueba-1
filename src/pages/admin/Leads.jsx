@@ -72,6 +72,63 @@ function CampoInteres({ tipo, destino, onChange, ayuda, grande }) {
   )
 }
 
+// Todo el dinero del sistema va en reales
+const FORMATO_REALES = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+function formatoReales(n) {
+  return FORMATO_REALES.format(Number(n) || 0)
+}
+
+// Etiquetas libres de un lead (VIVO, ENTRO POR PASEOS...): se escriben con
+// Enter o coma, se quitan con la cruz y sugieren las que ya usan otros leads.
+function CampoEtiquetas({ etiquetas, onChange, sugerencias }) {
+  const [texto, setTexto] = useState('')
+
+  function agregar(valor) {
+    const limpio = valor.trim().replace(/\s+/g, ' ').slice(0, 30)
+    setTexto('')
+    if (!limpio || etiquetas.some(e => e.toLowerCase() === limpio.toLowerCase())) return
+    onChange([...etiquetas, limpio])
+  }
+
+  return (
+    <div>
+      <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etiquetas</label>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 focus-within:ring-2 focus-within:ring-brand-400/30 dark:border-zinc-700 dark:bg-zinc-800">
+        {etiquetas.map(e => (
+          <span key={e} className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:text-zinc-300">
+            {e}
+            <button
+              type="button"
+              onClick={() => onChange(etiquetas.filter(x => x !== e))}
+              aria-label={`Quitar la etiqueta ${e}`}
+              className="text-sm leading-none text-gray-400 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-200"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          type="text"
+          list="etiquetas-leads"
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); agregar(texto) }
+            else if (e.key === 'Backspace' && !texto && etiquetas.length) onChange(etiquetas.slice(0, -1))
+          }}
+          onBlur={() => agregar(texto)}
+          placeholder={etiquetas.length ? '' : 'Escribí y apretá Enter'}
+          aria-label="Agregar una etiqueta"
+          className="min-w-[90px] flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none dark:text-zinc-100 dark:placeholder-zinc-500"
+        />
+      </div>
+      <datalist id="etiquetas-leads">
+        {sugerencias.filter(x => !etiquetas.includes(x)).map(x => <option key={x} value={x} />)}
+      </datalist>
+    </div>
+  )
+}
+
 export default function Leads() {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
@@ -243,14 +300,22 @@ export default function Leads() {
       origen: lead.origen || '',
       estado: claveVisible(etapas, lead.estado) || 'nuevo',
       notas: lead.notas || '',
+      valor: lead.valor ?? 0,
+      etiquetas: lead.etiquetas || [],
     })
   }
 
   async function guardarLead() {
     if (!editForm.nombre.trim()) return
     setGuardandoLead(true)
+    // valor y etiquetas solo se mandan si la base ya tiene esas columnas
+    const { valor, etiquetas, ...basicos } = editForm
+    const extras = 'valor' in seleccionado
+      ? { valor: Math.max(0, Number(String(valor).replace(',', '.')) || 0), etiquetas }
+      : {}
     const { data } = await leadsApi.update(seleccionado.id, {
-      ...editForm,
+      ...basicos,
+      ...extras,
       interes_tipo: editForm.interes_tipo || null,
       interes_destino: editForm.interes_destino.trim() || null,
     })
@@ -303,8 +368,12 @@ export default function Leads() {
   const visibles = leads.filter(l => {
     if (soloActivos && etapaDe(etapas, claveVisible(etapas, l.estado))?.tipo === 'perdida') return false
     if (!textoBusqueda) return true
-    return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l)].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
+    return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l), (l.etiquetas || []).join(' ')].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
   })
+  const totalValor = visibles.reduce((t, l) => t + (Number(l.valor) || 0), 0)
+  // Las columnas nuevas (valor, etiquetas) existen recién cuando se aplicó la migración
+  const extrasDisponibles = leads.length > 0 && 'valor' in leads[0]
+  const todasLasEtiquetas = [...new Set(leads.flatMap(l => l.etiquetas || []))].sort((a, b) => a.localeCompare(b))
 
   return (
     <div>
@@ -313,7 +382,7 @@ export default function Leads() {
         <div className="mr-1">
           <h1 className="text-base font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">Embudo de ventas</h1>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
-            {visibles.length} {visibles.length === 1 ? 'lead' : 'leads'}{soloActivos ? ' activos' : ''}
+            {visibles.length} {visibles.length === 1 ? 'lead' : 'leads'}{soloActivos ? ' activos' : ''}: {formatoReales(totalValor)}
           </p>
         </div>
 
@@ -368,6 +437,7 @@ export default function Leads() {
             const enEtapa = visibles.filter(l => claveVisible(etapas, l.estado) === etapa.clave)
             const mostrados = enEtapa.slice(0, verMas[etapa.clave] || POR_ETAPA)
             const restantes = enEtapa.length - mostrados.length
+            const valorEtapa = enEtapa.reduce((t, l) => t + (Number(l.valor) || 0), 0)
             return (
               <div
                 key={etapa.clave}
@@ -378,7 +448,7 @@ export default function Leads() {
               >
                 <div className="border-t-[3px] px-1 pb-2 pt-2 text-center" style={{ borderTopColor: etapa.color }}>
                   <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-gray-800 dark:text-zinc-100" title={etapa.nombre}>{etapa.nombre}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-500 dark:text-zinc-400">{enEtapa.length} {enEtapa.length === 1 ? 'lead' : 'leads'}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-zinc-400">{enEtapa.length} {enEtapa.length === 1 ? 'lead' : 'leads'}: {formatoReales(valorEtapa)}</p>
                 </div>
 
                 <div className="max-h-[calc(100vh-17rem)] min-h-[5rem] space-y-2 overflow-y-auto pb-1">
@@ -447,9 +517,14 @@ export default function Leads() {
                           <span className="shrink-0 tabular-nums">{fechaTarjeta(lead.created_at)}</span>
                         </div>
                         <p className="mt-0.5 truncate text-[13px] font-extrabold uppercase text-sky-700 dark:text-sky-400" title={lead.nombre}>{lead.nombre}</p>
+                        {Number(lead.valor) > 0 && (
+                          <p className="text-[11px] font-bold tabular-nums text-gray-700 dark:text-zinc-200">{formatoReales(lead.valor)}</p>
+                        )}
 
                         <div className="mt-1.5 flex min-h-[18px] items-center gap-1.5">
                           <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                            {(lead.etiquetas || []).slice(0, 3).map(e => <span key={e} className={chip} title={e}>{e}</span>)}
+                            {(lead.etiquetas || []).length > 3 && <span className={chip} title={lead.etiquetas.slice(3).join(', ')}>+{lead.etiquetas.length - 3}</span>}
                             {interes && <span className={chip}>{interes}</span>}
                             {lead.origen && lead.origen !== 'WhatsApp' && <span className={chip}>{lead.origen}</span>}
                           </div>
@@ -514,6 +589,8 @@ export default function Leads() {
               <tr>
                 <th className="px-5 py-3 text-left">Nombre</th>
                 <th className="px-5 py-3 text-left">Interés</th>
+                <th className="px-5 py-3 text-left">Etiquetas</th>
+                <th className="px-5 py-3 text-right">Valor</th>
                 <th className="px-5 py-3 text-left">Origen</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Estado</th>
@@ -527,6 +604,14 @@ export default function Leads() {
                   <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
                     <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</td>
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{etiquetaInteres(lead)}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(lead.etiquetas || []).map(e => (
+                          <span key={e} className="rounded border border-gray-200 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400">{e}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-xs tabular-nums text-gray-600 dark:text-zinc-300">{Number(lead.valor) > 0 ? formatoReales(lead.valor) : ''}</td>
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{lead.origen}</td>
                     <td className="px-5 py-3 text-gray-400 dark:text-zinc-500 text-xs">{new Date(lead.created_at).toLocaleDateString('es-AR')}</td>
                     <td className="px-5 py-3">
@@ -642,6 +727,30 @@ export default function Leads() {
                 ayuda={!seleccionado.interes_tipo && !seleccionado.interes_destino && seleccionado.excursion_interes
                   ? 'Antes: ' + seleccionado.excursion_interes : undefined}
               />
+
+              {extrasDisponibles && (
+                <>
+                  <CampoEtiquetas
+                    etiquetas={editForm.etiquetas}
+                    onChange={etiquetas => setEditForm(p => ({ ...p, etiquetas }))}
+                    sugerencias={todasLasEtiquetas}
+                  />
+                  <div>
+                    <label htmlFor="valor-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Valor (R$)</label>
+                    <input
+                      id="valor-lead"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={editForm.valor}
+                      onChange={e => setEditForm(p => ({ ...p, valor: e.target.value }))}
+                      placeholder="0,00"
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etapa del embudo</label>

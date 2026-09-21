@@ -36,6 +36,7 @@ const TRAZOS = {
   waves: <path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />,
   alert: <><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.4" /></>,
   dot: <circle cx="12" cy="12" r="2.2" />,
+  checks: <path d="M2 12.5l4.5 4.5L15 8M10 15.5l1.5 1.5L22 7.5" />,
 }
 
 export default function Ic({ n, className = 'w-[18px] h-[18px]' }) {

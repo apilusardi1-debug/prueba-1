@@ -221,11 +221,18 @@ serve(async (req) => {
     }
 
     if (convId) {
+      // El id que devuelve Meta permite ubicar el mensaje cuando llegan los avisos
+      // de entregado / leído / fallido al webhook.
+      // deno-lint-ignore no-explicit-any
+      const waMessageId: string | null = (data as any)?.messages?.[0]?.id ?? null
       await supabase.from('mensajes').insert({
         conversacion_id: convId,
         whatsapp: phoneClean,
         texto: mensajeLegible,
         direccion: 'saliente',
+        wa_message_id: waMessageId,
+        estado_envio: waMessageId ? 'enviado' : null,
+        estado_envio_at: waMessageId ? new Date().toISOString() : null,
         // Respuesta libre dentro de la ventana de 24 hs = servicio (sin costo);
         // una plantilla se cobra según su categoría.
         cobro: template ? (COBRO_PLANTILLA[template] || 'utilidad') : 'servicio',

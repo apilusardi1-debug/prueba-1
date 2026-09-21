@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { detectarInteres } from '../_shared/interes.ts'
+import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -79,21 +80,72 @@ function interpretarGrupo(message: any, permitirNumeros: boolean): string | null
   return null
 }
 
-async function enviarMeta(cuerpo: Record<string, unknown>) {
+// Devuelve el id del mensaje en Meta (wamid), con el que después llegan los
+// avisos de entregado / leído / fallido.
+async function enviarMeta(cuerpo: Record<string, unknown>): Promise<string | null> {
   const res = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${META_CRM_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${META_CRM_TOKEN}` },
     body: JSON.stringify({ messaging_product: 'whatsapp', ...cuerpo }),
   })
   if (!res.ok) throw new Error(`Meta ${res.status}: ${await res.text()}`)
+  const data = await res.json().catch(() => null)
+  return data?.messages?.[0]?.id ?? null
 }
 
-async function guardarMensajeBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, texto: string) {
-  await supabase.from('mensajes').insert({ conversacion_id: convId, whatsapp: phone, texto, direccion: 'saliente', origen: 'bot', cobro: 'servicio' })
+async function guardarMensajeBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, texto: string, wamid: string | null) {
+  await supabase.from('mensajes').insert({
+    conversacion_id: convId,
+    whatsapp: phone,
+    texto,
+    direccion: 'saliente',
+    origen: 'bot',
+    cobro: 'servicio',
+    wa_message_id: wamid,
+    estado_envio: wamid ? 'enviado' : null,
+    estado_envio_at: wamid ? new Date().toISOString() : null,
+  })
+}
+
+// Meta avisa por el webhook cada cambio de estado de un mensaje nuestro. Nunca
+// se retrocede de estado (ver estadoEnvio.ts). Si el aviso llega antes de que
+// el mensaje esté guardado (send-whatsapp lo inserta después de la respuesta de
+// Meta), se reintenta una vez pasados unos segundos.
+// deno-lint-ignore no-explicit-any
+async function procesarEstados(supabase: ReturnType<typeof createClient>, estados: any[]) {
+  for (const e of estados) {
+    const nuevo = estadoDeMeta(String(e?.status))
+    const wamid: string | undefined = e?.id
+    if (!nuevo || !wamid) continue
+
+    const error = e?.errors?.[0]
+    const cambios = {
+      estado_envio: nuevo,
+      estado_envio_at: e?.timestamp ? new Date(Number(e.timestamp) * 1000).toISOString() : new Date().toISOString(),
+      ...(nuevo === 'fallido'
+        ? {
+            error_codigo: typeof error?.code === 'number' ? error.code : null,
+            error_envio: [error?.title, error?.error_data?.details].filter(Boolean).join(' - ') || error?.message || null,
+          }
+        : {}),
+    }
+
+    const actualizar = () =>
+      supabase.from('mensajes').update(cambios).eq('wa_message_id', wamid).or(filtroEstadosPrevios(nuevo)).select('id')
+
+    const { data: tocadas, error: errUpdate } = await actualizar()
+    if (errUpdate) { console.error('webhook-whatsapp estado error:', errUpdate.message); continue }
+    if (tocadas?.length) continue
+
+    const { data: existe } = await supabase.from('mensajes').select('id').eq('wa_message_id', wamid).limit(1)
+    if (existe?.length) continue // ya estaba en un estado igual o posterior
+    await new Promise((r) => setTimeout(r, 2500))
+    await actualizar()
+  }
 }
 
 async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: string, phone: string, intro: string) {
-  await enviarMeta({
+  const wamid = await enviarMeta({
     to: phone,
     type: 'interactive',
     interactive: {
@@ -107,12 +159,12 @@ async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: str
       },
     },
   })
-  await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes / Paseos]`)
+  await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes / Paseos]`, wamid)
 }
 
 async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto: string, convId: string, phone: string, grupo: string | null) {
-  await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
-  await guardarMensajeBot(supabase, convId, phone, texto)
+  const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
+  await guardarMensajeBot(supabase, convId, phone, texto, wamid)
   await supabase.from('conversaciones').update({ bot_estado: 'sin_asignar', ...(grupo ? { grupo } : {}) }).eq('id', convId)
 }
 
@@ -135,8 +187,8 @@ async function derivar(supabase: ReturnType<typeof createClient>, mensaje: strin
   const texto = mensaje
     .replaceAll('{nombre}', String(usuario.nombre || '').split(' ')[0])
     .replaceAll('{grupo}', NOMBRE_GRUPO[grupo])
-  await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
-  await guardarMensajeBot(supabase, convId, phone, texto)
+  const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
+  await guardarMensajeBot(supabase, convId, phone, texto, wamid)
   return true
 }
 
@@ -203,8 +255,17 @@ serve(async (req) => {
     const value = body?.entry?.[0]?.changes?.[0]?.value
     const message = value?.messages?.[0]
 
-    // Los webhooks de "statuses" (entregado/leído) llegan al mismo endpoint
-    // sin "messages" — no son mensajes nuevos, los ignoramos.
+    // Los avisos de "statuses" (enviado / entregado / leído / fallido) llegan al
+    // mismo endpoint, sin "messages": actualizan el estado de nuestros mensajes.
+    // deno-lint-ignore no-explicit-any
+    const estados = (body?.entry ?? []).flatMap((en: any) => en?.changes ?? []).flatMap((c: any) => c?.value?.statuses ?? [])
+    if (estados.length) {
+      await procesarEstados(
+        createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+        estados,
+      )
+    }
+
     if (!message) return new Response('ok', { status: 200 })
 
     const phone: string | undefined = message.from

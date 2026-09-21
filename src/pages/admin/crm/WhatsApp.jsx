@@ -5,6 +5,7 @@ import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, r
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
+import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
 // Límites de tamaño de WhatsApp por tipo de archivo (MB). Los documentos
 // admiten más en WhatsApp, pero el bucket de Supabase corta en 50.
@@ -44,6 +45,27 @@ function formatTiempo(ts) {
 function formatHora(ts) {
   if (!ts) return ''
   return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Estado de entrega de un mensaje saliente, tal como lo informa Meta. Los
+// mensajes anteriores a este aviso no tienen estado: se muestran como enviados.
+function EstadoMensaje({ msg }) {
+  if (msg.id?.toString().startsWith('temp-')) {
+    return <Ic n="clock" className="inline-block h-3 w-3" />
+  }
+  const hora = msg.estado_envio_at ? formatHora(msg.estado_envio_at) : ''
+  const ESTADOS = {
+    fallido: { icono: 'alert', clase: 'text-red-500 dark:text-red-300', titulo: 'No entregado' },
+    leido: { icono: 'checks', clase: 'text-sky-500 dark:text-sky-300', titulo: `Leído ${hora}`.trim() },
+    entregado: { icono: 'checks', clase: 'text-gray-500 dark:text-green-200', titulo: `Entregado ${hora}`.trim() },
+    enviado: { icono: 'check', clase: 'text-gray-500 dark:text-green-200', titulo: 'Enviado' },
+  }
+  const est = ESTADOS[msg.estado_envio] || ESTADOS.enviado
+  return (
+    <span className={`inline-block ${est.clase}`} title={est.titulo}>
+      <Ic n={est.icono} className="h-4 w-4 align-[-3px]" />
+    </span>
+  )
 }
 
 function formatPhone(phone) {
@@ -306,6 +328,15 @@ export default function WhatsAppCRM() {
           )
           return [...sinTemp, payload.new]
         })
+      })
+      // Cambios de estado (entregado, leído, fallido) que informa el webhook
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'mensajes',
+        filter: `conversacion_id=eq.${seleccionada.id}`,
+      }, (payload) => {
+        setMensajes(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m))
       })
       .subscribe()
 
@@ -831,10 +862,15 @@ export default function WhatsAppCRM() {
                   )}
                   {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
                   {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
+                  {msg.direccion === 'saliente' && msg.estado_envio === 'fallido' && (
+                    <p className="mt-2 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                      No se entregó. {textoFallo(msg.error_codigo, msg.error_envio)}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1 text-right">
                     {formatHora(msg.created_at)}
                     {msg.direccion === 'saliente' && (
-                      <span className="ml-1">{msg.id?.toString().startsWith('temp-') ? <Ic n="clock" className="inline-block h-3 w-3" /> : '✓✓'}</span>
+                      <span className="ml-1"><EstadoMensaje msg={msg} /></span>
                     )}
                   </p>
                 </div>

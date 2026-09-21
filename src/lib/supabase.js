@@ -103,6 +103,14 @@ export const leadsApi = {
   delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }
 
+// Etapas del embudo de ventas (Leads). leads.estado guarda la clave de la etapa.
+export const embudoApi = {
+  getAll: () => supabase?.from('embudo_etapas').select('*').order('orden'),
+  create: (data) => supabase?.from('embudo_etapas').insert(data).select().single(),
+  update: (clave, data) => supabase?.from('embudo_etapas').update(data).eq('clave', clave).select().single(),
+  delete: (clave) => supabase?.from('embudo_etapas').delete().eq('clave', clave),
+}
+
 // ── Recordatorios de seguimiento (leads) ─────────────────────────────────────────
 export const recordatoriosApi = {
   getPendientes: () => supabase?.from('recordatorios').select('*').eq('completado', false).order('fecha'),

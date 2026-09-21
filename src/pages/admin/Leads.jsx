@@ -2,17 +2,41 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { leadsApi, clientesApi, recordatoriosApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
-import Badge from '../../components/ui/Badge.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
+import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa } from '../../lib/embudo.js'
 
 function hoyISO() { return new Date().toISOString().split('T')[0] }
 
-const COLUMNAS = ['nuevo', 'contactado', 'reservado', 'perdido']
-const estadosLead = {
-  nuevo:      { label: 'Nuevo',      color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
-  contactado: { label: 'Contactado', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
-  reservado:  { label: 'Reservado',  color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
-  perdido:    { label: 'Perdido',    color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
+// Tarjetas que se dibujan por etapa: el resto se ve con "Ver más". Con miles de
+// leads en una misma etapa dibujarlos todos trabaría la pantalla.
+const POR_ETAPA = 40
+
+const CAMPO_RAPIDO = 'w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500'
+
+// "Hoy 22:23" para lo de hoy; el resto, dd/mm/aaaa
+function fechaTarjeta(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (d.toDateString() === new Date().toDateString()) {
+    return `Hoy ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`
+  }
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function telefonoLegible(whatsapp) {
+  const digitos = String(whatsapp || '').replace(/\D/g, '')
+  return digitos ? `+${digitos}` : ''
+}
+
+// Nombre de la etapa con su color: punto y fondo tenue del mismo tono
+function EtapaChip({ etapa }) {
+  if (!etapa) return null
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-gray-800 dark:text-zinc-100" style={estiloFondoEtapa(etapa.color)}>
+      <i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapa.color }} />
+      <span className="truncate">{etapa.nombre}</span>
+    </span>
+  )
 }
 
 const FORM_VACIO = { nombre: '', whatsapp: '', interes_tipo: '', interes_destino: '', notas: '' }
@@ -68,6 +92,13 @@ export default function Leads() {
   const [nuevoRecFecha, setNuevoRecFecha] = useState(hoyISO())
   const [nuevoRecNota, setNuevoRecNota] = useState('')
   const [guardandoRec, setGuardandoRec] = useState(false)
+  const { etapas } = useEtapas()
+  const [busqueda, setBusqueda] = useState('')
+  const [soloActivos, setSoloActivos] = useState(true)
+  const [rapidoAbierto, setRapidoAbierto] = useState(false)
+  const [rapido, setRapido] = useState({ nombre: '', whatsapp: '' })
+  const [guardandoRapido, setGuardandoRapido] = useState(false)
+  const [verMas, setVerMas] = useState({}) // clave de etapa -> tarjetas visibles
 
   useEffect(() => {
     async function cargar() {
@@ -138,6 +169,43 @@ export default function Leads() {
     if (lead && lead.estado !== col) cambiarEstado(id, col)
   }
 
+  function cerrarRapido() {
+    setRapidoAbierto(false)
+    setRapido({ nombre: '', whatsapp: '' })
+  }
+
+  // "Lead rápido": solo el nombre (el WhatsApp es opcional) y entra en la primera etapa
+  async function guardarRapido() {
+    const nombre = rapido.nombre.trim()
+    if (!nombre || guardandoRapido) return
+    setGuardandoRapido(true)
+    const digitos = rapido.whatsapp.replace(/\D/g, '')
+    const { data, error } = await leadsApi.create({
+      nombre,
+      whatsapp: digitos || null,
+      origen: 'Manual',
+      estado: 'nuevo',
+    })
+    if (!error && data) {
+      setLeads(prev => [data, ...prev])
+      cerrarRapido()
+    } else {
+      alert('No se pudo guardar el lead. Revisá la conexión.')
+    }
+    setGuardandoRapido(false)
+  }
+
+  // Punto de seguimiento de la tarjeta: rojo = recordatorio vencido, verde =
+  // programado, naranja = todavía no tiene próximo paso. Las perdidas no lo llevan.
+  function seguimientoDe(lead, etapa) {
+    if (etapa?.tipo === 'perdida') return null
+    const r = proximoRecordatorio(lead.id)
+    if (!r) return { color: 'bg-amber-400', texto: 'Sin recordatorio: falta definir el próximo paso' }
+    if (r.fecha < hoyISO()) return { color: 'bg-red-500', texto: `Recordatorio vencido: ${r.nota}` }
+    const cuando = r.fecha === hoyISO() ? 'Hoy' : new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+    return { color: 'bg-green-500', texto: `${cuando}: ${r.nota}` }
+  }
+
   async function registrarLead() {
     if (!formLead.nombre.trim() || !formLead.whatsapp.trim()) return
     setEnviando(true)
@@ -173,7 +241,7 @@ export default function Leads() {
       interes_tipo: lead.interes_tipo || '',
       interes_destino: lead.interes_destino || '',
       origen: lead.origen || '',
-      estado: lead.estado || 'nuevo',
+      estado: claveVisible(etapas, lead.estado) || 'nuevo',
       notas: lead.notas || '',
     })
   }
@@ -229,105 +297,202 @@ export default function Leads() {
 
   if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-500">Cargando leads...</div>
 
+  // Etapas a mostrar y leads que pasan el filtro. "Activos" oculta las perdidas.
+  const etapasVisibles = etapas.filter(e => !soloActivos || e.tipo !== 'perdida')
+  const textoBusqueda = busqueda.trim().toLowerCase()
+  const visibles = leads.filter(l => {
+    if (soloActivos && etapaDe(etapas, claveVisible(etapas, l.estado))?.tipo === 'perdida') return false
+    if (!textoBusqueda) return true
+    return [l.nombre, l.whatsapp, l.notas, l.origen, etiquetaInteres(l)].some(v => String(v || '').toLowerCase().includes(textoBusqueda))
+  })
+
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Leads</h1>
-          <p className="text-gray-400 dark:text-zinc-500 text-sm">{leads.length} leads en total</p>
+    <div>
+      {/* Barra superior: título, vista, filtro y alta */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="mr-1">
+          <h1 className="text-base font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">Embudo de ventas</h1>
+          <p className="text-xs text-gray-500 dark:text-zinc-400">
+            {visibles.length} {visibles.length === 1 ? 'lead' : 'leads'}{soloActivos ? ' activos' : ''}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setMostrarFormLead(true)}
-            className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            Lead de WhatsApp
-          </button>
-          {['kanban','tabla'].map(v => (
-            <button key={v} onClick={() => setVista(v)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${vista === v ? 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400'}`}>
-              {v}
+
+        <div className="flex items-center gap-0.5 rounded-xl bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist" aria-label="Vista">
+          {[['kanban', 'Tablero', 'columns'], ['tabla', 'Lista', 'list']].map(([v, nombre, icono]) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={vista === v}
+              onClick={() => setVista(v)}
+              title={nombre}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${vista === v ? 'bg-gray-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900' : 'text-gray-500 hover:text-gray-800 dark:text-zinc-400 dark:hover:text-white'}`}
+            >
+              <Ic n={icono} className="h-3.5 w-3.5" />{nombre}
             </button>
           ))}
         </div>
+
+        <div className="flex min-w-[240px] flex-1 items-center gap-2">
+          <button
+            onClick={() => setSoloActivos(v => !v)}
+            aria-pressed={soloActivos}
+            title={soloActivos ? 'Ocultando los perdidos. Clic para ver todos' : 'Mostrando todos. Clic para ocultar los perdidos'}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${soloActivos ? 'bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'border border-gray-300 text-gray-600 dark:border-zinc-600 dark:text-zinc-300'}`}
+          >
+            {soloActivos ? 'Leads activos' : 'Todos los leads'}
+          </button>
+          <div className="relative min-w-0 flex-1">
+            <Ic n="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-zinc-500" />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar y filtrar"
+              aria-label="Buscar leads"
+              className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => setMostrarFormLead(true)}
+          className="ml-auto flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+        >
+          <Ic n="plus" className="h-4 w-4" />Nuevo lead
+        </button>
       </div>
 
-      {leads.length === 0 && (
-        <div className="text-center py-20 text-gray-400 dark:text-zinc-500">
-          <IcGrande n="target" />
-          <p>Aún no hay leads. Aparecerán acá cuando alguien complete el formulario de reserva.</p>
-        </div>
-      )}
-
-      {vista === 'kanban' && leads.length > 0 && (
-        <div className="grid grid-cols-4 gap-4">
-          {COLUMNAS.map((col) => {
-            const colLeads = leads.filter(l => l.estado === col)
-            const { label, color } = estadosLead[col]
+      {vista === 'kanban' && (
+        <div className="flex items-start gap-3 overflow-x-auto pb-4">
+          {etapasVisibles.map(etapa => {
+            const enEtapa = visibles.filter(l => claveVisible(etapas, l.estado) === etapa.clave)
+            const mostrados = enEtapa.slice(0, verMas[etapa.clave] || POR_ETAPA)
+            const restantes = enEtapa.length - mostrados.length
             return (
               <div
-                key={col}
-                className={`rounded-2xl p-3 transition-colors ${colArrastrando === col ? 'bg-brand-100 dark:bg-brand-950/40 ring-2 ring-brand-400' : 'bg-gray-100 dark:bg-zinc-800'}`}
-                onDragOver={e => { e.preventDefault(); if (colArrastrando !== col) setColArrastrando(col) }}
-                onDragLeave={() => setColArrastrando(prev => (prev === col ? null : prev))}
-                onDrop={e => soltarEnColumna(e, col)}
+                key={etapa.clave}
+                className={`w-[212px] shrink-0 rounded-xl transition-colors ${colArrastrando === etapa.clave ? 'bg-black/[0.04] ring-2 ring-brand-400 dark:bg-white/[0.05]' : ''}`}
+                onDragOver={e => { e.preventDefault(); if (colArrastrando !== etapa.clave) setColArrastrando(etapa.clave) }}
+                onDragLeave={() => setColArrastrando(prev => (prev === etapa.clave ? null : prev))}
+                onDrop={e => soltarEnColumna(e, etapa.clave)}
               >
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <Badge className={color}>{label}</Badge>
-                  <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium">{colLeads.length}</span>
+                <div className="border-t-[3px] px-1 pb-2 pt-2 text-center" style={{ borderTopColor: etapa.color }}>
+                  <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-gray-800 dark:text-zinc-100" title={etapa.nombre}>{etapa.nombre}</p>
+                  <p className="mt-0.5 text-[11px] text-gray-500 dark:text-zinc-400">{enEtapa.length} {enEtapa.length === 1 ? 'lead' : 'leads'}</p>
                 </div>
-                <div className="space-y-2">
-                  {colLeads.map(lead => (
-                    <div key={lead.id}
-                      draggable
-                      onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
-                      className="bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm dark:shadow-black/20 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
-                      onClick={() => abrirLead(lead)}>
-                      <div className="flex items-start justify-between gap-1">
-                        <p className="font-semibold text-sm text-gray-900 dark:text-zinc-100">{lead.nombre}</p>
-                        {eliminandoId === lead.id ? (
-                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => eliminarLead(lead.id)} className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Sí</button>
-                            <button onClick={() => setEliminandoId(null)} className="text-xs text-gray-400 dark:text-zinc-500">No</button>
-                          </div>
-                        ) : (
-                          <button onClick={e => { e.stopPropagation(); setEliminandoId(lead.id) }}
-                            className="text-gray-300 dark:text-zinc-600 hover:text-red-400 dark:hover:text-red-400 transition-colors flex-shrink-0" title="Eliminar">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+
+                <div className="max-h-[calc(100vh-17rem)] min-h-[5rem] space-y-2 overflow-y-auto pb-1">
+                  {etapa.clave === 'nuevo' && (
+                    rapidoAbierto ? (
+                      <div className="rounded-lg border border-gray-300 bg-white p-2.5 shadow-sm dark:border-white/15 dark:bg-zinc-900">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={rapido.nombre}
+                          onChange={e => setRapido(p => ({ ...p, nombre: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') guardarRapido(); if (e.key === 'Escape') cerrarRapido() }}
+                          placeholder="Nombre del lead"
+                          aria-label="Nombre del lead"
+                          className={CAMPO_RAPIDO}
+                        />
+                        <input
+                          type="text"
+                          value={rapido.whatsapp}
+                          onChange={e => setRapido(p => ({ ...p, whatsapp: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') guardarRapido(); if (e.key === 'Escape') cerrarRapido() }}
+                          placeholder="WhatsApp (opcional)"
+                          aria-label="WhatsApp del lead"
+                          className={`${CAMPO_RAPIDO} mt-1.5`}
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            onClick={guardarRapido}
+                            disabled={guardandoRapido || !rapido.nombre.trim()}
+                            className="flex-1 rounded-lg bg-gray-900 py-1.5 text-xs font-bold text-white transition-colors hover:bg-gray-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                          >
+                            {guardandoRapido ? 'Guardando...' : 'Agregar'}
                           </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{etiquetaInteres(lead)}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-400 dark:text-zinc-500">{lead.origen}</span>
-                        <span className="ml-auto text-xs text-gray-400 dark:text-zinc-500">
-                          {new Date(lead.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                        </span>
-                      </div>
-                      {proximoRecordatorio(lead.id) && (
-                        <div className={`mt-2 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg ${
-                          proximoRecordatorio(lead.id).fecha < hoyISO()
-                            ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
-                            : proximoRecordatorio(lead.id).fecha === hoyISO()
-                              ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400'
-                              : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'
-                        }`}>
-                          <Ic n="clock" className="h-3 w-3" />
-                          <span className="truncate">
-                            {proximoRecordatorio(lead.id).fecha < hoyISO() ? 'Vencido' : proximoRecordatorio(lead.id).fecha === hoyISO() ? 'Hoy' : new Date(proximoRecordatorio(lead.id).fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                            {' · '}{proximoRecordatorio(lead.id).nota}
-                          </span>
+                          <button
+                            onClick={cerrarRapido}
+                            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                          >
+                            Cancelar
+                          </button>
                         </div>
-                      )}
-                      {lead.whatsapp && (
-                        <button
-                          onClick={e => { e.stopPropagation(); navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`) }}
-                          className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
-                          <IcTxt n="chat" />WhatsApp
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setRapidoAbierto(true)}
+                        className="w-full rounded-lg border border-dashed border-gray-300 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-white/20 dark:text-zinc-400 dark:hover:border-white/40 dark:hover:text-zinc-200"
+                      >
+                        Lead rápido
+                      </button>
+                    )
+                  )}
+
+                  {mostrados.map(lead => {
+                    const seguimiento = seguimientoDe(lead, etapa)
+                    const interes = etiquetaInteres(lead)
+                    const chip = 'max-w-full truncate rounded border border-gray-200 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400'
+                    return (
+                      <div
+                        key={lead.id}
+                        draggable
+                        onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
+                        onClick={() => abrirLead(lead)}
+                        className="group cursor-grab rounded-lg border border-gray-200 bg-white px-2.5 py-2 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none"
+                      >
+                        <div className="flex items-baseline justify-between gap-2 text-[11px] text-gray-500 dark:text-zinc-400">
+                          <span className="truncate">{telefonoLegible(lead.whatsapp) || lead.origen || 'Sin teléfono'}</span>
+                          <span className="shrink-0 tabular-nums">{fechaTarjeta(lead.created_at)}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[13px] font-extrabold uppercase text-sky-700 dark:text-sky-400" title={lead.nombre}>{lead.nombre}</p>
+
+                        <div className="mt-1.5 flex min-h-[18px] items-center gap-1.5">
+                          <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                            {interes && <span className={chip}>{interes}</span>}
+                            {lead.origen && lead.origen !== 'WhatsApp' && <span className={chip}>{lead.origen}</span>}
+                          </div>
+                          {eliminandoId === lead.id ? (
+                            <span className="flex shrink-0 items-center gap-1.5 text-[11px]" onClick={e => e.stopPropagation()}>
+                              <span className="text-gray-500 dark:text-zinc-400">¿Eliminar?</span>
+                              <button onClick={() => eliminarLead(lead.id)} className="font-bold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Sí</button>
+                              <button onClick={() => setEliminandoId(null)} className="text-gray-400 dark:text-zinc-500">No</button>
+                            </span>
+                          ) : (
+                            <span className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                              {lead.whatsapp && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); navigate(`/admin/crm/whatsapp?phone=${lead.whatsapp}`) }}
+                                  title="Abrir el chat de WhatsApp"
+                                  className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                                >
+                                  <Ic n="chat" className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={e => { e.stopPropagation(); setEliminandoId(lead.id) }}
+                                title="Eliminar"
+                                className="text-gray-300 transition-colors hover:text-red-400 dark:text-zinc-600 dark:hover:text-red-400"
+                              >
+                                <Ic n="trash" className="h-3.5 w-3.5" />
+                              </button>
+                            </span>
+                          )}
+                          {seguimiento && <span title={seguimiento.texto} className={`h-2 w-2 shrink-0 rounded-full ${seguimiento.color}`} />}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {restantes > 0 && (
+                    <button
+                      onClick={() => setVerMas(prev => ({ ...prev, [etapa.clave]: (prev[etapa.clave] || POR_ETAPA) + POR_ETAPA }))}
+                      className="w-full rounded-lg py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                    >
+                      Ver {Math.min(restantes, POR_ETAPA)} más ({restantes} sin mostrar)
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -335,7 +500,14 @@ export default function Leads() {
         </div>
       )}
 
-      {vista === 'tabla' && leads.length > 0 && (
+      {vista === 'tabla' && visibles.length === 0 && (
+        <div className="py-16 text-center text-gray-400 dark:text-zinc-500">
+          <IcGrande n="target" />
+          <p>{leads.length === 0 ? 'Aún no hay leads. Aparecerán acá cuando alguien escriba por WhatsApp o complete el formulario de reserva.' : 'Ningún lead coincide con el filtro.'}</p>
+        </div>
+      )}
+
+      {vista === 'tabla' && visibles.length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
@@ -349,8 +521,8 @@ export default function Leads() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
-              {leads.map(lead => {
-                const estado = estadosLead[lead.estado] || estadosLead.nuevo
+              {visibles.map(lead => {
+                const etapa = etapaDe(etapas, claveVisible(etapas, lead.estado))
                 return (
                   <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
                     <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">{lead.nombre}</td>
@@ -358,9 +530,10 @@ export default function Leads() {
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{lead.origen}</td>
                     <td className="px-5 py-3 text-gray-400 dark:text-zinc-500 text-xs">{new Date(lead.created_at).toLocaleDateString('es-AR')}</td>
                     <td className="px-5 py-3">
-                      <select value={lead.estado} onChange={e => cambiarEstado(lead.id, e.target.value)}
-                        className={`text-xs font-medium px-2 py-1 rounded-full border-0 outline-none cursor-pointer ${estado.color}`}>
-                        {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                      <select value={claveVisible(etapas, lead.estado)} onChange={e => cambiarEstado(lead.id, e.target.value)}
+                        style={etapa ? estiloFondoEtapa(etapa.color) : undefined}
+                        className="max-w-[220px] cursor-pointer rounded-full border-0 px-2.5 py-1 text-xs font-bold text-gray-800 outline-none dark:text-zinc-100">
+                        {etapas.map(e => <option key={e.clave} value={e.clave} className="bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100">{e.nombre}</option>)}
                       </select>
                     </td>
                     <td className="px-5 py-3">
@@ -471,13 +644,13 @@ export default function Leads() {
               />
 
               <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Estado</label>
+                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etapa del embudo</label>
                 <select
                   value={editForm.estado}
                   onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
                 >
-                  {Object.entries(estadosLead).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                  {etapas.map(e => <option key={e.clave} value={e.clave}>{e.nombre}</option>)}
                 </select>
               </div>
 

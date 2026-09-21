@@ -5,6 +5,7 @@ import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, pro
 import { formatPrecio } from '../../data/mockData.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
+import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa } from '../../lib/embudo.js'
 import {
   useMetricasCRM, Encabezado,
   TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
@@ -24,13 +25,6 @@ function formatFechaRelativa(iso) {
     return `Hoy, ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
   }
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-}
-
-const estadosLead = {
-  nuevo:      { label: 'Nuevo',      color: 'bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-zinc-200' },
-  contactado: { label: 'Contactado', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
-  reservado:  { label: 'Reservado',  color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
-  perdido:    { label: 'Perdido',    color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
 }
 
 const RANKING_EXCURSIONES = [
@@ -182,6 +176,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [periodo, setPeriodo] = useState('semana')
   const metricas = useMetricasCRM(periodo)
+  const { etapas } = useEtapas()
 
   useEffect(() => {
     async function cargar() {
@@ -328,7 +323,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {leadsRecientes.map(lead => {
-                    const estado = estadosLead[lead.estado] || estadosLead.nuevo
+                    const etapa = etapaDe(etapas, claveVisible(etapas, lead.estado))
                     return (
                       <tr key={lead.id} className="border-b border-gray-50 last:border-0 dark:border-white/[0.04]">
                         <td className="px-2.5 py-2.5">
@@ -343,7 +338,14 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="px-2.5 py-2.5 text-[12.5px] text-gray-700 dark:text-zinc-200">{etiquetaInteres(lead) || '—'}</td>
-                        <td className="px-2.5 py-2.5"><span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${estado.color}`}>{estado.label}</span></td>
+                        <td className="px-2.5 py-2.5">
+                          {etapa && (
+                            <span className="inline-flex max-w-[190px] items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-gray-800 dark:text-zinc-100" style={estiloFondoEtapa(etapa.color)}>
+                              <i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapa.color }} />
+                              <span className="truncate">{etapa.nombre}</span>
+                            </span>
+                          )}
+                        </td>
                         <td className="whitespace-nowrap px-2.5 py-2.5 text-[12.5px] text-gray-500 dark:text-zinc-400">{formatFechaRelativa(lead.created_at)}</td>
                         <td className="px-2.5 py-2.5 text-right">
                           <a

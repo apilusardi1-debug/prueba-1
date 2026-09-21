@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
-import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi, botApi } from '../../lib/supabase.js'
+import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi, botApi, embudoApi, supabase } from '../../lib/supabase.js'
 import { ROLES } from '../../lib/roles.js'
+import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA } from '../../lib/embudo.js'
+import Ic from '../../components/admin/dashboard/Ic.jsx'
 
 const SECTION = {
   title: (t) => (
@@ -670,6 +672,231 @@ function TabAsistente() {
   )
 }
 
+// ── Etapas del embudo de ventas (las columnas de Leads) ─────────────────────────
+function slugEtapa(nombre) {
+  return nombre.toLowerCase().normalize('NFD').replace(/[^\w\s-]/g, '').trim().replace(/[\s-]+/g, '_').slice(0, 40)
+}
+
+function FilaEtapa({ etapa, indice, total, fija, cantidad, ocupado, alCambiar, alMover, alBorrar }) {
+  const [nombre, setNombre] = useState(etapa.nombre)
+  const [color, setColor] = useState(etapa.color)
+  const [confirmando, setConfirmando] = useState(false)
+  useEffect(() => { setNombre(etapa.nombre); setColor(etapa.color) }, [etapa.nombre, etapa.color])
+
+  const boton = 'grid h-8 w-8 place-content-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-transparent dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800'
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 px-3 py-2.5 dark:border-white/[0.07]">
+      <input
+        type="color"
+        value={color}
+        onChange={e => setColor(e.target.value)}
+        onBlur={() => { if (color !== etapa.color) alCambiar(etapa.clave, { color }) }}
+        aria-label={`Color de ${etapa.nombre}`}
+        className="h-9 w-10 cursor-pointer rounded-lg border border-gray-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-800"
+      />
+      <input
+        type="text"
+        value={nombre}
+        onChange={e => setNombre(e.target.value)}
+        onBlur={() => {
+          const limpio = nombre.trim()
+          if (limpio && limpio !== etapa.nombre) alCambiar(etapa.clave, { nombre: limpio })
+          else setNombre(etapa.nombre)
+        }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        aria-label="Nombre de la etapa"
+        className={`${CLASE_CAMPO} min-w-[180px] flex-1`}
+      />
+      <select
+        value={etapa.tipo}
+        disabled={fija || ocupado}
+        onChange={e => alCambiar(etapa.clave, { tipo: e.target.value })}
+        aria-label="Tipo de etapa"
+        title={fija ? 'El sistema usa esta etapa: su tipo no se cambia' : undefined}
+        className={`${CLASE_CAMPO} w-[170px] disabled:opacity-60`}
+      >
+        {TIPOS_ETAPA.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+      </select>
+      <span className="w-[68px] text-right text-xs tabular-nums text-gray-500 dark:text-zinc-400">
+        {cantidad == null ? '' : `${cantidad} ${cantidad === 1 ? 'lead' : 'leads'}`}
+      </span>
+      <div className="flex items-center gap-1">
+        <button onClick={() => alMover(indice, -1)} disabled={ocupado || indice === 0} title="Subir" aria-label="Subir la etapa" className={boton}>
+          <Ic n="up" className="h-4 w-4" />
+        </button>
+        <button onClick={() => alMover(indice, 1)} disabled={ocupado || indice === total - 1} title="Bajar" aria-label="Bajar la etapa" className={boton}>
+          <Ic n="down" className="h-4 w-4" />
+        </button>
+        {confirmando ? (
+          <span className="ml-1 flex items-center gap-1.5 text-xs">
+            <button onClick={() => { setConfirmando(false); alBorrar(etapa) }} className="font-bold text-red-500 hover:text-red-700 dark:text-red-400">Borrar</button>
+            <button onClick={() => setConfirmando(false)} className="text-gray-400 dark:text-zinc-500">No</button>
+          </span>
+        ) : (
+          <button
+            onClick={() => setConfirmando(true)}
+            disabled={ocupado || fija}
+            title={fija ? 'El sistema usa esta etapa: no se puede borrar' : 'Borrar la etapa'}
+            aria-label="Borrar la etapa"
+            className={boton}
+          >
+            <Ic n="trash" className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TabEmbudo() {
+  const { etapas, cargando, recargar } = useEtapas()
+  const [cantidades, setCantidades] = useState({})
+  const [nueva, setNueva] = useState({ nombre: '', color: '#8b8fe8', tipo: 'abierta' })
+  const [ocupado, setOcupado] = useState(false)
+  const [mensaje, setMensaje] = useState(null) // { tipo: 'ok' | 'error', texto }
+
+  // Cuántos leads hay en cada etapa (para no borrar una que tiene gente)
+  useEffect(() => {
+    if (!supabase) return
+    let vivo = true
+    Promise.all(etapas.map(e =>
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('estado', e.clave).then(r => [e.clave, r.count ?? 0])
+    )).then(pares => { if (vivo) setCantidades(Object.fromEntries(pares)) })
+    return () => { vivo = false }
+  }, [etapas])
+
+  async function ejecutar(accion, textoOk) {
+    setOcupado(true)
+    setMensaje(null)
+    try {
+      const r = await accion()
+      if (r?.error) throw r.error
+      await recargar()
+      if (textoOk) setMensaje({ tipo: 'ok', texto: textoOk })
+    } catch (e) {
+      setMensaje({ tipo: 'error', texto: `No se pudo guardar: ${e?.message || 'error de conexión'}. ¿Está aplicada la migración del embudo?` })
+    }
+    setOcupado(false)
+  }
+
+  const cambiar = (clave, cambios) => ejecutar(() => embudoApi.update(clave, cambios))
+
+  function mover(indice, delta) {
+    const a = etapas[indice]
+    const b = etapas[indice + delta]
+    if (!a || !b) return
+    ejecutar(async () => {
+      await embudoApi.update(a.clave, { orden: b.orden })
+      return embudoApi.update(b.clave, { orden: a.orden })
+    })
+  }
+
+  function borrar(etapa) {
+    const cant = cantidades[etapa.clave] || 0
+    if (cant > 0) {
+      setMensaje({ tipo: 'error', texto: `«${etapa.nombre}» tiene ${cant} ${cant === 1 ? 'lead' : 'leads'}. Movelos a otra etapa antes de borrarla.` })
+      return
+    }
+    ejecutar(() => embudoApi.delete(etapa.clave), 'Etapa borrada')
+  }
+
+  function agregar() {
+    const nombre = nueva.nombre.trim()
+    if (!nombre) return
+    let clave = slugEtapa(nombre) || 'etapa'
+    while (etapas.some(e => e.clave === clave)) clave += '_2'
+    const ultimaEnCurso = Math.max(0, ...etapas.filter(e => e.tipo !== 'perdida').map(e => e.orden))
+    ejecutar(async () => {
+      // La etapa nueva va antes de las perdidas, que quedan siempre al final
+      for (const e of etapas.filter(x => x.tipo === 'perdida')) await embudoApi.update(e.clave, { orden: e.orden + 1 })
+      return embudoApi.create({ clave, nombre, color: nueva.color, tipo: nueva.tipo, orden: ultimaEnCurso + 1 })
+    }, 'Etapa agregada')
+    setNueva({ nombre: '', color: nueva.color, tipo: 'abierta' })
+  }
+
+  return (
+    <div className="dash-card mb-5 p-6">
+      {SECTION.title('Etapas del embudo de ventas')}
+      <p className="mb-5 max-w-[720px] text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
+        Son las columnas de Leads. Podés cambiar el nombre y el color, subir o bajar cada etapa y agregar las que necesites.
+        El tipo define cómo se cuenta en el Dashboard: <strong>En curso</strong> es una consulta abierta; <strong>Ganada</strong> es una venta cerrada
+        (se cuenta una sola vez, la primera vez que un lead llega a una etapa ganada, aunque después pase por otras); <strong>Perdida</strong> es
+        un lead que no compró y se oculta con el filtro «Leads activos».
+      </p>
+
+      {mensaje && (
+        <p className={`mb-4 rounded-xl px-4 py-2.5 text-sm font-medium ${mensaje.tipo === 'ok'
+          ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+          : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'}`}>
+          {mensaje.texto}
+        </p>
+      )}
+
+      {cargando ? (
+        <p className="text-sm text-gray-400 dark:text-zinc-500">Cargando etapas...</p>
+      ) : (
+        <div className="grid gap-2">
+          {etapas.map((e, i) => (
+            <FilaEtapa
+              key={e.clave}
+              etapa={e}
+              indice={i}
+              total={etapas.length}
+              fija={CLAVES_FIJAS.includes(e.clave)}
+              cantidad={cantidades[e.clave]}
+              ocupado={ocupado}
+              alCambiar={cambiar}
+              alMover={mover}
+              alBorrar={borrar}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 border-t border-gray-100 pt-5 dark:border-white/[0.07]">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400">Agregar una etapa</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="color"
+            value={nueva.color}
+            onChange={e => setNueva(p => ({ ...p, color: e.target.value }))}
+            aria-label="Color de la etapa nueva"
+            className="h-9 w-10 cursor-pointer rounded-lg border border-gray-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-800"
+          />
+          <input
+            type="text"
+            value={nueva.nombre}
+            onChange={e => setNueva(p => ({ ...p, nombre: e.target.value }))}
+            onKeyDown={e => { if (e.key === 'Enter') agregar() }}
+            placeholder="Nombre de la etapa"
+            aria-label="Nombre de la etapa nueva"
+            className={`${CLASE_CAMPO} min-w-[180px] flex-1`}
+          />
+          <select
+            value={nueva.tipo}
+            onChange={e => setNueva(p => ({ ...p, tipo: e.target.value }))}
+            aria-label="Tipo de la etapa nueva"
+            className={`${CLASE_CAMPO} w-[170px]`}
+          >
+            {TIPOS_ETAPA.filter(x => x.id !== 'perdida').map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </select>
+          <button
+            onClick={agregar}
+            disabled={ocupado || !nueva.nombre.trim()}
+            className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          >
+            Agregar
+          </button>
+        </div>
+        <p className="mt-3 text-[11.5px] text-gray-400 dark:text-zinc-500">
+          Nueva consulta, Ya pagó y Perdido son etapas fijas: el sistema las usa (ahí entran los leads nuevos, ahí pasa un lead al convertirlo en cliente y ahí van los que no compraron). Se les puede cambiar el nombre y el color, pero no borrarlas.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function SiteConfig() {
   const { config, saveConfig, loading } = useSiteConfig()
   const [form, setForm] = useState(config)
@@ -705,6 +932,7 @@ export default function SiteConfig() {
     { id: 'conceptos', label: 'Conceptos' },
     { id: 'respuestas', label: 'Respuestas rápidas' },
     { id: 'asistente', label: 'Asistente' },
+    { id: 'embudo', label: 'Embudo' },
   ]
 
   return (
@@ -738,6 +966,7 @@ export default function SiteConfig() {
       {tab === 'conceptos' && <TabConceptos />}
       {tab === 'respuestas' && <TabRespuestasRapidas />}
       {tab === 'asistente' && <TabAsistente />}
+      {tab === 'embudo' && <TabEmbudo />}
 
       {tab === 'sitio' && (
         <>

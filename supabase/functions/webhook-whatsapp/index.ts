@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { detectarInteres } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
+import { enviarLeadAlEmbudoPorGrupo } from '../_shared/embudoEntrada.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -53,7 +54,8 @@ async function guardarMedia(supabase: ReturnType<typeof createClient>, mediaId: 
 // Saluda al primer mensaje de una conversación, pregunta Paquetes o Paseos y
 // asigna la conversación en turnos entre las personas de ese grupo (tabla
 // bot_reparto). Se apaga solo cuando alguien queda asignado o responde a mano, y
-// se puede pausar en un chat puntual (conversaciones.bot_pausado).
+// se puede pausar en un chat puntual (conversaciones.bot_pausado). Cuando el
+// contacto elige Paquetes o Paseos, su lead pasa al embudo de ese grupo.
 const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const NOMBRE_GRUPO: Record<string, string> = { paquetes: 'Paquetes', paseos: 'Paseos' }
 const TEXTO_REINTENTO = 'Para derivarte con la persona indicada, tocá una de estas opciones:'
@@ -169,6 +171,7 @@ async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto
   await guardarMensajeBot(supabase, convId, phone, texto, wamid)
   await supabase.from('conversaciones').update({ bot_estado: 'sin_asignar', ...(grupo ? { grupo } : {}) }).eq('id', convId)
   await etiquetarLeadPorGrupo(supabase, phone, grupo)
+  await enviarLeadAlEmbudoPorGrupo(supabase, phone, grupo)
 }
 
 // Elige a quien lleva más tiempo sin recibir una conversación del grupo.
@@ -193,6 +196,7 @@ async function derivar(supabase: ReturnType<typeof createClient>, mensaje: strin
   const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
   await guardarMensajeBot(supabase, convId, phone, texto, wamid)
   await etiquetarLeadPorGrupo(supabase, phone, grupo)
+  await enviarLeadAlEmbudoPorGrupo(supabase, phone, grupo)
   return true
 }
 

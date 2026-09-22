@@ -98,7 +98,7 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 |---------|-------------|
 | `src/pages/admin/Agenda.jsx` | Calendario con chips de excursiones |
 | `src/pages/admin/Finanzas.jsx` | Tab Mercado Pago con QR y pagos recientes |
-| `src/pages/admin/crm/WhatsApp.jsx` | CRM WhatsApp |
+| `src/pages/admin/crm/WhatsApp.jsx` | CRM WhatsApp (lista/chat/ficha en una sola columna por debajo de 1024px, con flecha de volver) |
 | `src/lib/ultramsg.js` | Helper para llamar a `send-whatsapp` Edge Function |
 | `src/lib/avisosMensajes.js` | Avisos de mensaje nuevo del CRM (sonido y notificación), enganchado en `AdminLayout` |
 | `src/components/admin/dashboard/` | Tarjetas del Dashboard, métricas del CRM e iconos de línea (`Ic.jsx`) |

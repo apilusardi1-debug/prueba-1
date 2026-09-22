@@ -502,6 +502,11 @@ function LayoutContent() {
   const { isExpanded, isHovered } = useSidebar()
   const [dark, setDark] = useDarkMode()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  // El CRM de WhatsApp es una app de chat: en el celular no le podemos restar espacio con el
+  // margen que sí tiene el resto de las pantallas del panel. De lg (1024px) para arriba queda
+  // exactamente igual que siempre.
+  const esWhatsApp = pathname.startsWith('/admin/crm/whatsapp')
   const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
   const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
   const abrirCartel = c => {
@@ -518,7 +523,7 @@ function LayoutContent() {
         isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
       }`}>
         <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} />
-        <main className="p-4 md:p-6 max-w-screen-2xl mx-auto">
+        <main className={esWhatsApp ? 'lg:p-6 lg:max-w-screen-2xl lg:mx-auto' : 'p-4 md:p-6 max-w-screen-2xl mx-auto'}>
           <Outlet />
         </main>
       </div>

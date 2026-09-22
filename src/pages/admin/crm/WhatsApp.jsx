@@ -403,7 +403,9 @@ export default function WhatsAppCRM() {
     setSeleccionada(conv)
     setMenuEtiqueta(false)
     setMenuAsignar(false)
-    setTimeout(() => inputRef.current?.focus(), 100)
+    // En la compu conviene enfocar el mensaje para escribir de una; en el celular no, porque
+    // levanta el teclado y tapa la lista de mensajes apenas se abre el chat
+    if (window.innerWidth >= 1024) setTimeout(() => inputRef.current?.focus(), 100)
   }
 
   async function asignarA(usuarioId) {
@@ -694,8 +696,9 @@ export default function WhatsAppCRM() {
 
   return (
     <div className="flex h-full bg-white dark:bg-zinc-900">
-      {/* Panel izquierdo — lista de conversaciones */}
-      <div className="w-80 border-r border-gray-200 dark:border-zinc-800 flex flex-col shrink-0">
+      {/* Panel izquierdo — lista de conversaciones. En el celular ocupa toda la pantalla y
+          desaparece en cuanto se abre un chat (vuelve con la flecha del encabezado del chat). */}
+      <div className={`${seleccionada ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col border-r border-gray-200 dark:border-zinc-800 shrink-0`}>
         <div className="px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-3">
             <h1 className="font-bold text-gray-900 dark:text-zinc-100 text-lg">WhatsApp</h1>
@@ -846,9 +849,16 @@ export default function WhatsAppCRM() {
 
       {/* Panel derecho — chat */}
       {seleccionada ? (
-        <div className="chat-fondo flex-1 flex flex-col">
+        <div className="chat-fondo flex-1 flex flex-col w-full">
           {/* Header del chat */}
           <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex items-center gap-3 shadow-sm dark:shadow-black/20">
+            <button
+              onClick={() => setSeleccionada(null)}
+              aria-label="Volver a la lista"
+              className="lg:hidden -ml-1.5 w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
+            >
+              <Ic n="arrow" className="h-4 w-4 rotate-180" />
+            </button>
             <Avatar nombre={seleccionada.contacto_nombre} />
             <div>
               <p className="font-semibold text-gray-900 dark:text-zinc-100">{seleccionada.contacto_nombre}</p>
@@ -1160,7 +1170,8 @@ export default function WhatsAppCRM() {
           )}
         </div>
       ) : (
-        <div className="chat-fondo flex-1 flex items-center justify-center">
+        // Sin conversación elegida: en el celular no hay nada que mostrar acá (se ve la lista), en la compu sí
+        <div className="chat-fondo flex-1 hidden lg:flex items-center justify-center">
           <div className="text-center text-gray-500 dark:text-zinc-400">
             <span className="mb-4 flex justify-center text-gray-300 dark:text-zinc-600"><Ic n="chat" className="h-14 w-14" /></span>
             <p className="font-semibold text-lg text-gray-700 dark:text-zinc-300">WhatsApp CRM</p>
@@ -1169,11 +1180,17 @@ export default function WhatsAppCRM() {
         </div>
       )}
 
-      {/* Panel derecho — ficha del cliente */}
+      {/* Panel derecho — ficha del cliente. En la compu es una columna más; en el celular tapa
+          toda la pantalla (se cierra con la ✕ o tocando "Cliente" de nuevo). */}
       {panelCliente && seleccionada && (
-        <div className="w-80 border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-y-auto">
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 lg:static lg:inset-auto lg:z-auto lg:w-80 lg:border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-y-auto">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
             <p className="font-semibold text-gray-900 dark:text-zinc-100">Ficha del contacto</p>
+            <button
+              onClick={() => setPanelCliente(false)}
+              aria-label="Cerrar"
+              className="lg:hidden text-xl text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"
+            >✕</button>
           </div>
           <div className="p-5 space-y-5">
             <DatosDeLaConversacion datos={datosViaje} />

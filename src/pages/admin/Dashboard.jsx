@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { excursionesApi, leadsApi, clientesApi, reservasApi, movimientosApi, propuestasApi, normalizarExcursion } from '../../lib/supabase.js'
@@ -6,6 +6,11 @@ import { formatPrecio } from '../../data/mockData.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
 import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, clavesDeEntrada } from '../../lib/embudo.js'
+import { useSincronizado } from '../../lib/useSincronizado.js'
+
+// Las tablas que alimentan los números del Dashboard: si cambia cualquiera de estas (una
+// reserva nueva, un pago, un lead que entró por WhatsApp...) se vuelve a cargar solo.
+const TABLAS_DASHBOARD = ['excursiones', 'leads', 'clientes', 'reservas', 'movimientos_caja', 'propuestas']
 import {
   useMetricasCRM, Encabezado,
   TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
@@ -178,26 +183,28 @@ export default function Dashboard() {
   const metricas = useMetricasCRM(periodo)
   const { etapas } = useEtapas()
 
-  useEffect(() => {
-    async function cargar() {
-      const [{ data: ex }, { data: le }, { data: cl }, { data: re }, { data: mo }, { data: pr }] = await Promise.all([
-        excursionesApi.getAll(),
-        leadsApi.getAll(),
-        clientesApi.getAll(),
-        reservasApi.getAll(),
-        movimientosApi.getAll(),
-        propuestasApi.getAll(),
-      ])
-      setExcursiones((ex || []).map(normalizarExcursion))
-      setLeads(le || [])
-      setClientes(cl || [])
-      setReservas(re || [])
-      setMovimientos(mo || [])
-      setPropuestas(pr || [])
-      setLoading(false)
-    }
-    cargar()
+  const cargar = useCallback(async () => {
+    const [{ data: ex }, { data: le }, { data: cl }, { data: re }, { data: mo }, { data: pr }] = await Promise.all([
+      excursionesApi.getAll(),
+      leadsApi.getAll(),
+      clientesApi.getAll(),
+      reservasApi.getAll(),
+      movimientosApi.getAll(),
+      propuestasApi.getAll(),
+    ])
+    setExcursiones((ex || []).map(normalizarExcursion))
+    setLeads(le || [])
+    setClientes(cl || [])
+    setReservas(re || [])
+    setMovimientos(mo || [])
+    setPropuestas(pr || [])
+    setLoading(false)
   }, [])
+
+  useEffect(() => { cargar() }, [cargar])
+  // Se mantiene al día solo mientras la pantalla está abierta: escucha estas tablas y, como red
+  // de seguridad, igual vuelve a cargar cada 1 minuto.
+  useSincronizado(cargar, TABLAS_DASHBOARD)
 
   const entradas = clavesDeEntrada(etapas)
   const leadsNuevos = leads.filter(l => entradas.includes(l.estado)).length

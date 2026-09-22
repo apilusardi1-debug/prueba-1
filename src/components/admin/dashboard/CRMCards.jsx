@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { crmMetricasApi, tarifasMensajeApi } from '../../../lib/supabase.js'
 import { nivelEspera, HORAS_ALERTA_ROJA } from '../../../lib/alertasEspera.js'
+import { useSincronizado } from '../../../lib/useSincronizado.js'
 import Ic from './Ic.jsx'
 import { useTemaOscuro } from './useTemaOscuro.js'
 
@@ -88,6 +89,9 @@ export function useMetricasCRM(periodo) {
   }, [periodo])
 
   useEffect(() => { cargar() }, [cargar])
+  // Un mensaje o una conversación nueva cambian estos números (tiempo de respuesta, sin
+  // responder ahora...): se mantiene al día solo, sin esperar a que alguien recargue la página.
+  useSincronizado(cargar, ['conversaciones', 'mensajes'])
   return { ...estado, recargar: cargar, rango: rangoPeriodo(periodo) }
 }
 

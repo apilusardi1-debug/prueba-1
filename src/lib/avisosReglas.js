@@ -17,8 +17,8 @@ export function recortar(texto, max = 110) {
 // Llegó un mensaje del contacto.
 //  - Conversación asignada a mí: me avisa a mí y a nadie más.
 //  - Sin asignar: avisa a todos, salvo mientras el asistente automático espera
-//    que el contacto elija Paquetes o Paseos (ahí todavía no le toca a nadie:
-//    cuando lo derive, avisa a quien corresponda). Si el asistente está pausado
+//    que el contacto elija Paquetes o Paseos, o le hace las preguntas del filtrado
+//    (ahí todavía no le toca a nadie: cuando lo derive, avisa a quien corresponda). Si el asistente está pausado
 //    en ese chat nadie lo está atendiendo, así que sí avisa.
 export function avisoPorMensaje(conv, texto, yoId) {
   if (!conv) return null
@@ -26,7 +26,7 @@ export function avisoPorMensaje(conv, texto, yoId) {
   if (conv.asignado_a) {
     return yoId && conv.asignado_a === yoId ? { titulo: `Mensaje de ${nombre}`, cuerpo: texto } : null
   }
-  if (conv.bot_estado === 'esperando' && !conv.bot_pausado) return null
+  if (['esperando', 'filtrando'].includes(conv.bot_estado) && !conv.bot_pausado) return null
   return { titulo: `Sin asignar: ${nombre}`, cuerpo: texto }
 }
 

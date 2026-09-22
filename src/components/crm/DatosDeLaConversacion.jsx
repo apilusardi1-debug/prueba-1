@@ -1,5 +1,5 @@
-// Lo que el contacto ya dijo en el chat (por ejemplo, al contestar la plantilla
-// de datos para la propuesta). Es una lectura automática: se muestra para que la
+// Lo que el contacto ya dijo en el chat (por ejemplo, al contestar las preguntas del
+// asistente o la plantilla de datos para la propuesta). Es una lectura automática: se muestra para que la
 // persona la revise antes de crear la reserva o la propuesta, que la usan sola.
 function textoEdad(edad) {
   if (edad === 'bebe') return 'bebé'
@@ -11,10 +11,13 @@ export default function DatosDeLaConversacion({ datos }) {
 
   const filas = [
     datos.nombre && ['Nombre', datos.nombre],
+    datos.destino && ['Destino', datos.destino],
     datos.pasajeros !== null && ['Pasajeros', datos.pasajeros],
     datos.adultos !== null && ['Adultos', datos.adultos],
     datos.menores !== null && ['Menores', datos.menores],
     datos.edadesMenores.length > 0 && ['Edades de los menores', datos.edadesMenores.map(textoEdad).join(', ')],
+    datos.presupuesto && ['Presupuesto', datos.presupuesto],
+    datos.fechas && ['Fecha o período', datos.fechas],
   ].filter(Boolean)
 
   return (
@@ -32,7 +35,7 @@ export default function DatosDeLaConversacion({ datos }) {
         <p key={aviso} className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{aviso}</p>
       ))}
       <p className="mt-2 text-[11px] leading-relaxed text-gray-400 dark:text-zinc-500">
-        Se cargan solos al crear la reserva o la propuesta. Revisalos antes de guardar.
+        Adultos, menores y edades se cargan solos al crear la reserva o la propuesta. Revisalos antes de guardar.
       </p>
     </div>
   )

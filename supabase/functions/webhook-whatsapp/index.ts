@@ -4,6 +4,8 @@ import { detectarInteres } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
 import { enviarLeadAlEmbudoPorGrupo } from '../_shared/embudoEntrada.ts'
+import { extraerDatosViaje } from '../_shared/datosViaje.ts'
+import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -55,7 +57,8 @@ async function guardarMedia(supabase: ReturnType<typeof createClient>, mediaId: 
 // asigna la conversación en turnos entre las personas de ese grupo (tabla
 // bot_reparto). Se apaga solo cuando alguien queda asignado o responde a mano, y
 // se puede pausar en un chat puntual (conversaciones.bot_pausado). Cuando el
-// contacto elige Paquetes o Paseos, su lead pasa al embudo de ese grupo.
+// contacto elige Paquetes o Paseos, su lead pasa al embudo de ese grupo. Con
+// Paquetes, antes de derivar hace el filtrado (ver _shared/filtroPaquetes.ts).
 const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const NOMBRE_GRUPO: Record<string, string> = { paquetes: 'Paquetes', paseos: 'Paseos' }
 const TEXTO_REINTENTO = 'Para derivarte con la persona indicada, tocá una de estas opciones:'
@@ -200,25 +203,157 @@ async function derivar(supabase: ReturnType<typeof createClient>, mensaje: strin
   return true
 }
 
+type Supabase = ReturnType<typeof createClient>
+
+// Los contactos suelen escribir varios mensajes seguidos. Antes de contestar se espera
+// unos segundos: si llegó otro mensaje, este no manda nada y contesta el último, que ya
+// ve todo lo anterior. Se cambia con el secret BOT_ESPERA_RAFAGA_MS (0 = sin espera).
+const ESPERA_RAFAGA_MS = Number(Deno.env.get('BOT_ESPERA_RAFAGA_MS') ?? 4000)
+
+async function llegoOtroMensaje(supabase: Supabase, convId: string, desde: string | null): Promise<boolean> {
+  if (!desde || ESPERA_RAFAGA_MS <= 0) return false
+  await new Promise((r) => setTimeout(r, ESPERA_RAFAGA_MS))
+  const { data } = await supabase.from('mensajes').select('id')
+    .eq('conversacion_id', convId).eq('direccion', 'entrante').gt('created_at', desde).limit(1)
+  return !!data?.length
+}
+
+interface MensajeHilo { direccion: string; origen: string | null; texto: string | null }
+
+// Los últimos mensajes de la conversación, del más viejo al más nuevo
+async function cargarHilo(supabase: Supabase, convId: string): Promise<MensajeHilo[]> {
+  const { data } = await supabase.from('mensajes').select('direccion, origen, texto')
+    .eq('conversacion_id', convId).order('created_at', { ascending: false }).limit(60)
+  return ((data ?? []) as MensajeHilo[]).reverse()
+}
+
+const textosDelContacto = (hilo: MensajeHilo[]) =>
+  hilo.filter((m) => m.direccion === 'entrante' && m.texto).map((m) => m.texto as string)
+
+const ultimoNuestro = (hilo: MensajeHilo[]) => hilo.map((m) => m.direccion).lastIndexOf('saliente')
+
+// Lo que dijo el contacto desde el último mensaje nuestro (la ráfaga a la que se responde)
+const textosDeLaRafaga = (hilo: MensajeHilo[]) => textosDelContacto(hilo.slice(ultimoNuestro(hilo) + 1))
+
+// Lo que había dicho hasta que se le hizo la última pregunta
+const textosAntesDeLaPregunta = (hilo: MensajeHilo[]) => textosDelContacto(hilo.slice(0, ultimoNuestro(hilo) + 1))
+
 // deno-lint-ignore no-explicit-any
-async function ejecutarBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, message: any) {
+function grupoElegido(message: any, esperando: boolean, textosRafaga: string[]): string | null {
+  const directo = interpretarGrupo(message, esperando)
+  if (directo) return directo
+  // Pudo haberlo dicho en un mensaje anterior de la misma ráfaga ("quiero un paquete" y después "a Maragogi")
+  return textosRafaga.length > 1 ? interpretarGrupo({ text: { body: textosRafaga.join(' ') } }, false) : null
+}
+
+async function enviarTextoBot(supabase: Supabase, convId: string, phone: string, texto: string) {
+  const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
+  await guardarMensajeBot(supabase, convId, phone, texto, wamid)
+}
+
+// Deriva a una persona del grupo; si no hay a quién, deja la conversación sin asignar.
+// deno-lint-ignore no-explicit-any
+async function derivarOCerrar(supabase: Supabase, cfg: any, convId: string, phone: string, grupo: string) {
+  const derivada = await derivar(supabase, cfg.mensaje_derivacion, convId, phone, grupo)
+  if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo)
+}
+
+// Si el contacto dijo cómo se llama y WhatsApp no traía un nombre, se guarda en la conversación y en su lead.
+// deno-lint-ignore no-explicit-any
+async function guardarNombreDicho(supabase: Supabase, conv: any, phone: string, nombre: string | null) {
+  if (!nombre) return
+  if (!nombreValido(conv.contacto_nombre)) {
+    await supabase.from('conversaciones').update({ contacto_nombre: nombre }).eq('id', conv.id)
+  }
+  const { data: lead } = await supabase.from('leads').select('id, nombre').eq('whatsapp', phone).maybeSingle()
+  if (lead && !nombreValido(lead.nombre)) await supabase.from('leads').update({ nombre }).eq('id', lead.id)
+}
+
+// El contacto acaba de elegir Paquetes: se le pide en UN mensaje lo que todavía no dijo.
+// Si ya lo dijo todo, va directo a una persona.
+// deno-lint-ignore no-explicit-any
+async function iniciarFiltro(supabase: Supabase, cfg: any, conv: any, phone: string, hilo: MensajeHilo[]) {
+  const datos = extraerDatosViaje(textosDelContacto(hilo))
+  await guardarNombreDicho(supabase, conv, phone, datos.nombre)
+  // Ya se sabe qué busca: se etiqueta al lead (el embudo de Paquetes es donde ya está)
+  await etiquetarLeadPorGrupo(supabase, phone, 'paquetes')
+  await enviarLeadAlEmbudoPorGrupo(supabase, phone, 'paquetes')
+
+  const paso = pasoInicial(datos, nombreValido(conv.contacto_nombre) || !!datos.nombre)
+  if (paso.accion !== 'preguntar') {
+    await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
+    return
+  }
+  await enviarTextoBot(supabase, conv.id, phone, mensajePreguntas(configFiltro(cfg), paso.faltan))
+  await supabase.from('conversaciones').update({ bot_estado: 'filtrando', bot_intentos: 1, grupo: 'paquetes' }).eq('id', conv.id)
+}
+
+// Ya se le hicieron las preguntas y contestó: completa, una pregunta de seguimiento (una sola) o a una persona.
+// deno-lint-ignore no-explicit-any
+async function seguirFiltro(supabase: Supabase, cfg: any, conv: any, phone: string, hilo: MensajeHilo[]) {
+  const config = configFiltro(cfg)
+  const despues = extraerDatosViaje(textosDelContacto(hilo))
+  await guardarNombreDicho(supabase, conv, phone, despues.nombre)
+
+  // Si se apagó el filtrado mientras esperaba, se pasa a una persona
+  const paso = config.activo
+    ? pasoTrasRespuesta({
+      antes: extraerDatosViaje(textosAntesDeLaPregunta(hilo)),
+      despues,
+      nombreConocido: nombreValido(conv.contacto_nombre) || !!despues.nombre,
+      intentos: conv.bot_intentos || 0,
+    })
+    : { accion: 'derivar' as const }
+
+  if (paso.accion === 'seguimiento') {
+    await enviarTextoBot(supabase, conv.id, phone, mensajeSeguimiento(config, paso.faltan))
+    await supabase.from('conversaciones').update({ bot_intentos: 2 }).eq('id', conv.id)
+    return
+  }
+  await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
+}
+
+// La conversación, solo si el asistente puede actuar en ella ahora.
+async function convDondeActua(supabase: Supabase, convId: string) {
+  // select('*'): así funciona igual antes y después de correr la migración de bot_pausado
+  const { data: conv } = await supabase.from('conversaciones').select('*').eq('id', convId).maybeSingle()
+  if (!conv || conv.asignado_a) return null
+  // Chat pausado a mano desde el CRM: solo responde el equipo (ni saluda ni deriva)
+  if (conv.bot_pausado) return null
+  if (['derivado', 'sin_asignar', 'humano'].includes(conv.bot_estado)) return null
+  return conv
+}
+
+// `desde` es la hora del mensaje que se acaba de guardar (para saber si llegó otro después).
+// deno-lint-ignore no-explicit-any
+async function ejecutarBot(supabase: Supabase, convId: string, phone: string, message: any, desde: string | null) {
   const { data: cfg } = await supabase.from('bot_config').select('*').eq('id', 1).maybeSingle()
   if (!cfg?.activo) return
 
-  // select('*'): así funciona igual antes y después de correr la migración de bot_pausado
-  const { data: conv } = await supabase
-    .from('conversaciones').select('*').eq('id', convId).maybeSingle()
-  if (!conv || conv.asignado_a) return
-  // Chat pausado a mano desde el CRM: solo responde el equipo (ni saluda ni deriva)
-  if (conv.bot_pausado) return
-  if (['derivado', 'sin_asignar', 'humano'].includes(conv.bot_estado)) return
+  let conv = await convDondeActua(supabase, convId)
+  if (!conv) return
+
+  // Si el contacto sigue escribiendo, contesta el último mensaje. Mientras se esperaba, una
+  // persona pudo tomar el chat o pausarse el asistente: por eso se vuelve a leer.
+  if (await llegoOtroMensaje(supabase, convId, desde)) return
+  conv = await convDondeActua(supabase, convId)
+  if (!conv) return
+
+  const hilo = await cargarHilo(supabase, convId)
+  if (conv.bot_estado === 'filtrando') {
+    await seguirFiltro(supabase, cfg, conv, phone, hilo)
+    return
+  }
 
   const esperando = conv.bot_estado === 'esperando'
-  const grupo = interpretarGrupo(message, esperando)
+  const grupo = grupoElegido(message, esperando, textosDeLaRafaga(hilo))
 
+  if (grupo === 'paquetes' && configFiltro(cfg).activo) {
+    await iniciarFiltro(supabase, cfg, conv, phone, hilo)
+    return
+  }
   if (grupo) {
-    const derivada = await derivar(supabase, cfg.mensaje_derivacion, convId, phone, grupo)
-    if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo)
+    await derivarOCerrar(supabase, cfg, convId, phone, grupo)
     return
   }
 
@@ -239,9 +374,9 @@ async function ejecutarBot(supabase: ReturnType<typeof createClient>, convId: st
 
 // Un fallo del asistente nunca debe hacer perder el mensaje del cliente.
 // deno-lint-ignore no-explicit-any
-async function correrBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, message: any) {
+async function correrBot(supabase: Supabase, convId: string, phone: string, message: any, desde: string | null) {
   try {
-    await ejecutarBot(supabase, convId, phone, message)
+    await ejecutarBot(supabase, convId, phone, message, desde)
   } catch (err) {
     console.error('webhook-whatsapp bot error:', err)
   }
@@ -333,13 +468,15 @@ serve(async (req) => {
     }
 
     const { data: convExistente } = await supabase
-      .from('conversaciones').select('id, no_leidos').eq('whatsapp', phone).maybeSingle()
+      .from('conversaciones').select('id, no_leidos, contacto_nombre').eq('whatsapp', phone).maybeSingle()
 
     let convId: string | undefined
 
     if (convExistente) {
+      // Si WhatsApp no trae el nombre del perfil se conserva el que ya tenía (por ejemplo, el que dijo el contacto)
+      const nombreConv = nombre === 'Sin nombre' && nombreValido(convExistente.contacto_nombre) ? convExistente.contacto_nombre : nombre
       await supabase.from('conversaciones').update({
-        contacto_nombre: nombre,
+        contacto_nombre: nombreConv,
         ultimo_mensaje: texto,
         ultimo_mensaje_at: new Date().toISOString(),
         no_leidos: (convExistente.no_leidos || 0) + 1,
@@ -377,8 +514,8 @@ serve(async (req) => {
     }
 
     if (!tipoMedia) {
-      await supabase.from('mensajes').insert(filaBase)
-      await correrBot(supabase, convId, phone, message)
+      const { data: fila } = await supabase.from('mensajes').insert(filaBase).select('created_at').single()
+      await correrBot(supabase, convId, phone, message, fila?.created_at ?? null)
       return new Response('ok', { status: 200 })
     }
 
@@ -391,19 +528,21 @@ serve(async (req) => {
       console.error('webhook-whatsapp media error:', mediaErr)
     }
 
-    const { error: insertMediaErr } = await supabase.from('mensajes').insert({
+    const { data: filaMedia, error: insertMediaErr } = await supabase.from('mensajes').insert({
       ...filaBase,
       tipo: tipoMedia,
       media_path: archivo?.path ?? null,
       media_mime: archivo?.mime ?? media?.mime_type ?? null,
       media_nombre: nombreArchivo,
-    })
+    }).select('created_at').single()
+    let desde: string | null = filaMedia?.created_at ?? null
     if (insertMediaErr) {
       console.error('webhook-whatsapp insert con media falló, guardando solo el texto:', insertMediaErr)
-      await supabase.from('mensajes').insert(filaBase)
+      const { data: filaTexto } = await supabase.from('mensajes').insert(filaBase).select('created_at').single()
+      desde = filaTexto?.created_at ?? null
     }
 
-    await correrBot(supabase, convId, phone, message)
+    await correrBot(supabase, convId, phone, message, desde)
     return new Response('ok', { status: 200 })
   } catch (err) {
     // Devolvemos 200 igual aunque falle: si respondemos error, Meta reintenta

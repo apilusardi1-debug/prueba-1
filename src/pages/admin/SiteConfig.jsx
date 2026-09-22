@@ -4,6 +4,7 @@ import { usuariosAdminApi, hashPassword, conceptosApi, respuestasRapidasApi, bot
 import { ROLES } from '../../lib/roles.js'
 import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA, EMBUDOS, etapasDelEmbudo } from '../../lib/embudo.js'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
+import { configFiltro, mensajePreguntas, TODOS_LOS_DATOS, TEXTOS_POR_DEFECTO } from '../../../supabase/functions/_shared/filtroPaquetes.ts'
 
 const SECTION = {
   title: (t) => (
@@ -529,6 +530,106 @@ const GRUPOS_BOT = [
 
 const CLASE_CAMPO = 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none'
 
+// Filtrado de clientes de Paquetes: lo que el asistente le pregunta al cliente que elige Paquetes.
+function FiltroPaquetes({ cfg, setCfg }) {
+  const [campos, setCampos] = useState({
+    filtro_intro: cfg.filtro_intro ?? TEXTOS_POR_DEFECTO.intro,
+    filtro_seguimiento: cfg.filtro_seguimiento ?? TEXTOS_POR_DEFECTO.seguimiento,
+    filtro_destinos: cfg.filtro_destinos ?? TEXTOS_POR_DEFECTO.destinos,
+    filtro_presupuestos: cfg.filtro_presupuestos ?? TEXTOS_POR_DEFECTO.presupuestos,
+  })
+  const [guardando, setGuardando] = useState(false)
+  const [estado, setEstado] = useState(null) // 'ok' | 'error'
+
+  if (!('filtro_activo' in cfg)) {
+    return (
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl px-4 py-3">
+        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Filtrado de clientes de Paquetes</p>
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Falta correr la migración 20260921200000_bot_filtro_paquetes.sql en Supabase para poder configurarlo.</p>
+      </div>
+    )
+  }
+
+  const activo = cfg.filtro_activo === true
+  const incompleto = Object.values(campos).some(v => !String(v).trim())
+  // Así lo lee el asistente: con estos textos y lo que todavía no dijo el cliente
+  const vistaPrevia = mensajePreguntas(configFiltro({ ...cfg, ...campos, filtro_activo: true }), TODOS_LOS_DATOS.filter(d => d !== 'nombre'))
+
+  async function alternar() {
+    const { data } = await botApi.saveConfig({ filtro_activo: !activo })
+    if (data) setCfg(data)
+  }
+
+  async function guardar() {
+    setGuardando(true)
+    const { data, error } = await botApi.saveConfig({
+      filtro_intro: campos.filtro_intro.trim(),
+      filtro_seguimiento: campos.filtro_seguimiento.trim(),
+      filtro_destinos: campos.filtro_destinos.trim(),
+      filtro_presupuestos: campos.filtro_presupuestos.split('\n').map(l => l.trim()).filter(Boolean).join('\n'),
+    })
+    if (data) setCfg(data)
+    setEstado(error ? 'error' : 'ok')
+    setGuardando(false)
+    setTimeout(() => setEstado(null), 3000)
+  }
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-3 flex items-center gap-4">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200">Filtrado de clientes de Paquetes</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            Cuando el contacto elige Paquetes, le pide en un solo mensaje los datos que todavía no dijo: nombre (si WhatsApp no lo trae), destino,
+            adultos, menores con su edad, presupuesto y fechas. Si la respuesta viene incompleta hace una sola pregunta más con lo que falta y después
+            lo pasa a una persona del equipo de Paquetes.
+          </p>
+        </div>
+        <button
+          onClick={alternar}
+          className={`text-xs font-semibold px-4 py-2 rounded-full shrink-0 ${activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
+        >
+          {activo ? 'Activo - apagar' : 'Apagado - encender'}
+        </button>
+      </div>
+
+      <div className="border-t border-gray-50 dark:border-zinc-800 px-5 py-4 space-y-3">
+        <div>
+          <label htmlFor="filtro-intro" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje con las preguntas (va arriba de la lista)</label>
+          <textarea id="filtro-intro" rows={2} value={campos.filtro_intro} onChange={e => setCampos(c => ({ ...c, filtro_intro: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <div>
+          <label htmlFor="filtro-destinos" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Destinos que se le ofrecen (separados por coma)</label>
+          <input id="filtro-destinos" type="text" value={campos.filtro_destinos} onChange={e => setCampos(c => ({ ...c, filtro_destinos: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <div>
+          <label htmlFor="filtro-presupuestos" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Rangos de presupuesto (uno por línea)</label>
+          <textarea id="filtro-presupuestos" rows={3} value={campos.filtro_presupuestos} onChange={e => setCampos(c => ({ ...c, filtro_presupuestos: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+        <div>
+          <label htmlFor="filtro-seguimiento" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje de la pregunta de seguimiento (va arriba de lo que falta)</label>
+          <textarea id="filtro-seguimiento" rows={2} value={campos.filtro_seguimiento} onChange={e => setCampos(c => ({ ...c, filtro_seguimiento: e.target.value }))} className={CLASE_CAMPO} />
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">Así le llega al cliente que todavía no dijo nada de esto</p>
+          <div aria-label="Vista previa del mensaje" className="rounded-2xl rounded-bl-sm border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
+            {vistaPrevia}
+          </div>
+        </div>
+
+        <button
+          onClick={guardar}
+          disabled={guardando || incompleto}
+          className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          {guardando ? 'Guardando...' : estado === 'ok' ? 'Guardado' : estado === 'error' ? 'No se pudo guardar' : 'Guardar filtrado'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function TabAsistente() {
   const [cfg, setCfg] = useState(null)
   const [reparto, setReparto] = useState([])
@@ -647,9 +748,11 @@ function TabAsistente() {
         </div>
       ))}
 
+      <FiltroPaquetes cfg={cfg} setCfg={setCfg} />
+
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Saludo (se envía con los botones Paquetes / Paseos)</label>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Saludo y pregunta inicial (se envía con los botones Paquetes / Paseos)</label>
           <textarea rows={2} value={textos.saludo} onChange={e => setTextos(t => ({ ...t, saludo: e.target.value }))} className={CLASE_CAMPO} />
         </div>
         <div>

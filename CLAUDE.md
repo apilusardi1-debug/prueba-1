@@ -49,11 +49,12 @@ git push origin main   # Vercel despliega automáticamente
 - `mp-qr` — genera QR de Mercado Pago
 - `mp-webhook` — recibe notificaciones de pago de Mercado Pago
 - `sync-whatsapp`, `whatsapp-status`, `health-check` — heredadas de WuzAPI (desconectado)
-- Código compartido entre funciones y frontend: `supabase/functions/_shared/` (detección de interés, estados de entrega, etiquetas del asistente)
+- Código compartido entre funciones y frontend: `supabase/functions/_shared/` (detección de interés, estados de entrega, etiquetas del asistente, embudo de entrada, filtrado de Paquetes, lectura de los datos del viaje)
 
 ### Secrets en Supabase
 - `META_CRM_WHATSAPP_TOKEN`, `META_CRM_PHONE_NUMBER_ID`, `META_CRM_REGISTRATION_PIN`, `META_VERIFY_TOKEN` — Meta Cloud API, número del CRM y webhook
 - `META_WHATSAPP_TOKEN`, `META_PHONE_NUMBER_ID` — Meta Cloud API, número operativo (avisos de cerrar operación). El token está inválido (error 190 de Meta) y hay que generar uno permanente nuevo
+- `BOT_ESPERA_RAFAGA_MS` — opcional: milisegundos que el asistente espera antes de contestar por si el contacto sigue escribiendo (por defecto 4000; 0 = sin espera)
 - `WUZAPI_URL`, `WUZAPI_TOKEN` — WuzAPI (VPS, desconectado)
 - `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` — Evolution API (instalado en VPS, pendiente de configurar)
 - `MP_ACCESS_TOKEN` — Mercado Pago Brasil
@@ -71,7 +72,7 @@ Al **cerrar una operación** (Agenda), se envían tres plantillas por el número
 ### 2. CRM comercial (atención al cliente)
 Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **+55 81 99719-9422** (app "DreamsTour CRM" `3006251579723473`, WABA `847194981749193`, phone number id `1254559544416464`).
 - **Regla**: el número que hoy usa la agencia en Kommo (+55 81 9768-2691, WABA `273455669191563`) **no se toca** hasta la migración planificada
-- **Funciona**: enviar y recibir (con fotos, audios y documentos), ventana de 24 hs, asistente automático de menú (Paquetes o Paseos, reparto entre 5 personas) prendido en todos los chats y con un interruptor por chat para pausarlo (columna `conversaciones.bot_pausado`), que pasa el lead al embudo del grupo que elige el contacto, filtros por persona, interés del lead detectado por palabras clave, estado de entrega de cada mensaje, "Marcar como atendida", marcos amarillo (12 hs) y rojo (18 hs) para lo que espera respuesta, avisos de mensaje nuevo (sonido y notificación) y métricas en el Dashboard
+- **Funciona**: enviar y recibir (con fotos, audios y documentos), ventana de 24 hs, asistente automático de menú (Paquetes o Paseos, reparto entre 5 personas) prendido en todos los chats y con un interruptor por chat para pausarlo (columna `conversaciones.bot_pausado`), que pasa el lead al embudo del grupo que elige el contacto, filtrado de los clientes de Paquetes (pide en un solo mensaje destino, adultos, menores con su edad, presupuesto y fechas, solo lo que todavía no dijeron, y hace a lo sumo una pregunta de seguimiento antes de derivar; textos y rangos editables en Configuración > Asistente; estado `filtrando`), filtros por persona, interés del lead detectado por palabras clave, estado de entrega de cada mensaje, "Marcar como atendida", marcos amarillo (12 hs) y rojo (18 hs) para lo que espera respuesta, avisos de mensaje nuevo (sonido y notificación) y métricas en el Dashboard
 - **Costos de Meta** (desde jul-2025 se cobra por mensaje entregado; tabla `tarifas_mensaje`, editable desde el Dashboard): utilidad R$0,035, marketing R$0,34, autenticación R$0,17. Responder con texto libre dentro de las 24 hs es gratis
 - **Pendiente**: responder pasadas las 24 hs necesita una plantilla aprobada (a consultar con Florencia); migrar el número real desde Kommo
 

@@ -1,21 +1,28 @@
 // Lee lo que el contacto contestó en el chat (por ejemplo, la plantilla "Datos
-// para la propuesta") y saca cuántos viajan, cuántos son adultos y menores y la
-// edad de cada menor, para completar solos la propuesta y la reserva.
+// para la propuesta" o las preguntas del asistente) y saca su nombre, el destino,
+// cuántos viajan, cuántos son adultos y menores, la edad de cada menor, el
+// presupuesto y cuándo piensa viajar, para completar solos la propuesta y la
+// reserva y para que el asistente no vuelva a preguntar lo que ya dijo.
 //
 // Lo más confiable es la plantilla con campos ("Adultos: 3"); también entiende
 // frases sueltas ("somos 2 adultos y un nene de 6 años"), en español y en
 // portugués. Siempre es una lectura automática: la pantalla muestra lo que
 // entendió para que la persona lo confirme.
 
+import { detectarInteres } from './interes.ts'
+
 export type EdadMenor = number | 'bebe'
 
 export interface DatosViaje {
   nombre: string | null
   edad: number | null // edad de quien escribe: dato informativo, no se usa en la propuesta
+  destino: string | null
   pasajeros: number | null
   adultos: number | null
   menores: number | null
   edadesMenores: EdadMenor[]
+  presupuesto: string | null // tal como lo dijo ("2.000 a 2.500 USD"), no se convierte
+  fechas: string | null // tal como lo dijo ("del 10 al 20 de enero", "vacaciones de invierno")
   avisos: string[]
   hayDatos: boolean
 }
@@ -34,10 +41,15 @@ const NO_ES_EDAD = '(?!\\s*(?:adult|person|pasaj|menor|nin|chic|hij|pax|crianc|n
 // "somos 2 y un bebé": el 2 son los adultos, no el total
 const Y_UN_MENOR = '(?!\\s*(?:y|e|mas|\\+)\\s+(?:\\d+\\s+|un\\s+|una\\s+|dos\\s+)?(?:bebe|nin|menor|chic|hij|nene|peque|crianc))'
 
+const MESES = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|janeiro|fevereiro|marco|maio|junho|julho|setembro|outubro|novembro|dezembro'
+// "abril" suelto puede ser un nombre ("soy Abril"): el mes solo cuenta si viene con una de estas palabras
+const ANTES_DEL_MES = '(?:en|para|durante|desde|hasta|a\\s+partir\\s+de|fines\\s+de|finales\\s+de|principios\\s+de|comienzos\\s+de|mediados\\s+de|inicios\\s+de|(?:la\\s+)?(?:primera|segunda|ultima)\\s+(?:semana|quincena)\\s+de|el\\s+mes\\s+de|mes\\s+de|de|del|em|no\\s+mes\\s+de|entre)'
+
 function sinAcentos(texto: string): string {
+  // Cada letra se cambia por otra sola: el texto normalizado tiene el mismo largo que el original
   return texto
     .toLowerCase()
-    .replace(/[áàâä]/g, 'a').replace(/[éèêë]/g, 'e').replace(/[íìîï]/g, 'i')
+    .replace(/[áàâäã]/g, 'a').replace(/[éèêë]/g, 'e').replace(/[íìîï]/g, 'i')
     .replace(/[óòôöõ]/g, 'o').replace(/[úùûü]/g, 'u').replace(/ñ/g, 'n').replace(/ç/g, 'c')
 }
 
@@ -70,32 +82,148 @@ function edadesDe(texto: string): EdadMenor[] {
   return r
 }
 
+// ── Presupuesto ──────────────────────────────────────────────────────────────────
+const MONEDA = '(usd|us\\$|u\\$s|u\\$d|dolares|dolar|dollars?|reales|reais|real|brl|r\\$|\\$)'
+const PALABRA_PRESUPUESTO = /\b(?:presupuesto|orcamento|budget|gastar|invertir|dispongo|contamos\s+con|cuento\s+con|tengo\s+unos)\b/
+
+function monto(numero: string, mil: string | undefined): number | null {
+  let n: number
+  if (/^\d{1,3}(?:[.,]\d{3})+$/.test(numero)) n = parseInt(numero.replace(/[.,]/g, ''), 10)
+  else if (/^\d+[.,]\d{1,2}$/.test(numero)) n = parseFloat(numero.replace(',', '.'))
+  else if (/^\d+$/.test(numero)) n = parseInt(numero, 10)
+  else return null
+  return mil ? n * 1000 : n
+}
+
+function formatoMonto(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function nombreMoneda(m: string | undefined): string {
+  if (!m) return ''
+  if (/^(?:usd|us\$|u\$s|u\$d|dolar|dollar)/.test(m)) return ' USD'
+  if (/^(?:real|reais|brl|r\$)/.test(m)) return ' R$'
+  return ' $'
+}
+
+// Un presupuesto dicho en el texto ("2000 usd", "entre 1.000 y 2.000 dólares", "hasta 2500",
+// "presupuesto 3 mil"). Sin moneda ni una palabra que lo indique no se toma: un número
+// suelto puede ser una edad, una cantidad o una fecha. Con `forzar` (el contacto lo puso
+// en la línea "Presupuesto:") alcanza con que haya un número.
+function presupuestoDe(t: string, forzar: boolean): string | null {
+  const hayPalabra = forzar || PALABRA_PRESUPUESTO.test(t)
+  const PREF = '(?:usd|us\\$|u\\$s|r\\$|\\$)'
+
+  // Rango: "de 1000 a 2000 usd", "1.000-2.000", "entre 2 mil y 3 mil dólares"
+  const rango = new RegExp('(?:\\b(?:de|desde|entre|del)\\s+)?(?:' + PREF + '\\s*)?(\\d[\\d.,]*)\\s*(mil|k)?(?:\\s*[-/]\\s*|\\s+(?:a|hasta|y|e)\\s+)(?:' + PREF + '\\s*)?(\\d[\\d.,]*)\\s*(mil|k)?\\s*(?:' + MONEDA + '(?![a-z]))?', 'g')
+  for (const m of t.matchAll(rango)) {
+    const a = monto(m[1], m[2]); const b = monto(m[3], m[4])
+    if (a === null || b === null || a < 100 || b < a) continue
+    const conMoneda = !!m[5] || new RegExp('^\\s*' + PREF).test(m[0].replace(/^(?:de|desde|entre|del)\s+/, ''))
+    if (!conMoneda && !hayPalabra) continue
+    return `${formatoMonto(a)} a ${formatoMonto(b)}${nombreMoneda(m[5])}`
+  }
+
+  // Un solo monto: "2000 usd", "USD 2000", "hasta 2500", "presupuesto 3 mil"
+  const simple = new RegExp('(?:\\b(hasta|maximo|max|unos|aprox\\w*|alrededor\\s+de)\\s+)?(?:(' + PREF + ')\\s*)?(\\d[\\d.,]*)\\s*(mil|k)?\\s*(?:' + MONEDA + '(?![a-z]))?', 'g')
+  for (const m of t.matchAll(simple)) {
+    const n = monto(m[3], m[4])
+    if (n === null || n < 100) continue
+    const moneda = m[5] ?? m[2]
+    if (!moneda && !m[1] && !hayPalabra) continue
+    // Sin moneda, un número que parece un año ("hasta 2027") no es un presupuesto
+    if (!moneda && n >= 2020 && n <= 2035 && !PALABRA_PRESUPUESTO.test(t)) continue
+    const tope = m[1] && /^(?:hasta|maximo|max)$/.test(m[1]) ? 'hasta ' : ''
+    return `${tope}${formatoMonto(n)}${nombreMoneda(moneda)}`
+  }
+  return null
+}
+
+// ── Fechas ────────────────────────────────────────────────────────────────────────
+// Devuelve lo que dijo el contacto, con sus propias palabras: "del 10 al 20 de enero",
+// "a fines de julio", "vacaciones de invierno". `t` es el texto normalizado y `orig` el
+// mismo texto sin normalizar (del mismo largo), de donde sale lo que se muestra.
+// Recibe las líneas del mensaje: un mes suelto ("Maragogi, enero, 2000 usd") solo cuenta si
+// es un segmento completo (entre comas o en su propia línea); dentro de una frase ("soy
+// Abril") no, porque puede ser un nombre.
+function fechasDe(lineasNorm: string[], lineasOrig: string[]): string | null {
+  const t = lineasNorm.join(' ')
+  const orig = lineasOrig.join(' ')
+  const M = '(?:' + MESES + ')'
+  const ANIO = '(?:\\s+(?:de|del)\\s+20\\d{2})?'
+  const patrones: RegExp[] = [
+    // "del 10 al 20 de enero", "10-20 de enero de 2027"
+    new RegExp('\\b(?:del\\s+)?\\d{1,2}(?:\\s+(?:al|a|hasta\\s+el)\\s+|\\s*-\\s*)\\d{1,2}\\s+de\\s+' + M + ANIO + '\\b'),
+    // "10 de enero", "el 10 de enero de 2027"
+    new RegExp('\\b\\d{1,2}\\s+de\\s+' + M + ANIO + '\\b'),
+    // "enero 2027", "enero de 2027"
+    new RegExp('\\b' + M + '\\s+(?:de\\s+|del\\s+)?20\\d{2}\\b'),
+    // "en enero", "a fines de julio", "entre enero y marzo", "enero o febrero"
+    new RegExp('\\b' + ANTES_DEL_MES + '\\s+' + M + '(?:\\s*(?:,|y|o|e|ou)\\s*' + M + ')*\\b'),
+    // "10/01" o "10/01/2027"
+    /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])(?:\/(?:20)?\d{2})?\b/,
+    // épocas con nombre
+    /\b(?:vacaciones\s+de\s+(?:invierno|verano|julio|enero|febrero)|semana\s+santa|carnaval|navidad|fin\s+de\s+ano|ano\s+nuevo|reveillon|fiestas|luna\s+de\s+miel|(?:el|este|en|para)\s+(?:verano|invierno|otono|primavera)|(?:el\s+)?ano\s+que\s+viene|(?:el\s+)?proximo\s+ano|(?:el\s+)?mes\s+que\s+viene|(?:el\s+)?proximo\s+mes|dentro\s+de\s+\d+\s+(?:meses|semanas)|en\s+\d+\s+(?:meses|semanas))\b/,
+    // "en 2027", "para 2027"
+    /\b(?:en|para|del|de)\s+20\d{2}\b/,
+  ]
+  for (const re of patrones) {
+    const m = re.exec(t)
+    if (m) return orig.slice(m.index, m.index + m[0].length).trim()
+  }
+  // Mes suelto como segmento completo: "enero", "julio 2027" (separados por coma, punto o línea)
+  const segmentos = lineasNorm.join(' , ')
+  const suelto = new RegExp('(?:^|[,;.])\\s*(' + M + '(?:\\s+(?:de\\s+)?20\\d{2})?)\\s*(?=[,;.!]|$)').exec(segmentos)
+  if (suelto) {
+    const inicio = suelto.index + suelto[0].indexOf(suelto[1])
+    return lineasOrig.join(' , ').slice(inicio, inicio + suelto[1].length).trim()
+  }
+  return null
+}
+
+// "me llamo Ana", "mi nombre es Juan Pérez", "soy María": solo si lo que sigue empieza con mayúscula
+function nombreDeTexto(orig: string): string | null {
+  const m = /\b(?:[Mm]e\s+llamo|[Mm]i\s+nombre\s+es|[Mm]eu\s+nome\s+[eé]|[Ss]oy|[Ss]ou|SOY)\s+([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+){0,2})/u.exec(orig)
+  return m ? m[1].trim() : null
+}
+
 interface Parcial {
   nombre?: string
   edad?: number
+  destino?: string
   pasajeros?: number
   adultos?: number
   menores?: number
   edades?: EdadMenor[]
+  presupuesto?: string
+  fechas?: string
 }
 
-const LINEA_CON_CAMPO = /^\s*(?:[-*•]\s*|\d+\s*[.)-]\s*)?(?:cantidad\s+de\s+|qtd\.?\s+de\s+|numero\s+de\s+)?(nombre|nome|edad(?:es)?(?:\s+de\s+(?:los\s+|as\s+|os\s+)?(?:menores|ninos|ninas|chicos|hijos|criancas))?|pasajeros|personas|pessoas|adultos|menores|ninos|criancas|chicos|hijos)\s*[:=]\s*(.*)$/
+const LINEA_CON_CAMPO = /^\s*(?:[-*•]\s*|\d+\s*[.)-]\s*)?(?:cantidad\s+de\s+|qtd\.?\s+de\s+|numero\s+de\s+)?(nombre|nome|destino|presupuesto(?:\s+(?:por\s+persona|total|estimado|aproximado))?|orcamento|(?:fechas?|periodo)(?:\s+o\s+(?:fechas?|periodo))?(?:\s+(?:de|del)\s+viaje)?|edad(?:es)?(?:\s+de\s+(?:los\s+|as\s+|os\s+)?(?:menores|ninos|ninas|chicos|hijos|criancas))?|pasajeros|personas|pessoas|adultos|menores|ninos|criancas|chicos|hijos)\s*[:=]\s*(.*)$/
 
 // Un mensaje: primero las líneas con campo ("Adultos: 3") y después el resto como frase libre.
 function leerMensaje(original: string): Parcial {
   const p: Parcial = {}
   const restoLineas: string[] = []
+  const restoOriginal: string[] = []
 
   for (const linea of original.split(/\r?\n/)) {
     const norm = sinAcentos(linea)
     const m = LINEA_CON_CAMPO.exec(norm)
-    if (!m) { restoLineas.push(norm); continue }
+    if (!m) { restoLineas.push(norm); restoOriginal.push(linea); continue }
     const campo = m[1]
     const valor = m[2].trim()
+    // lo que escribió después de los dos puntos, con sus mayúsculas y acentos
+    const orig = linea.slice(linea.search(/[:=]/) + 1).trim().replace(/[.,;]+$/, '')
+    const vacio = !orig || /^[-_.\s]*$/.test(orig)
     if (campo === 'nombre' || campo === 'nome') {
-      // el nombre se toma del texto original, con sus mayúsculas y acentos
-      const orig = linea.slice(linea.search(/[:=]/) + 1).trim().replace(/[.,;]+$/, '')
       if (orig && !/^\d+$/.test(orig) && orig.length <= 60) p.nombre = orig
+    } else if (campo === 'destino') {
+      if (!vacio) p.destino = detectarInteres(valor).destino ?? orig.slice(0, 60)
+    } else if (campo.startsWith('presupuesto') || campo === 'orcamento') {
+      if (!vacio) p.presupuesto = presupuestoDe(valor, true) ?? orig.slice(0, 60)
+    } else if (/^(?:fecha|periodo)/.test(campo)) {
+      if (!vacio) p.fechas = orig.slice(0, 80)
     } else if (campo === 'pasajeros' || campo === 'personas' || campo === 'pessoas') {
       const n = contar(valor); if (n !== null) p.pasajeros = n
     } else if (campo === 'adultos') {
@@ -111,6 +239,7 @@ function leerMensaje(original: string): Parcial {
 
   // Frases libres (sobre lo que no eran campos)
   const t = restoLineas.join(' ')
+  const orig = restoOriginal.join(' ')
 
   const adultos = [...t.matchAll(new RegExp('\\b' + NUM + '\\s+adult[oa]s?\\b', 'g'))].map(m => aNumero(m[1])).filter((n): n is number => n !== null)
   if (adultos.length) p.adultos = adultos[adultos.length - 1]
@@ -128,6 +257,11 @@ function leerMensaje(original: string): Parcial {
     hayMenores = true
   }
   if (hayMenores) p.menores = menores
+  // "sin niños", "no viajan menores", "solo adultos": son 0 menores
+  else if (
+    /\b(?:sin|nenhum|nenhuma|no\s+(?:hay|viajan|viaja|llevamos|llevo|vamos\s+con|tenemos|tengo)|nao\s+(?:tem|ha|viajam))\s+(?:ningun\s+|ninguna\s+)?(?:menor(?:es)?|ninos?|ninas?|chic[oa]s?|hij[oa]s?|criancas?|nenes?|peques?|pibes?)\b/.test(t) ||
+    /\b(?:solo|solamente|unicamente|somente|so)\s+adult[oa]s?\b/.test(t)
+  ) p.menores = 0
 
   const total = [
     ...t.matchAll(new RegExp('\\b(?:somos|seremos|somos\\s+una\\s+familia\\s+de|familia\\s+de)\\s+' + NUM + '\\b' + NO_ES_EDAD + Y_UN_MENOR, 'g')),
@@ -147,6 +281,12 @@ function leerMensaje(original: string): Parcial {
     if (!edades.length && bebes > 0) edades = Array.from({ length: bebes }, () => 'bebe' as EdadMenor)
     if (edades.length) p.edades = edades
   }
+
+  // Destino, presupuesto, fechas y nombre dichos en una frase
+  if (p.destino === undefined) { const d = detectarInteres(t).destino; if (d) p.destino = d }
+  if (p.presupuesto === undefined) { const b = presupuestoDe(t, false); if (b) p.presupuesto = b }
+  if (p.fechas === undefined) { const f = fechasDe(restoLineas, restoOriginal); if (f) p.fechas = f }
+  if (p.nombre === undefined) { const n = nombreDeTexto(orig); if (n) p.nombre = n }
   return p
 }
 
@@ -183,15 +323,21 @@ export function extraerDatosViaje(textos: string[]): DatosViaje {
   }
 
   const nombre = juntos.nombre ?? null
+  const destino = juntos.destino ?? null
+  const presupuesto = juntos.presupuesto ?? null
+  const fechas = juntos.fechas ?? null
   return {
     nombre,
     edad: juntos.edad ?? null,
+    destino,
     pasajeros,
     adultos,
     menores,
     edadesMenores,
+    presupuesto,
+    fechas,
     avisos,
-    hayDatos: !!nombre || pasajeros !== null || adultos !== null || menores !== null || edadesMenores.length > 0,
+    hayDatos: !!nombre || !!destino || !!presupuesto || !!fechas || pasajeros !== null || adultos !== null || menores !== null || edadesMenores.length > 0,
   }
 }
 

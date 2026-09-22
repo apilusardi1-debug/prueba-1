@@ -251,7 +251,7 @@ serve(async (req) => {
       await supabase.from('conversaciones')
         .update({ bot_estado: 'humano' })
         .eq('id', convId)
-        .or('bot_estado.is.null,bot_estado.eq.esperando')
+        .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
     }
 
     return new Response(JSON.stringify(data), {

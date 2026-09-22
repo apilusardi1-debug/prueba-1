@@ -188,9 +188,12 @@ const NAV = [
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
 function Sidebar() {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar()
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  // En el celular, tocar un ítem del menú tiene que cerrarlo: si no, el cajón se queda
+  // abierto tapando la pantalla a la que se acaba de navegar.
+  const cerrarSiMobile = () => { if (isMobileOpen) toggleMobileSidebar() }
   const subMenuRefs = useRef({})
   const [subHeights, setSubHeights] = useState({})
   const [openSub, setOpenSub] = useState(null)
@@ -272,8 +275,8 @@ function Sidebar() {
   return (
     <aside
       className={`fixed top-0 left-0 h-screen z-50 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 flex flex-col transition-all duration-300 ease-in-out
-        ${isExpanded || isHovered ? 'w-[290px]' : 'w-[90px]'}
-        ${isMobileOpen ? 'translate-x-0 w-[290px]' : '-translate-x-full'}
+        ${visible ? 'w-[290px]' : 'w-[90px]'}
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0`}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -346,6 +349,7 @@ function Sidebar() {
                           <li key={s.path}>
                             <Link
                               to={s.path}
+                              onClick={cerrarSiMobile}
                               className={`menu-dropdown-item ${
                                 isActive(s.path, s.exact) ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'
                               }`}
@@ -372,6 +376,7 @@ function Sidebar() {
               <li key={item.path}>
                 <Link
                   to={item.path}
+                  onClick={cerrarSiMobile}
                   className={`menu-item group ${!visible ? 'justify-center' : ''} ${
                     active ? 'menu-item-active' : 'menu-item-inactive'
                   }`}
@@ -391,6 +396,7 @@ function Sidebar() {
       <div className="border-t border-gray-100 dark:border-zinc-800 px-4 py-4 space-y-1">
         <Link
           to="/"
+          onClick={cerrarSiMobile}
           className={`menu-item menu-item-inactive ${!visible ? 'justify-center' : ''}`}
         >
           <span className="size-6 flex-shrink-0 menu-item-icon-inactive"><Icon.Globe /></span>

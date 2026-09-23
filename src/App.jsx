@@ -71,6 +71,7 @@ const router = createBrowserRouter([
       { path: '/admin',               element: <Dashboard /> },
       { path: '/admin/leads',         element: <Leads key="paquetes" embudo="paquetes" /> },
       { path: '/admin/leads/paseos',  element: <Leads key="paseos" embudo="paseos" /> },
+      { path: '/admin/leads/anfitriona', element: <Leads key="anfitriona" embudo="anfitriona" /> },
       { path: '/admin/clientes',      element: <Clientes /> },
       { path: '/admin/reservas',      element: <Reservas /> },
       { path: '/admin/excursiones',   element: <Excursiones /> },

@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { embudoApi } from './supabase.js'
 
 // Embudos de ventas. Cada etapa pertenece a uno; un lead está en el embudo de su
-// etapa. "ruta" es la sección del panel donde se ve cada uno.
+// etapa. "ruta" es la sección del panel donde se ve cada uno. "posventa" es un
+// embudo al que se llega después de vender (hoy solo Anfitriona): sus leads no
+// cuentan como "nuevos" en el Dashboard, aunque acaben de entrar a su primera etapa.
 export const EMBUDOS = [
   { clave: 'paquetes', nombre: 'Paquetes', ruta: '/admin/leads' },
   { clave: 'paseos', nombre: 'Paseos', ruta: '/admin/leads/paseos' },
+  { clave: 'anfitriona', nombre: 'Anfitriona', ruta: '/admin/leads/anfitriona', posventa: true },
 ]
 
 export function nombreEmbudo(clave) {
@@ -24,10 +27,12 @@ export const ETAPAS_POR_DEFECTO = [
 // Etapas que el sistema usa por su nombre interno y no se pueden borrar: la
 // primera de cada embudo (donde entran los leads nuevos: WhatsApp, formulario,
 // "lead rápido"), la ganada que se marca al convertir un lead en cliente y la de
-// los que no compraron.
+// los que no compraron. "anfitriona" también es fija: un lead que llega ahí se
+// redirige solo a "anfitriona_asignada" (ver la migración del embudo de Anfitriona).
 export const CLAVES_FIJAS = [
-  'nuevo', 'reservado', 'perdido',
+  'nuevo', 'reservado', 'perdido', 'anfitriona',
   'paseos_contacto_inicial', 'paseos_confirmada', 'paseos_perdido',
+  'anfitriona_asignada', 'anfitriona_confirmada', 'anfitriona_perdido',
 ]
 
 export const TIPOS_ETAPA = [
@@ -75,9 +80,10 @@ export function embudoDeEtapa(etapa) {
   return etapa?.embudo || 'paquetes'
 }
 
-// La primera etapa de cada embudo: donde entran los leads nuevos
+// La primera etapa de cada embudo de venta (no cuenta los de posventa, como
+// Anfitriona: esos leads no son "nuevos", ya se vendieron)
 export function clavesDeEntrada(etapas) {
-  return EMBUDOS.map(e => etapasDelEmbudo(etapas, e.clave)[0]?.clave).filter(Boolean)
+  return EMBUDOS.filter(e => !e.posventa).map(e => etapasDelEmbudo(etapas, e.clave)[0]?.clave).filter(Boolean)
 }
 
 // Una clave que ya no existe (etapa borrada) cae en la primera etapa, para que

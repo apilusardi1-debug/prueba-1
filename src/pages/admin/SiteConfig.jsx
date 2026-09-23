@@ -925,7 +925,7 @@ function TabEmbudo() {
     <div className="dash-card mb-5 p-6">
       {SECTION.title('Etapas de los embudos de ventas')}
       <p className="mb-5 max-w-[720px] text-xs leading-relaxed text-gray-500 dark:text-zinc-400">
-        Son las columnas de cada embudo (Paquetes y Paseos). Podés cambiar el nombre y el color, subir o bajar cada etapa y agregar las que necesites.
+        Son las columnas de cada embudo (Paquetes, Paseos y Anfitriona). Podés cambiar el nombre y el color, subir o bajar cada etapa y agregar las que necesites.
         El tipo define cómo se cuenta en el Dashboard: <strong>En curso</strong> es una consulta abierta; <strong>Ganada</strong> es una venta cerrada
         (se cuenta una sola vez, la primera vez que un lead llega a una etapa ganada, aunque después pase por otras); <strong>Perdida</strong> es
         un lead que no compró y se oculta con el filtro «Leads activos».

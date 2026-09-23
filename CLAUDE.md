@@ -34,6 +34,7 @@ git push origin main   # Vercel despliega automáticamente
 | Finanzas + Mercado Pago | `/admin/finanzas` | ✅ Activo |
 | Hospedajes | `/admin/hospedajes` | ✅ Activo |
 | Embudo de paseos (Leads) | `/admin/leads/paseos` | Activo (el de paquetes es `/admin/leads`) |
+| Embudo de anfitriona (Leads, posventa) | `/admin/leads/anfitriona` | Falta correr la migración `20260922120000_embudo_anfitriona.sql` |
 | CRM WhatsApp | `/admin/crm/whatsapp` | Activo, en pruebas con número propio |
 
 ## Supabase
@@ -127,7 +128,8 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - [ ] CRM: tiempos de respuesta por persona y gasto real en el Dashboard (Meta informa el costo de cada mensaje en los avisos de estado)
 - [ ] Plan para migrar el número real de Kommo al CRM propio
 - [ ] Investigar cómo exportar los 5.832 leads de Kommo e importarlos al embudo (consultar con Florencia). Antes hay que paginar el listado de leads: la base entrega como máximo 1.000 filas por consulta
-- [ ] Embudos de Leads: hay dos, Paquetes y Paseos (como en Kommo). Cuando el contacto elige Paquetes o Paseos en el menú del asistente, su lead entra al embudo de ese grupo (`supabase/functions/_shared/embudoEntrada.ts`). Falta decidir qué otras automatizaciones necesitan (hoy hay dos acciones por etapa: crear un recordatorio y asignar responsable; el envío de mensajes de WhatsApp espera lo de las plantillas) y en qué embudo entran los leads de traslados y hospedajes (consultar con Florencia)
+- [ ] Embudos de Leads: hay tres, Paquetes, Paseos y Anfitriona (posventa). Cuando el contacto elige Paquetes o Paseos en el menú del asistente, su lead entra al embudo de ese grupo (`supabase/functions/_shared/embudoEntrada.ts`). Un lead de Paquetes que llega a "Anfitriona entró en contacto" pasa solo a la primera etapa del embudo de Anfitriona (trigger `leads_redirigir_anfitriona`, migración `20260922120000_embudo_anfitriona.sql`, todavía sin correr). Falta decidir qué otras automatizaciones necesitan (hoy hay dos acciones por etapa: crear un recordatorio y asignar responsable; el envío de mensajes de WhatsApp espera lo de las plantillas) y en qué embudo entran los leads de traslados y hospedajes (consultar con Florencia)
+- [ ] Correr la migración `20260922120000_embudo_anfitriona.sql` (embudo de Anfitriona: etapas, el pase automático desde Paquetes y un ajuste en `crm_metricas_leads` para que "Leads cerrados" del Dashboard siga contando esos leads aunque ya hayan pasado a Anfitriona)
 - [ ] Email de contacto real en `/privacidad`
 - [ ] Configurar Evolution API en VPS (alternativa a WuzAPI)
 - [ ] Correr la migración `20260922100000_realtime_dashboard.sql` (prende el tiempo real en Supabase para `excursiones`, `leads`, `clientes`, `reservas`, `movimientos_caja`, `propuestas`). El Dashboard ya se actualiza solo sin recargar la página (`src/lib/useSincronizado.js`), pero sin este SQL tarda hasta 1 minuto en notarlo en vez de ser casi al instante

@@ -525,11 +525,17 @@ function LayoutContent() {
       <Sidebar />
       <Backdrop />
       {puedeAvisos && <AvisosCarteles carteles={avisos.carteles} alCerrar={avisos.cerrarCartel} alAbrir={abrirCartel} />}
-      <div className={`transition-all duration-300 ease-in-out ${
+      <div className={`transition-all duration-300 ease-in-out ${esWhatsApp ? 'flex h-dvh flex-col overflow-hidden' : ''} ${
         isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
       }`}>
         <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} />
-        <main className={esWhatsApp ? 'lg:p-6 lg:max-w-screen-2xl lg:mx-auto' : 'p-4 md:p-6 max-w-screen-2xl mx-auto'}>
+        {/* El CRM de WhatsApp necesita la pantalla fija: el header y la lista de conversaciones
+            quedan quietos, y solo se mueve la lista o los mensajes cuando se hace scroll ahí
+            adentro (nunca la página entera). Por eso acá "main" no scrollea: queda del alto
+            justo que sobra (flex-1 + min-h-0) y WhatsApp.jsx maneja el scroll de cada columna. */}
+        <main className={esWhatsApp
+          ? 'min-h-0 flex-1 overflow-hidden lg:mx-auto lg:w-full lg:max-w-screen-2xl lg:p-6'
+          : 'p-4 md:p-6 max-w-screen-2xl mx-auto'}>
           <Outlet />
         </main>
       </div>

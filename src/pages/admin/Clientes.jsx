@@ -61,6 +61,8 @@ export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+  const [filtroReservas, setFiltroReservas] = useState('todos') // todos | con | sin
+  const [filtroPais, setFiltroPais] = useState('')
   const [perfil, setPerfil] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
@@ -84,10 +86,16 @@ export default function Clientes() {
     }
   }, [clientes, searchParams])
 
-  const filtrados = clientes.filter(c =>
-    [c.nombre, c.email, c.whatsapp, c.pais, c.ciudad]
-      .filter(Boolean).some(v => v.toLowerCase().includes(busqueda.toLowerCase()))
-  )
+  // Países que realmente tienen clientes cargados, para no ofrecer opciones vacías
+  const paises = [...new Set(clientes.map(c => c.pais).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+
+  const filtrados = clientes.filter(c => {
+    if (busqueda && ![c.nombre, c.email, c.whatsapp, c.pais, c.ciudad].filter(Boolean).some(v => v.toLowerCase().includes(busqueda.toLowerCase()))) return false
+    if (filtroReservas === 'con' && !(c.cantidad_reservas > 0)) return false
+    if (filtroReservas === 'sin' && c.cantidad_reservas > 0) return false
+    if (filtroPais && c.pais !== filtroPais) return false
+    return true
+  })
 
   async function crearCliente(datos) {
     const { data } = await clientesApi.create(datos)
@@ -119,8 +127,8 @@ export default function Clientes() {
         </button>
       </div>
 
-      {/* Buscador */}
-      <div className="mb-5">
+      {/* Buscador y filtros */}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <input
           type="text"
           placeholder="Buscar por nombre, email, WhatsApp o país..."
@@ -128,6 +136,41 @@ export default function Clientes() {
           onChange={e => setBusqueda(e.target.value)}
           className="w-full max-w-md border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
+        <div className="flex items-center gap-1.5">
+          {[
+            { id: 'todos', label: 'Todos' },
+            { id: 'con', label: 'Con reservas' },
+            { id: 'sin', label: 'Sin reservas' },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFiltroReservas(f.id)}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                filtroReservas === f.id
+                  ? 'bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={filtroPais}
+          onChange={e => setFiltroPais(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+        >
+          <option value="">Todos los países</option>
+          {paises.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        {(filtroReservas !== 'todos' || filtroPais) && (
+          <button
+            onClick={() => { setFiltroReservas('todos'); setFiltroPais('') }}
+            className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       {/* Tabla */}

@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { tieneAcceso } from '../../lib/roles.js'
+import { tieneAcceso, rutaInicial } from '../../lib/roles.js'
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation()
@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }) {
 
   const session = JSON.parse(raw)
   if (!tieneAcceso(session.role, location.pathname)) {
-    return <Navigate to="/admin" replace />
+    return <Navigate to={rutaInicial(session.role)} replace />
   }
   return children
 }

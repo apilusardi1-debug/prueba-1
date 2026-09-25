@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usuariosAdminApi, hashPassword } from '../../lib/supabase.js'
+import { rutaInicial } from '../../lib/roles.js'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -19,7 +20,7 @@ export default function Login() {
 
     if (ok && usuario) {
       localStorage.setItem('admin_session', JSON.stringify({ email: usuario.email, nombre: usuario.nombre, role: usuario.rol }))
-      navigate('/admin')
+      navigate(rutaInicial(usuario.rol))
     } else {
       setError('Email o contraseña incorrectos.')
     }

@@ -62,6 +62,11 @@ const Icon = {
       <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
   ),
+  ChatInterno: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 21 12z"/><path d="M8.5 12.5l2 2 5-5"/>
+    </svg>
+  ),
   Hospedajes: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
@@ -165,6 +170,7 @@ const NAV = [
   { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
   { path: '/admin/excursiones', label: 'Excursiones', icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
+  { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
   {
     label: 'Hospedajes', icon: Icon.Hospedajes,
     sub: [
@@ -435,6 +441,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/reservas')) return 'Reservas'
     if (pathname.startsWith('/admin/excursiones')) return 'Excursiones'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
+    if (pathname.startsWith('/admin/operaciones/chat')) return 'Chat interno'
     if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
     if (pathname.startsWith('/admin/videos')) return 'Videos'

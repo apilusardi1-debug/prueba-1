@@ -249,6 +249,12 @@ export const operacionesApi = {
     ?.from('operaciones')
     .select('id, operaciones_avisos(id, destinatario, guia_id, chofer_id, leido_at, confirmado_at)')
     .eq('excursion_id', excursionId).eq('fecha', fecha).maybeSingle(),
+  // Todos los avisos de todas las operaciones, para la pantalla "Chat interno" del admin
+  // (una conversación por guía/chofer con el historial completo)
+  getTodosAvisos: () => supabase
+    ?.from('operaciones_avisos')
+    .select('*, operaciones(fecha, excursiones(nombre))')
+    .order('created_at', { ascending: false }),
 }
 
 // La paginita pública del guía/chofer (sin sesión de admin: entra con su link personal)

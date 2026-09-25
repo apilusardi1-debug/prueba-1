@@ -30,6 +30,7 @@ import Clientes from './pages/admin/Clientes.jsx'
 import Reservas from './pages/admin/Reservas.jsx'
 import Excursiones from './pages/admin/Excursiones.jsx'
 import Agenda from './pages/admin/Agenda.jsx'
+import ChatInterno from './pages/admin/ChatInterno.jsx'
 import SiteConfig from './pages/admin/SiteConfig.jsx'
 import Equipo from './pages/admin/Equipo.jsx'
 import Hospedajes from './pages/admin/Hospedajes.jsx'
@@ -83,6 +84,7 @@ const router = createBrowserRouter([
       { path: '/admin/reservas',      element: <Reservas /> },
       { path: '/admin/excursiones',   element: <Excursiones /> },
       { path: '/admin/agenda',            element: <Agenda /> },
+      { path: '/admin/operaciones/chat',  element: <ChatInterno /> },
       { path: '/admin/hospedajes',         element: <Hospedajes /> },
       { path: '/admin/hospedajes/nuevo',   element: <NuevoHospedaje /> },
       { path: '/admin/hospedajes/:id/editar', element: <EditarHospedaje /> },

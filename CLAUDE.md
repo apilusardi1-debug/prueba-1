@@ -65,10 +65,10 @@ git push origin main   # Vercel despliega automáticamente
 Hay DOS flujos, con dos números y dos apps de Meta distintos. Ambos usan Meta Cloud API directo (sin proveedor intermedio).
 
 ### 1. Mensajes internos (operaciones)
-Al **cerrar una operación** (Agenda), se envían tres plantillas por el número operativo (app `Dreamstourwhatsappoperativo`): `aviso_guia` (1 por operación), `aviso_chofer` (1 por chofer) y `aviso_cliente` (1 por reserva). Categoría utilidad.
-- **Función**: `send-whatsapp`. **Frontend**: `src/lib/ultramsg.js` (`sendWhatsAppTemplate`, el nombre es histórico)
-- **Estado**: no envía nada hasta regenerar el token operativo (ver Secrets). Requiere la aprobación de Florencia en la cuenta de Meta del negocio
-- **En evaluación**: pasar los avisos al guía y a los choferes a un chat interno de la web y dejar por WhatsApp solo el aviso al cliente
+Al **cerrar una operación** (Agenda), al CLIENTE se le manda `aviso_cliente` por el número operativo (app `Dreamstourwhatsappoperativo`, 1 por reserva, categoría utilidad). Al GUÍA y a cada CHOFER ya no se les manda nada por Meta: desde el 2026-09-25 su aviso queda en el **chat interno de operaciones**, un link personal sin contraseña (`/guia/:token`, `/chofer/:token` — `PanelOperativo.jsx`), en portugués, con botón "Recebido" y un botón por pasajero que abre WhatsApp (wa.me) con el mensaje ya armado para que se lo manden ellos mismos desde su propio celular. El link se copia desde Equipo > Guías/Choferes ("Copiar link"). El admin ve en vivo si cada uno lo abrió (Leído) o confirmó (Recebido) desde Agenda > Gestionar.
+- **Función**: `send-whatsapp` (solo para `aviso_cliente`). **Frontend**: `src/lib/ultramsg.js` (`sendWhatsAppTemplate`, el nombre es histórico), `operacionesApi`/`panelOperativoApi` en `src/lib/supabase.js`
+- **Estado**: `aviso_cliente` no envía nada hasta regenerar el token operativo (ver Secrets); el chat interno de guía/chofer no depende de ese token y ya está en producción
+- **Migración**: `supabase/migrations/20260925100000_chat_interno_operaciones.sql` (agrega `token` a `guias`/`choferes`, crea `operaciones` y `operaciones_avisos`)
 
 ### 2. CRM comercial (atención al cliente)
 Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **+55 81 99719-9422** (app "DreamsTour CRM" `3006251579723473`, WABA `847194981749193`, phone number id `1254559544416464`).
@@ -97,7 +97,8 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 ## Archivos clave
 | Archivo | Descripción |
 |---------|-------------|
-| `src/pages/admin/Agenda.jsx` | Calendario con chips de excursiones |
+| `src/pages/admin/Agenda.jsx` | Calendario con chips de excursiones; "Cerrar operación" crea los avisos del chat interno |
+| `src/pages/public/PanelOperativo.jsx` | Chat interno: link personal de guía/chofer (`/guia/:token`, `/chofer/:token`), sin sesión de admin |
 | `src/pages/admin/Finanzas.jsx` | Tab Mercado Pago con QR y pagos recientes |
 | `src/pages/admin/crm/WhatsApp.jsx` | CRM WhatsApp (lista/chat/ficha en una sola columna por debajo de 1024px, con flecha de volver) |
 | `src/lib/ultramsg.js` | Helper para llamar a `send-whatsapp` Edge Function |
@@ -122,8 +123,8 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - **Commits**: `git status -uall` completo y `git add` archivo por archivo; en la raíz hay archivos sueltos que no se suben
 
 ## Pendientes actuales
-- [ ] Regenerar el token permanente del número operativo (`META_WHATSAPP_TOKEN`); necesita la aprobación de Florencia. Mientras tanto no salen los avisos de cerrar operación
-- [ ] Decidir si los avisos al guía y a los choferes pasan a un chat interno de la web
+- [ ] Regenerar el token permanente del número operativo (`META_WHATSAPP_TOKEN`); necesita la aprobación de Florencia. Mientras tanto no sale `aviso_cliente` (el chat interno de guía/chofer no depende de este token)
+- [ ] Correr la migración `20260925100000_chat_interno_operaciones.sql` (chat interno de guía/chofer: agrega `token` a `guias`/`choferes`, crea `operaciones` y `operaciones_avisos`)
 - [ ] CRM: plantilla de reapertura para responder pasadas las 24 hs (consultar con Florencia)
 - [ ] CRM: tiempos de respuesta por persona y gasto real en el Dashboard (Meta informa el costo de cada mensaje en los avisos de estado)
 - [ ] Plan para migrar el número real de Kommo al CRM propio

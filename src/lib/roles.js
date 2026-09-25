@@ -12,8 +12,8 @@ export const ROLES = {
     descripcion: 'Trabajo diario: reservas, agenda, excursiones, equipo, CRM y paquetes. Sin Finanzas ni Configuración.',
     acceso: [
       '/admin', '/admin/clientes', '/admin/leads', '/admin/crm/whatsapp',
-      '/admin/reservas', '/admin/excursiones', '/admin/agenda', '/admin/hospedajes',
-      '/admin/videos', '/admin/paquetes', '/admin/equipo',
+      '/admin/reservas', '/admin/excursiones', '/admin/agenda', '/admin/operaciones',
+      '/admin/hospedajes', '/admin/videos', '/admin/paquetes', '/admin/equipo',
     ],
   },
   lectura: {

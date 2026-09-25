@@ -19,6 +19,9 @@ import Marea from './pages/public/Marea.jsx'
 import Nosotros from './pages/public/Nosotros.jsx'
 import Privacidad from './pages/public/Privacidad.jsx'
 
+// Link personal de guía/chofer (chat interno de operaciones): pública, sin sesión de admin
+import PanelOperativo from './pages/public/PanelOperativo.jsx'
+
 // Páginas admin
 import Login from './pages/admin/Login.jsx'
 import Dashboard from './pages/admin/Dashboard.jsx'
@@ -63,6 +66,10 @@ const router = createBrowserRouter([
 
   // ── Login ──────────────────────────────────────────────────────
   { path: '/login', element: <Login /> },
+
+  // ── Chat interno (link personal de guía/chofer, sin sesión de admin) ────────
+  { path: '/guia/:token',   element: <PanelOperativo tipo="guia" /> },
+  { path: '/chofer/:token', element: <PanelOperativo tipo="chofer" /> },
 
   // ── Área interna ───────────────────────────────────────────────
   {

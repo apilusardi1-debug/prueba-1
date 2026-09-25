@@ -22,6 +22,16 @@ export default function Equipo() {
   const [editando, setEditando] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [copiadoId, setCopiadoId] = useState(null)
+
+  // El link personal (sin contraseña) donde guías y choferes ven los avisos de sus
+  // operaciones: /guia/<token> o /chofer/<token>. Vendedores no tiene esto.
+  function copiarLink(item) {
+    const ruta = tabActiva === 'guias' ? 'guia' : 'chofer'
+    navigator.clipboard.writeText(`${window.location.origin}/${ruta}/${item.token}`)
+    setCopiadoId(item.id)
+    setTimeout(() => setCopiadoId((id) => (id === item.id ? null : id)), 2000)
+  }
 
   const tab = TABS.find((t) => t.id === tabActiva)
 
@@ -218,6 +228,15 @@ export default function Equipo() {
                       >
                         Editar
                       </button>
+                      {(tabActiva === 'choferes' || tabActiva === 'guias') && (
+                        <button
+                          onClick={() => copiarLink(item)}
+                          title="Link personal del chat interno de operaciones"
+                          className="text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 font-medium inline-flex items-center gap-1"
+                        >
+                          <IcTxt n="clip" />{copiadoId === item.id ? 'Copiado' : 'Copiar link'}
+                        </button>
+                      )}
                       <a
                         href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
                         target="_blank"
@@ -265,21 +284,32 @@ export default function Equipo() {
                   {item.activo ? 'Activo' : 'Inactivo'}
                 </button>
               </div>
-              <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-zinc-800">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-50 dark:border-zinc-800">
                 <button
                   onClick={() => abrirEditar(item)}
                   className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium"
                 >
                   Editar
                 </button>
-                <a
-                  href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  Abrir WhatsApp
-                </a>
+                <div className="flex items-center gap-3">
+                  {(tabActiva === 'choferes' || tabActiva === 'guias') && (
+                    <button
+                      onClick={() => copiarLink(item)}
+                      title="Link personal del chat interno de operaciones"
+                      className="text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 font-medium inline-flex items-center gap-1"
+                    >
+                      <IcTxt n="clip" />{copiadoId === item.id ? 'Copiado' : 'Copiar link'}
+                    </button>
+                  )}
+                  <a
+                    href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Abrir WhatsApp
+                  </a>
+                </div>
               </div>
             </div>
           ))}

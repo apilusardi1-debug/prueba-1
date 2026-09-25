@@ -230,6 +230,35 @@ export const guiasApi = {
   delete: (id) => supabase?.from('guias').delete().eq('id', id),
 }
 
+// ── Chat interno de operaciones (avisos a guía y chofer, sin pasar por Meta) ────
+export const operacionesApi = {
+  // Reemplaza la operación (si ya estaba cerrada) y sus avisos por los nuevos: al
+  // volver a cerrar (cambió un chofer, por ejemplo) los mensajes viejos no quedan
+  // colgados con datos desactualizados.
+  cerrar: async ({ excursionId, fecha, guiaId, cerradaPor, avisos }) => {
+    const { data: op, error } = await supabase
+      ?.from('operaciones')
+      .upsert({ excursion_id: excursionId, fecha, guia_id: guiaId, cerrada_por: cerradaPor, cerrada_at: new Date().toISOString() }, { onConflict: 'excursion_id,fecha' })
+      .select().single()
+    if (error || !op) return { error }
+    await supabase?.from('operaciones_avisos').delete().eq('operacion_id', op.id)
+    const filas = avisos.map(a => ({ ...a, operacion_id: op.id }))
+    return supabase?.from('operaciones_avisos').insert(filas).select()
+  },
+  getAvisos: (excursionId, fecha) => supabase
+    ?.from('operaciones')
+    .select('id, operaciones_avisos(id, destinatario, guia_id, chofer_id, leido_at, confirmado_at)')
+    .eq('excursion_id', excursionId).eq('fecha', fecha).maybeSingle(),
+}
+
+// La paginita pública del guía/chofer (sin sesión de admin: entra con su link personal)
+export const panelOperativoApi = {
+  getPorToken: (tabla, token) => supabase?.from(tabla).select('id, nombre, token').eq('token', token).maybeSingle(),
+  getAvisos: (campo, id) => supabase?.from('operaciones_avisos').select('*, operaciones(fecha, excursiones(nombre))').eq(campo, id).order('created_at', { ascending: false }),
+  marcarLeido: (id) => supabase?.from('operaciones_avisos').update({ leido_at: new Date().toISOString() }).eq('id', id).is('leido_at', null),
+  marcarConfirmado: (id, confirmado) => supabase?.from('operaciones_avisos').update({ confirmado_at: confirmado ? new Date().toISOString() : null }).eq('id', id),
+}
+
 // ── Vendedores ─────────────────────────────────────────────────────────────────
 export const vendedoresApi = {
   getAll: () => supabase?.from('vendedores').select('*').order('nombre'),

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi } from '../../lib/supabase.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
+import { useSincronizado } from '../../lib/useSincronizado.js'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -46,6 +47,19 @@ function formatFechaCorta(fechaStr) {
   return new Date(fechaStr + 'T12:00:00').toLocaleDateString('es-AR', {
     day: '2-digit', month: 'short', year: 'numeric',
   })
+}
+
+// El aviso interno para guía y chofer va en portugués (así hablan entre ellos); el
+// mensaje que le mandan al pasajero por su WhatsApp sigue en español, como el resto
+// de lo que le llega al cliente.
+function formatFechaLargaPt(fechaStr) {
+  return new Date(fechaStr + 'T12:00:00').toLocaleDateString('pt-BR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function formatoHora(iso) {
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 function hoyStr() {
@@ -740,6 +754,8 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
 
     try {
       const fechaFmt = formatFechaLarga(fecha)
+      const fechaFmtPt = formatFechaLargaPt(fecha)
+      const fechaCorta = formatFechaCorta(fecha)
       const horario = getHorario(excursion)
       const hora = new Date().getHours()
       const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
@@ -753,33 +769,46 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         logs.push({ destino, phone, ok: res.ok, error: res.error })
       }
 
-      function bloquePasajeroCompleto(r) {
+      // El mensaje que el guía o el chofer le manda AL PASAJERO por su propio WhatsApp
+      // (no por la API de Meta: no tiene costo). Va en español, como el resto de lo
+      // que recibe el cliente; queda pre-escrito, ellos lo revisan antes de mandarlo.
+      function mensajeParaPasajero(r) {
+        return `Hola ${r.clienteNombre}! Te escribo de Dream Tours por la excursión a ${excursion.nombre} el ${fechaCorta}. Paso a buscarte por ${r.hospedaje || 'tu hospedaje'} a las ${horario.partida}. ¿Me pasás la ubicación del hospedaje? Cualquier consulta escribime por acá. ¡Gracias!`
+      }
+      function datosPasajero(r) {
+        return { nombre: r.clienteNombre, personas: r.personas, hospedaje: r.hospedaje || null, whatsapp: r.clienteWhatsapp, mensajeWa: mensajeParaPasajero(r) }
+      }
+
+      // Bloque de un pasajero en el aviso INTERNO (portugués, como ya habla el equipo
+      // entre sí): completo para el guía (con chofer y saldo), simple para el chofer
+      function bloquePasajeroGuia(r) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
         const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
         return [
-          `*${r.clienteNombre}* — 👥 ${r.personas} pax`,
-          `🏨 ${r.hospedaje || 'Sin hospedaje'}`,
-          `📞 +${r.clienteWhatsapp}`,
-          `🚗 ${choferR ? choferR.nombre : 'Sin chofer'}${choferR?.whatsapp ? ` · 📞 +${choferR.whatsapp}` : ''}`,
-          `💰 Saldo a abonar: ${formatPrecio(saldo, r.moneda)}`,
+          `*${r.clienteNombre}* — 👥 ${r.personas} pessoas`,
+          `🏨 ${r.hospedaje || 'Sem hospedagem'}`,
+          `📞 Contato: +${r.clienteWhatsapp}`,
+          `🚗 Motorista: ${choferR ? choferR.nombre : 'Sem motorista'}${choferR?.whatsapp ? ` · 📞 +${choferR.whatsapp}` : ''}`,
+          `💰 Saldo a pagar: ${formatPrecio(saldo)}`,
         ].join('\n')
       }
-
-      function bloquePasajeroSimple(r) {
+      function bloquePasajeroChofer(r) {
         return [
-          `*${r.clienteNombre}* — 👥 ${r.personas} pax`,
-          `🏨 ${r.hospedaje || 'Sin hospedaje'}`,
-          `📞 +${r.clienteWhatsapp}`,
+          `*${r.clienteNombre}* — 👥 ${r.personas} pessoas`,
+          `🏨 ${r.hospedaje || 'Sem hospedagem'}`,
+          `📞 Contato: +${r.clienteWhatsapp}`,
         ].join('\n')
       }
 
-      // Mensaje al GUÍA
-      const bloquesGuia = pasajeros.map(bloquePasajeroCompleto).join('\n\n')
-      await enviar(`Guía (${guiaAsignado.nombre})`, guiaAsignado.whatsapp, 'aviso_guia', [
-        guiaAsignado.nombre, excursion.nombre, fechaFmt, horario.partida, horario.regreso, bloquesGuia,
-      ])
+      // Aviso interno al GUÍA: antes salía por WhatsApp (aviso_guia), ahora queda en
+      // su link personal (chat interno) — el costo por mensaje de Meta era el motivo
+      const mensajeGuia = [
+        `🗺 *${excursion.nombre}*`, `📅 ${fechaFmtPt}`, `🕐 SAÍDA: ${horario.partida} — Volta: ${horario.regreso}`,
+        '', '*Passageiros da operação:*', '', pasajeros.map(bloquePasajeroGuia).join('\n\n'),
+      ].join('\n')
+      const avisos = [{ destinatario: 'guia', guia_id: guiaAsignado.id, mensaje: mensajeGuia, pasajeros: pasajeros.map(datosPasajero) }]
 
-      // Mensaje a cada CHOFER
+      // Aviso interno a cada CHOFER, solo con sus pasajeros (antes aviso_chofer)
       const porChofer = {}
       for (const r of conChofer) {
         const cid = asignaciones[r.id]
@@ -789,13 +818,27 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       for (const [cid, sus] of Object.entries(porChofer)) {
         const chofer = choferes.find((c) => c.id === cid)
         if (!chofer) continue
-        const bloquesChofer = sus.map(bloquePasajeroSimple).join('\n\n')
-        await enviar(`Chofer (${chofer.nombre})`, chofer.whatsapp, 'aviso_chofer', [
-          chofer.nombre, excursion.nombre, fechaFmt, horario.partida, bloquesChofer, guiaAsignado.nombre, guiaAsignado.whatsapp,
-        ])
+        const mensajeChofer = [
+          `🗺 *${excursion.nombre}*`, `📅 ${fechaFmtPt}`, `🕐 SAÍDA: ${horario.partida}`,
+          '', '*Seus passageiros:*', '', sus.map(bloquePasajeroChofer).join('\n\n'),
+          '', `Qualquer dúvida sobre a operação, fale com o guia *${guiaAsignado.nombre}* 📱 +${guiaAsignado.whatsapp}`,
+        ].join('\n')
+        avisos.push({ destinatario: 'chofer', chofer_id: cid, mensaje: mensajeChofer, pasajeros: sus.map(datosPasajero) })
       }
 
-      // Mensaje a cada CLIENTE
+      const cerradaPor = JSON.parse(localStorage.getItem('admin_session') || '{}').nombre || null
+      const { error: errorAvisos } = await operacionesApi.cerrar({ excursionId: excursion.id, fecha, guiaId: guiaAsignado.id, cerradaPor, avisos })
+      if (errorAvisos) {
+        logs.push({ destino: `Guía y choferes (${avisos.length} avisos)`, interno: true, ok: false, error: errorAvisos.message || 'No se pudieron guardar los avisos internos' })
+      } else {
+        logs.push({ destino: `Guía (${guiaAsignado.nombre})`, interno: true, ok: true, error: null })
+        for (const cid of Object.keys(porChofer)) {
+          const chofer = choferes.find((c) => c.id === cid)
+          if (chofer) logs.push({ destino: `Chofer (${chofer.nombre})`, interno: true, ok: true, error: null })
+        }
+      }
+
+      // Mensaje al CLIENTE: sigue por WhatsApp (Meta), sin cambios
       const linkOpcionales = excursion.opcionales_imagen || 'https://prueba-1-rose.vercel.app'
       for (const r of pasajeros) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
@@ -819,6 +862,23 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
 
     setEnviando(false)
     setResultados(logs)
+    cargarEstadoAvisos()
+  }
+
+  // Quién de guía/choferes ya abrió su link (leído) y quién tocó "Recebido"
+  // (confirmado). Se lee al abrir el modal (por si esta operación ya se había
+  // cerrado antes) y se actualiza sola mientras el modal está abierto.
+  const [estadoAvisos, setEstadoAvisos] = useState(null)
+  const cargarEstadoAvisos = useCallback(async () => {
+    const { data } = await operacionesApi.getAvisos(excursion.id, fecha)
+    setEstadoAvisos(data?.operaciones_avisos || [])
+  }, [excursion.id, fecha])
+  useEffect(() => { cargarEstadoAvisos() }, [cargarEstadoAvisos])
+  useSincronizado(cargarEstadoAvisos, ['operaciones_avisos'])
+
+  function nombreDestinatario(a) {
+    if (a.destinatario === 'guia') return guias.find((g) => g.id === a.guia_id)?.nombre || 'Guía'
+    return choferes.find((c) => c.id === a.chofer_id)?.nombre || 'Chofer'
   }
 
   return (
@@ -912,15 +972,38 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
 
         {resultados && (
           <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 max-h-48 overflow-y-auto">
-            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resultado del envío</p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resultado del cierre</p>
             {resultados.map((r, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
                 <span className={r.ok ? 'text-green-500' : 'text-red-500'}><Ic n={r.ok ? 'checkcircle' : 'xcircle'} className="h-4 w-4" /></span>
                 <div>
                   <span className="font-medium text-gray-800 dark:text-zinc-200">{r.destino}</span>
-                  <span className="text-gray-400 dark:text-zinc-500 ml-1">({r.phone})</span>
+                  <span className="text-gray-400 dark:text-zinc-500 ml-1">{r.interno ? (r.ok ? '(listo en su chat interno)' : '') : `(${r.phone})`}</span>
                   {!r.ok && <p className="text-red-500 dark:text-red-400 mt-0.5 break-all">{r.error}</p>}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Chat interno con guía y choferes: quién ya abrió su link y quién tocó
+            "Recebido". Se ve apenas se cierra la operación, o si ya se había cerrado
+            antes (esta pantalla se puede reabrir solo para consultar el estado). */}
+        {estadoAvisos?.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 max-h-48 overflow-y-auto">
+            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Chat interno (guía y choferes)</p>
+            {estadoAvisos.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-medium text-gray-800 dark:text-zinc-200">
+                  {a.destinatario === 'guia' ? 'Guía' : 'Chofer'} · {nombreDestinatario(a)}
+                </span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  a.confirmado_at ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'
+                    : a.leido_at ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400'
+                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'
+                }`}>
+                  {a.confirmado_at ? `Recebido às ${formatoHora(a.confirmado_at)}` : a.leido_at ? 'Leído' : 'Sin abrir'}
+                </span>
               </div>
             ))}
           </div>

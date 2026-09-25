@@ -58,6 +58,10 @@ async function ajustarCuposDisponibles(excursionId, delta) {
 export const reservasApi = {
   getAll: () => supabase?.from('reservas').select('*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').order('fecha'),
   getByWhatsapp: (whatsapp) => supabase?.from('reservas').select('*, excursiones(nombre, imagen)').eq('cliente_whatsapp', whatsapp),
+  // Para saber si cada cliente es de paquetes, de paseos o de las dos cosas: solo
+  // lo que hace falta (a qué cliente, la categoría de la excursión), sin el resto
+  // de los datos de la reserva
+  getCategoriasPorCliente: () => supabase?.from('reservas').select('cliente_id, excursiones(categoria)'),
   create: async (data) => {
     const result = await supabase?.from('reservas').insert(data).select().single()
     const r = result?.data

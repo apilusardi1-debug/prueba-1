@@ -20,6 +20,10 @@ function fmtMonto(n, moneda = 'BRL') {
   return `${moneda} ${Number(n).toLocaleString('es-AR')}`
 }
 
+// La categoría de la excursión (en la base: "paquetes" / "excursiones" / "traslados")
+// se muestra con el mismo nombre que usa el resto del panel (Embudo de paseos, etc.)
+const NOMBRE_CATEGORIA = { paquetes: 'Paquetes', excursiones: 'Paseos', traslados: 'Traslados' }
+
 /* ─── colores y etiquetas de estado de reserva ─── */
 const ESTADO_RESERVA = {
   pendiente:   'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-900',
@@ -63,6 +67,12 @@ export default function Clientes() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroReservas, setFiltroReservas] = useState('todos') // todos | con | sin
   const [filtroPais, setFiltroPais] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('') // '' | 'paquetes' | 'excursiones' | 'traslados'
+  const [filtroDesde, setFiltroDesde] = useState('')
+  const [filtroHasta, setFiltroHasta] = useState('')
+  // Categorías de excursión (paquetes/paseos/traslados) que reservó cada cliente,
+  // para saber de qué es cliente. Un cliente sin reservas todavía no tiene ninguna.
+  const [categoriasPorCliente, setCategoriasPorCliente] = useState({})
   const [perfil, setPerfil] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
@@ -72,6 +82,15 @@ export default function Clientes() {
     clientesApi.getAll().then(({ data }) => {
       setClientes(data || [])
       setCargando(false)
+    })
+    reservasApi.getCategoriasPorCliente().then(({ data }) => {
+      const mapa = {}
+      for (const r of data || []) {
+        const cat = r.excursiones?.categoria
+        if (!r.cliente_id || !cat) continue
+        ;(mapa[r.cliente_id] ??= new Set()).add(cat)
+      }
+      setCategoriasPorCliente(mapa)
     })
   }, [])
 
@@ -88,12 +107,19 @@ export default function Clientes() {
 
   // Países que realmente tienen clientes cargados, para no ofrecer opciones vacías
   const paises = [...new Set(clientes.map(c => c.pais).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+  // Igual con los tipos: solo las categorías que de verdad reservó algún cliente
+  const tipos = [...new Set(Object.values(categoriasPorCliente).flatMap(s => [...s]))]
+    .sort((a, b) => a === 'paquetes' ? -1 : b === 'paquetes' ? 1 : 0) // Paquetes primero, como en el resto del panel
 
   const filtrados = clientes.filter(c => {
     if (busqueda && ![c.nombre, c.email, c.whatsapp, c.pais, c.ciudad].filter(Boolean).some(v => v.toLowerCase().includes(busqueda.toLowerCase()))) return false
     if (filtroReservas === 'con' && !(c.cantidad_reservas > 0)) return false
     if (filtroReservas === 'sin' && c.cantidad_reservas > 0) return false
     if (filtroPais && c.pais !== filtroPais) return false
+    if (filtroTipo && !categoriasPorCliente[c.id]?.has(filtroTipo)) return false
+    // La fecha de alta es "hoy a las 00:00" en UTC del navegador; "Hasta" incluye todo ese día
+    if (filtroDesde && c.created_at < `${filtroDesde}T00:00:00`) return false
+    if (filtroHasta && c.created_at > `${filtroHasta}T23:59:59`) return false
     return true
   })
 
@@ -163,9 +189,37 @@ export default function Clientes() {
           <option value="">Todos los países</option>
           {paises.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        {(filtroReservas !== 'todos' || filtroPais) && (
+        <select
+          value={filtroTipo}
+          onChange={e => setFiltroTipo(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+        >
+          <option value="">Todos los tipos</option>
+          {tipos.map(t => <option key={t} value={t}>{NOMBRE_CATEGORIA[t]}</option>)}
+        </select>
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400">
+          <span>Alta:</span>
+          <input
+            type="date"
+            value={filtroDesde}
+            onChange={e => setFiltroDesde(e.target.value)}
+            aria-label="Cliente desde"
+            max={filtroHasta || undefined}
+            className="rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+          />
+          <span>–</span>
+          <input
+            type="date"
+            value={filtroHasta}
+            onChange={e => setFiltroHasta(e.target.value)}
+            aria-label="Cliente hasta"
+            min={filtroDesde || undefined}
+            className="rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+          />
+        </div>
+        {(filtroReservas !== 'todos' || filtroPais || filtroTipo || filtroDesde || filtroHasta) && (
           <button
-            onClick={() => { setFiltroReservas('todos'); setFiltroPais('') }}
+            onClick={() => { setFiltroReservas('todos'); setFiltroPais(''); setFiltroTipo(''); setFiltroDesde(''); setFiltroHasta('') }}
             className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
           >
             Limpiar filtros
@@ -189,6 +243,7 @@ export default function Clientes() {
                 <th className="px-5 py-3 text-left">Cliente</th>
                 <th className="px-5 py-3 text-left">WhatsApp</th>
                 <th className="px-5 py-3 text-left">País</th>
+                <th className="px-5 py-3 text-left">Tipo</th>
                 <th className="px-5 py-3 text-left">Pasajeros</th>
                 <th className="px-5 py-3 text-left">Reservas</th>
                 <th className="px-5 py-3 text-left">Total gastado</th>
@@ -211,6 +266,17 @@ export default function Clientes() {
                   </td>
                   <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs font-mono">{c.whatsapp}</td>
                   <td className="px-5 py-3 text-gray-500 dark:text-zinc-500 text-xs">{c.pais || '—'}{c.ciudad ? `, ${c.ciudad}` : ''}</td>
+                  <td className="px-5 py-3">
+                    {categoriasPorCliente[c.id]?.size ? (
+                      <div className="flex flex-wrap gap-1">
+                        {[...categoriasPorCliente[c.id]].map(t => (
+                          <span key={t} className="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400">
+                            {NOMBRE_CATEGORIA[t] || t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <span className="text-xs text-gray-300 dark:text-zinc-600">—</span>}
+                  </td>
                   <td className="px-5 py-3 text-gray-600 dark:text-zinc-400 text-xs">{c.cantidad_pasajeros || '—'}</td>
                   <td className="px-5 py-3">
                     <span className="font-semibold text-gray-800 dark:text-zinc-200">{c.cantidad_reservas || 0}</span>

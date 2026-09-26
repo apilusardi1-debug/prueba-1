@@ -65,8 +65,8 @@ function EstadoMensaje({ msg }) {
   const ESTADOS = {
     fallido: { icono: 'alert', clase: 'text-red-500 dark:text-red-300', titulo: 'No entregado' },
     leido: { icono: 'checks', clase: 'text-sky-500 dark:text-sky-300', titulo: `Leído ${hora}`.trim() },
-    entregado: { icono: 'checks', clase: 'text-gray-500 dark:text-green-200', titulo: `Entregado ${hora}`.trim() },
-    enviado: { icono: 'check', clase: 'text-gray-500 dark:text-green-200', titulo: 'Enviado' },
+    entregado: { icono: 'checks', clase: 'text-green-100', titulo: `Entregado ${hora}`.trim() },
+    enviado: { icono: 'check', clase: 'text-green-100', titulo: 'Enviado' },
   }
   const est = ESTADOS[msg.estado_envio] || ESTADOS.enviado
   return (
@@ -87,9 +87,9 @@ function formatPhone(phone) {
 }
 
 function Avatar({ nombre, size = 'md' }) {
-  const sizeClass = size === 'sm' ? 'w-8 h-8 text-sm' : 'w-10 h-10 text-base'
+  const sizeClass = size === 'sm' ? 'w-9 h-9 text-sm' : 'w-12 h-12 text-lg'
   return (
-    <div className={`${sizeClass} rounded-full bg-green-100 dark:bg-green-950/40 flex items-center justify-center font-bold text-green-700 dark:text-green-400 shrink-0`}>
+    <div className={`${sizeClass} rounded-full bg-green-600 flex items-center justify-center font-bold text-white shrink-0`}>
       {(nombre || '?')[0].toUpperCase()}
     </div>
   )
@@ -810,8 +810,8 @@ export default function WhatsAppCRM() {
               key={conv.id}
               onClick={() => seleccionarConversacion(conv)}
               title={alerta ? `Hace ${alerta.horas} h que el cliente espera una respuesta` : undefined}
-              className={`w-full text-left px-4 py-3 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${claseAlerta} ${
-                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-green-50 dark:bg-green-950/20'} border-l-2 border-l-green-500` : ''
+              className={`w-full text-left px-4 py-3.5 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${claseAlerta} ${
+                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-green-100 dark:bg-green-900/30'} border-l-4 border-l-green-600` : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -1094,13 +1094,13 @@ export default function WhatsAppCRM() {
                 key={msg.id}
                 className={`flex ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-2xl shadow-sm text-sm ${
+                <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 rounded-3xl shadow-sm text-sm ${
                   msg.direccion === 'saliente'
-                    ? 'bg-[#dcf8c6] dark:bg-green-800 text-gray-900 dark:text-zinc-100 rounded-br-sm'
-                    : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-bl-sm'
+                    ? 'bg-green-600 text-white rounded-br-md'
+                    : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-bl-md'
                 } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
                   {msg.origen === 'bot' && (
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-300 mb-1">Asistente automático</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-green-100 mb-1">Asistente automático</p>
                   )}
                   {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
                   {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
@@ -1109,7 +1109,7 @@ export default function WhatsAppCRM() {
                       No se entregó. {textoFallo(msg.error_codigo, msg.error_envio)}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1 text-right">
+                  <p className={`text-xs mt-1 text-right ${msg.direccion === 'saliente' ? 'text-green-100' : 'text-gray-400 dark:text-zinc-400'}`}>
                     {formatHora(msg.created_at)}
                     {msg.direccion === 'saliente' && (
                       <span className="ml-1"><EstadoMensaje msg={msg} /></span>

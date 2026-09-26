@@ -12,6 +12,17 @@ const FORM_EMPTY = { fecha: '', nombre: '', telefono: '', adultos: 1, menores: 0
 // se llama "Paseos" en todo el sitio).
 const CATEGORIA_LABEL = { excursiones: 'Paseos', paquetes: 'Paquetes', traslados: 'Traslados' }
 
+// No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
+// vehículo, con varias personas incluidas) — `precioUnidad` viene de la base
+// y se traduce acá a la leyenda que va arriba del precio.
+const UNIDAD_PRECIO_LABEL = {
+  persona: 'Precio por persona',
+  paseo:   'Precio por paseo',
+  sesion:  'Precio por sesión',
+  sesión:  'Precio por sesión',
+  traslado: 'Precio por traslado',
+}
+
 function IconoCheck() {
   return (
     <svg className="w-4 h-4 text-hero-navy flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -198,7 +209,7 @@ export default function ExcursionDetalle() {
 
             <div className="flex items-center justify-between border-t-2 border-hero-navy/10 pt-6">
               <div>
-                <p className="font-label-sm text-[11px] uppercase text-on-surface-variant mb-1">{t('detail_per_person')}</p>
+                <p className="font-label-sm text-[11px] uppercase text-on-surface-variant mb-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad] || t('detail_per_person')}</p>
                 <p className="font-display-hero text-hero-navy leading-none" style={{ fontSize: '2rem' }}>{formatPrecio(ex.precio, ex.moneda)}</p>
               </div>
               <button onClick={abrirModal}

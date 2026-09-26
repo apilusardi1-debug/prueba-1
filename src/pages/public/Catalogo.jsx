@@ -3,6 +3,16 @@ import { Link } from 'react-router-dom'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 
+// No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
+// vehículo, con varias personas incluidas) — se aclara acá abajo del precio
+// para no repetir el error de mostrar "por persona" cuando no corresponde.
+const UNIDAD_PRECIO_LABEL = {
+  paseo:    '/ paseo',
+  sesion:   '/ sesión',
+  sesión:   '/ sesión',
+  traslado: '/ traslado',
+}
+
 export default function Catalogo({ categoria }) {
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -140,7 +150,12 @@ export default function Catalogo({ categoria }) {
                     <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
                       <div>
                         <span className="font-label-sm text-[10px] uppercase text-hero-cream/70 block leading-none mb-1">Desde</span>
-                        <span className="font-display-hero text-hero-yellow text-xl leading-none">{formatPrecio(ex.precio, ex.moneda)}</span>
+                        <span className="font-display-hero text-hero-yellow text-xl leading-none">
+                          {formatPrecio(ex.precio, ex.moneda)}
+                          {UNIDAD_PRECIO_LABEL[ex.precioUnidad] && (
+                            <span className="text-[11px] normal-case font-label-sm text-hero-cream/70 ml-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad]}</span>
+                          )}
+                        </span>
                       </div>
                       <span className="font-label-lg text-label-sm uppercase text-hero-cream group-hover:underline whitespace-nowrap">Ver detalle</span>
                     </div>

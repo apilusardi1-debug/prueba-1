@@ -19,6 +19,10 @@ export function normalizarExcursion(e) {
     ...e,
     cuposDisponibles: e.cupos_disponibles ?? e.cuposDisponibles ?? 0,
     moneda: e.moneda || 'USD',
+    // No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son
+    // por vehículo) — default 'persona' cubre tanto los paquetes/traslados
+    // viejos como una base que todavía no corrió la migración de esta columna.
+    precioUnidad: e.precio_unidad || 'persona',
   }
 }
 

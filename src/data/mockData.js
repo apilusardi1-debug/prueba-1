@@ -207,14 +207,6 @@ export const destinos = [
     icono: '🏄',
   },
   {
-    id: 'natal',
-    nombre: 'Natal',
-    estado: 'Rio Grande do Norte',
-    descripcion: 'La ciudad del sol. Dunas enormes, fortaleza histórica y playas de arena blanca.',
-    imagen: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
-    icono: '🏜️',
-  },
-  {
     id: 'noronha',
     nombre: 'Fernando de Noronha',
     estado: 'Pernambuco',

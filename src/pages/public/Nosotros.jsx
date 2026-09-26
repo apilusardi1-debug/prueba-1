@@ -39,7 +39,7 @@ export default function Nosotros() {
           <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Operamos en</p>
           <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.5rem', color: '#1C1208', marginBottom: 20 }}>Nuestros destinos</h2>
           <div className="flex flex-wrap gap-3">
-            {['🐠 Porto de Galinhas', '🪸 Maragogi', '🌴 Maceió', '🏄 Pipa', '🏜️ Natal', '🐢 Fernando de Noronha'].map((d) => (
+            {['🐠 Porto de Galinhas', '🪸 Maragogi', '🌴 Maceió', '🏄 Pipa', '🐢 Fernando de Noronha'].map((d) => (
               <span key={d} style={{ background: 'white', border: '1px solid #d9a83a', color: '#8a581e', fontWeight: 600, padding: '8px 18px', borderRadius: 999, fontSize: '0.85rem' }}>
                 {d}
               </span>

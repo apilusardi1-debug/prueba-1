@@ -2,26 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
-import { useLang } from '../../context/LanguageContext.jsx'
-
-const C = {
-  bg: '#f4f5f7',
-  white: '#ffffff',
-  navy: '#002147',
-  navyMuted: 'rgba(0,33,71,0.55)',
-  navyLight: 'rgba(0,33,71,0.07)',
-  gold: '#a8720a',
-  teal: '#0891b2',
-  border: 'rgba(0,33,71,0.1)',
-}
 
 export default function Catalogo({ categoria }) {
-  const { t } = useLang()
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [destinoFiltro, setDestinoFiltro] = useState('')
-  const [hovered, setHovered] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -42,187 +28,129 @@ export default function Catalogo({ categoria }) {
     return matchCat && matchDest && matchBusq
   })
 
-  const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))]
+  const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))].sort()
 
-  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
+  const tituloLabel = categoria === 'paquetes' ? 'Paquetes Aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
   // Los paseos (ex "Excursiones") siempre incluyen guía en español y traslado
-  // privado — dato importante para el cliente, se aclara acá en vez de en el
+  // privado — dato importante para el cliente, se aclara acá en vez del
   // subtítulo genérico que comparten las demás categorías.
   const subtituloLabel = categoria === 'excursiones'
-    ? 'Todos nuestros paseos incluyen guía en español y traslado privado.'
+    ? 'Todos nuestros paseos incluyen guía en español y traslado privado'
     : 'Encontrá tu próximo viaje al Nordeste Brasilero'
 
-  if (loading) return (
-    <div style={{ backgroundColor: C.bg, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 36, height: 36, border: `3px solid ${C.border}`, borderTopColor: C.navy, borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ color: C.navyMuted, fontSize: '0.9rem', fontWeight: 500 }}>Cargando paquetes…</p>
-      </div>
-    </div>
-  )
-
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: '80px' }}>
-
-      {/* ── Header ──────────────────────────────── */}
-      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: '80px 24px 36px' }}>
-        <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
-          <p style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.teal, marginBottom: '12px' }}>
-            DreamTours · Nordeste Brasilero
-          </p>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, fontSize: 'clamp(2rem, 4.5vw, 3.2rem)', color: C.navy, lineHeight: 1.1, marginBottom: '10px', letterSpacing: '-0.02em' }}>
+    <div className="bg-surface min-h-screen">
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="bg-hero-navy pt-32 pb-16 md:pb-20">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
             {tituloLabel}
           </h1>
-          <p style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: '15px', color: C.navyMuted, lineHeight: 1.6 }}>
+          <p className="font-display-hero uppercase text-hero-cream mb-8"
+            style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
             {subtituloLabel}
           </p>
-        </div>
-      </div>
 
-      <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '32px 24px 0' }}>
-
-        {/* ── Filtros ──────────────────────────── */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: '1 1 260px', minWidth: '200px' }}>
-            <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: C.navyMuted, fontSize: '16px', pointerEvents: 'none' }}>
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Buscar por destino o nombre..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              style={{ width: '100%', border: `1.5px solid ${C.border}`, borderRadius: '10px', padding: '11px 16px 11px 40px', fontSize: '14px', background: C.white, color: C.navy, outline: 'none', boxSizing: 'border-box', fontFamily: "'Helvetica Neue', sans-serif" }}
-            />
-          </div>
-
-          {/* Destination pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {['', ...destinosUnicos].map((d) => {
-              const active = destinoFiltro === d
-              return (
-                <button key={d || 'todos'} onClick={() => setDestinoFiltro(d)}
-                  style={{
-                    padding: '9px 18px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-                    cursor: 'pointer', transition: 'all 0.18s', fontFamily: "'Helvetica Neue', sans-serif",
-                    border: active ? 'none' : `1.5px solid ${C.border}`,
-                    background: active ? C.navy : C.white,
-                    color: active ? C.white : C.navyMuted,
-                    boxShadow: active ? '0 2px 12px rgba(0,33,71,0.18)' : 'none',
-                  }}>
-                  {d || 'Todos'}
+          {/* Buscador + filtro de destino */}
+          <div className="flex flex-col md:flex-row gap-3 md:items-center">
+            <div className="relative w-full md:w-72">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[20px] pointer-events-none">search</span>
+              <input
+                type="text"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar por destino o nombre..."
+                className="w-full pl-11 pr-5 py-3 rounded-full border-2 border-transparent bg-white text-deep-ocean font-body-md text-body-md placeholder-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-hero-yellow"
+              />
+            </div>
+            {destinosUnicos.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => setDestinoFiltro('')}
+                  className={`font-label-lg text-label-sm uppercase px-4 py-2 rounded-full border-2 transition-colors ${
+                    destinoFiltro === '' ? 'bg-hero-yellow border-hero-yellow text-hero-navy' : 'border-hero-cream/40 text-hero-cream hover:border-hero-cream'
+                  }`}>
+                  Todos
                 </button>
-              )
-            })}
+                {destinosUnicos.map(d => (
+                  <button key={d} onClick={() => setDestinoFiltro(d)}
+                    className={`font-label-lg text-label-sm uppercase px-4 py-2 rounded-full border-2 transition-colors ${
+                      destinoFiltro === d ? 'bg-hero-yellow border-hero-yellow text-hero-navy' : 'border-hero-cream/40 text-hero-cream hover:border-hero-cream'
+                    }`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+      </section>
 
-        {/* Contador */}
-        {filtrados.length > 0 && (
-          <p style={{ fontSize: '13px', color: C.navyMuted, marginBottom: '20px', fontFamily: "'Helvetica Neue', sans-serif" }}>
-            {filtrados.length} {filtrados.length === 1 ? 'paquete' : 'paquetes'} encontrados
-          </p>
-        )}
-
-        {/* ── Grid ─────────────────────────────── */}
-        {filtrados.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px', color: C.navyMuted }}>
-            <p style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🔍</p>
-            <p style={{ fontSize: '1rem' }}>No hay paquetes que coincidan con tu búsqueda.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-            {filtrados.map((ex) => (
-              <div key={ex.id}
-                onMouseEnter={() => setHovered(ex.id)}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  background: C.white, borderRadius: '16px', overflow: 'hidden',
-                  border: `1px solid ${C.border}`,
-                  boxShadow: hovered === ex.id ? '0 16px 48px rgba(0,33,71,0.13)' : '0 2px 12px rgba(0,33,71,0.06)',
-                  transform: hovered === ex.id ? 'translateY(-4px)' : 'translateY(0)',
-                  transition: 'all 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
-                  display: 'flex', flexDirection: 'column',
-                }}>
-
-                {/* Image */}
-                <div style={{ position: 'relative', height: '220px', overflow: 'hidden', flexShrink: 0 }}>
-                  <img
-                    src={ex.imagen || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
-                    alt={ex.nombre}
-                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' }}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', transform: hovered === ex.id ? 'scale(1.04)' : 'scale(1)', transition: 'transform 0.6s ease' }} />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,33,71,0.35) 100%)' }} />
-
-                  {/* Destination badge */}
-                  <span style={{
-                    position: 'absolute', top: '14px', left: '14px',
-                    background: 'rgba(0,33,71,0.75)', backdropFilter: 'blur(8px)',
-                    color: 'rgba(255,255,255,0.92)', fontSize: '10px', fontWeight: 700,
-                    padding: '5px 12px', borderRadius: '999px', letterSpacing: '0.14em',
-                    textTransform: 'uppercase', fontFamily: "'Helvetica Neue', sans-serif",
-                  }}>{ex.destino}</span>
-
-                  {/* Últimos cupos */}
-                  {ex.cuposDisponibles <= 3 && (
-                    <span style={{
-                      position: 'absolute', top: '14px', right: '14px',
-                      background: '#dc2626', color: 'white', fontSize: '10px', fontWeight: 700,
-                      padding: '5px 12px', borderRadius: '999px', letterSpacing: '0.06em',
-                      fontFamily: "'Helvetica Neue', sans-serif",
-                    }}>¡Últimos {ex.cuposDisponibles}!</span>
-                  )}
-                </div>
-
-                {/* Body */}
-                <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, fontSize: '1.15rem', color: C.navy, marginBottom: '8px', lineHeight: 1.3 }}>
-                    {ex.nombre}
-                  </h3>
-                  <p style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: '13.5px', color: C.navyMuted, marginBottom: '18px', flex: 1, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {ex.descripcion}
-                  </p>
-
-                  {/* Meta */}
-                  <div style={{ display: 'flex', gap: '16px', marginBottom: '18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ fontSize: '13px', color: C.navyMuted }}>⏱</span>
-                      <span style={{ fontSize: '12.5px', color: C.navyMuted, fontFamily: "'Helvetica Neue', sans-serif", fontWeight: 500 }}>{ex.duracion}</span>
+      {/* ── LISTADO ──────────────────────────────────────────── */}
+      <section className="py-12 md:py-16">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          {loading ? (
+            <div className="flex justify-center py-24">
+              <div className="w-8 h-8 border-4 border-hero-navy/20 border-t-hero-navy rounded-full animate-spin" />
+            </div>
+          ) : filtrados.length === 0 ? (
+            <p className="text-center font-body-md text-body-md text-on-surface-variant py-24">
+              No encontramos {categoria === 'excursiones' ? 'paseos' : categoria === 'traslados' ? 'traslados' : 'paquetes'} con esos filtros.
+            </p>
+          ) : (
+            <>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+                {filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                {filtrados.map(ex => (
+                  <Link key={ex.id} to={`/excursiones/${ex.id}`}
+                    className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+                    <div className="relative h-52 overflow-hidden bg-surface-variant flex-shrink-0">
+                      <img
+                        src={ex.imagen || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
+                        alt={ex.nombre}
+                        onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      {ex.destino && (
+                        <span className="absolute top-3 left-3 bg-hero-navy/80 backdrop-blur-sm text-hero-cream font-label-sm text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full">
+                          {ex.destino}
+                        </span>
+                      )}
+                      {ex.cuposDisponibles <= 3 && (
+                        <span className="absolute top-3 right-3 bg-red-600 text-white font-label-sm text-[10px] uppercase px-3 py-1.5 rounded-full">
+                          ¡Últimos {ex.cuposDisponibles}!
+                        </span>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ fontSize: '13px', color: C.navyMuted }}>👥</span>
-                      <span style={{ fontSize: '12.5px', color: C.navyMuted, fontFamily: "'Helvetica Neue', sans-serif", fontWeight: 500 }}>{ex.cuposDisponibles} cupos</span>
+                    <div className="p-5 flex flex-col flex-1 gap-2 bg-white">
+                      <h3 className="font-display-hero uppercase text-hero-navy text-lg leading-tight">{ex.nombre}</h3>
+                      <p className="font-body-md text-body-md text-on-surface-variant line-clamp-2 flex-1">{ex.descripcion}</p>
+                      <div className="flex items-center gap-4 font-label-sm text-label-sm uppercase text-deep-ocean/70 pt-1">
+                        {ex.duracion && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[15px]">schedule</span>{ex.duracion}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
+                        </span>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${C.border}`, paddingTop: '18px' }}>
-                    <div>
-                      <p style={{ fontSize: '11px', color: C.navyMuted, fontFamily: "'Helvetica Neue', sans-serif", marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>desde</p>
-                      <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, fontSize: '1.35rem', color: C.gold }}>
-                        {formatPrecio(ex.precio, ex.moneda)}
-                      </span>
+                    <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="font-label-sm text-[10px] uppercase text-hero-cream/70 block leading-none mb-1">Desde</span>
+                        <span className="font-display-hero text-hero-yellow text-xl leading-none">{formatPrecio(ex.precio, ex.moneda)}</span>
+                      </div>
+                      <span className="font-label-lg text-label-sm uppercase text-hero-cream group-hover:underline whitespace-nowrap">Ver detalle</span>
                     </div>
-                    <Link to={`/excursiones/${ex.id}`}
-                      style={{
-                        background: C.navy, color: C.white,
-                        padding: '10px 20px', borderRadius: '8px',
-                        fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                        fontFamily: "'Helvetica Neue', sans-serif",
-                        letterSpacing: '0.02em', transition: 'background 0.18s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background='#003580'}
-                      onMouseLeave={e => e.currentTarget.style.background=C.navy}>
-                      Ver detalle
-                    </Link>
-                  </div>
-                </div>
+                  </Link>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      </section>
     </div>
   )
 }

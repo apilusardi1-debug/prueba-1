@@ -21,8 +21,8 @@ const SUGERIDAS = [
   {
     id: 'asignacion',
     embudo: 'paquetes',
-    etapa: 'negociacion',
-    titulo: 'Asignar cuando empieza la negociación',
+    etapa: 'propuesta_enviada',
+    titulo: 'Asignar responsable de la propuesta',
     tipo: 'asignar',
     explicacion: 'Cuando un lead entra a «{etapa}», queda asignado a la persona que elijas y su inicial aparece en la tarjeta.',
   },

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi } from '../../lib/supabase.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
+import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -745,6 +746,23 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   const listoParaCerrar = guiaAsignaciones[opKey] && conChofer.length > 0
   const [enviando, setEnviando] = useState(false)
   const [resultados, setResultados] = useState(null)
+  const [previewAbierto, setPreviewAbierto] = useState(null) // id del pasajero cuya vista previa está abierta
+
+  // El mismo texto que le llega al cliente por WhatsApp (misma plantilla que usa
+  // cerrarOperacion), para revisarlo antes de que el token del número operativo esté
+  // arreglado — funciona incluso sin guía/chofer asignados todavía, con "A confirmar"
+  function mensajeClientePreview(r) {
+    const choferR = choferes.find((c) => c.id === asignaciones[r.id])
+    const horario = getHorario(excursion)
+    const hora = new Date().getHours()
+    const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
+    const linkOpcionales = excursion.opcionales_imagen || 'https://prueba-1-rose.vercel.app'
+    return renderTemplate('aviso_cliente', [
+      saludo, excursion.nombre, guiaAsignado?.nombre || 'A confirmar', choferR ? choferR.nombre : 'por confirmar',
+      choferR?.auto_modelo || 'A confirmar', choferR?.auto_patente || 'A confirmar',
+      horario.partida, horario.regreso, r.hospedaje || 'tu hospedaje', guiaAsignado?.whatsapp || 'A confirmar', linkOpcionales,
+    ])
+  }
 
   async function cerrarOperacion() {
     if (!listoParaCerrar || !guiaAsignado) return
@@ -962,6 +980,18 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                     </select>
                     {choferAsignado && (
                       <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1.5">✓ {choferAsignado.nombre} asignado</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewAbierto((id) => (id === r.id ? null : r.id))}
+                      className="mt-2 text-xs font-medium text-gray-400 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                    >
+                      {previewAbierto === r.id ? 'Ocultar' : 'Ver'} mensaje al cliente
+                    </button>
+                    {previewAbierto === r.id && (
+                      <div className="mt-2 rounded-xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700 p-3">
+                        <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-zinc-300">{mensajeClientePreview(r)}</p>
+                      </div>
                     )}
                   </div>
                 )

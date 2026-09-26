@@ -302,6 +302,7 @@ async function seguirFiltro(supabase: Supabase, cfg: any, conv: any, phone: stri
       despues,
       nombreConocido: nombreValido(conv.contacto_nombre) || !!despues.nombre,
       intentos: conv.bot_intentos || 0,
+      parecePregunta: textosDeLaRafaga(hilo).some((t) => /[?¿]/.test(t)),
     })
     : { accion: 'derivar' as const }
 

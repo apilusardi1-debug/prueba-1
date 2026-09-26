@@ -85,16 +85,25 @@ export function pasoInicial(datos: DatosViaje, nombreConocido: boolean): Paso {
 }
 
 // Ya se le preguntó y contestó. `antes` es lo que se sabía cuando se hizo la pregunta y
-// `despues` lo que se sabe ahora; `intentos` cuántas veces se le preguntó (1 = una).
+// `despues` lo que se sabe ahora; `intentos` cuántas veces se le preguntó (1 = una);
+// `parecePregunta` si lo que contestó tiene cara de ser una pregunta propia (trae "?"),
+// no un intento fallido de contestar la nuestra.
 export function pasoTrasRespuesta(
-  { antes, despues, nombreConocido, intentos }: { antes: DatosViaje; despues: DatosViaje; nombreConocido: boolean; intentos: number },
+  { antes, despues, nombreConocido, intentos, parecePregunta = false }: {
+    antes: DatosViaje; despues: DatosViaje; nombreConocido: boolean; intentos: number; parecePregunta?: boolean
+  },
 ): Paso {
   const faltan = faltantes(despues, nombreConocido)
   if (!faltan.length) return { accion: 'derivar' }
-  // Contestó otra cosa (una pregunta, por ejemplo): que lo tome una persona
-  if (camposAportados(despues) <= camposAportados(antes)) return { accion: 'derivar' }
-  // Ya se le insistió una vez: no se le pregunta de nuevo
+  // Ya se le insistió una vez: no se le pregunta de nuevo, conteste lo que conteste
   if (intentos >= 2) return { accion: 'derivar' }
+  const sinAvance = camposAportados(despues) <= camposAportados(antes)
+  // No sumó ningún dato nuevo: si además preguntó algo (trae "?"), mejor que lo
+  // atienda una persona ya; si no, puede ser un mensaje raro/incompleto y todavía
+  // le queda UNA pregunta de seguimiento antes de derivar (no cada respuesta rara
+  // cuenta como "no contestó", porque cada mensaje que manda el asistente se paga
+  // pasadas las 24 hs de la conversación)
+  if (sinAvance && parecePregunta) return { accion: 'derivar' }
   return { accion: 'seguimiento', faltan }
 }
 

@@ -18,6 +18,19 @@ const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
 const META_API_VERSION = 'v21.0'
 const MEDIA_BUCKET = 'whatsapp-media'
 
+// WhatsApp Flow "Datos del viaje" (filtro de Paquetes): alternativa al mensaje de texto,
+// con un formulario de verdad dentro de WhatsApp. Todavía está en borrador en Meta (no
+// publicado) — por eso se manda con mode:"draft", que solo lo pueden abrir los números
+// con rol de tester/admin en la app de Meta. Sacar esa línea cuando se publique.
+const FLOW_ID_PAQUETES = '2122264095351293'
+const DESTINO_FLOW: Record<string, string> = {
+  porto_de_galinhas: 'Porto de Galinhas', maragogi: 'Maragogi', pipa: 'Pipa',
+  fernando_de_noronha: 'Fernando de Noronha', maceio: 'Maceió',
+}
+const PRESUPUESTO_FLOW: Record<string, string> = {
+  '1000_2000': '1.000 a 2.000 USD', '2000_2500': '2.000 a 2.500 USD', '2500_3000': '2.500 a 3.000 USD',
+}
+
 const TIPOS_MEDIA = ['image', 'audio', 'video', 'document', 'sticker']
 const ETIQUETA_MEDIA: Record<string, string> = {
   image: 'Imagen', audio: 'Audio', video: 'Video', document: 'Documento', sticker: 'Sticker',
@@ -98,6 +111,52 @@ async function enviarMeta(cuerpo: Record<string, unknown>): Promise<string | nul
   if (!res.ok) throw new Error(`Meta ${res.status}: ${await res.text()}`)
   const data = await res.json().catch(() => null)
   return data?.messages?.[0]?.id ?? null
+}
+
+// Manda el formulario nativo en vez del mensaje de texto de siempre. El cliente lo
+// completa sin salir de WhatsApp; la respuesta llega por el webhook como un mensaje
+// interactivo (nfm_reply), no como texto — ver textoDesdeFlow más abajo.
+async function enviarFlowDatosViaje(supabase: ReturnType<typeof createClient>, convId: string, phone: string) {
+  const wamid = await enviarMeta({
+    to: phone,
+    type: 'interactive',
+    interactive: {
+      type: 'flow',
+      body: { text: 'Perfecto! Para armarte una propuesta a tu medida, completá estos datos:' },
+      action: {
+        name: 'flow',
+        parameters: {
+          flow_message_version: '3',
+          flow_id: FLOW_ID_PAQUETES,
+          flow_cta: 'Completar datos del viaje',
+          flow_action: 'navigate',
+          flow_action_payload: { screen: 'DATOS_VIAJE' },
+          mode: 'draft', // sacar cuando el flow esté publicado en Meta
+        },
+      },
+    },
+  })
+  await guardarMensajeBot(
+    supabase, convId, phone,
+    'Perfecto! Para armarte una propuesta a tu medida, completá estos datos: [formulario "Completar datos del viaje"]',
+    wamid,
+  )
+}
+
+// Arma una respuesta de flow (JSON con un valor por campo) como el mismo texto
+// "Campo: valor" línea por línea que ya entiende el lector de datosViaje.ts, así el
+// resto del filtro (pasoTrasRespuesta, extraerDatosViaje) no necesita saber que esto
+// vino de un formulario y no de texto escrito a mano.
+function textoDesdeFlow(r: Record<string, string>): string {
+  const lineas = [
+    `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
+    `Adultos: ${r.adultos ?? ''}`,
+    `Menores: ${r.menores ?? ''}`,
+  ]
+  if (r.edades && Number(r.menores) > 0) lineas.push(`Edades: ${r.edades}`)
+  lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
+  lineas.push(`Fecha: ${r.fecha ?? ''}`)
+  return lineas.join('\n')
 }
 
 async function guardarMensajeBot(supabase: ReturnType<typeof createClient>, convId: string, phone: string, texto: string, wamid: string | null) {
@@ -285,7 +344,11 @@ async function iniciarFiltro(supabase: Supabase, cfg: any, conv: any, phone: str
     await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
     return
   }
-  await enviarTextoBot(supabase, conv.id, phone, mensajePreguntas(configFiltro(cfg), paso.faltan))
+  if (cfg?.filtro_metodo === 'flow') {
+    await enviarFlowDatosViaje(supabase, conv.id, phone)
+  } else {
+    await enviarTextoBot(supabase, conv.id, phone, mensajePreguntas(configFiltro(cfg), paso.faltan))
+  }
   await supabase.from('conversaciones').update({ bot_estado: 'filtrando', bot_intentos: 1, grupo: 'paquetes' }).eq('id', conv.id)
 }
 
@@ -428,7 +491,15 @@ serve(async (req) => {
       ? `Ubicación${ubicacion.name ? `: ${ubicacion.name}` : ''} - https://maps.google.com/?q=${ubicacion.latitude},${ubicacion.longitude}`
       : null
 
-    const texto: string =
+    // Respuesta del formulario "Datos del viaje" (WhatsApp Flow): llega como un mensaje
+    // interactivo con los campos en JSON, no como texto. Se convierte a "Campo: valor"
+    // para que el resto del filtro (que ya sabe leer eso) no note la diferencia.
+    let datosFlow: Record<string, string> | null = null
+    if (message.interactive?.type === 'nfm_reply' && message.interactive.nfm_reply?.response_json) {
+      try { datosFlow = JSON.parse(message.interactive.nfm_reply.response_json) } catch { /* sigue por el camino de siempre */ }
+    }
+
+    const texto: string = datosFlow ? textoDesdeFlow(datosFlow) : (
       message.text?.body ??
       message.button?.text ??
       message.interactive?.button_reply?.title ??
@@ -436,6 +507,7 @@ serve(async (req) => {
       media?.caption ??
       textoUbicacion ??
       (tipoMedia ? `${ETIQUETA_MEDIA[tipoMedia]}${nombreArchivo ? `: ${nombreArchivo}` : ''}` : `[Mensaje de tipo ${message.type}]`)
+    )
 
     const nombre: string = value?.contacts?.[0]?.profile?.name || 'Sin nombre'
 

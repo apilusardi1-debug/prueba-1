@@ -20,13 +20,16 @@ const MEDIA_BUCKET = 'whatsapp-media'
 
 // WhatsApp Flow "Datos del viaje" (filtro de Paquetes): alternativa al mensaje de texto,
 // con un formulario de verdad dentro de WhatsApp. Publicado en Meta (no en borrador):
-// le llega a cualquier cliente, no solo a números de prueba. Si hay que cambiar un campo
-// o una opción, no se puede editar este mismo flow — hay que crear uno nuevo con el
-// cambio, publicarlo y actualizar este ID.
+// le llega a cualquier cliente, no solo a números de prueba. Al subir un cambio de
+// contenido (assets) Meta lo vuelve a poner en borrador solo — hay que publicarlo de
+// nuevo después de cada edición, o el cliente vuelve a ver el aviso de "solo prueba".
 const FLOW_ID_PAQUETES = '2122264095351293'
 const DESTINO_FLOW: Record<string, string> = {
   porto_de_galinhas: 'Porto de Galinhas', maragogi: 'Maragogi', pipa: 'Pipa',
   fernando_de_noronha: 'Fernando de Noronha', maceio: 'Maceió',
+}
+const HOSPEDAJE_FLOW: Record<string, string> = {
+  hotel: 'Hotel', pousada: 'Pousada', resort: 'Resort', alquiler: 'Alquiler (Airbnb/temporada)', no_se: 'Todavía no sé',
 }
 const PRESUPUESTO_FLOW: Record<string, string> = {
   '1000_2000': '1.000 a 2.000 USD', '2000_2500': '2.000 a 2.500 USD', '2500_3000': '2.500 a 3.000 USD',
@@ -147,6 +150,14 @@ async function enviarFlowDatosViaje(supabase: ReturnType<typeof createClient>, c
 // "Campo: valor" línea por línea que ya entiende el lector de datosViaje.ts, así el
 // resto del filtro (pasoTrasRespuesta, extraerDatosViaje) no necesita saber que esto
 // vino de un formulario y no de texto escrito a mano.
+// El DatePicker devuelve "AAAA-MM-DD" (como lo pide Meta); se muestra como al equipo
+// le resulta natural leerlo ("DD/MM/AAAA").
+function fechaLegible(iso: string | undefined): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return d && m && y ? `${d}/${m}/${y}` : iso
+}
+
 function textoDesdeFlow(r: Record<string, string>): string {
   const lineas = [
     `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
@@ -154,8 +165,9 @@ function textoDesdeFlow(r: Record<string, string>): string {
     `Menores: ${r.menores ?? ''}`,
   ]
   if (r.edades && Number(r.menores) > 0) lineas.push(`Edades: ${r.edades}`)
+  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
   lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
-  lineas.push(`Fecha: ${r.fecha ?? ''}`)
+  lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}`)
   return lineas.join('\n')
 }
 

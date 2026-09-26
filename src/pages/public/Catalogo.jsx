@@ -127,7 +127,8 @@ export default function Catalogo({ categoria }) {
                           {ex.destino}
                         </span>
                       )}
-                      {ex.cuposDisponibles <= 3 && (
+                      {/* Los paseos (categoria "excursiones") no muestran cupos — pedido explícito */}
+                      {ex.categoria !== 'excursiones' && ex.cuposDisponibles <= 3 && (
                         <span className="absolute top-3 right-3 bg-red-600 text-white font-label-sm text-[10px] uppercase px-3 py-1.5 rounded-full">
                           ¡Últimos {ex.cuposDisponibles}!
                         </span>
@@ -142,9 +143,11 @@ export default function Catalogo({ categoria }) {
                             <span className="material-symbols-outlined text-[15px]">schedule</span>{ex.duracion}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
-                        </span>
+                        {ex.categoria !== 'excursiones' && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">

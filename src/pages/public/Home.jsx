@@ -247,11 +247,9 @@ export default function Home() {
                     {e.nombre}
                   </h3>
                   <div className="text-right flex-shrink-0">
-                    <div className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">
-                      Desde {e.moneda === 'USD' ? 'US$' : 'R$'} {e.precio}
-                    </div>
-                    <div className="font-label-sm text-[11px] uppercase text-hero-yellow font-bold whitespace-nowrap">
-                      {e.cuposDisponibles} Cupos
+                    <div className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">Desde</div>
+                    <div className="font-label-sm text-[13px] uppercase text-hero-yellow font-bold whitespace-nowrap">
+                      {e.moneda === 'USD' ? 'US$' : 'R$'} {e.precio}
                     </div>
                   </div>
                 </div>

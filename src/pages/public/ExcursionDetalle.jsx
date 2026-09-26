@@ -137,7 +137,8 @@ export default function ExcursionDetalle() {
   const metaCards = [
     { label: t('detail_duration'), value: ex.duracion, icon: 'schedule' },
     { label: t('detail_difficulty'), value: ex.dificultad, icon: 'flag' },
-    { label: t('detail_spots'), value: `${ex.cuposDisponibles} / ${ex.cupos}`, icon: 'group', red: ex.cuposDisponibles <= 3 },
+    // Los paseos (categoria "excursiones") no muestran cupos — pedido explícito
+    ...(ex.categoria !== 'excursiones' ? [{ label: t('detail_spots'), value: `${ex.cuposDisponibles} / ${ex.cupos}`, icon: 'group', red: ex.cuposDisponibles <= 3 }] : []),
     { label: t('detail_category'), value: CATEGORIA_LABEL[ex.categoria] || ex.categoria, icon: 'sell' },
   ].filter(m => m.value)
 

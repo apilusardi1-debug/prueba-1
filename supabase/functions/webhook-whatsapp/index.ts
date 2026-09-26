@@ -19,9 +19,10 @@ const META_API_VERSION = 'v21.0'
 const MEDIA_BUCKET = 'whatsapp-media'
 
 // WhatsApp Flow "Datos del viaje" (filtro de Paquetes): alternativa al mensaje de texto,
-// con un formulario de verdad dentro de WhatsApp. Todavía está en borrador en Meta (no
-// publicado) — por eso se manda con mode:"draft", que solo lo pueden abrir los números
-// con rol de tester/admin en la app de Meta. Sacar esa línea cuando se publique.
+// con un formulario de verdad dentro de WhatsApp. Publicado en Meta (no en borrador):
+// le llega a cualquier cliente, no solo a números de prueba. Si hay que cambiar un campo
+// o una opción, no se puede editar este mismo flow — hay que crear uno nuevo con el
+// cambio, publicarlo y actualizar este ID.
 const FLOW_ID_PAQUETES = '2122264095351293'
 const DESTINO_FLOW: Record<string, string> = {
   porto_de_galinhas: 'Porto de Galinhas', maragogi: 'Maragogi', pipa: 'Pipa',
@@ -131,7 +132,6 @@ async function enviarFlowDatosViaje(supabase: ReturnType<typeof createClient>, c
           flow_cta: 'Completar datos del viaje',
           flow_action: 'navigate',
           flow_action_payload: { screen: 'DATOS_VIAJE' },
-          mode: 'draft', // sacar cuando el flow esté publicado en Meta
         },
       },
     },

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { crmMetricasApi, tarifasMensajeApi } from '../../../lib/supabase.js'
+import { crmMetricasApi, tarifasPaisApi, configCostosApi } from '../../../lib/supabase.js'
 import { nivelEspera, HORAS_ALERTA_ROJA } from '../../../lib/alertasEspera.js'
 import { useSincronizado } from '../../../lib/useSincronizado.js'
 import Ic from './Ic.jsx'
@@ -389,36 +389,81 @@ export function TarjetaActividad({ metricas, periodo, setPeriodo }) {
   )
 }
 
+/* ─── Mensajes gratis del mes (cuenta regresiva por número) ────── */
+const NOMBRE_NUMERO = { crm: 'CRM (WhatsApp)', operativo: 'Operativo (avisos)' }
+
+function proximoReinicio() {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+}
+
+function FilaContador({ numero, info }) {
+  const total = info?.total || 1000
+  const usados = Math.min(info?.usados || 0, total)
+  const disponibles = info?.disponibles ?? Math.max(0, total - usados)
+  const parte = total ? usados / total : 0
+  const critico = disponibles === 0
+  const alerta = !critico && disponibles <= total * 0.1
+  const color = critico ? 'bg-red-500' : alerta ? 'bg-amber-500' : 'bg-gray-900 dark:bg-zinc-100'
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{NOMBRE_NUMERO[numero] || numero}</span>
+        <span className={`text-xs font-bold tabular-nums ${critico ? 'text-red-500' : alerta ? 'text-amber-500' : 'text-gray-900 dark:text-white'}`}>
+          {fmt(disponibles)} gratis quedan
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.round(Math.min(1, parte) * 100)}%` }} />
+      </div>
+      <p className="mt-1 text-[10.5px] text-gray-400 dark:text-zinc-500">{fmt(usados)} de {fmt(total)} usados este mes</p>
+    </div>
+  )
+}
+
 /* ─── Gasto estimado en mensajes ────────────────────────────────── */
 export function TarjetaGasto({ datos, cargando, periodo, esAdmin, alCambiarTarifa }) {
-  const [tarifas, setTarifas] = useState([])
+  const [paises, setPaises] = useState([])
+  const [cfg, setCfg] = useState(null)
   const [verTarifas, setVerTarifas] = useState(false)
 
   useEffect(() => {
-    tarifasMensajeApi.getAll()?.then(({ data }) => setTarifas(data || []))
+    tarifasPaisApi.getAll()?.then(({ data }) => setPaises(data || []))
+    configCostosApi.get()?.then(({ data }) => setCfg(data || null))
   }, [])
 
-  async function guardarTarifa(cobro, texto) {
+  async function guardarPais(pais, texto) {
     const valor = parseFloat(String(texto).replace(',', '.'))
     if (Number.isNaN(valor) || valor < 0) return
-    const { data } = await tarifasMensajeApi.update(cobro, valor)
+    const { data } = await tarifasPaisApi.update(pais, valor)
     if (data) {
-      setTarifas(prev => prev.map(t => t.cobro === cobro ? data : t))
+      setPaises(prev => prev.map(p => p.pais === pais ? data : p))
+      alCambiarTarifa?.()
+    }
+  }
+
+  async function guardarCfg(campo, texto, entero = false) {
+    const valor = entero ? parseInt(texto, 10) : parseFloat(String(texto).replace(',', '.'))
+    if (Number.isNaN(valor) || valor < 0) return
+    const { data } = await configCostosApi.update({ [campo]: valor })
+    if (data) {
+      setCfg(data)
       alCambiarTarifa?.()
     }
   }
 
   const costo = datos?.costo
-  const pagas = costo ? Object.entries(costo.detalle || {}).filter(([c]) => c !== 'servicio').reduce((s, [, v]) => s + v.cantidad, 0) : 0
-  const gratis = costo?.detalle?.servicio?.cantidad || 0
+  const pagas = costo?.pagos || 0
+  const gratis = costo?.gratis || 0
   const total = pagas + gratis
   const parte = total ? pagas / total : 0
   const r = 38
   const circ = 2 * Math.PI * r
+  const gratisMes = datos?.gratis_mes
 
   return (
     <div className={`dash-card transition-opacity ${cargando ? 'opacity-60' : ''}`}>
-      <Encabezado titulo="Gasto estimado en mensajes" sub="En reales, con tarifas editables" derecha={<EtiquetaPeriodo periodo={periodo} />} />
+      <Encabezado titulo="Gasto estimado en mensajes" sub="En reales, según el país de cada destinatario" derecha={<EtiquetaPeriodo periodo={periodo} />} />
       <div className="mt-3 text-[38px] font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">{costo ? formatoReales(costo.total) : '—'}</div>
       <div className="mt-4 flex items-center gap-4">
         <div className="relative h-24 w-24 shrink-0">
@@ -429,16 +474,26 @@ export function TarjetaGasto({ datos, cargando, periodo, esAdmin, alCambiarTarif
           </svg>
           <div className="absolute inset-0 grid place-content-center text-center">
             <b className="text-[15px] font-extrabold text-gray-900 dark:text-white">{Math.round(parte * 100)}%</b>
-            <span className="text-[9.5px] text-gray-500 dark:text-zinc-400">pagas</span>
+            <span className="text-[9.5px] text-gray-500 dark:text-zinc-400">pagos</span>
           </div>
         </div>
         <div className="grid flex-1 gap-2">
-          <Dato etiqueta="Plantillas pagas" valor={costo ? fmt(pagas) : '—'} />
-          <Dato etiqueta="Mensajes de servicio" valor={costo ? fmt(gratis) : '—'} />
+          <Dato etiqueta="Mensajes pagos" valor={costo ? fmt(pagas) : '—'} />
+          <Dato etiqueta="Dentro de los gratis" valor={costo ? fmt(gratis) : '—'} />
         </div>
       </div>
+
+      {gratisMes && (
+        <div className="mt-4 grid gap-3 border-t border-gray-100 pt-3 dark:border-white/10">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500">Mensajes gratis de este mes</p>
+          <FilaContador numero="crm" info={gratisMes.crm} />
+          <FilaContador numero="operativo" info={gratisMes.operativo} />
+          <p className="text-[10.5px] text-gray-400 dark:text-zinc-500">Se reinician el {proximoReinicio()}. Cada número de Meta tiene su propio pozo.</p>
+        </div>
+      )}
+
       <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-zinc-500">
-        Estimación: las respuestas libres dentro de las 24 horas no se cobran; las plantillas sí. Solo cuenta lo enviado desde que se activó este registro. Lo que vale es la factura de Meta.
+        Estimación: desde el 1/10/2026 Meta cobra por mensaje saliente según el país del destinatario, salvo los primeros {fmt(cfg?.mensajes_gratis_mes || 1000)} de cada número por mes. Lo que vale es la factura de Meta.
       </p>
 
       <button type="button" onClick={() => setVerTarifas(v => !v)} className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-zinc-400 dark:hover:text-white">
@@ -446,26 +501,64 @@ export function TarjetaGasto({ datos, cargando, periodo, esAdmin, alCambiarTarif
       </button>
       {verTarifas && (
         <div className="mt-2 divide-y divide-gray-50 rounded-xl border border-gray-100 px-3 dark:divide-white/5 dark:border-white/10">
-          {tarifas.map(t => (
-            <div key={t.cobro} className="flex items-center gap-3 py-2">
-              <span className="flex-1 text-xs text-gray-700 dark:text-zinc-300">{t.nombre}</span>
+          {paises.map(p => (
+            <div key={p.pais} className="flex items-center gap-3 py-2">
+              <span className="flex-1 text-xs text-gray-700 dark:text-zinc-300">{p.nombre}</span>
+              {esAdmin ? (
+                <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400">
+                  USD
+                  <input
+                    type="number" step="0.0001" min="0"
+                    defaultValue={Number(p.valor_usd)}
+                    key={`${p.pais}-${p.valor_usd}`}
+                    onBlur={e => { if (Number(e.target.value) !== Number(p.valor_usd)) guardarPais(p.pais, e.target.value) }}
+                    className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1 text-right text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  />
+                  por mensaje
+                </label>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-zinc-400">USD {Number(p.valor_usd).toFixed(4)} por mensaje</span>
+              )}
+            </div>
+          ))}
+          {cfg && (
+            <div className="flex items-center gap-3 py-2">
+              <span className="flex-1 text-xs text-gray-700 dark:text-zinc-300">Cotización (1 USD)</span>
               {esAdmin ? (
                 <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400">
                   R$
                   <input
                     type="number" step="0.01" min="0"
-                    defaultValue={Number(t.valor)}
-                    key={`${t.cobro}-${t.valor}`}
-                    onBlur={e => { if (Number(e.target.value) !== Number(t.valor)) guardarTarifa(t.cobro, e.target.value) }}
+                    defaultValue={Number(cfg.usd_a_brl)}
+                    key={`usd-${cfg.usd_a_brl}`}
+                    onBlur={e => { if (Number(e.target.value) !== Number(cfg.usd_a_brl)) guardarCfg('usd_a_brl', e.target.value) }}
                     className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1 text-right text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                   />
-                  por mensaje
                 </label>
               ) : (
-                <span className="text-xs text-gray-500 dark:text-zinc-400">{formatoReales(t.valor)} por mensaje</span>
+                <span className="text-xs text-gray-500 dark:text-zinc-400">{formatoReales(cfg.usd_a_brl)}</span>
               )}
             </div>
-          ))}
+          )}
+          {cfg && (
+            <div className="flex items-center gap-3 py-2">
+              <span className="flex-1 text-xs text-gray-700 dark:text-zinc-300">Gratis por número y por mes</span>
+              {esAdmin ? (
+                <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400">
+                  <input
+                    type="number" step="1" min="0"
+                    defaultValue={cfg.mensajes_gratis_mes}
+                    key={`gratis-${cfg.mensajes_gratis_mes}`}
+                    onBlur={e => { if (Number(e.target.value) !== cfg.mensajes_gratis_mes) guardarCfg('mensajes_gratis_mes', e.target.value, true) }}
+                    className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1 text-right text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  />
+                  mensajes
+                </label>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-zinc-400">{fmt(cfg.mensajes_gratis_mes)} mensajes</span>
+              )}
+            </div>
+          )}
           {!esAdmin && <p className="py-2 text-[11px] text-gray-400 dark:text-zinc-500">Solo un usuario Admin puede cambiar las tarifas.</p>}
         </div>
       )}

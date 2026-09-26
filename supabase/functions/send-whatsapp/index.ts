@@ -236,6 +236,9 @@ serve(async (req) => {
         // Respuesta libre dentro de la ventana de 24 hs = servicio (sin costo);
         // una plantilla se cobra según su categoría.
         cobro: template ? (COBRO_PLANTILLA[template] || 'utilidad') : 'servicio',
+        // Qué número de Meta lo mandó: hace falta para el pozo de 1.000 gratis por mes de
+        // CADA número (ver migración 20260925110000_costos_por_pais_whatsapp.sql)
+        numero: esCrm ? 'crm' : 'operativo',
         ...(esMedia ? {
           tipo: media.tipo,
           media_path: media.path,

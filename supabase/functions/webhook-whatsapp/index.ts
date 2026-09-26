@@ -108,6 +108,7 @@ async function guardarMensajeBot(supabase: ReturnType<typeof createClient>, conv
     direccion: 'saliente',
     origen: 'bot',
     cobro: 'servicio',
+    numero: 'crm', // este webhook solo atiende el número del CRM
     wa_message_id: wamid,
     estado_envio: wamid ? 'enviado' : null,
     estado_envio_at: wamid ? new Date().toISOString() : null,

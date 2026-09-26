@@ -467,9 +467,24 @@ export const crmMetricasApi = {
 }
 
 // Tarifas (BRL) con las que se estima el gasto en mensajes; son editables.
+// Reemplazadas por el cobro por país (ver tarifasPaisApi) desde que Meta cambió a cobrar
+// por mensaje según el país del destinatario (vigente desde el 1/10/2026); se deja esta
+// API por si hace falta consultar el historial viejo.
 export const tarifasMensajeApi = {
   getAll: () => supabase?.from('tarifas_mensaje').select('*').order('valor'),
   update: (cobro, valor) => supabase?.from('tarifas_mensaje').update({ valor }).eq('cobro', cobro).select().single(),
+}
+
+// Precio por mensaje según el país del destinatario (USD) y la configuración general
+// del cobro de WhatsApp (cotización a reales y cuántos mensajes por número y por mes
+// calendario son gratis). Editables desde el Dashboard.
+export const tarifasPaisApi = {
+  getAll: () => supabase?.from('tarifas_pais_whatsapp').select('*').order('orden'),
+  update: (pais, valorUsd) => supabase?.from('tarifas_pais_whatsapp').update({ valor_usd: valorUsd }).eq('pais', pais).select().single(),
+}
+export const configCostosApi = {
+  get: () => supabase?.from('config_costos_whatsapp').select('*').eq('id', 1).maybeSingle(),
+  update: (data) => supabase?.from('config_costos_whatsapp').update(data).eq('id', 1).select().single(),
 }
 
 // ── Asistente automático del CRM (menú Paquetes / Paseos + reparto en turnos) ───

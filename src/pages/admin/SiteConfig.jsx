@@ -560,6 +560,12 @@ function FiltroPaquetes({ cfg, setCfg }) {
     if (data) setCfg(data)
   }
 
+  const metodo = cfg.filtro_metodo === 'flow' ? 'flow' : 'texto'
+  async function alternarMetodo() {
+    const { data } = await botApi.saveConfig({ filtro_metodo: metodo === 'flow' ? 'texto' : 'flow' })
+    if (data) setCfg(data)
+  }
+
   async function guardar() {
     setGuardando(true)
     const { data, error } = await botApi.saveConfig({
@@ -590,6 +596,24 @@ function FiltroPaquetes({ cfg, setCfg }) {
           className={`text-xs font-semibold px-4 py-2 rounded-full shrink-0 ${activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
         >
           {activo ? 'Activo - apagar' : 'Apagado - encender'}
+        </button>
+      </div>
+
+      <div className="border-t border-gray-50 dark:border-zinc-800 px-5 py-3 flex items-center gap-4">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200">Cómo se piden los datos</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            {metodo === 'flow'
+              ? 'Formulario dentro de WhatsApp (destino, adultos, menores, presupuesto y fecha en campos separados, sin que el cliente escriba nada suelto).'
+              : 'Mensaje de texto (el de abajo), el cliente contesta todo escrito y el sistema lo interpreta.'}
+            {' '}Si algo se ve mal, volvé a "Mensaje de texto" al toque — no hace falta tocar código.
+          </p>
+        </div>
+        <button
+          onClick={alternarMetodo}
+          className={`text-xs font-semibold px-4 py-2 rounded-full shrink-0 ${metodo === 'flow' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
+        >
+          {metodo === 'flow' ? 'Formulario - pasar a texto' : 'Mensaje de texto - pasar a formulario'}
         </button>
       </div>
 

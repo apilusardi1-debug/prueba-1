@@ -89,7 +89,7 @@ function formatPhone(phone) {
 function Avatar({ nombre, size = 'md' }) {
   const sizeClass = size === 'sm' ? 'w-9 h-9 text-sm' : 'w-12 h-12 text-lg'
   return (
-    <div className={`${sizeClass} rounded-full bg-green-800 flex items-center justify-center font-bold text-white shrink-0`}>
+    <div className={`${sizeClass} rounded-full bg-[#1c4444] flex items-center justify-center font-bold text-white shrink-0`}>
       {(nombre || '?')[0].toUpperCase()}
     </div>
   )
@@ -811,7 +811,7 @@ export default function WhatsAppCRM() {
               onClick={() => seleccionarConversacion(conv)}
               title={alerta ? `Hace ${alerta.horas} h que el cliente espera una respuesta` : undefined}
               className={`w-full text-left px-4 py-3.5 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${claseAlerta} ${
-                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-green-50 dark:bg-green-950/30'} border-l-4 border-l-green-800` : ''
+                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-[#1c4444]/10 dark:bg-[#1c4444]/30'} border-l-4 border-l-[#1c4444]` : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -1096,8 +1096,8 @@ export default function WhatsAppCRM() {
               >
                 <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
                   msg.direccion === 'saliente'
-                    ? 'bg-green-800 text-white'
-                    : 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100'
+                    ? 'bg-[#1c4444] text-white'
+                    : 'bg-white dark:bg-[#525252] text-gray-900 dark:text-zinc-100'
                 } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
                   {msg.origen === 'bot' && (
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-green-100 mb-1">Asistente automático</p>

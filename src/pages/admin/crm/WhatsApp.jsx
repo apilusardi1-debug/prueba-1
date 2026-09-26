@@ -16,6 +16,11 @@ const LIMITE_ADJUNTO_MB = { image: 5, video: 16, audio: 16, document: 50 }
 const NOMBRE_TIPO_ADJUNTO = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'documentos' }
 const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg']
 
+// Mover un lead a mano a otro embudo (el chat detectó mal, o el contacto cambió de idea):
+// entra a la primera etapa de ese embudo, igual que cuando el asistente lo clasifica solo.
+const NOMBRE_GRUPO = { paquetes: 'Paquetes', paseos: 'Paseos' }
+const ETAPA_INICIAL_GRUPO = { paquetes: 'nuevo', paseos: 'paseos_contacto_inicial' }
+
 function tipoAdjunto(file) {
   if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
   if (file.type === 'video/mp4' || file.type === 'video/3gpp') return 'video'
@@ -110,6 +115,8 @@ export default function WhatsAppCRM() {
   const [miUsuarioId, setMiUsuarioId] = useState(null)
   const [asignando, setAsignando] = useState(false)
   const [menuAsignar, setMenuAsignar] = useState(false)
+  const [cambiandoGrupo, setCambiandoGrupo] = useState(false)
+  const [menuGrupo, setMenuGrupo] = useState(false)
   // todas | sin_asignar | mias — se recuerda entre visitas para que quien trabaja
   // solo con "Mías" no tenga que volver a elegirlo cada vez.
   const [filtroAsignacion, setFiltroAsignacion] = useState(() => {
@@ -147,6 +154,7 @@ export default function WhatsAppCRM() {
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
   const menuAsignarRef = useRef(null)
+  const menuGrupoRef = useRef(null)
   const menuRespuestasRef = useRef(null)
 
   // Reloj para que el aviso de ventana de 24 hs aparezca solo al vencer
@@ -385,6 +393,9 @@ export default function WhatsAppCRM() {
       if (menuAsignarRef.current && !menuAsignarRef.current.contains(e.target)) {
         setMenuAsignar(false)
       }
+      if (menuGrupoRef.current && !menuGrupoRef.current.contains(e.target)) {
+        setMenuGrupo(false)
+      }
       if (menuRespuestasRef.current && !menuRespuestasRef.current.contains(e.target)) {
         setMenuRespuestas(false)
       }
@@ -403,6 +414,7 @@ export default function WhatsAppCRM() {
     setSeleccionada(conv)
     setMenuEtiqueta(false)
     setMenuAsignar(false)
+    setMenuGrupo(false)
     // En la compu conviene enfocar el mensaje para escribir de una; en el celular no, porque
     // levanta el teclado y tapa la lista de mensajes apenas se abre el chat
     if (window.innerWidth >= 1024) setTimeout(() => inputRef.current?.focus(), 100)
@@ -421,6 +433,25 @@ export default function WhatsAppCRM() {
     setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? convActualizada : c))
 
     setAsignando(false)
+  }
+
+  // Pasa la conversación (y su lead) a otro embudo a mano: el chat lo clasificó mal, o el
+  // contacto cambió de idea. A diferencia de cuando lo hace el asistente solo, esto mueve
+  // el lead aunque ya esté más adelante en su embudo actual (alguien ya lo venía trabajando).
+  async function cambiarGrupo(nuevoGrupo) {
+    if (!seleccionada || cambiandoGrupo || seleccionada.grupo === nuevoGrupo) { setMenuGrupo(false); return }
+    setMenuGrupo(false)
+    setCambiandoGrupo(true)
+
+    await conversacionesApi.cambiarGrupo(seleccionada.id, nuevoGrupo)
+    const { data: lead } = await leadsApi.getByWhatsapp(seleccionada.whatsapp)
+    if (lead) await leadsApi.updateEstado(lead.id, ETAPA_INICIAL_GRUPO[nuevoGrupo])
+
+    const convActualizada = { ...seleccionada, grupo: nuevoGrupo }
+    setSeleccionada(convActualizada)
+    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? convActualizada : c))
+
+    setCambiandoGrupo(false)
   }
 
   // Cierra la espera de esta conversación sin mandar nada (un "gracias" final,
@@ -933,6 +964,36 @@ export default function WhatsAppCRM() {
               >
                 {clienteVinculado ? 'Cliente' : 'Sin datos'}
               </button>
+              {/* Selector de grupo (embudo): a qué tablero de Leads pertenece este contacto */}
+              <div className="relative" ref={menuGrupoRef}>
+                <button
+                  onClick={() => setMenuGrupo(v => !v)}
+                  disabled={cambiandoGrupo}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                    seleccionada.grupo
+                      ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 border-transparent'
+                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  {seleccionada.grupo ? `${NOMBRE_GRUPO[seleccionada.grupo] || seleccionada.grupo} ▾` : '＋ Grupo'}
+                </button>
+                {menuGrupo && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[140px]">
+                    {Object.entries(NOMBRE_GRUPO).map(([id, nombre]) => (
+                      <button
+                        key={id}
+                        onClick={() => cambiarGrupo(id)}
+                        className={`w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-2 ${
+                          seleccionada.grupo === id ? 'font-semibold' : ''
+                        }`}
+                      >
+                        {nombre}
+                        {seleccionada.grupo === id && <span className="ml-auto text-gray-400 dark:text-zinc-500">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {/* Selector de asignación */}
               <div className="relative" ref={menuAsignarRef}>
                 <button

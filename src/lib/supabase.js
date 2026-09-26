@@ -325,6 +325,8 @@ export const conversacionesApi = {
   marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
   updateEtiqueta: (id, etiqueta) => supabase?.from('conversaciones').update({ etiqueta }).eq('id', id),
   asignar: (id, usuarioId) => supabase?.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', id),
+  // Mover a mano a otro embudo (Paquetes/Paseos): el lead se mueve aparte, ver leadsApi.updateEstado
+  cambiarGrupo: (id, grupo) => supabase?.from('conversaciones').update({ grupo }).eq('id', id),
   // Pausa (true) o vuelve a prender (false) el asistente automático en esa conversación
   pausarAsistente: (id, pausado) => supabase?.from('conversaciones').update({ bot_pausado: pausado }).eq('id', id),
   // Conversaciones esperando respuesta humana y desde cuándo (filas { conversacion_id, desde })

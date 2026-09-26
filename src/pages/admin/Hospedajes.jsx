@@ -37,7 +37,7 @@ async function generarPDF(hoteles) {
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(22)
-  doc.text('DREAMSTOUR', margen, 18)
+  doc.text('DREAMTOURS', margen, 18)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
@@ -151,7 +151,7 @@ async function generarPDF(hoteles) {
     doc.setTextColor(148, 163, 184)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
-    doc.text('DreamsTour · Nordeste Brasilero · dreamstour.com', margen, 293)
+    doc.text('DreamTours · Nordeste Brasilero · dreamtours.com', margen, 293)
     doc.text(`${p} / ${totalPags}`, W - margen, 293, { align: 'right' })
   }
 
@@ -322,7 +322,7 @@ export default function Hospedajes() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Hospedajes</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Hoteles y resorts asociados a DreamsTour</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Hoteles y resorts asociados a DreamTours</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 dark:text-zinc-500">{filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''}</span>

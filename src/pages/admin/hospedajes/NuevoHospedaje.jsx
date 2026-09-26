@@ -91,7 +91,7 @@ export default function NuevoHospedaje() {
         </button>
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-zinc-100">Nuevo hospedaje</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Cargá un hotel, posada o departamento asociado a DreamsTours</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Cargá un hotel, posada o departamento asociado a DreamTours</p>
         </div>
       </div>
 

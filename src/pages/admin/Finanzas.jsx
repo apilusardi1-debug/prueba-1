@@ -719,7 +719,7 @@ function TabMercadoPago({ movimientos }) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'qr-dreamstour-mercadopago.png'
+    link.download = 'qr-dreamtours-mercadopago.png'
     link.click()
     URL.revokeObjectURL(url)
   }

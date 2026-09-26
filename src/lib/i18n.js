@@ -1,4 +1,4 @@
-// ── Traducciones DREAMSTOUR ────────────────────────────────────────────────────
+// ── Traducciones DREAMTOURS ────────────────────────────────────────────────────
 
 export const translations = {
   es: {
@@ -100,7 +100,7 @@ export const translations = {
 
     // Sobre nosotros
     about_title:    'Sobre nosotros',
-    about_text:     'DREAMSTOUR es una agencia especializada en viajes al Nordeste Brasilero. Ofrecemos paquetes completos con aéreos, traslados y excursiones para que vivas una experiencia única en las playas más hermosas de Brasil.',
+    about_text:     'DREAMTOURS es una agencia especializada en viajes al Nordeste Brasilero. Ofrecemos paquetes completos con aéreos, traslados y excursiones para que vivas una experiencia única en las playas más hermosas de Brasil.',
 
     // Tabla de marea
     tides_title:    'Tabla de Marea',
@@ -195,7 +195,7 @@ export const translations = {
     login_error:    'E-mail ou senha incorretos.',
 
     about_title:    'Sobre nós',
-    about_text:     'A DREAMSTOUR é uma agência especializada em viagens ao Nordeste Brasileiro. Oferecemos pacotes completos com aéreos, traslados e excursões para que você viva uma experiência única nas praias mais bonitas do Brasil.',
+    about_text:     'A DREAMTOURS é uma agência especializada em viagens ao Nordeste Brasileiro. Oferecemos pacotes completos com aéreos, traslados e excursões para que você viva uma experiência única nas praias mais bonitas do Brasil.',
 
     tides_title:    'Tabela de Maré',
     tides_subtitle: 'Consulte os horários de maré para planejar suas excursões aquáticas.',
@@ -289,7 +289,7 @@ export const translations = {
     login_error:    'Incorrect email or password.',
 
     about_title:    'About us',
-    about_text:     'DREAMSTOUR is an agency specialized in travel to Brazil\'s Northeast. We offer complete packages with flights, transfers and excursions so you can live a unique experience on the most beautiful beaches in Brazil.',
+    about_text:     'DREAMTOURS is an agency specialized in travel to Brazil\'s Northeast. We offer complete packages with flights, transfers and excursions so you can live a unique experience on the most beautiful beaches in Brazil.',
 
     tides_title:    'Tide Table',
     tides_subtitle: 'Check tide schedules to plan your water excursions.',

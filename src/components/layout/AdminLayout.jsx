@@ -82,6 +82,11 @@ const Icon = {
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
   ),
+  Importar: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  ),
   Paquetes: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/>
@@ -176,6 +181,8 @@ const NAV = [
     sub: [
       { path: '/admin/hospedajes',          label: 'Listado',            icon: Icon.Hospedajes, exact: true },
       { path: '/admin/hospedajes/nuevo',    label: 'Nuevo hospedaje',    icon: Icon.Nuevo },
+      { path: '/admin/hospedajes/importar', label: 'Importar desde Niara', icon: Icon.Importar },
+      { path: '/admin/hospedajes/importar-laplaya', label: 'Importar desde La Playa', icon: Icon.Importar },
     ],
   },
   { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
@@ -292,7 +299,7 @@ function Sidebar() {
       <div className={`flex items-center py-6 px-5 border-b border-gray-100 dark:border-zinc-800 ${!visible ? 'justify-center' : ''}`}>
         {visible ? (
           <div className="w-full">
-            <img src="/logo-panel.png" alt="Dream Tours" className="mx-auto hidden h-auto w-[132px] dark:block" />
+            <img src="/logo-panel.png" alt="DreamTours" className="mx-auto hidden h-auto w-[132px] dark:block" />
             <div className="dark:hidden">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Panel interno</p>
               <p className="text-lg font-bold text-gray-900">DREAMTOURS</p>
@@ -443,6 +450,8 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/operaciones/chat')) return 'Chat interno'
     if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'
+    if (pathname.startsWith('/admin/hospedajes/importar-laplaya')) return 'Importar desde La Playa'
+    if (pathname.startsWith('/admin/hospedajes/importar')) return 'Importar desde Niara'
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
     if (pathname.startsWith('/admin/videos')) return 'Videos'
     if (pathname.startsWith('/admin/paquetes/clientes')) return 'Clientes de Paquetes'

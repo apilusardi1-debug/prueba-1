@@ -4,7 +4,7 @@ import { excursionesApi, reservasApi, vendedoresApi } from '../../lib/supabase.j
 
 const PASOS = ['Tus datos', 'Elegí fecha', 'Pago', 'Confirmado']
 
-const QR_PLACEHOLDER = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAGO-DREAMS-TOURS'
+const QR_PLACEHOLDER = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAGO-DREAMTOURS'
 
 export default function Reservar() {
   const { id } = useParams()

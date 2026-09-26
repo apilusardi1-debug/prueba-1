@@ -107,7 +107,7 @@ export default function PanelOperativo({ tipo }) {
     <div className="min-h-screen bg-black px-4 py-8 text-zinc-100">
       <div className="mx-auto max-w-md space-y-5">
         <div className="text-center">
-          <img src="/logo-panel.png" alt="Dream Tours" className="mx-auto mb-3 h-auto w-28" />
+          <img src="/logo-panel.png" alt="DreamTours" className="mx-auto mb-3 h-auto w-28" />
           {persona && <p className="text-sm text-zinc-500">{TITULO[tipo]} · <span className="font-semibold text-zinc-200">{persona.nombre}</span></p>}
         </div>
 
@@ -116,7 +116,7 @@ export default function PanelOperativo({ tipo }) {
         {persona === null && (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
             <IcGrande n="alert" />
-            <p className="text-sm text-zinc-400">Este link não é válido. Fale com a Dream Tours para receber o link correto.</p>
+            <p className="text-sm text-zinc-400">Este link não é válido. Fale com a DreamTours para receber o link correto.</p>
           </div>
         )}
 

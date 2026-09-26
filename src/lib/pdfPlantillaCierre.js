@@ -805,7 +805,7 @@ export async function generarPDFCierre(propuesta) {
   // importantes" — en la hoja 1 el bloque quedaba muy chico (8.4pt, apretado
   // contra el pie de pagina) para ser la parte mas importante del PDF. Se
   // arma copiando la hoja de Observaciones como base (mismo encabezado navy +
-  // logo + pie con el logo de Dream Tours) y se tapan titulo y cuerpo para
+  // logo + pie con el logo de DreamTours) y se tapan titulo y cuerpo para
   // dibujar el checklist encima, mucho mas grande y con aire real. Se inserta
   // ANTES de Observaciones (que pasa a la pagina 3).
   const [paginaDetalle] = await doc.copyPages(doc, [1])

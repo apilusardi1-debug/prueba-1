@@ -11,7 +11,7 @@ export default function Nosotros() {
           La agencia
         </p>
         <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: '#1C1208', lineHeight: 1.0, marginBottom: 20 }}>
-          DREAMSTOUR
+          DREAMTOURS
         </h1>
         <p style={{ fontSize: '1.1rem', color: '#1C1208AA', maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
           {t('about_text')}
@@ -68,7 +68,7 @@ export default function Nosotros() {
               💬 WhatsApp
             </a>
             <a
-              href="https://instagram.com/dreamstour"
+              href="https://www.instagram.com/dreamtours_esp/"
               target="_blank"
               rel="noopener noreferrer"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1.5px solid #f9f3e344', color: '#f9f3e3', fontWeight: 600, padding: '14px 32px', borderRadius: 999, fontSize: '0.95rem', textDecoration: 'none', transition: 'all 0.15s' }}

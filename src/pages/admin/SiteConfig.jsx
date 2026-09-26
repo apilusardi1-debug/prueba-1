@@ -237,7 +237,7 @@ function TabAccesos() {
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Email</label>
                 <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                  placeholder="nombre@dreamstour.com" />
+                  placeholder="nombre@dreamtours.com" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">
@@ -1158,7 +1158,7 @@ export default function SiteConfig() {
           label="URL de Instagram"
           value={form.instagram_url}
           onChange={set('instagram_url')}
-          placeholder="https://instagram.com/dreamstour"
+          placeholder="https://instagram.com/dreamtours"
         />
       </div>
 

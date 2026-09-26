@@ -263,7 +263,7 @@ export function descargarReporte(datos, periodo, rango) {
   const num = n => String(n ?? '').replace('.', ',')
   const ult = new Date(rango.hasta.getTime() - 1)
   const filas = [
-    ['Reporte CRM - Dream Tours'],
+    ['Reporte CRM - DreamTours'],
     ['Periodo', PERIODOS.find(p => p.id === periodo).label, `${formatoFecha(rango.desde)} a ${formatoFecha(ult)}`],
     [],
     ['Metrica', 'Valor'],

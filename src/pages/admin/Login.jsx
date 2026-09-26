@@ -37,9 +37,9 @@ export default function Login() {
     >
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <img src="/logo-panel.png" alt="Dream Tours" className="mx-auto mb-4 h-auto w-40" />
+          <img src="/logo-panel.png" alt="DreamTours" className="mx-auto mb-4 h-auto w-40" />
           <h1 className="text-2xl font-bold text-white">Panel interno</h1>
-          <p className="mt-1 text-sm text-zinc-400">Acceso para el equipo de Dream Tours</p>
+          <p className="mt-1 text-sm text-zinc-400">Acceso para el equipo de DreamTours</p>
         </div>
 
         <form onSubmit={handleSubmit} className="dash-card space-y-4 p-6">

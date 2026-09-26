@@ -243,7 +243,7 @@ export default function Agenda() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Agenda</h1>
-          <p className="text-gray-400 dark:text-zinc-500 text-sm mt-0.5">Reservas y salidas · Dreams Tours</p>
+          <p className="text-gray-400 dark:text-zinc-500 text-sm mt-0.5">Reservas y salidas · DreamTours</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 dark:bg-zinc-900 rounded-xl p-1 gap-1 border border-transparent dark:border-zinc-800">
@@ -504,7 +504,7 @@ function VistaTabla({ reservasNorm, cargando }) {
         <p className="text-xs text-gray-400 dark:text-zinc-600">
           {seleccionados.size > 0 ? `${seleccionados.size} seleccionada${seleccionados.size > 1 ? 's' : ''}` : `${filas.length} reservas`}
         </p>
-        <p className="text-xs text-gray-400 dark:text-zinc-600">Dreams Tours · {new Date().getFullYear()}</p>
+        <p className="text-xs text-gray-400 dark:text-zinc-600">DreamTours · {new Date().getFullYear()}</p>
       </div>
     </div>
   )
@@ -791,7 +791,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       // (no por la API de Meta: no tiene costo). Va en español, como el resto de lo
       // que recibe el cliente; queda pre-escrito, ellos lo revisan antes de mandarlo.
       function mensajeParaPasajero(r) {
-        return `Hola ${r.clienteNombre}! Te escribo de Dream Tours por la excursión a ${excursion.nombre} el ${fechaCorta}. Paso a buscarte por ${r.hospedaje || 'tu hospedaje'} a las ${horario.partida}. ¿Me pasás la ubicación del hospedaje? Cualquier consulta escribime por acá. ¡Gracias!`
+        return `Hola ${r.clienteNombre}! Te escribo de DreamTours por la excursión a ${excursion.nombre} el ${fechaCorta}. Paso a buscarte por ${r.hospedaje || 'tu hospedaje'} a las ${horario.partida}. ¿Me pasás la ubicación del hospedaje? Cualquier consulta escribime por acá. ¡Gracias!`
       }
       function datosPasajero(r) {
         return { nombre: r.clienteNombre, personas: r.personas, hospedaje: r.hospedaje || null, whatsapp: r.clienteWhatsapp, mensajeWa: mensajeParaPasajero(r) }

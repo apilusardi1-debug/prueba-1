@@ -68,9 +68,23 @@ function Mensaje({ aviso }) {
       {aviso.pasajeros?.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 dark:border-zinc-800 pt-3">
           {aviso.pasajeros.map((p, i) => (
-            <span key={i} className="rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-gray-500 dark:text-zinc-400">
-              {p.nombre} · {p.personas} pax
-            </span>
+            p.whatsapp ? (
+              <a
+                key={i}
+                href={`https://wa.me/${p.whatsapp}${p.mensajeWa ? `?text=${encodeURIComponent(p.mensajeWa)}` : ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Hablar directo con el cliente por WhatsApp"
+                className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-500 transition-colors hover:border-green-300 hover:bg-green-50 hover:text-green-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-green-800 dark:hover:bg-green-950/30 dark:hover:text-green-400"
+              >
+                <Ic n="chat" className="h-3 w-3 text-green-500" />
+                {p.nombre} · {p.personas} pax
+              </a>
+            ) : (
+              <span key={i} className="rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-0.5 text-[11px] text-gray-500 dark:text-zinc-400">
+                {p.nombre} · {p.personas} pax
+              </span>
+            )
           ))}
         </div>
       )}

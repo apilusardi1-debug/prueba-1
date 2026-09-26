@@ -257,7 +257,7 @@ export default function Reservas() {
                   />
                 </th>
                 <th className="px-5 py-3 text-left">Cliente</th>
-                <th className="px-5 py-3 text-left">Excursión</th>
+                <th className="px-5 py-3 text-left">Paseo</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Personas</th>
                 <th className="px-5 py-3 text-left">Total</th>

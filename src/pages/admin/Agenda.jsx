@@ -113,7 +113,7 @@ function buildSalidas(reservasNorm) {
 }
 
 function getExcursionTipo(reserva) {
-  return reserva.excursionCategoria === 'paquetes' ? 'Paquete' : 'Excursión'
+  return reserva.excursionCategoria === 'paquetes' ? 'Paquete' : 'Paseo'
 }
 
 const TABS = [
@@ -421,12 +421,12 @@ function VistaTabla({ reservasNorm, cargando }) {
                 <input type="checkbox" checked={todosSeleccionados} onChange={toggleTodos}
                   className="w-4 h-4 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 cursor-pointer" />
               </th>
-              {['Excursión','Tipo','Estado','Pasajeros'].map((h) => (
+              {['Paseo','Tipo','Estado','Pasajeros'].map((h) => (
                 <th key={h} className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">{h}</th>
               ))}
               <th className="py-3 px-4 text-left text-xs font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider">
                 <button onClick={() => ordenarPor('fecha')} className="flex items-center gap-1 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors">
-                  Fecha excursión
+                  Fecha del paseo
                   {ordenPor === 'fecha' && <span className="text-[9px]">{ordenDir === 'asc' ? '▲' : '▼'}</span>}
                 </button>
               </th>

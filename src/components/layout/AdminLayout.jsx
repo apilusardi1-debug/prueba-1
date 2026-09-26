@@ -173,7 +173,7 @@ const NAV = [
     ],
   },
   { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
-  { path: '/admin/excursiones', label: 'Excursiones', icon: Icon.Excursiones },
+  { path: '/admin/excursiones', label: 'Paseos',       icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
   { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
   {
@@ -446,7 +446,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/clientes')) return 'Clientes'
     if (pathname.startsWith('/admin/crm/whatsapp')) return 'WhatsApp'
     if (pathname.startsWith('/admin/reservas')) return 'Reservas'
-    if (pathname.startsWith('/admin/excursiones')) return 'Excursiones'
+    if (pathname.startsWith('/admin/excursiones')) return 'Paseos'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/operaciones/chat')) return 'Chat interno'
     if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'

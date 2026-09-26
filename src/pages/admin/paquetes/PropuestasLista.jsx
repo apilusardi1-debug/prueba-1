@@ -1092,7 +1092,7 @@ export default function PropuestasLista({ estado }) {
                 {/* Paseos y contacto operativo: campos nuevos, se cargan solo
                     aca (no existen en el Generador ni se le envian al cliente). */}
                 <div className="space-y-2">
-                  <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Paseos / excursiones incluidos</label>
+                  <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Paseos incluidos</label>
                   <textarea value={paseosNotas} onChange={e => setPaseosNotas(e.target.value)} onBlur={() => guardarCampoDocumento('paseos_notas', paseosNotas)}
                     placeholder="Ej: City tour Recife, paseo de buggy en Maragogi..." rows={2}
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none" />

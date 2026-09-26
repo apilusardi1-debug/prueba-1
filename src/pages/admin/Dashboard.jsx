@@ -108,7 +108,7 @@ function GraficoMensualExcursiones({ datos }) {
         </ResponsiveContainer>
       </div>
       {!hayDatos && (
-        <p className="-mt-8 text-center text-sm text-gray-400 dark:text-zinc-600">Sin reservas todavía este año para estas excursiones.</p>
+        <p className="-mt-8 text-center text-sm text-gray-400 dark:text-zinc-600">Sin reservas todavía este año para estos paseos.</p>
       )}
       <div className="mt-2 flex items-center justify-center gap-6">
         {RANKING_EXCURSIONES.map(r => (
@@ -301,7 +301,7 @@ export default function Dashboard() {
       {/* Reservas por mes + actividad del CRM */}
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr] 2xl:grid-cols-[1.9fr_1fr] md:gap-5">
         <div className="dash-card flex flex-col">
-          <Encabezado titulo="Reservas por mes y excursión" sub="Del año en curso" />
+          <Encabezado titulo="Reservas por mes y paseo" sub="Del año en curso" />
           <div className="mt-3 flex-1"><GraficoMensualExcursiones datos={serieMensual} /></div>
         </div>
         <TarjetaActividad metricas={metricas} periodo={periodo} setPeriodo={setPeriodo} />
@@ -412,10 +412,10 @@ export default function Dashboard() {
         <div className="dash-card">
           <Encabezado
             titulo="Cupos disponibles"
-            sub="Ocupación de cada excursión"
+            sub="Ocupación de cada paseo"
             derecha={<Link to="/admin/excursiones" className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/[0.08]">Gestionar</Link>}
           />
-          {excursiones.length === 0 && <p className="py-6 text-sm text-gray-400 dark:text-zinc-600">Sin excursiones todavía.</p>}
+          {excursiones.length === 0 && <p className="py-6 text-sm text-gray-400 dark:text-zinc-600">Sin paseos todavía.</p>}
           <div className="mt-2">
             {excursiones.map(ex => {
               const pct = ex.cupos > 0 ? Math.round(((ex.cupos - ex.cuposDisponibles) / ex.cupos) * 100) : 0

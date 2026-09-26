@@ -655,7 +655,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">
-                            {r.excursiones?.nombre || 'Excursión'}
+                            {r.excursiones?.nombre || 'Paseo'}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
                             <IcTxt n="cal" />{fmtFecha(r.fecha)} · <IcTxt n="users" />{r.personas} {r.personas === 1 ? 'persona' : 'personas'}
@@ -846,7 +846,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.excursion_id) return setError('Seleccioná una excursión')
+    if (!form.excursion_id) return setError('Seleccioná un paseo')
     if (!form.fecha) return setError('La fecha es obligatoria')
     setError('')
     setGuardando(true)
@@ -873,7 +873,7 @@ function ModalReservaCliente({ cliente, onGuardar, onCerrar }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Excursión <span className="text-red-400">*</span></label>
+              <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Paseo <span className="text-red-400">*</span></label>
               <select value={form.excursion_id} onChange={e => set('excursion_id', e.target.value)}
                 className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500">
                 <option value="">— Seleccionar</option>

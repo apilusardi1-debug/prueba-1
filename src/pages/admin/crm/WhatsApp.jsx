@@ -1312,7 +1312,7 @@ export default function WhatsAppCRM() {
                 <div className="space-y-2">
                   {reservasCliente.slice(0, 5).map(r => (
                     <div key={r.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-lg px-3 py-2">
-                      <p className="text-xs font-medium text-gray-800 dark:text-zinc-200 truncate">{r.excursiones?.nombre || 'Excursión'}</p>
+                      <p className="text-xs font-medium text-gray-800 dark:text-zinc-200 truncate">{r.excursiones?.nombre || 'Paseo'}</p>
                       <p className="text-[11px] text-gray-400 dark:text-zinc-500 capitalize">
                         {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'} · {r.estado}
                       </p>

@@ -984,7 +984,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Lista excursiones */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
-        <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Excursiones</p>
+        <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Paseos</p>
         <div className="space-y-1">
           {excursiones.map(exc => {
             const nCostos = costos.filter(c => c.excursion_id === exc.id).length
@@ -1011,7 +1011,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
         {!excSeleccionada ? (
           <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
             <IcGrande n="gear" />
-            <p className="text-sm">Seleccioná una excursión para ver sus costos</p>
+            <p className="text-sm">Seleccioná un paseo para ver sus costos</p>
           </div>
         ) : (
           <>

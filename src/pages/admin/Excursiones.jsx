@@ -9,6 +9,11 @@ const EMPTY = {
   hora_salida: '8:00 AM', hora_regreso: '6:00 PM', opcionales_imagen: ''
 }
 
+// `categoria` es el valor crudo de la base ('excursiones', 'paquetes',
+// 'traslados') — la tarjeta de cada uno muestra este nombre en vez del
+// valor crudo (Excursiones ahora se llama Paseos en todo el panel).
+const CATEGORIA_LABEL = { excursiones: 'Paseos', paquetes: 'Paquetes', traslados: 'Traslados' }
+
 export default function Excursiones() {
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -151,27 +156,27 @@ export default function Excursiones() {
     setABorrar(null)
   }
 
-  if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-600">Cargando excursiones...</div>
+  if (loading) return <div className="p-8 text-gray-400 dark:text-zinc-600">Cargando paseos...</div>
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Excursiones</h1>
-          <p className="text-gray-400 dark:text-zinc-500 text-sm">{excursiones.length} excursiones activas</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Paseos</h1>
+          <p className="text-gray-400 dark:text-zinc-500 text-sm">{excursiones.length} paseos activos</p>
         </div>
         <button
           onClick={abrirNuevo}
           className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
-          + Nueva excursión
+          + Nuevo paseo
         </button>
       </div>
 
       {excursiones.length === 0 && (
         <div className="text-center py-20 text-gray-400 dark:text-zinc-600">
           <IcGrande n="waves" />
-          <p>No hay excursiones. Creá la primera.</p>
+          <p>No hay paseos. Creá el primero.</p>
         </div>
       )}
 
@@ -184,7 +189,7 @@ export default function Excursiones() {
             <div className="p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <p className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold uppercase tracking-wider truncate">{ex.destino}</p>
-                <span className="text-[10px] text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full shrink-0">{ex.categoria}</span>
+                <span className="text-[10px] text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full shrink-0">{CATEGORIA_LABEL[ex.categoria] || ex.categoria}</span>
               </div>
               <h3 className="font-bold text-sm text-gray-900 dark:text-zinc-100 mb-1 truncate">{ex.nombre}</h3>
               <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-2">{ex.duracion} · {ex.dificultad}</p>
@@ -217,7 +222,7 @@ export default function Excursiones() {
       {editando !== null && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="font-bold text-lg mb-5 text-gray-900 dark:text-zinc-100">{editando === 'nuevo' ? 'Nueva excursión' : 'Editar excursión'}</h2>
+            <h2 className="font-bold text-lg mb-5 text-gray-900 dark:text-zinc-100">{editando === 'nuevo' ? 'Nuevo paseo' : 'Editar paseo'}</h2>
 
             {error && <p className="text-xs text-red-500 dark:text-red-400 mb-4 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
 
@@ -320,7 +325,7 @@ export default function Excursiones() {
                   onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
-                  <option value="excursiones">Excursiones</option>
+                  <option value="excursiones">Paseos</option>
                   <option value="paquetes">Paquetes aéreos</option>
                   <option value="traslados">Traslados</option>
                 </select>
@@ -369,7 +374,7 @@ export default function Excursiones() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
-            <h3 className="text-center font-bold text-base text-gray-900 dark:text-zinc-100 mb-1">¿Eliminar excursión?</h3>
+            <h3 className="text-center font-bold text-base text-gray-900 dark:text-zinc-100 mb-1">¿Eliminar paseo?</h3>
             <p className="text-center text-sm text-gray-400 dark:text-zinc-500 mb-6">
               "{aBorrar.nombre}" se va a eliminar y no se puede deshacer.
             </p>

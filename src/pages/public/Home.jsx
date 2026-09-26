@@ -55,6 +55,10 @@ const DESTINOS_HOME = [
   { id: 'maceio',  nombre: 'Maceió',               imagen: '/Maceio.jpeg' },
 ]
 
+// Los 3 paseos más conocidos, en este orden — pedido explícito, no los 3
+// primeros que traiga la base alfabéticamente.
+const PASEOS_DESTACADOS_HOME = ['Maragogi', 'Praia dos Carneiros', 'Isla de Santo Aleixo']
+
 const SERVICIOS = [
   { label: 'Paquetes Aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
   { label: 'Hoteles y Posadas',  icono: '/icons/hoteles-posadas.svg',    to: '/hoteles' },
@@ -122,8 +126,9 @@ export default function Home() {
       try {
         const { data, error } = await excursionesApi.getAll()
         if (!error && data) {
+          const paseos = data.map(normalizarExcursion).filter(e => e.categoria === 'excursiones')
           setExcursionesDestacadas(
-            data.map(normalizarExcursion).filter(e => e.categoria === 'excursiones').slice(0, 3)
+            PASEOS_DESTACADOS_HOME.map(nombre => paseos.find(e => e.nombre === nombre)).filter(Boolean)
           )
         }
       } catch (_) {}

@@ -214,8 +214,12 @@ export default function ExcursionDetalle() {
                 <form onSubmit={enviarReserva} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {error && <p style={{ background: '#fde8e8', color: '#c0392b', fontSize: '0.82rem', padding: '10px 14px', borderRadius: 10 }}>{error}</p>}
 
-                  {/* Fecha */}
-                  {ex.fechas?.length > 0 && (
+                  {/* Fecha: si la excursión tiene salidas fijas (los paquetes aéreos)
+                      se elige entre esas; si no (la mayoría de las experiencias, que
+                      se coordinan por WhatsApp para cualquier día) se ingresa una
+                      fecha libre. Sin esto, una excursión sin `fechas` cargadas no
+                      tenía forma de completar este campo obligatorio del formulario. */}
+                  {ex.fechas?.length > 0 ? (
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         Fecha de salida
@@ -237,6 +241,20 @@ export default function ExcursionDetalle() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1C1208CC', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Fecha de salida *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={new Date().toISOString().slice(0, 10)}
+                        value={form.fecha}
+                        onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e8d09a', fontSize: '0.9rem', color: '#1C1208', background: 'white' }}
+                      />
                     </div>
                   )}
 

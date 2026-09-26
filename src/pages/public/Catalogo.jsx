@@ -44,7 +44,7 @@ export default function Catalogo({ categoria }) {
 
   const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))]
 
-  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Excursiones' : 'Catálogo'
+  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Excursiones' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
 
   if (loading) return (
     <div style={{ backgroundColor: C.bg, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

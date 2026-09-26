@@ -6,6 +6,7 @@ import {
 } from '../../lib/supabase.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
+import { normalizarWhatsapp } from '../../lib/telefono.js'
 
 /* ─── helpers ─── */
 function iniciales(nombre = '') {
@@ -355,7 +356,7 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
     setGuardando(true)
     await onGuardar({
       ...form,
-      whatsapp: form.whatsapp.replace(/\D/g, ''),
+      whatsapp: normalizarWhatsapp(form.whatsapp),
       cantidad_pasajeros: form.cantidad_pasajeros ? parseInt(form.cantidad_pasajeros) : null,
     })
     setGuardando(false)
@@ -389,6 +390,9 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
                 placeholder={placeholder}
                 className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
               />
+              {key === 'whatsapp' && form.whatsapp.trim() && (
+                <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Se va a guardar como: {normalizarWhatsapp(form.whatsapp)}</p>
+              )}
             </div>
           ))}
           {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}

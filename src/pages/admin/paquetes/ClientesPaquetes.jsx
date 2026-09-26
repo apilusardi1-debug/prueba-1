@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { propuestasApi, clientesApi } from '../../../lib/supabase.js'
 import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
+import { normalizarWhatsapp } from '../../../lib/telefono.js'
 
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
@@ -56,7 +57,7 @@ export default function ClientesPaquetes() {
     setGuardando(true)
     const { data } = await propuestasApi.update(seleccionada.id, {
       cliente_nombre: editForm.cliente_nombre.trim(),
-      cliente_whatsapp: editForm.cliente_whatsapp.trim() || null,
+      cliente_whatsapp: normalizarWhatsapp(editForm.cliente_whatsapp) || null,
       hospedajes: editForm.hospedajes.trim() || null,
       fecha_ida: editForm.fecha_ida || null,
       fecha_vuelta: editForm.fecha_vuelta || null,
@@ -209,6 +210,9 @@ export default function ClientesPaquetes() {
                 <input type="text" value={editForm.cliente_whatsapp} onChange={e => setEditForm(p => ({ ...p, cliente_whatsapp: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
+                {editForm.cliente_whatsapp.trim() && (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Se va a guardar como: {normalizarWhatsapp(editForm.cliente_whatsapp)}</p>
+                )}
               </div>
 
               <div>
@@ -407,7 +411,7 @@ function ModalAgregarCliente({ onCerrar, onGuardado }) {
       await propuestasApi.create({
         cliente_id: clienteSel?.id || null,
         cliente_nombre: busqCliente.trim(),
-        cliente_whatsapp: whatsapp.trim() || null,
+        cliente_whatsapp: normalizarWhatsapp(whatsapp) || null,
         hospedajes: hospedajes.trim() || null,
         fecha_ida: fechaIda || null,
         fecha_vuelta: fechaVuelta || null,
@@ -466,6 +470,9 @@ function ModalAgregarCliente({ onCerrar, onGuardado }) {
               placeholder="5581999999999"
               className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
+            {whatsapp.trim() && (
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Se va a guardar como: {normalizarWhatsapp(whatsapp)}</p>
+            )}
           </div>
 
           <div>

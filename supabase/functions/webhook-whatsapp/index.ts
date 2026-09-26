@@ -29,7 +29,8 @@ const DESTINO_FLOW: Record<string, string> = {
   fernando_de_noronha: 'Fernando de Noronha', maceio: 'Maceió',
 }
 const HOSPEDAJE_FLOW: Record<string, string> = {
-  hotel: 'Hotel', pousada: 'Pousada', resort: 'Resort', alquiler: 'Alquiler (Airbnb/temporada)', no_se: 'Todavía no sé',
+  resort_all_inclusive: 'Resort todo incluido (All Inclusive)', hotel_media_pension: 'Hotel con media pensión',
+  posada_desayuno: 'Posada con desayuno incluido', depto_amoblado: 'Departamento amoblado cerca de la playa/centro',
 }
 const PRESUPUESTO_FLOW: Record<string, string> = {
   '1000_2000': '1.000 a 2.000 USD', '2000_2500': '2.000 a 2.500 USD', '2500_3000': '2.500 a 3.000 USD',
@@ -161,6 +162,7 @@ function fechaLegible(iso: string | undefined): string {
 function textoDesdeFlow(r: Record<string, string>): string {
   const lineas = [
     `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
+    `Origen: ${r.origen ?? ''}`,
     `Adultos: ${r.adultos ?? ''}`,
     `Menores: ${r.menores ?? ''}`,
   ]

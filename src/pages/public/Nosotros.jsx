@@ -23,7 +23,7 @@ export default function Nosotros() {
         <div className="grid md:grid-cols-3 gap-6 mb-16">
           {[
             { icon: '🏖️', title: 'Especialistas en Nordeste', text: 'Conocemos cada rincón del Nordeste Brasilero. Nuestro equipo viaja regularmente para brindarte la mejor experiencia.' },
-            { icon: '✈️', title: 'Paquetes completos', text: 'Nos encargamos de todo: vuelos, traslados, hospedaje y excursiones. Vos solo pensá en disfrutar.' },
+            { icon: '✈️', title: 'Paquetes completos', text: 'Nos encargamos de todo: vuelos, traslados, hospedaje y paseos. Vos solo pensá en disfrutar.' },
             { icon: '💬', title: 'Atención personalizada', text: 'Te acompañamos desde la consulta hasta que volvés a casa. Siempre disponibles por WhatsApp.' },
           ].map(({ icon, title, text }) => (
             <div key={title} style={{ background: 'white', borderRadius: 20, padding: '28px 24px', border: '1px solid #e8d09a', textAlign: 'center' }}>

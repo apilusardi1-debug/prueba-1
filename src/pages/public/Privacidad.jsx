@@ -11,7 +11,7 @@ const SECCIONES = [
     titulo: 'Qué datos recopilamos',
     lista: [
       'Datos de contacto: nombre, número de WhatsApp y, si nos lo das, email, país y ciudad.',
-      'Datos del viaje: fechas, cantidad de pasajeros, edades de menores, excursiones y hospedajes que te interesan o contratás.',
+      'Datos del viaje: fechas, cantidad de pasajeros, edades de menores, paseos y hospedajes que te interesan o contratás.',
       'Mensajes que nos enviás por WhatsApp, redes sociales o formularios del sitio, y las respuestas que te damos.',
       'Datos de pago: registramos qué monto se pagó, cuándo y por qué medio. No almacenamos números de tarjeta.',
     ],

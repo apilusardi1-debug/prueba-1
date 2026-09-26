@@ -7,6 +7,11 @@ import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 
 const FORM_EMPTY = { fecha: '', nombre: '', telefono: '', adultos: 1, menores: 0, ubicacion: '', codigo_vendedor: '' }
 
+// `categoria` es el valor crudo de la base ('excursiones', 'paquetes',
+// 'traslados') — acá se traduce a lo que ve el cliente ("Excursiones" ahora
+// se llama "Paseos" en todo el sitio).
+const CATEGORIA_LABEL = { excursiones: 'Paseos', paquetes: 'Paquetes', traslados: 'Traslados' }
+
 export default function ExcursionDetalle() {
   const { id } = useParams()
   const { t } = useLang()
@@ -96,7 +101,7 @@ export default function ExcursionDetalle() {
   if (!ex) return (
     <div style={{ textAlign: 'center', padding: '96px 16px', color: '#1C120899' }}>
       <p style={{ fontSize: '3rem', marginBottom: 12 }}>🗺️</p>
-      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Excursión no encontrada</p>
+      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Paseo no encontrado</p>
       <Link to="/excursiones" style={{ marginTop: 16, display: 'inline-block', color: '#b07420', textDecoration: 'none', fontWeight: 600 }}>
         ← Volver
       </Link>
@@ -141,7 +146,7 @@ export default function ExcursionDetalle() {
                 { label: t('detail_duration'), value: `⏱ ${ex.duracion}` },
                 { label: t('detail_difficulty'), value: `🎯 ${ex.dificultad}` },
                 { label: t('detail_spots'), value: `👥 ${ex.cuposDisponibles} / ${ex.cupos}`, red: ex.cuposDisponibles <= 3 },
-                { label: t('detail_category'), value: `🏷️ ${ex.categoria}` },
+                { label: t('detail_category'), value: `🏷️ ${CATEGORIA_LABEL[ex.categoria] || ex.categoria}` },
               ].map(({ label, value, red }) => (
                 <div key={label} style={{ background: 'white', border: '1px solid #e8d09a', borderRadius: 14, padding: '12px 16px', textAlign: 'center' }}>
                   <p style={{ fontSize: '0.65rem', color: '#1C120888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</p>

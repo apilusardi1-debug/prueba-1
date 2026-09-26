@@ -6,7 +6,7 @@ import { languages } from '../../lib/i18n.js'
 
 const NAV_LINKS = [
   { to: '/paquetes',    label: 'Paquetes Aéreos',  icon: 'flight' },
-  { to: '/excursiones', label: 'Excursiones',       icon: 'explore' },
+  { to: '/excursiones', label: 'Paseos',            icon: 'explore' },
   { to: '/hoteles',     label: 'Hoteles & Posadas', icon: 'hotel' },
   { to: '/traslados',   label: 'Traslados',         icon: 'directions_car' },
   { to: '/destinos',    label: 'Destinos',          icon: 'map' },
@@ -263,7 +263,7 @@ export default function PublicLayout() {
             </Link>
             <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
-              <span className="text-[10px]">Tours</span>
+              <span className="text-[10px]">Paseos</span>
             </Link>
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
               target="_blank" rel="noopener noreferrer"

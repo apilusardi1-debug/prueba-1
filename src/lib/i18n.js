@@ -5,7 +5,7 @@ export const translations = {
     // Nav
     nav_packages:     'Paquetes aéreos',
     nav_destinations: 'Destinos',
-    nav_excursions:   'Excursiones',
+    nav_excursions:   'Paseos',
     nav_hotels:       'Hoteles & Posadas',
     nav_tides:        'Tabla de Marea',
     nav_about:        'Sobre nosotros',
@@ -15,13 +15,13 @@ export const translations = {
 
     // Hero
     hero_title:    'Descubrí el Nordeste Brasilero',
-    hero_subtitle: 'Paquetes completos con aéreos, traslados y excursiones. Playa, sol y aventura te esperan.',
+    hero_subtitle: 'Paquetes completos con aéreos, traslados y paseos. Playa, sol y aventura te esperan.',
     hero_cta:      'Ver paquetes',
 
     // Categorías
     cat_packages:     'Paquetes aéreos',
     cat_destinations: 'Destinos',
-    cat_excursions:   'Excursiones',
+    cat_excursions:   'Paseos',
     cat_hotels:       'Hoteles & Posadas',
     cat_tides:        'Tabla de Marea',
     cat_about:        'Sobre nosotros',
@@ -100,11 +100,11 @@ export const translations = {
 
     // Sobre nosotros
     about_title:    'Sobre nosotros',
-    about_text:     'DREAMTOURS es una agencia especializada en viajes al Nordeste Brasilero. Ofrecemos paquetes completos con aéreos, traslados y excursiones para que vivas una experiencia única en las playas más hermosas de Brasil.',
+    about_text:     'DREAMTOURS es una agencia especializada en viajes al Nordeste Brasilero. Ofrecemos paquetes completos con aéreos, traslados y paseos para que vivas una experiencia única en las playas más hermosas de Brasil.',
 
     // Tabla de marea
     tides_title:    'Tabla de Marea',
-    tides_subtitle: 'Consultá los horarios de marea para planificar tus excursiones acuáticas.',
+    tides_subtitle: 'Consultá los horarios de marea para planificar tus paseos acuáticos.',
   },
 
   pt: {

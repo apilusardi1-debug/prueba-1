@@ -89,7 +89,7 @@ export default function Reservar() {
 
   if (!excursion) return (
     <div className="text-center py-24">
-      <p className="text-xl text-gray-700">Excursión no encontrada.</p>
+      <p className="text-xl text-gray-700">Paseo no encontrado.</p>
       <Link to="/excursiones" className="text-brand-600 hover:underline mt-2 block">← Volver</Link>
     </div>
   )
@@ -248,7 +248,7 @@ export default function Reservar() {
             {/* Resumen */}
             <div className="space-y-2 text-sm mb-5">
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Excursión</span>
+                <span className="text-gray-500">Paseo</span>
                 <span className="font-medium">{excursion.nombre}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">

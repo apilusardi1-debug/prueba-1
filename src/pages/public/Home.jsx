@@ -17,7 +17,7 @@ const RESENAS = [
     nombre: 'Carlos y Familia',
     inicial: 'C',
     titulo: '"Atención personalizada al 100%"',
-    texto: 'Se encargaron de todo, desde los traslados hasta las excursiones. Solo nos dedicamos a disfrutar de Maragogi. Un servicio de 10 puntos.',
+    texto: 'Se encargaron de todo, desde los traslados hasta los paseos. Solo nos dedicamos a disfrutar de Maragogi. Un servicio de 10 puntos.',
     fecha: 'Noviembre 2023',
   },
   {
@@ -260,7 +260,7 @@ export default function Home() {
           </div>
           <div className="mt-10 text-center">
             <Link to="/excursiones" className="border-2 border-deep-ocean text-deep-ocean font-label-lg text-label-lg px-8 py-3 rounded hover:bg-deep-ocean hover:text-white transition-colors inline-block">
-              Ver Todas las Excursiones
+              Ver Todos los Paseos
             </Link>
           </div>
         </div>

@@ -44,7 +44,13 @@ export default function Catalogo({ categoria }) {
 
   const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))]
 
-  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Excursiones' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
+  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
+  // Los paseos (ex "Excursiones") siempre incluyen guía en español y traslado
+  // privado — dato importante para el cliente, se aclara acá en vez de en el
+  // subtítulo genérico que comparten las demás categorías.
+  const subtituloLabel = categoria === 'excursiones'
+    ? 'Todos nuestros paseos incluyen guía en español y traslado privado.'
+    : 'Encontrá tu próximo viaje al Nordeste Brasilero'
 
   if (loading) return (
     <div style={{ backgroundColor: C.bg, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -68,7 +74,7 @@ export default function Catalogo({ categoria }) {
             {tituloLabel}
           </h1>
           <p style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", fontSize: '15px', color: C.navyMuted, lineHeight: 1.6 }}>
-            Encontrá tu próximo viaje al Nordeste Brasilero
+            {subtituloLabel}
           </p>
         </div>
       </div>

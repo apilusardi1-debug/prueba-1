@@ -940,6 +940,7 @@ export default function GeneradorPropuesta() {
     + (componentesPedido.traslado ? (parseFloat(vuelos[0]?.traslado_venta) || 0) : 0)
   const total = tipoPropuesta === 'combinada'
     ? hospedajes.reduce((sum, h) => sum + (parseFloat(precioEfectivo(h).precio) || 0), 0)
+      + vuelos.reduce((sum, v) => sum + (parseFloat(v.venta) || 0) + (parseFloat(v.traslado_venta) || 0), 0)
     : (baseVueloTrasladoSimple + (parseFloat(precioEfectivo(hospedajes[0] || {}).precio) || 0))
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
@@ -1827,6 +1828,18 @@ export default function GeneradorPropuesta() {
 
       {/* Generar */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 sticky bottom-4 shadow-lg space-y-3">
+        {/* Solo Combinada: en Simple cada tarjeta de hospedaje ya muestra su
+            propio "Total de esta opción" (vuelo+traslado+esa habitación) — acá
+            en cambio las etapas se suman entre sí y hasta ahora no había
+            ningún lugar que mostrara la suma de todo junto (vuelos+traslados+
+            todos los hospedajes). Pedido explícito: solo en pantalla, para
+            revisar antes de generar — no se agrega nada al PDF. */}
+        {tipoPropuesta === 'combinada' && (
+          <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 px-3 py-2.5 text-sm flex items-center justify-between">
+            <span className="text-gray-500 dark:text-zinc-400">Total general (vuelos + traslados + hospedajes):</span>
+            <span className="font-semibold text-gray-900 dark:text-zinc-100">{simboloMoneda(monedaPropuesta)} {formatearNumero(total)}</span>
+          </div>
+        )}
         {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
         {exito && <p className="text-xs text-green-600 dark:text-green-400 mb-3 bg-green-50 dark:bg-green-950/40 px-3 py-2 rounded-lg">✓ PDF descargado y propuesta guardada.</p>}
         <div className="flex items-center justify-end">

@@ -132,8 +132,8 @@ function formatearMiles(valor) {
 // y PDF, así no hace falta mantener los dos sincronizados a mano.
 function precioEfectivo(h) {
   if (h.habitaciones?.length) {
-    const precio = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.precio) || 0), 0)
-    const costo_interno = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.costo_interno) || 0), 0)
+    const precio = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.precio) || 0) * (hb.cantidad || 1), 0)
+    const costo_interno = h.habitaciones.reduce((sum, hb) => sum + (parseFloat(hb.costo_interno) || 0) * (hb.cantidad || 1), 0)
     const primera = h.habitaciones[0]
     return { precio, costo_interno, moneda: primera.moneda, precio_publico: primera.precio_publico }
   }
@@ -576,7 +576,11 @@ export default function GeneradorPropuesta() {
           // la misma para toda la propuesta (arriba del todo), no se elige acá.
           // Privado por defecto — el que genera la propuesta tilda "Pública"
           // a propósito si quiere que este precio puntual se vea en el PDF.
-          precio: '', costo_interno: '', moneda: monedaPropuesta, precio_publico: false,
+          // "cantidad": cuantas unidades de ESTA MISMA categoria (ej: 2
+          // habitaciones "Suite Vista Mar"), no una alternativa mas — el
+          // precio/costo de la tarjeta se multiplica por esto (ver
+          // precioEfectivo) y se ve como "xN" al lado del nombre en el PDF.
+          precio: '', costo_interno: '', moneda: monedaPropuesta, precio_publico: false, cantidad: 1,
         }]
       }
       const primera = habitaciones[0]
@@ -1708,8 +1712,15 @@ export default function GeneradorPropuesta() {
                           {elegida && <span className="text-brand-600 dark:text-brand-400 text-sm flex-shrink-0">✓</span>}
                         </button>
                         {elegida && (
-                          <div onClick={e => e.stopPropagation()} className="space-y-1">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500">Valor neto (costo) y de venta de esta habitación — el neto es uso interno, nunca se exporta al PDF</p>
+                          <div onClick={e => e.stopPropagation()} className="space-y-1.5">
+                            <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400">
+                              Cantidad de esta habitación
+                              <select value={elegida.cantidad || 1} onChange={e => setCampoHabitacion(idx, hab.id, 'cantidad', parseInt(e.target.value))}
+                                className="border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-lg pl-2 pr-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400">
+                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            </label>
+                            <p className="text-[10px] text-gray-400 dark:text-zinc-500">Valor neto (costo) y de venta por unidad — el neto es uso interno, nunca se exporta al PDF</p>
                             <div className="grid grid-cols-3 gap-1.5">
                               <CampoValor small moneda="BRL" value={formatearMiles(elegida.costo_interno)}
                                 onChange={e => setCampoHabitacion(idx, hab.id, 'costo_interno', soloDigitos(e.target.value))} placeholder="Valor neto" />

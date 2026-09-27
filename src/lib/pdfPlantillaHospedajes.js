@@ -225,7 +225,7 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       const anchoDisponibleNombre = anchoColumnaTexto - anchoBoton - GAP_NOMBRE_BOTON
       for (const hab of habitacionesElegidas) {
         if (y < piso) break
-        const nombreHab = (hab.nombre || 'Habitación').toUpperCase()
+        const nombreHab = ((hab.nombre || 'Habitación') + (hab.cantidad > 1 ? ` x${hab.cantidad}` : '')).toUpperCase()
         let tamanoNombre = s.infoSize
         while (tamanoNombre > 6 && bebas.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoDisponibleNombre) tamanoNombre -= 0.5
         escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, bebas)

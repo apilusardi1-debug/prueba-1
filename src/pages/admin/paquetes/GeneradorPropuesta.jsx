@@ -44,7 +44,7 @@ const EQUIPAJE_OPCIONES = [
 const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS', publica: false }
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
-const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Sin desayuno', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
+const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Desayuno opcional', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
 
 // Propuesta Simple: un único valor de venta para todo el paquete, cargado a
 // mano (no la suma automática de los servicios sueltos) — el admin indica
@@ -917,7 +917,7 @@ export default function GeneradorPropuesta() {
       if (i !== idx) return h
       const actuales = h.items.filter(Boolean)
       const items = actuales.includes(servicio) ? actuales.filter(it => it !== servicio) : [...actuales, servicio]
-      // Todo lo que esté tildado de estas cajitas (Desayuno/Sin desayuno/Media
+      // Todo lo que esté tildado de estas cajitas (Desayuno/Desayuno opcional/Media
       // Pensión/Pensión Completa/Servicio de Limpieza) se junta acá — este
       // campo (pension) es el que se imprime SIEMPRE en el PDF al lado del
       // precio de cada hospedaje (pedido explícito), no solo cuando se tilda

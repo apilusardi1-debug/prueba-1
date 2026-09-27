@@ -114,7 +114,7 @@ function crearSlot(fila) {
 
 const SLOTS = [0, 1, 2, 3].map(crearSlot)
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, baseVueloTraslado = 0) {
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, baseVueloTraslado = 0, combinada = false) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -185,16 +185,29 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
       yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
     }
 
-    // Precio del PAQUETE completo (aéreo + traslado + este hospedaje, vía
-    // baseVueloTraslado) — SIEMPRE se imprime, no depende del tilde "Pública"
-    // de cada hospedaje/habitación (ese tilde es para el precio individual,
-    // no para este total; el total del paquete es público siempre, pedido
-    // explícito). Antes se mostraba solo el precio del hospedaje y el total
-    // del paquete vivía en una hoja final aparte (sacada del PDF).
+    // Precio: en Simple, cada hospedaje es una OPCIÓN alternativa, así que se
+    // imprime el PAQUETE completo (aéreo + traslado + este hospedaje, vía
+    // baseVueloTraslado) — SIEMPRE, no depende del tilde "Pública" de cada
+    // hospedaje/habitación (ese tilde es para el precio individual, no para
+    // este total; el total del paquete es público siempre, pedido explícito).
+    // Antes se mostraba solo el precio del hospedaje y el total del paquete
+    // vivía en una hoja final aparte (sacada del PDF).
+    // En Combinada cada hospedaje es una ETAPA propia del viaje (aéreo y
+    // traslado ya se imprimen aparte, discriminados, en sus propias hojas) —
+    // sumarle baseVueloTraslado (el total de TODAS las etapas) en cada hoja
+    // lo duplicaría por cada hospedaje. Se imprime solo el precio de ESE
+    // hospedaje, y ahí sí respeta "Pública" como el resto de los precios
+    // individuales (pedido explícito).
     let y = Math.min(s.infoYTop, yFinEncabezado - 17)
     escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
-    escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
+    if (combinada) {
+      if (h.precio && h.precio_publico !== false) {
+        escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
+      }
+    } else {
+      const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
+      escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
+    }
     if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
     // Servicios tildados (Desayuno/Desayuno opcional/Media Pensión/Pensión
     // Completa/Servicio de Limpieza) — SIEMPRE se imprime, sin el chequeo de

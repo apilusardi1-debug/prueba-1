@@ -1092,7 +1092,7 @@ export default function GeneradorPropuesta() {
         for (const grupoDestino of gruposPorDestino) {
           for (let i = 0; i < grupoDestino.length; i += 4) {
             const grupo = grupoDestino.slice(i, i + 4)
-            await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, baseVueloTraslado)
+            await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, baseVueloTraslado, tipoPropuesta === 'combinada')
           }
         }
       }

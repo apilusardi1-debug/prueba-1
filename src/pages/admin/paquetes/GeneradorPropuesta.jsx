@@ -60,7 +60,7 @@ const INCLUYE_SIMPLE_OPCIONES = [
 const PEDIDO_CLIENTE_OTRO = 'otro'
 
 const HOSPEDAJE_VACIO = {
-  id: null, nombre: '', subtitulo: '', destino: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
+  id: null, nombre: '', subtitulo: '', destino: '', fecha_entrada: '', fecha_salida: '', imagen: '', noches: '', precio: '', moneda: 'ARS',
   // Vacío (antes traía "Aéreo + Hospedaje + Traslados" fijo): el campo se
   // deshabilitó en el formulario, pero con este default seguía imprimiéndose
   // en el PDF igual — así no aparece nada mientras no haga falta.
@@ -1649,11 +1649,27 @@ export default function GeneradorPropuesta() {
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
 
-            {/* Se completa solo al elegir un hospedaje del catálogo (trae su
-                destino), pero se puede editar/cargar a mano — se usa para
-                agrupar los hospedajes por destino en hojas separadas del PDF. */}
-            <input value={h.destino} onChange={e => setHospedajeCampo(idx, 'destino', e.target.value)} placeholder="Destino (Ej: Maragogi)" list="destinos-precargados"
-              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+            {/* Destino se completa solo al elegir un hospedaje del catálogo
+                (trae su destino), pero se puede editar/cargar a mano — se usa
+                para agrupar los hospedajes por destino en hojas separadas del
+                PDF. Fecha de entrada/salida son de ESTE hospedaje puntual (en
+                Combinada cada etapa puede tener fechas distintas a las del
+                vuelo) — no se cruzan con "noches", que se sigue completando
+                sola con la duración del vuelo. */}
+            <div className="grid sm:grid-cols-3 gap-3">
+              <input value={h.destino} onChange={e => setHospedajeCampo(idx, 'destino', e.target.value)} placeholder="Destino (Ej: Maragogi)" list="destinos-precargados"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Fecha de entrada</label>
+                <input type="date" value={h.fecha_entrada} onChange={e => setHospedajeCampo(idx, 'fecha_entrada', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 dark:text-zinc-500 mb-1 block">Fecha de salida</label>
+                <input type="date" value={h.fecha_salida} onChange={e => setHospedajeCampo(idx, 'fecha_salida', e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              </div>
+            </div>
 
             {propietarioPorHospedaje[h.id]?.nombre_dueno && (
               <p className="text-xs text-amber-600 dark:text-amber-400">

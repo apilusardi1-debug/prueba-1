@@ -1297,6 +1297,14 @@ export default function GeneradorPropuesta() {
             }`}>
             Propuesta combinada
           </button>
+          <button type="button" onClick={() => setTipoPropuesta('combinada_uni')}
+            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+              tipoPropuesta === 'combinada_uni'
+                ? 'bg-brand-600 border-brand-600 text-white'
+                : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+            }`}>
+            Combinada Uni
+          </button>
         </div>
 
         {tipoPropuesta === 'combinada' && (

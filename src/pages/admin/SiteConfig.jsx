@@ -441,7 +441,8 @@ function TabRespuestasRapidas() {
     <div className="max-w-xl">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Respuestas rápidas</h2>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Frases guardadas que se pueden insertar con un click al responder en CRM → WhatsApp.</p>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Frases guardadas para responder en CRM → WhatsApp: con el botón del chat o escribiendo <span className="font-mono">/</span> y parte del título (Ej: <span className="font-mono">/hola</span>).</p>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">En el texto podés usar <span className="font-mono">{'{nombre}'}</span> (primer nombre del contacto) y <span className="font-mono">{'{agente}'}</span> (quien responde): se completan solos al insertar la respuesta.</p>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm mb-4 overflow-hidden">

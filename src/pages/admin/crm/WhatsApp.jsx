@@ -4,6 +4,7 @@ import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
+import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
@@ -132,6 +133,12 @@ export default function WhatsAppCRM() {
   }
   const [respuestasRapidas, setRespuestasRapidas] = useState([])
   const [menuRespuestas, setMenuRespuestas] = useState(false)
+  const [busquedaRespuestas, setBusquedaRespuestas] = useState('')
+  // Atajo "/": posición del cursor en el mensaje, qué opción está resaltada y si
+  // se lo cerró con Esc (vuelve a abrirse al seguir escribiendo)
+  const [cursorMensaje, setCursorMensaje] = useState(0)
+  const [atajoIdx, setAtajoIdx] = useState(0)
+  const [atajoCerrado, setAtajoCerrado] = useState(false)
   const [panelCliente, setPanelCliente] = useState(false)
   const [clienteVinculado, setClienteVinculado] = useState(null)
   const [reservasCliente, setReservasCliente] = useState([])
@@ -156,6 +163,9 @@ export default function WhatsAppCRM() {
   const menuAsignarRef = useRef(null)
   const menuGrupoRef = useRef(null)
   const menuRespuestasRef = useRef(null)
+  // Solo se hace scroll a la opción resaltada del atajo "/" cuando se mueve con el
+  // teclado; con el mouse el scroll movería la lista bajo el puntero
+  const atajoPorTeclado = useRef(false)
 
   // Reloj para que el aviso de ventana de 24 hs aparezca solo al vencer
   useEffect(() => {
@@ -404,10 +414,51 @@ export default function WhatsAppCRM() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  function insertarRespuesta(texto) {
-    setTexto(prev => (prev ? `${prev} ${texto}` : texto))
+  // Campos que se completan solos en las respuestas ({nombre} = primer nombre del
+  // contacto, {agente} = quien está respondiendo)
+  const camposRespuesta = {
+    nombre: primerNombre(seleccionada?.contacto_nombre),
+    agente: primerNombre(usuarios.find(u => u.id === miUsuarioId)?.nombre),
+  }
+
+  const respuestasDelMenu = buscarRespuestas(respuestasRapidas, busquedaRespuestas)
+
+  const atajo = atajoCerrado ? null : atajoEnCursor(texto, cursorMensaje)
+  const opcionesAtajo = atajo ? buscarRespuestas(respuestasRapidas, atajo.consulta).slice(0, 50) : []
+  const atajoAbierto = opcionesAtajo.length > 0
+  const atajoResaltado = Math.min(atajoIdx, Math.max(opcionesAtajo.length - 1, 0))
+
+  function alternarMenuRespuestas() {
+    setBusquedaRespuestas('')
+    setMenuRespuestas(v => !v)
+  }
+
+  function insertarRespuesta(textoRespuesta) {
+    const resuelto = resolverCampos(textoRespuesta, camposRespuesta)
+    setTexto(prev => (prev ? `${prev} ${resuelto}` : resuelto))
     setMenuRespuestas(false)
     inputRef.current?.focus()
+  }
+
+  // Reemplaza el "/algo" escrito por el texto de la respuesta elegida
+  function elegirAtajo(respuesta) {
+    if (!atajo) return
+    const resuelto = resolverCampos(respuesta.texto, camposRespuesta)
+    const nuevoTexto = texto.slice(0, atajo.desde) + resuelto + texto.slice(cursorMensaje)
+    const nuevoCursor = atajo.desde + resuelto.length
+    setTexto(nuevoTexto)
+    setCursorMensaje(nuevoCursor)
+    setAtajoIdx(0)
+    const campo = inputRef.current
+    if (campo) {
+      // el textarea ya tiene el valor viejo hasta el próximo render: se acomoda después
+      setTimeout(() => {
+        campo.focus()
+        campo.setSelectionRange(nuevoCursor, nuevoCursor)
+        campo.style.height = 'auto'
+        campo.style.height = Math.min(campo.scrollHeight, 120) + 'px'
+      }, 0)
+    }
   }
 
   async function seleccionarConversacion(conv) {
@@ -603,6 +654,11 @@ export default function WhatsAppCRM() {
   async function enviar() {
     const textoEnviar = texto.trim()
     if ((!textoEnviar && !adjunto) || !seleccionada || enviando) return
+
+    if (hayCampoPendiente(textoEnviar)) {
+      alert('El mensaje todavía tiene {nombre} o {agente} sin completar. Escribí el dato a mano antes de enviarlo.')
+      return
+    }
 
     if (adjunto) {
       await enviarAdjunto(textoEnviar)
@@ -1153,8 +1209,8 @@ export default function WhatsAppCRM() {
           <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
             <div className="relative shrink-0" ref={menuRespuestasRef}>
               <button
-                onClick={() => setMenuRespuestas(v => !v)}
-                title="Respuestas rápidas"
+                onClick={alternarMenuRespuestas}
+                title="Respuestas rápidas (también podés escribir / en el mensaje)"
                 className="w-[42px] h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -1163,22 +1219,46 @@ export default function WhatsAppCRM() {
                 </svg>
               </button>
               {menuRespuestas && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[220px] max-w-[280px] max-h-64 overflow-y-auto">
+                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] flex flex-col">
                   {respuestasRapidas.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">
                       Sin respuestas guardadas — armalas en Configuración → Respuestas rápidas.
                     </p>
                   ) : (
-                    respuestasRapidas.map(r => (
-                      <button
-                        key={r.id}
-                        onClick={() => insertarRespuesta(r.texto)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                      >
-                        <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
-                      </button>
-                    ))
+                    <>
+                      <div className="p-2 border-b border-gray-100 dark:border-zinc-800">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={busquedaRespuestas}
+                          onChange={e => setBusquedaRespuestas(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && respuestasDelMenu[0]) {
+                              e.preventDefault()
+                              insertarRespuesta(respuestasDelMenu[0].texto)
+                            }
+                          }}
+                          placeholder="Buscar respuesta..."
+                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
+                        />
+                      </div>
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {respuestasDelMenu.length === 0 ? (
+                          <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">No hay respuestas con eso.</p>
+                        ) : (
+                          respuestasDelMenu.map(r => (
+                            <button
+                              key={r.id}
+                              onClick={() => insertarRespuesta(r.texto)}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                            >
+                              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
+                              <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -1200,25 +1280,76 @@ export default function WhatsAppCRM() {
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
               </svg>
             </button>
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={texto}
-              onChange={e => {
-                setTexto(e.target.value)
-                e.target.style.height = 'auto'
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  enviar()
-                }
-              }}
-              placeholder="Escribí un mensaje... (Enter para enviar, Shift+Enter para nueva línea)"
-              className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
-              style={{ minHeight: '42px' }}
-            />
+            <div className="relative flex-1 min-w-0">
+              {atajoAbierto && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 flex flex-col">
+                  <div className="max-h-56 overflow-y-auto py-1">
+                    {opcionesAtajo.map((r, i) => (
+                      <button
+                        key={r.id}
+                        ref={el => { if (el && i === atajoResaltado && atajoPorTeclado.current) el.scrollIntoView({ block: 'nearest' }) }}
+                        onMouseDown={e => { e.preventDefault(); elegirAtajo(r) }}
+                        onMouseEnter={() => { atajoPorTeclado.current = false; setAtajoIdx(i) }}
+                        className={`w-full text-left px-3 py-2 ${i === atajoResaltado ? 'bg-gray-100 dark:bg-zinc-800' : ''}`}
+                      >
+                        <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="px-3 py-1.5 text-[10px] text-gray-400 dark:text-zinc-500 border-t border-gray-100 dark:border-zinc-800">
+                    ↑ ↓ para moverte · Enter o Tab para elegir · Esc para cerrar
+                  </p>
+                </div>
+              )}
+              <textarea
+                ref={inputRef}
+                rows={1}
+                value={texto}
+                onChange={e => {
+                  setTexto(e.target.value)
+                  setCursorMensaje(e.target.selectionStart)
+                  setAtajoIdx(0)
+                  setAtajoCerrado(false)
+                  e.target.style.height = 'auto'
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                }}
+                onSelect={e => setCursorMensaje(e.target.selectionStart)}
+                onKeyDown={e => {
+                  if (atajoAbierto) {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      atajoPorTeclado.current = true
+                      setAtajoIdx(Math.min(atajoResaltado + 1, opcionesAtajo.length - 1))
+                      return
+                    }
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      atajoPorTeclado.current = true
+                      setAtajoIdx(Math.max(atajoResaltado - 1, 0))
+                      return
+                    }
+                    if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+                      e.preventDefault()
+                      elegirAtajo(opcionesAtajo[atajoResaltado])
+                      return
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      setAtajoCerrado(true)
+                      return
+                    }
+                  }
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    enviar()
+                  }
+                }}
+                placeholder="Escribí un mensaje... (Enter para enviar, / para respuestas rápidas)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
+                style={{ minHeight: '42px' }}
+              />
+            </div>
             <button
               onClick={enviar}
               disabled={enviando || (!texto.trim() && !adjunto)}

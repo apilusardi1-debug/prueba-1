@@ -35,6 +35,9 @@ const HOSPEDAJE_FLOW: Record<string, string> = {
 const PRESUPUESTO_FLOW: Record<string, string> = {
   '1000_2000': '1.000 a 2.000 USD', '2000_2500': '2.000 a 2.500 USD', '2500_3000': '2.500 a 3.000 USD',
 }
+const PAIS_FLOW: Record<string, string> = {
+  argentina: 'Argentina', uruguay: 'Uruguay', chile: 'Chile', paraguay: 'Paraguay', peru: 'Perú', venezuela: 'Venezuela',
+}
 
 const TIPOS_MEDIA = ['image', 'audio', 'video', 'document', 'sticker']
 const ETIQUETA_MEDIA: Record<string, string> = {
@@ -168,11 +171,14 @@ const MAX_MENORES_FLOW = 5
 function textoDesdeFlow(r: Record<string, string>): string {
   const cantidadMenores = r.hay_menores === 'si' ? (Number(r.cantidad_menores) || 0) : 0
   const edades = Array.from({ length: MAX_MENORES_FLOW }, (_, i) => r[`edad_menor_${i + 1}`]).filter(Boolean).slice(0, cantidadMenores)
+  // La ciudad viene en uno de 6 campos "ciudad_<pais>" (uno por país de la
+  // lista, el Flow solo muestra el que corresponde al país elegido).
+  const ciudad = r[`ciudad_${r.pais}`] ?? ''
   const lineas = [
     `Nombre: ${r.nombre ?? ''}`,
     `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
-    `País: ${r.pais ?? ''}`,
-    `Origen: ${r.origen ?? ''}`,
+    `País: ${PAIS_FLOW[r.pais] || r.pais || ''}`,
+    `Origen: ${ciudad}`,
     `Adultos: ${r.adultos ?? ''}`,
     `Menores: ${cantidadMenores}`,
   ]

@@ -91,6 +91,7 @@ export default function WhatsAppCRM() {
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
+  const [menuAccionesMobile, setMenuAccionesMobile] = useState(false)
   const [grabando, setGrabando] = useState(false)
   const [segundosGrabados, setSegundosGrabados] = useState(0)
   const [errorGrabacion, setErrorGrabacion] = useState('')
@@ -467,6 +468,7 @@ export default function WhatsAppCRM() {
     setMenuEtiqueta(false)
     setMenuAsignar(false)
     setMenuGrupo(false)
+    setMenuAccionesMobile(false)
     // En la compu conviene enfocar el mensaje para escribir de una; en el celular no, porque
     // levanta el teclado y tapa la lista de mensajes apenas se abre el chat
     if (window.innerWidth >= 1024) setTimeout(() => inputRef.current?.focus(), 100)
@@ -991,7 +993,7 @@ export default function WhatsAppCRM() {
       {seleccionada ? (
         <div className="chat-fondo flex-1 flex flex-col w-full">
           {/* Header del chat */}
-          <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex items-center gap-3 shadow-sm dark:shadow-black/20">
+          <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex flex-wrap items-center gap-3 shadow-sm dark:shadow-black/20">
             <button
               onClick={() => setSeleccionada(null)}
               aria-label="Volver a la lista"
@@ -1004,7 +1006,20 @@ export default function WhatsAppCRM() {
               <p className="font-semibold text-gray-900 dark:text-zinc-100">{seleccionada.contacto_nombre}</p>
               <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+            {/* En el celular estos botones (Cliente/Grupo/Asignar/Etiquetar/etc) ocupaban
+                un renglón cada uno y el header se comía media pantalla — quedan
+                colapsados atrás del botón "⋮" y se despliegan solo si hace falta.
+                En la compu (lg:) se ven siempre, como antes. */}
+            <button
+              onClick={() => setMenuAccionesMobile(v => !v)}
+              aria-label="Más acciones"
+              className="lg:hidden ml-auto w-9 h-9 shrink-0 flex items-center justify-center rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
+              </svg>
+            </button>
+            <div className={`${menuAccionesMobile ? 'flex' : 'hidden'} lg:flex lg:ml-auto flex-wrap items-center justify-end gap-x-3 gap-y-2 w-full lg:w-auto`}>
               {/* Marcar como atendida: quita la conversación de "sin responder" sin enviar nada */}
               {esperandoDesde[seleccionada.id] ? (
                 <button
@@ -1259,7 +1274,7 @@ export default function WhatsAppCRM() {
               </button>
             </div>
           )}
-          <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
+          <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-1.5 sm:gap-3">
             {grabando ? (
               <>
                 <button
@@ -1286,11 +1301,13 @@ export default function WhatsAppCRM() {
               </>
             ) : (
             <>
-            <div className="relative shrink-0" ref={menuRespuestasRef}>
+            {/* En el celular el campo de texto ya viene justo de ancho — este botón
+                se saca ahí porque escribir "/" en el mensaje hace lo mismo. */}
+            <div className="relative shrink-0 hidden sm:block" ref={menuRespuestasRef}>
               <button
                 onClick={alternarMenuRespuestas}
                 title="Respuestas rápidas (también podés escribir / en el mensaje)"
-                className="w-[42px] h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                className="w-9 h-9 sm:w-[42px] sm:h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -1356,7 +1373,7 @@ export default function WhatsAppCRM() {
               onClick={() => fileRef.current?.click()}
               disabled={enviando}
               title="Adjuntar foto, documento, audio o video"
-              className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+              className="w-9 h-9 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -1366,7 +1383,7 @@ export default function WhatsAppCRM() {
               onClick={iniciarGrabacion}
               disabled={enviando}
               title="Grabar un audio"
-              className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+              className="w-9 h-9 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -1441,7 +1458,7 @@ export default function WhatsAppCRM() {
                     enviar()
                   }
                 }}
-                placeholder="Escribí un mensaje... (Enter para enviar, / para respuestas rápidas)"
+                placeholder="Mensaje... (/ atajos rápidos)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
                 style={{ minHeight: '42px' }}
               />
@@ -1449,9 +1466,17 @@ export default function WhatsAppCRM() {
             <button
               onClick={enviar}
               disabled={enviando || (!texto.trim() && !adjunto)}
-              className="bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0"
+              title="Enviar"
+              className="bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-9 h-9 sm:w-auto sm:h-auto sm:px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
             >
-              {enviando ? '...' : 'Enviar'}
+              {enviando ? (
+                '...'
+              ) : (
+                <>
+                  <Ic n="send" className="w-4 h-4 sm:hidden" />
+                  <span className="hidden sm:inline">Enviar</span>
+                </>
+              )}
             </button>
             </>
             )}

@@ -7,7 +7,10 @@ export const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/a
 export function tipoAdjunto(file) {
   if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
   if (file.type === 'video/mp4' || file.type === 'video/3gpp') return 'video'
-  if (AUDIOS_WHATSAPP.includes(file.type)) return 'audio'
+  // Empieza con "audio/" cubre también "audio/ogg; codecs=opus" (notas de voz
+  // grabadas en el chat, ver iniciarGrabacion en WhatsApp.jsx) — AUDIOS_WHATSAPP
+  // sigue sirviendo para los mimes exactos que llegan de un archivo elegido a mano.
+  if (AUDIOS_WHATSAPP.includes(file.type) || file.type.startsWith('audio/')) return 'audio'
   return 'document'
 }
 

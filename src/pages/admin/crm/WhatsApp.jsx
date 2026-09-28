@@ -6,6 +6,7 @@ import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
 import { LIMITE_ADJUNTO_MB, NOMBRE_TIPO_ADJUNTO, tipoAdjunto, formatoTamano } from '../../../lib/adjuntosWhatsapp.js'
+import Recorder from 'opus-recorder'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
@@ -90,6 +91,9 @@ export default function WhatsAppCRM() {
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
+  const [grabando, setGrabando] = useState(false)
+  const [segundosGrabados, setSegundosGrabados] = useState(0)
+  const [errorGrabacion, setErrorGrabacion] = useState('')
   const [esperandoDesde, setEsperandoDesde] = useState({}) // conversacion_id -> desde cuándo espera respuesta
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
@@ -150,6 +154,8 @@ export default function WhatsAppCRM() {
   // Solo se hace scroll a la opción resaltada del atajo "/" cuando se mueve con el
   // teclado; con el mouse el scroll movería la lista bajo el puntero
   const atajoPorTeclado = useRef(false)
+  const grabadorRef = useRef(null)
+  const timerGrabacionRef = useRef(null)
 
   // Reloj para que el aviso de ventana de 24 hs aparezca solo al vencer
   useEffect(() => {
@@ -606,6 +612,58 @@ export default function WhatsAppCRM() {
     setAdjunto(file)
     inputRef.current?.focus()
   }
+
+  // Graba una nota de voz con el micrófono y la deja como adjunto, lista para
+  // enviar con el botón normal — mismo camino que un audio elegido a mano.
+  // Se graba con opus-recorder (no con MediaRecorder del navegador) porque
+  // Chrome/Edge solo pueden grabar en formato webm, que Meta no acepta; esta
+  // librería graba directo en Ogg Opus, el único formato que WhatsApp
+  // reproduce como nota de voz de verdad en cualquier navegador.
+  async function iniciarGrabacion() {
+    setErrorGrabacion('')
+    if (!Recorder.isRecordingSupported()) {
+      setErrorGrabacion('Este navegador no permite grabar audio. Probá desde Chrome o Firefox.')
+      return
+    }
+    const rec = new Recorder({ encoderPath: '/encoderWorker.min.js', encoderApplication: 2048, numberOfChannels: 1 })
+    // Se cierra recién acá (no justo después de stop()): close() destruye el
+    // worker enseguida, y si se llama antes de que termine de publicar los
+    // últimos datos, ondataavailable puede no llegar a dispararse.
+    rec.ondataavailable = (arrayBuffer) => {
+      const archivo = new File([arrayBuffer], `audio-${Date.now()}.ogg`, { type: 'audio/ogg; codecs=opus' })
+      setAdjunto(archivo)
+      rec.close()
+    }
+    try {
+      await rec.start()
+    } catch (e) {
+      setErrorGrabacion('No se pudo usar el micrófono: ' + (e.message || 'permiso denegado'))
+      return
+    }
+    grabadorRef.current = rec
+    setSegundosGrabados(0)
+    setGrabando(true)
+    timerGrabacionRef.current = setInterval(() => setSegundosGrabados((s) => s + 1), 1000)
+  }
+
+  function detenerGrabacion(cancelar) {
+    clearInterval(timerGrabacionRef.current)
+    const rec = grabadorRef.current
+    grabadorRef.current = null
+    setGrabando(false)
+    if (!rec) return
+    if (cancelar) {
+      rec.ondataavailable = () => {} // se descarta: no se llama a setAdjunto
+      rec.stop()
+      rec.close()
+    } else {
+      rec.stop() // ondataavailable (de iniciarGrabacion) guarda el archivo y cierra el grabador
+    }
+  }
+
+  // Si se cambia de conversación o se cierra la pantalla en medio de una
+  // grabación, no queda el micrófono prendido de fondo.
+  useEffect(() => () => detenerGrabacion(true), [])
 
   async function enviarAdjunto(caption) {
     const file = adjunto
@@ -1202,6 +1260,32 @@ export default function WhatsAppCRM() {
             </div>
           )}
           <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-3">
+            {grabando ? (
+              <>
+                <button
+                  onClick={() => detenerGrabacion(true)}
+                  title="Cancelar grabación"
+                  className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <Ic n="trash" className="w-4 h-4" />
+                </button>
+                <div className="flex-1 min-w-0 flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4" style={{ minHeight: '42px' }}>
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                  <span className="text-sm text-gray-700 dark:text-zinc-200 font-medium">Grabando...</span>
+                  <span className="text-sm text-gray-400 dark:text-zinc-500 font-mono ml-auto">
+                    {String(Math.floor(segundosGrabados / 60)).padStart(2, '0')}:{String(segundosGrabados % 60).padStart(2, '0')}
+                  </span>
+                </div>
+                <button
+                  onClick={() => detenerGrabacion(false)}
+                  title="Terminar grabación"
+                  className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 text-white transition-colors"
+                >
+                  <Ic n="check" className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+            <>
             <div className="relative shrink-0" ref={menuRespuestasRef}>
               <button
                 onClick={alternarMenuRespuestas}
@@ -1276,6 +1360,17 @@ export default function WhatsAppCRM() {
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
+            <button
+              onClick={iniciarGrabacion}
+              disabled={enviando}
+              title="Grabar un audio"
+              className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
               </svg>
             </button>
             <div className="relative flex-1 min-w-0">
@@ -1358,7 +1453,12 @@ export default function WhatsAppCRM() {
             >
               {enviando ? '...' : 'Enviar'}
             </button>
+            </>
+            )}
           </div>
+          {errorGrabacion && (
+            <p className="px-4 pb-2 -mt-1 text-xs text-red-500 dark:text-red-400 bg-white dark:bg-zinc-900">{errorGrabacion}</p>
+          )}
           </>
           )}
         </div>

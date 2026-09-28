@@ -3,35 +3,19 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
+import { LIMITE_ADJUNTO_MB, NOMBRE_TIPO_ADJUNTO, tipoAdjunto, formatoTamano } from '../../../lib/adjuntosWhatsapp.js'
 import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
-// Límites de tamaño de WhatsApp por tipo de archivo (MB). Los documentos
-// admiten más en WhatsApp, pero el bucket de Supabase corta en 50.
-const LIMITE_ADJUNTO_MB = { image: 5, video: 16, audio: 16, document: 50 }
-const NOMBRE_TIPO_ADJUNTO = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'documentos' }
-const AUDIOS_WHATSAPP = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg']
-
 // Mover un lead a mano a otro embudo (el chat detectó mal, o el contacto cambió de idea):
 // entra a la primera etapa de ese embudo, igual que cuando el asistente lo clasifica solo.
 const NOMBRE_GRUPO = { paquetes: 'Paquetes', paseos: 'Paseos' }
 const ETAPA_INICIAL_GRUPO = { paquetes: 'nuevo', paseos: 'paseos_contacto_inicial' }
-
-function tipoAdjunto(file) {
-  if (file.type === 'image/jpeg' || file.type === 'image/png') return 'image'
-  if (file.type === 'video/mp4' || file.type === 'video/3gpp') return 'video'
-  if (AUDIOS_WHATSAPP.includes(file.type)) return 'audio'
-  return 'document'
-}
-
-function formatoTamano(bytes) {
-  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
-}
 
 const ETIQUETAS = {
   lead:        { label: 'Lead',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',    dot: 'bg-blue-500',   creaLead: true  },
@@ -433,16 +417,27 @@ export default function WhatsAppCRM() {
     setMenuRespuestas(v => !v)
   }
 
-  function insertarRespuesta(textoRespuesta) {
-    const resuelto = resolverCampos(textoRespuesta, camposRespuesta)
-    setTexto(prev => (prev ? `${prev} ${resuelto}` : resuelto))
+  // Si la respuesta trae un archivo, se baja y queda cargado como adjunto del
+  // mensaje (se puede quitar o cambiar igual que uno elegido a mano)
+  async function cargarAdjuntoDeRespuesta(respuesta) {
+    if (!respuesta.adjunto_path) return
+    const file = await bajarAdjuntoRespuesta(respuesta)
+    if (file) setAdjunto(file)
+    else alert('No se pudo cargar el archivo de esta respuesta. Probá de nuevo o adjuntalo a mano.')
+  }
+
+  function insertarRespuesta(respuesta) {
+    const resuelto = resolverCampos(respuesta.texto, camposRespuesta)
+    if (resuelto) setTexto(prev => (prev ? `${prev} ${resuelto}` : resuelto))
     setMenuRespuestas(false)
     inputRef.current?.focus()
+    cargarAdjuntoDeRespuesta(respuesta)
   }
 
   // Reemplaza el "/algo" escrito por el texto de la respuesta elegida
   function elegirAtajo(respuesta) {
     if (!atajo) return
+    cargarAdjuntoDeRespuesta(respuesta)
     const resuelto = resolverCampos(respuesta.texto, camposRespuesta)
     const nuevoTexto = texto.slice(0, atajo.desde) + resuelto + texto.slice(cursorMensaje)
     const nuevoCursor = atajo.desde + resuelto.length
@@ -1235,7 +1230,7 @@ export default function WhatsAppCRM() {
                           onKeyDown={e => {
                             if (e.key === 'Enter' && respuestasDelMenu[0]) {
                               e.preventDefault()
-                              insertarRespuesta(respuestasDelMenu[0].texto)
+                              insertarRespuesta(respuestasDelMenu[0])
                             }
                           }}
                           placeholder="Buscar respuesta..."
@@ -1249,11 +1244,14 @@ export default function WhatsAppCRM() {
                           respuestasDelMenu.map(r => (
                             <button
                               key={r.id}
-                              onClick={() => insertarRespuesta(r.texto)}
+                              onClick={() => insertarRespuesta(r)}
                               className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
                             >
-                              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
-                              <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {r.adjunto_path && <Ic n="clip" className="mr-1 inline-block h-3 w-3 align-[-2px] text-gray-400 dark:text-zinc-500" />}
+                                {r.titulo}
+                              </p>
+                              <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto || 'Solo archivo adjunto'}</p>
                             </button>
                           ))
                         )}
@@ -1292,8 +1290,11 @@ export default function WhatsAppCRM() {
                         onMouseEnter={() => { atajoPorTeclado.current = false; setAtajoIdx(i) }}
                         className={`w-full text-left px-3 py-2 ${i === atajoResaltado ? 'bg-gray-100 dark:bg-zinc-800' : ''}`}
                       >
-                        <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">{r.titulo}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto}</p>
+                        <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                          {r.adjunto_path && <Ic n="clip" className="mr-1 inline-block h-3 w-3 align-[-2px] text-gray-400 dark:text-zinc-500" />}
+                          {r.titulo}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto || 'Solo archivo adjunto'}</p>
                       </button>
                     ))}
                   </div>

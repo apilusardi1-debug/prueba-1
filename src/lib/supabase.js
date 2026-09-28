@@ -370,6 +370,31 @@ export async function subirAdjuntoCRM(conversacionId, file) {
   return { path: prep.path }
 }
 
+// Adjunto de una respuesta rápida: se sube al mismo bucket con la misma función,
+// bajo la carpeta "plantillas" en vez de la de una conversación. Al usar la
+// respuesta en un chat se baja como archivo y sigue el camino normal de un
+// adjunto (se sube a esa conversación al enviar), así el envío no cambia.
+export function subirAdjuntoRespuesta(file) {
+  return subirAdjuntoCRM('plantillas', file)
+}
+
+export async function urlAdjuntoRespuesta(path) {
+  if (!supabase || !path) return null
+  const { data, error } = await supabase.storage.from('whatsapp-media').createSignedUrl(path, 3600)
+  return error ? null : data?.signedUrl || null
+}
+
+export async function bajarAdjuntoRespuesta(respuesta) {
+  const url = await urlAdjuntoRespuesta(respuesta.adjunto_path)
+  if (!url) return null
+  try {
+    const blob = await (await fetch(url)).blob()
+    return new File([blob], respuesta.adjunto_nombre || 'archivo', { type: respuesta.adjunto_mime || blob.type })
+  } catch {
+    return null
+  }
+}
+
 // ── Descargar una imagen server-side y devolverla como data URI ────────────────
 // (evita el bloqueo de CORS de html2canvas con imagenes de otros dominios)
 export async function convertirImagenABase64(url) {

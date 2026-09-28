@@ -159,16 +159,24 @@ function fechaLegible(iso: string | undefined): string {
   return d && m && y ? `${d}/${m}/${y}` : iso
 }
 
+// Campos individuales "edad_menor_1".."edad_menor_5" (uno por menor, el Flow
+// solo muestra los que corresponden a "cantidad_menores") — se juntan en una
+// sola linea "Edades: 8, 12" para que datosViaje.ts los siga leyendo igual
+// que antes, sin tocar ese archivo.
+const MAX_MENORES_FLOW = 5
+
 function textoDesdeFlow(r: Record<string, string>): string {
+  const cantidadMenores = r.hay_menores === 'si' ? (Number(r.cantidad_menores) || 0) : 0
+  const edades = Array.from({ length: MAX_MENORES_FLOW }, (_, i) => r[`edad_menor_${i + 1}`]).filter(Boolean).slice(0, cantidadMenores)
   const lineas = [
     `Nombre: ${r.nombre ?? ''}`,
     `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
     `País: ${r.pais ?? ''}`,
     `Origen: ${r.origen ?? ''}`,
     `Adultos: ${r.adultos ?? ''}`,
-    `Menores: ${r.menores ?? ''}`,
+    `Menores: ${cantidadMenores}`,
   ]
-  if (r.edades && Number(r.menores) > 0) lineas.push(`Edades: ${r.edades}`)
+  if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
   lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
   lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
   lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}`)

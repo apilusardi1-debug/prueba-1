@@ -161,7 +161,9 @@ function fechaLegible(iso: string | undefined): string {
 
 function textoDesdeFlow(r: Record<string, string>): string {
   const lineas = [
+    `Nombre: ${r.nombre ?? ''}`,
     `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
+    `País: ${r.pais ?? ''}`,
     `Origen: ${r.origen ?? ''}`,
     `Adultos: ${r.adultos ?? ''}`,
     `Menores: ${r.menores ?? ''}`,

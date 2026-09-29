@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { detectarInteres } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
-import { enviarLeadAlEmbudoPorGrupo } from '../_shared/embudoEntrada.ts'
+import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
 
@@ -368,6 +368,7 @@ async function iniciarFiltro(supabase: Supabase, cfg: any, conv: any, phone: str
 
   const paso = pasoInicial(datos, nombreValido(conv.contacto_nombre) || !!datos.nombre)
   if (paso.accion !== 'preguntar') {
+    await moverAFiltrado(supabase, phone)
     await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
     return
   }
@@ -402,6 +403,7 @@ async function seguirFiltro(supabase: Supabase, cfg: any, conv: any, phone: stri
     await supabase.from('conversaciones').update({ bot_intentos: 2 }).eq('id', conv.id)
     return
   }
+  await moverAFiltrado(supabase, phone)
   await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
 }
 

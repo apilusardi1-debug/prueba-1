@@ -934,7 +934,7 @@ export default function Leads({ embudo = 'paquetes' }) {
                     onChange={e => setEditForm(p => ({ ...p, fecha_checkin: e.target.value }))}
                     className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
                   />
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Al guardarla, se crea solo un recordatorio para pedir el saldo pendiente 45 días antes.</p>
+                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Al guardarla, se crean dos recordatorios: pedir el saldo pendiente (45 días antes) y enviar el checklist (48 hs antes).</p>
                 </div>
               )}
 

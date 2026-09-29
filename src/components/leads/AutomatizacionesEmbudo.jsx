@@ -52,7 +52,7 @@ const SUGERIDAS = [
     tipo: 'recordatorio',
     dias: 0,
     nota: 'Completar la fecha de check-in del vuelo',
-    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el mismo día: «Completar la fecha de check-in del vuelo». Al cargar esa fecha en la ficha del lead, se crea otro recordatorio para pedir el saldo pendiente 45 días antes — eso no depende de esta automatización, ya viene armado.',
+    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el mismo día: «Completar la fecha de check-in del vuelo». Al cargar esa fecha en la ficha del lead, se crean otros dos recordatorios — pedir el saldo pendiente 45 días antes y enviar el checklist 48 hs antes — eso no depende de esta automatización, ya viene armado.',
   },
 ]
 

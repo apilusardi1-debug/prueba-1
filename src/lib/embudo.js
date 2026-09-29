@@ -27,10 +27,11 @@ export const ETAPAS_POR_DEFECTO = [
 // Etapas que el sistema usa por su nombre interno y no se pueden borrar: la
 // primera de cada embudo (donde entran los leads nuevos: WhatsApp, formulario,
 // "lead rápido"), la ganada que se marca al convertir un lead en cliente y la de
-// los que no compraron. "anfitriona" también es fija: un lead que llega ahí se
-// redirige solo a "anfitriona_asignada" (ver la migración del embudo de Anfitriona).
+// los que no compraron. "pdf_enviado" también es fija: un lead que llega ahí se
+// redirige solo a "anfitriona_asignada" (ver la migración
+// 20260929120000_anfitriona_desde_pdf_enviado.sql).
 export const CLAVES_FIJAS = [
-  'nuevo', 'reservado', 'perdido', 'anfitriona',
+  'nuevo', 'reservado', 'perdido', 'pdf_enviado',
   'paseos_contacto_inicial', 'paseos_confirmada', 'paseos_perdido',
   'anfitriona_asignada', 'anfitriona_confirmada', 'anfitriona_perdido',
 ]

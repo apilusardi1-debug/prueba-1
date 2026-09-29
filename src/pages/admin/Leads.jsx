@@ -3,10 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
-import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS } from '../../lib/embudo.js'
+import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 import AutomatizacionesEmbudo from '../../components/leads/AutomatizacionesEmbudo.jsx'
-
-function hoyISO() { return new Date().toISOString().split('T')[0] }
 
 // Tarjetas que se dibujan por etapa: el resto se ve con "Ver más". Con miles de
 // leads en una misma etapa dibujarlos todos trabaría la pantalla.
@@ -643,15 +641,23 @@ export default function Leads({ embudo = 'paquetes' }) {
                     // Ya compró el pasaje (entró a Anfitriona) pero todavía no se cargó
                     // cuándo hace el check-in: no se puede avanzar de etapa hasta cargarla.
                     const faltaCheckin = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' && !lead.fecha_checkin
+                    // Ya tiene el check-in cargado: si llegó la fecha de pedir el saldo
+                    // pendiente o de mandar el checklist, se resalta igual que faltaCheckin
+                    // (nunca se dan los dos juntos: estos recordatorios recién se crean
+                    // cuando ya se cargó la fecha).
+                    const tareaVencida = !faltaCheckin && embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido'
+                      ? recordatoriosDeLead(lead.id).find(r => NOTAS_TAREA_ANFITRIONA.includes(r.nota) && r.fecha <= hoyISO())
+                      : null
+                    const alertaTarjeta = faltaCheckin ? 'Falta cargar la fecha de check-in del vuelo' : tareaVencida?.nota
                     return (
                       <div
                         key={lead.id}
                         draggable
                         onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
                         onClick={() => abrirLead(lead)}
-                        title={faltaCheckin ? 'Falta cargar la fecha de check-in del vuelo' : undefined}
+                        title={alertaTarjeta || undefined}
                         className={`group cursor-grab rounded-lg border bg-white px-2.5 py-2 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing dark:bg-zinc-900 dark:shadow-none ${
-                          faltaCheckin
+                          alertaTarjeta
                             ? 'border-red-300 ring-1 ring-red-200 dark:border-red-900 dark:ring-red-900/50'
                             : 'border-gray-200 dark:border-white/[0.08]'
                         }`}
@@ -664,9 +670,9 @@ export default function Leads({ embudo = 'paquetes' }) {
                         {Number(lead.valor) > 0 && (
                           <p className="text-[11px] font-bold tabular-nums text-gray-700 dark:text-zinc-200">{formatoReales(lead.valor)}</p>
                         )}
-                        {faltaCheckin && (
+                        {alertaTarjeta && (
                           <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
-                            <Ic n="alert" className="h-3 w-3" /> Falta fecha de check-in
+                            <Ic n="alert" className="h-3 w-3" /> {alertaTarjeta}
                           </p>
                         )}
 

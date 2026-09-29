@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   clientesApi, reservasClienteApi, pagosApi,
-  actividadApi, notasClienteApi, excursionesApi, reservasApi, leadsApi,
+  actividadApi, notasClienteApi, excursionesApi, reservasApi, leadsApi, recordatoriosApi,
 } from '../../lib/supabase.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { normalizarWhatsapp } from '../../lib/telefono.js'
-import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, EMBUDOS } from '../../lib/embudo.js'
+import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 
 /* ─── helpers ─── */
 function iniciales(nombre = '') {
@@ -423,6 +423,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   const [nuevaNota, setNuevaNota] = useState('')
   const [cargando, setCargando] = useState(true)
   const [lead, setLead] = useState(null)
+  const [tareaEmergente, setTareaEmergente] = useState(null)
   const { etapas } = useEtapas()
   const [pagandoReserva, setPagandoReserva] = useState(null)
   const [editando, setEditando] = useState(false)
@@ -458,9 +459,29 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   // pasar por el CRM de WhatsApp).
   useEffect(() => {
     setLead(null)
+    setTareaEmergente(null)
     if (!cliente.whatsapp) return
     leadsApi.getByWhatsapp(cliente.whatsapp).then(({ data }) => setLead(data || null))
   }, [cliente.whatsapp])
+
+  // Recordatorio de pedir el saldo pendiente (45 días antes del check-in) o de
+  // mandar el checklist (48 hs antes): si ya llegó su fecha, se muestra como
+  // tarea emergente arriba de todo, no solo como un recordatorio más de la lista.
+  useEffect(() => {
+    if (!lead) return
+    recordatoriosApi.getByLead(lead.id).then(({ data }) => {
+      const pendiente = (data || [])
+        .filter(r => !r.completado && NOTAS_TAREA_ANFITRIONA.includes(r.nota) && r.fecha <= hoyISO())
+        .sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
+      setTareaEmergente(pendiente || null)
+    })
+  }, [lead])
+
+  async function completarTareaEmergente() {
+    if (!tareaEmergente) return
+    await recordatoriosApi.completar(tareaEmergente.id, true)
+    setTareaEmergente(null)
+  }
 
   const etapaLead = lead ? etapaDe(etapas, lead.estado) : null
 
@@ -582,6 +603,25 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
               <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg transition-colors">×</button>
             </div>
           </div>
+
+          {/* Tarea emergente: saldo pendiente o checklist de Anfitriona ya vencidos */}
+          {tareaEmergente && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/60 dark:bg-red-950/40">
+              <Ic n="alert" className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-red-700 dark:text-red-400">{tareaEmergente.nota}</p>
+                <p className="text-xs text-red-500 dark:text-red-400/80">
+                  {tareaEmergente.fecha < hoyISO() ? 'Vencido' : 'Vence hoy'} · {fmtFecha(tareaEmergente.fecha)}
+                </p>
+              </div>
+              <button
+                onClick={completarTareaEmergente}
+                className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+              >
+                Marcar hecho
+              </button>
+            </div>
+          )}
 
           {/* Editar datos */}
           {editando && (

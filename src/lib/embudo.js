@@ -36,6 +36,16 @@ export const CLAVES_FIJAS = [
   'anfitriona_asignada', 'anfitriona_confirmada', 'anfitriona_perdido',
 ]
 
+// Notas exactas de los recordatorios automáticos de Anfitriona (los crea el
+// trigger de la base al cargar la fecha de check-in, ver migraciones
+// 20260929130000 y 20260929150000) — para resaltarlos en el tablero y en el
+// perfil del cliente en cuanto llega su fecha.
+export const NOTAS_TAREA_ANFITRIONA = ['Pedir el pago del saldo pendiente', 'Enviar el checklist antes del check-in']
+
+export function hoyISO() {
+  return new Date().toISOString().split('T')[0]
+}
+
 export const TIPOS_ETAPA = [
   { id: 'abierta', label: 'En curso' },
   { id: 'ganada', label: 'Ganada (ya pagó)' },

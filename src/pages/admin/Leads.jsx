@@ -261,9 +261,29 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (seleccionado?.id === id) setSeleccionado(null)
   }
 
+  // Un lead de Anfitriona sin la fecha de check-in cargada no puede avanzar de
+  // etapa (salvo a "Perdido": eso siempre tiene que poder hacerse). Se
+  // verifica acá antes de guardar nada — el trigger de la base hace de
+  // respaldo por si algo pasa por otro lado.
+  function bloqueadoPorCheckin(lead, nuevoEstado) {
+    const etapaActual = etapaDe(etapas, lead.estado)
+    return embudoDeEtapa(etapaActual) === 'anfitriona' && nuevoEstado !== 'anfitriona_perdido' && !lead.fecha_checkin
+  }
+
   async function cambiarEstado(id, nuevoEstado) {
+    const lead = leads.find(l => l.id === id)
+    if (lead && bloqueadoPorCheckin(lead, nuevoEstado)) {
+      alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
+      abrirLead(lead)
+      return
+    }
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
-    await leadsApi.updateEstado(id, nuevoEstado, null)
+    const { error } = await leadsApi.updateEstado(id, nuevoEstado, null)
+    if (error) {
+      alert('No se pudo mover el lead: ' + (error.message || 'error desconocido'))
+      if (lead) setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: lead.estado } : l))
+      return
+    }
     refrescarLead(id)
   }
 
@@ -360,6 +380,13 @@ export default function Leads({ embudo = 'paquetes' }) {
 
   async function guardarLead() {
     if (!editForm.nombre.trim()) return
+    // Mismo bloqueo que al arrastrar la tarjeta — acá se compara contra la
+    // fecha del formulario, no la guardada: si la acaban de escribir junto
+    // con el cambio de etapa, en el mismo guardado, no hace falta bloquear.
+    if (editForm.estado !== seleccionado.estado && bloqueadoPorCheckin({ ...seleccionado, fecha_checkin: editForm.fecha_checkin }, editForm.estado)) {
+      alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
+      return
+    }
     setGuardandoLead(true)
     // valor, etiquetas, etc. solo se mandan si la base ya tiene esas columnas
     const { valor, etiquetas, responsable_id, fecha_checkin, ...basicos } = editForm
@@ -368,12 +395,17 @@ export default function Leads({ embudo = 'paquetes' }) {
       : {}
     if ('responsable_id' in seleccionado) extras.responsable_id = responsable_id || null
     if ('fecha_checkin' in seleccionado) extras.fecha_checkin = fecha_checkin || null
-    const { data } = await leadsApi.update(seleccionado.id, {
+    const { data, error } = await leadsApi.update(seleccionado.id, {
       ...basicos,
       ...extras,
       interes_tipo: editForm.interes_tipo || null,
       interes_destino: editForm.interes_destino.trim() || null,
     })
+    if (error) {
+      alert('No se pudo guardar: ' + (error.message || 'error desconocido'))
+      setGuardandoLead(false)
+      return
+    }
     if (data) {
       setLeads(prev => prev.map(l => l.id === data.id ? data : l))
       setSeleccionado(data)
@@ -608,13 +640,21 @@ export default function Leads({ embudo = 'paquetes' }) {
                     const seguimiento = seguimientoDe(lead, etapa)
                     const interes = etiquetaInteres(lead)
                     const chip = 'max-w-full truncate rounded border border-gray-200 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400'
+                    // Ya compró el pasaje (entró a Anfitriona) pero todavía no se cargó
+                    // cuándo hace el check-in: no se puede avanzar de etapa hasta cargarla.
+                    const faltaCheckin = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' && !lead.fecha_checkin
                     return (
                       <div
                         key={lead.id}
                         draggable
                         onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
                         onClick={() => abrirLead(lead)}
-                        className="group cursor-grab rounded-lg border border-gray-200 bg-white px-2.5 py-2 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none"
+                        title={faltaCheckin ? 'Falta cargar la fecha de check-in del vuelo' : undefined}
+                        className={`group cursor-grab rounded-lg border bg-white px-2.5 py-2 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing dark:bg-zinc-900 dark:shadow-none ${
+                          faltaCheckin
+                            ? 'border-red-300 ring-1 ring-red-200 dark:border-red-900 dark:ring-red-900/50'
+                            : 'border-gray-200 dark:border-white/[0.08]'
+                        }`}
                       >
                         <div className="flex items-baseline justify-between gap-2 text-[11px] text-gray-500 dark:text-zinc-400">
                           <span className="truncate">{telefonoLegible(lead.whatsapp) || lead.origen || 'Sin teléfono'}</span>
@@ -623,6 +663,11 @@ export default function Leads({ embudo = 'paquetes' }) {
                         <p className="mt-0.5 truncate text-[13px] font-extrabold uppercase text-sky-700 dark:text-sky-400" title={lead.nombre}>{lead.nombre}</p>
                         {Number(lead.valor) > 0 && (
                           <p className="text-[11px] font-bold tabular-nums text-gray-700 dark:text-zinc-200">{formatoReales(lead.valor)}</p>
+                        )}
+                        {faltaCheckin && (
+                          <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
+                            <Ic n="alert" className="h-3 w-3" /> Falta fecha de check-in
+                          </p>
                         )}
 
                         <div className="mt-1.5 flex min-h-[18px] items-center gap-1.5">

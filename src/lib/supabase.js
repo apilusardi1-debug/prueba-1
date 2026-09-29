@@ -107,7 +107,12 @@ export const leadsApi = {
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   // Sin notas (null/undefined) solo cambia el estado: antes se guardaba notas = null
   // y arrastrar una tarjeta entre columnas del tablero borraba las notas del lead.
-  updateEstado: (id, estado, notas) => supabase?.from('leads').update(notas == null ? { estado } : { estado, notas }).eq('id', id).select().single(),
+  // razonPerdida: el motivo elegido en el combo al mover a mano a una etapa perdida.
+  updateEstado: (id, estado, notas, razonPerdida) => supabase?.from('leads').update({
+    estado,
+    ...(notas != null ? { notas } : {}),
+    ...(razonPerdida ? { razon_perdida: razonPerdida } : {}),
+  }).eq('id', id).select().single(),
   update: (id, data) => supabase?.from('leads').update(data).eq('id', id).select().single(),
   delete: (id) => supabase?.from('leads').delete().eq('id', id),
 }

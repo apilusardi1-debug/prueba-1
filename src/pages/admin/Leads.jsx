@@ -12,6 +12,13 @@ const POR_ETAPA = 40
 
 const CAMPO_RAPIDO = 'w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500'
 
+// Motivos de pérdida que se piden al mover un lead a mano a una etapa
+// "perdida" (como el combo de Kommo). Lista corta a propósito, por ahora.
+const RAZONES_PERDIDA = [
+  { id: 'no_responde', label: 'No responde' },
+  { id: 'no_aplica', label: 'No aplica' },
+]
+
 // "Hoy 22:23" para lo de hoy; el resto, dd/mm/aaaa
 function fechaTarjeta(iso) {
   if (!iso) return ''
@@ -157,6 +164,8 @@ export default function Leads({ embudo = 'paquetes' }) {
   const [nuevoRecFecha, setNuevoRecFecha] = useState(hoyISO())
   const [nuevoRecNota, setNuevoRecNota] = useState('')
   const [guardandoRec, setGuardandoRec] = useState(false)
+  const [razonPerdidaPendiente, setRazonPerdidaPendiente] = useState(null)
+  const [razonElegida, setRazonElegida] = useState(RAZONES_PERDIDA[0].id)
   const { etapas } = useEtapas()
   const etapasEmbudo = etapasDelEmbudo(etapas, embudo)
   const entrada = etapasEmbudo[0]?.clave // donde entran los leads nuevos de este embudo
@@ -268,7 +277,7 @@ export default function Leads({ embudo = 'paquetes' }) {
     return embudoDeEtapa(etapaActual) === 'anfitriona' && nuevoEstado !== 'anfitriona_perdido' && !lead.fecha_checkin
   }
 
-  async function cambiarEstado(id, nuevoEstado) {
+  async function cambiarEstado(id, nuevoEstado, razonPerdida) {
     const lead = leads.find(l => l.id === id)
     if (lead && bloqueadoPorCheckin(lead, nuevoEstado)) {
       alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
@@ -276,7 +285,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       return
     }
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
-    const { error } = await leadsApi.updateEstado(id, nuevoEstado, null)
+    const { error } = await leadsApi.updateEstado(id, nuevoEstado, null, razonPerdida)
     if (error) {
       alert('No se pudo mover el lead: ' + (error.message || 'error desconocido'))
       if (lead) setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: lead.estado } : l))
@@ -285,12 +294,25 @@ export default function Leads({ embudo = 'paquetes' }) {
     refrescarLead(id)
   }
 
+  // Si el destino es una etapa "perdida", antes de mover nada abre el combo
+  // pidiendo el motivo (como en Kommo) y recién al confirmar corre `onConfirmar`
+  // con el motivo elegido. Devuelve true cuando abrió el combo, para que quien
+  // llama no siga con el cambio normal.
+  function pedirRazonSiPerdida(nuevoEstado, onConfirmar) {
+    if (etapaDe(etapas, nuevoEstado)?.tipo !== 'perdida') return false
+    setRazonElegida(RAZONES_PERDIDA[0].id)
+    setRazonPerdidaPendiente({ onConfirmar })
+    return true
+  }
+
   function soltarEnColumna(e, col) {
     e.preventDefault()
     setColArrastrando(null)
     const id = e.dataTransfer.getData('text/plain')
     const lead = leads.find(l => l.id === id)
-    if (lead && lead.estado !== col) cambiarEstado(id, col)
+    if (!lead || lead.estado === col) return
+    if (pedirRazonSiPerdida(col, razon => cambiarEstado(id, col, razon))) return
+    cambiarEstado(id, col)
   }
 
   function cerrarRapido() {
@@ -376,7 +398,7 @@ export default function Leads({ embudo = 'paquetes' }) {
     })
   }
 
-  async function guardarLead() {
+  async function guardarLead(razonForzada) {
     if (!editForm.nombre.trim()) return
     // Mismo bloqueo que al arrastrar la tarjeta — acá se compara contra la
     // fecha del formulario, no la guardada: si la acaban de escribir junto
@@ -385,6 +407,9 @@ export default function Leads({ embudo = 'paquetes' }) {
       alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
       return
     }
+    // Si el destino es una etapa perdida, pide el motivo antes de guardar y se
+    // vuelve a llamar a sí misma con el motivo elegido.
+    if (razonForzada === undefined && editForm.estado !== seleccionado.estado && pedirRazonSiPerdida(editForm.estado, razon => guardarLead(razon))) return
     setGuardandoLead(true)
     // valor, etiquetas, etc. solo se mandan si la base ya tiene esas columnas
     const { valor, etiquetas, responsable_id, fecha_checkin, ...basicos } = editForm
@@ -393,6 +418,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       : {}
     if ('responsable_id' in seleccionado) extras.responsable_id = responsable_id || null
     if ('fecha_checkin' in seleccionado) extras.fecha_checkin = fecha_checkin || null
+    if (razonForzada) extras.razon_perdida = razonForzada
     const { data, error } = await leadsApi.update(seleccionado.id, {
       ...basicos,
       ...extras,
@@ -778,7 +804,11 @@ export default function Leads({ embudo = 'paquetes' }) {
                     <td className="px-5 py-3 text-gray-500 dark:text-zinc-400">{lead.origen}</td>
                     <td className="px-5 py-3 text-gray-400 dark:text-zinc-500 text-xs">{new Date(lead.created_at).toLocaleDateString('es-AR')}</td>
                     <td className="px-5 py-3">
-                      <select value={claveVisible(etapas, lead.estado)} onChange={e => cambiarEstado(lead.id, e.target.value)}
+                      <select value={claveVisible(etapas, lead.estado)} onChange={e => {
+                          const nuevo = e.target.value
+                          if (pedirRazonSiPerdida(nuevo, razon => cambiarEstado(lead.id, nuevo, razon))) return
+                          cambiarEstado(lead.id, nuevo)
+                        }}
                         style={etapa ? estiloFondoEtapa(etapa.color) : undefined}
                         className="max-w-[220px] cursor-pointer rounded-full border-0 px-2.5 py-1 text-xs font-bold text-gray-800 outline-none dark:text-zinc-100">
                         <OpcionesEtapas etapas={etapas} claseOpcion="bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100" />
@@ -848,6 +878,45 @@ export default function Leads({ embudo = 'paquetes' }) {
               className="mt-5 w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
               {enviando ? 'Guardando...' : 'Guardar lead'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {razonPerdidaPendiente && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setRazonPerdidaPendiente(null)}>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100 mb-4">Razón de pérdida del lead</h2>
+            <div className="space-y-2">
+              {RAZONES_PERDIDA.map(r => (
+                <label
+                  key={r.id}
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 px-3.5 py-2.5 text-sm text-gray-800 dark:text-zinc-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800"
+                >
+                  <input
+                    type="radio"
+                    name="razon-perdida"
+                    checked={razonElegida === r.id}
+                    onChange={() => setRazonElegida(r.id)}
+                    className="accent-brand-500"
+                  />
+                  {r.label}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setRazonPerdidaPendiente(null)}
+                className="flex-1 border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { const onConfirmar = razonPerdidaPendiente.onConfirmar; setRazonPerdidaPendiente(null); onConfirmar(razonElegida) }}
+                className="flex-1 bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-700 dark:hover:bg-zinc-300 transition-colors"
+              >
+                Guardar
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -953,6 +1022,11 @@ export default function Leads({ embudo = 'paquetes' }) {
                 >
                   <OpcionesEtapas etapas={etapas} />
                 </select>
+                {etapaDe(etapas, seleccionado.estado)?.tipo === 'perdida' && seleccionado.razon_perdida && (
+                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">
+                    Motivo: {RAZONES_PERDIDA.find(r => r.id === seleccionado.razon_perdida)?.label || seleccionado.razon_perdida}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -968,7 +1042,7 @@ export default function Leads({ embudo = 'paquetes' }) {
 
               {/* Guardar cambios */}
               <button
-                onClick={guardarLead}
+                onClick={() => guardarLead()}
                 disabled={guardandoLead}
                 className="w-full bg-gray-900 dark:bg-zinc-100 hover:bg-gray-700 dark:hover:bg-zinc-300 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
               >

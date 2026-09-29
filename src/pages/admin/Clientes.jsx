@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   clientesApi, reservasClienteApi, pagosApi,
-  actividadApi, notasClienteApi, excursionesApi, reservasApi,
+  actividadApi, notasClienteApi, excursionesApi, reservasApi, leadsApi,
 } from '../../lib/supabase.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { normalizarWhatsapp } from '../../lib/telefono.js'
+import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, EMBUDOS } from '../../lib/embudo.js'
 
 /* ─── helpers ─── */
 function iniciales(nombre = '') {
@@ -421,6 +422,8 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   const [notas, setNotas] = useState([])
   const [nuevaNota, setNuevaNota] = useState('')
   const [cargando, setCargando] = useState(true)
+  const [lead, setLead] = useState(null)
+  const { etapas } = useEtapas()
   const [pagandoReserva, setPagandoReserva] = useState(null)
   const [editando, setEditando] = useState(false)
   const [modalReserva, setModalReserva] = useState(false)
@@ -449,6 +452,17 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
       setCargando(false)
     })
   }, [cliente.id])
+
+  // En qué embudo (Paquetes/Paseos/Anfitriona) y en qué paso está este cliente
+  // como lead — no todo cliente tiene uno (puede haberse cargado a mano, sin
+  // pasar por el CRM de WhatsApp).
+  useEffect(() => {
+    setLead(null)
+    if (!cliente.whatsapp) return
+    leadsApi.getByWhatsapp(cliente.whatsapp).then(({ data }) => setLead(data || null))
+  }, [cliente.whatsapp])
+
+  const etapaLead = lead ? etapaDe(etapas, lead.estado) : null
 
   async function crearReserva(form) {
     const personas = (parseInt(form.adultos) || 0) + (parseInt(form.menores) || 0)
@@ -545,6 +559,17 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                   )}
                   {cliente.email && <span className="text-xs text-gray-400 dark:text-zinc-600">{cliente.email}</span>}
                 </div>
+                {etapaLead && (
+                  <button
+                    onClick={() => { onCerrar(); navigate(EMBUDOS.find(e => e.clave === embudoDeEtapa(etapaLead))?.ruta || '/admin/leads') }}
+                    title="Ver en el tablero de leads"
+                    className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-gray-800 dark:text-zinc-100 hover:opacity-80 transition-opacity"
+                    style={estiloFondoEtapa(etapaLead.color)}
+                  >
+                    <i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapaLead.color }} />
+                    <span className="truncate">{nombreEmbudo(embudoDeEtapa(etapaLead))} · {etapaLead.nombre}</span>
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">

@@ -103,7 +103,7 @@ export const reservasApi = {
 export const leadsApi = {
   getAll: () => supabase?.from('leads').select('*').order('created_at', { ascending: false }),
   getById: (id) => supabase?.from('leads').select('*').eq('id', id).single(),
-  getByWhatsapp: (whatsapp) => supabase?.from('leads').select('id').eq('whatsapp', whatsapp).maybeSingle(),
+  getByWhatsapp: (whatsapp) => supabase?.from('leads').select('*').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
   // Sin notas (null/undefined) solo cambia el estado: antes se guardaba notas = null
   // y arrastrar una tarjeta entre columnas del tablero borraba las notas del lead.

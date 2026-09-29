@@ -44,10 +44,12 @@ export async function enviarLeadAlEmbudoPorGrupo(supabase: any, whatsapp: string
 }
 
 // Mueve el lead de ese whatsapp a `claveDestino`, una etapa del embudo de
-// Paquetes — pero solo hacia adelante. Si ya está en otra etapa más avanzada
-// de Paquetes, ganada, perdida, o si está en otro embudo (Paseos, Anfitriona),
-// no se toca. Sirve para cualquier paso automático de Paquetes (Filtrado,
-// Propuesta enviada, etc): cada uno la llama con su propia etapa destino.
+// Paquetes — pero solo hacia adelante. Puede avanzar desde una etapa ganada a
+// otra ganada más avanzada (ej: de "Ya pagó" a "PDF de servicios enviado" —
+// varias etapas ganadas seguidas es el diseño normal del embudo). Lo único que
+// no se toca es un lead perdido, uno que ya esté en esa etapa o más adelante,
+// o uno que esté en otro embudo (Paseos, Anfitriona). Sirve para cualquier
+// paso automático de Paquetes: cada uno la llama con su propia etapa destino.
 // deno-lint-ignore no-explicit-any
 export async function moverAEtapaPaquetes(supabase: any, whatsapp: string, claveDestino: string): Promise<void> {
   try {
@@ -63,7 +65,7 @@ export async function moverAEtapaPaquetes(supabase: any, whatsapp: string, clave
     // Paseos (o Anfitriona) su número de orden no tiene nada que ver con el de
     // Paquetes, así que ni se mira: se descarta directo por el embudo.
     const { data: etapaActual } = await supabase.from('embudo_etapas').select('orden, tipo, embudo').eq('clave', lead.estado).maybeSingle()
-    if (etapaActual && (etapaActual.embudo !== 'paquetes' || etapaActual.tipo !== 'abierta' || etapaActual.orden >= etapaDestino.orden)) return
+    if (etapaActual && (etapaActual.embudo !== 'paquetes' || etapaActual.tipo === 'perdida' || etapaActual.orden >= etapaDestino.orden)) return
 
     let consulta = supabase.from('leads').update({ estado: claveDestino }).eq('id', lead.id)
     consulta = lead.estado ? consulta.eq('estado', lead.estado) : consulta.is('estado', null)

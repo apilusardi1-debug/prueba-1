@@ -23,10 +23,11 @@ const ETIQUETAS = {
   interesado:  { label: 'Interesado',  color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',  dot: 'bg-amber-400',  creaLead: false },
   cliente:     { label: 'Cliente',     color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400',  dot: 'bg-green-500',  creaLead: false },
   no_interesa: { label: 'No interesa', color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',      dot: 'bg-red-400',    creaLead: false },
-  // Mueve al lead a "Activación de AstroPay y formas de pago" en el embudo de
-  // Paquetes (trigger conversaciones_etiqueta_pago, ver migración
-  // 20260929100000_etiqueta_pago_mueve_lead.sql) — creaLead:true para que haya
-  // un lead al que mover aunque todavía no tuviera ninguna etiqueta.
+  // Mueve al lead a "Ya pagó, reserva confirmada" en el embudo de Paquetes
+  // (trigger conversaciones_etiqueta_pago, ver migraciones
+  // 20260929100000_etiqueta_pago_mueve_lead.sql y
+  // 20260929110000_eliminar_etapa_activacion_pago.sql) — creaLead:true para
+  // que haya un lead al que mover aunque todavía no tuviera ninguna etiqueta.
   pago:        { label: 'Pago',        color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400', dot: 'bg-purple-500', creaLead: true  },
 }
 

@@ -31,6 +31,13 @@ const TEMPLATE_LANGUAGES: Record<string, string> = {
   aviso_cliente: 'en',
 }
 
+// Sin tildes ni mayúsculas, para comparar el texto de un mensaje sin que un
+// acento de más (o de menos) rompa la coincidencia.
+function normalizarTexto(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+const FRASE_ESTADIA_CONFIRMADA = normalizarTexto('Tu reserva esta confirmada te esperamos en este paraiso')
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -264,6 +271,12 @@ serve(async (req) => {
     // el epígrafe de una foto/archivo.
     if (esCrm && /anfitriona/i.test(mensajeLegible)) {
       await moverAEtapaAnfitriona(supabase, phoneClean, 'anfitriona_contacto')
+    }
+
+    // Cuando se le manda al lead el mensaje de reserva confirmada, pasa solo a
+    // "Estadía confirmada".
+    if (esCrm && normalizarTexto(mensajeLegible).includes(FRASE_ESTADIA_CONFIRMADA)) {
+      await moverAEtapaAnfitriona(supabase, phoneClean, 'anfitriona_confirmada')
     }
 
     return new Response(JSON.stringify(data), {

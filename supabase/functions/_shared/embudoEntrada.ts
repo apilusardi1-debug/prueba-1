@@ -37,7 +37,8 @@ export async function enviarLeadAlEmbudoPorGrupo(supabase: any, whatsapp: string
     // Solo si sigue donde lo leímos: si alguien lo movió a mano justo ahora, gana esa persona
     let consulta = supabase.from('leads').update({ estado: destino }).eq('id', lead.id)
     consulta = lead.estado ? consulta.eq('estado', lead.estado) : consulta.is('estado', null)
-    await consulta
+    const { error: errorUpdate } = await consulta
+    if (errorUpdate) console.error('enviarLeadAlEmbudoPorGrupo update error:', errorUpdate)
   } catch (err) {
     console.error('enviarLeadAlEmbudoPorGrupo error:', err)
   }
@@ -69,7 +70,8 @@ export async function moverAEtapaPaquetes(supabase: any, whatsapp: string, clave
 
     let consulta = supabase.from('leads').update({ estado: claveDestino }).eq('id', lead.id)
     consulta = lead.estado ? consulta.eq('estado', lead.estado) : consulta.is('estado', null)
-    await consulta
+    const { error: errorUpdate } = await consulta
+    if (errorUpdate) console.error('moverAEtapaPaquetes update error:', { whatsapp, claveDestino, errorUpdate })
   } catch (err) {
     console.error('moverAEtapaPaquetes error:', err)
   }

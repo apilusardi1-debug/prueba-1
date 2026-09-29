@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderTemplate } from '../_shared/plantillasWhatsapp.ts'
+import { moverAEtapaPaquetes } from '../_shared/embudoEntrada.ts'
 
 // Número operativo (avisos automáticos a chofer/guía/cliente, solo plantillas)
 const META_TOKEN = Deno.env.get('META_WHATSAPP_TOKEN')
@@ -241,6 +242,14 @@ serve(async (req) => {
         .update({ bot_estado: 'humano' })
         .eq('id', convId)
         .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
+    }
+
+    // Un documento cuyo nombre empieza con "Propuesta" (así se llaman los PDF
+    // del Generador de propuesta, y así hay que nombrar cualquier otro que se
+    // suba a mano) mueve al lead a "Propuesta enviada" en el embudo de
+    // Paquetes — un PDF con otro nombre (catálogo, voucher, etc) no lo mueve.
+    if (esCrm && esMedia && media.tipo === 'document' && /^propuesta/i.test(String(media.nombre || '').trim())) {
+      await moverAEtapaPaquetes(supabase, phoneClean, 'propuesta_enviada')
     }
 
     return new Response(JSON.stringify(data), {

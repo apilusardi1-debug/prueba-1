@@ -43,33 +43,41 @@ export async function enviarLeadAlEmbudoPorGrupo(supabase: any, whatsapp: string
   }
 }
 
-// Cuando el filtro de Paquetes termina (por el formulario nativo o por texto,
-// da igual) y el lead pasa a un asesor, ya está filtrado: si sigue en "nuevo"
-// pasa a "contactado" (Filtrado). Solo avanza — si ya está más adelante en
-// Paquetes (otra etapa abierta, ganada o perdida) o si alguien lo movió a otro
-// embudo, no se toca. No se llama cuando el filtro está apagado: ahí no hay
-// nada que filtrar, sería falso llamarlo "Filtrado".
+// Mueve el lead de ese whatsapp a `claveDestino`, una etapa del embudo de
+// Paquetes — pero solo hacia adelante. Si ya está en otra etapa más avanzada
+// de Paquetes, ganada, perdida, o si está en otro embudo (Paseos, Anfitriona),
+// no se toca. Sirve para cualquier paso automático de Paquetes (Filtrado,
+// Propuesta enviada, etc): cada uno la llama con su propia etapa destino.
 // deno-lint-ignore no-explicit-any
-export async function moverAFiltrado(supabase: any, whatsapp: string): Promise<void> {
+export async function moverAEtapaPaquetes(supabase: any, whatsapp: string, claveDestino: string): Promise<void> {
   try {
     const { data: lead, error } = await supabase.from('leads').select('id, estado').eq('whatsapp', whatsapp).maybeSingle()
     if (error || !lead) return
 
-    const { data: etapaDestino } = await supabase.from('embudo_etapas').select('orden').eq('clave', 'contactado').maybeSingle()
+    const { data: etapaDestino } = await supabase.from('embudo_etapas').select('orden').eq('clave', claveDestino).maybeSingle()
     if (!etapaDestino) return
 
     // Sin etapa reconocida (lead nuevo sin estado todavía, o una clave que ya no
-    // existe) se trata como si estuviera antes de "contactado": igual avanza.
+    // existe) se trata como si estuviera antes del destino: igual avanza.
     // "orden" solo se compara dentro del mismo embudo — si el lead está en
     // Paseos (o Anfitriona) su número de orden no tiene nada que ver con el de
     // Paquetes, así que ni se mira: se descarta directo por el embudo.
     const { data: etapaActual } = await supabase.from('embudo_etapas').select('orden, tipo, embudo').eq('clave', lead.estado).maybeSingle()
     if (etapaActual && (etapaActual.embudo !== 'paquetes' || etapaActual.tipo !== 'abierta' || etapaActual.orden >= etapaDestino.orden)) return
 
-    let consulta = supabase.from('leads').update({ estado: 'contactado' }).eq('id', lead.id)
+    let consulta = supabase.from('leads').update({ estado: claveDestino }).eq('id', lead.id)
     consulta = lead.estado ? consulta.eq('estado', lead.estado) : consulta.is('estado', null)
     await consulta
   } catch (err) {
-    console.error('moverAFiltrado error:', err)
+    console.error('moverAEtapaPaquetes error:', err)
   }
+}
+
+// Cuando el filtro de Paquetes termina (por el formulario nativo o por texto,
+// da igual) y el lead pasa a un asesor, ya está filtrado. No se llama cuando
+// el filtro está apagado: ahí no hay nada que filtrar, sería falso llamarlo
+// "Filtrado".
+// deno-lint-ignore no-explicit-any
+export function moverAFiltrado(supabase: any, whatsapp: string): Promise<void> {
+  return moverAEtapaPaquetes(supabase, whatsapp, 'contactado')
 }

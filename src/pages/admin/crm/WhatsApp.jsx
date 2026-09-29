@@ -993,7 +993,7 @@ export default function WhatsAppCRM() {
       {seleccionada ? (
         <div className="chat-fondo flex-1 flex flex-col w-full">
           {/* Header del chat */}
-          <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex flex-wrap items-center gap-3 shadow-sm dark:shadow-black/20">
+          <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-3 py-2 sm:px-5 sm:py-3 flex flex-wrap items-center gap-2 sm:gap-3 shadow-sm dark:shadow-black/20">
             <button
               onClick={() => setSeleccionada(null)}
               aria-label="Volver a la lista"
@@ -1001,10 +1001,11 @@ export default function WhatsAppCRM() {
             >
               <Ic n="arrow" className="h-4 w-4 rotate-180" />
             </button>
-            <Avatar nombre={seleccionada.contacto_nombre} />
+            <span className="sm:hidden"><Avatar nombre={seleccionada.contacto_nombre} size="sm" /></span>
+            <span className="hidden sm:inline-flex"><Avatar nombre={seleccionada.contacto_nombre} /></span>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-zinc-100">{seleccionada.contacto_nombre}</p>
-              <p className="text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
+              <p className="font-semibold text-gray-900 dark:text-zinc-100 leading-tight">{seleccionada.contacto_nombre}</p>
+              <p className="hidden sm:block text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
             {/* En el celular estos botones (Cliente/Grupo/Asignar/Etiquetar/etc) ocupaban
                 un renglón cada uno y el header se comía media pantalla — quedan
@@ -1274,7 +1275,7 @@ export default function WhatsAppCRM() {
               </button>
             </div>
           )}
-          <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-end gap-1.5 sm:gap-3">
+          <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-2.5 py-2 sm:px-4 sm:py-3 flex items-end gap-1 sm:gap-3">
             {grabando ? (
               <>
                 <button
@@ -1373,7 +1374,7 @@ export default function WhatsAppCRM() {
               onClick={() => fileRef.current?.click()}
               disabled={enviando}
               title="Adjuntar foto, documento, audio o video"
-              className="w-9 h-9 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+              className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -1383,7 +1384,7 @@ export default function WhatsAppCRM() {
               onClick={iniciarGrabacion}
               disabled={enviando}
               title="Grabar un audio"
-              className="w-9 h-9 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+              className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -1459,7 +1460,7 @@ export default function WhatsAppCRM() {
                   }
                 }}
                 placeholder="Mensaje... (/ atajos rápidos)"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-full sm:rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
                 style={{ minHeight: '42px' }}
               />
             </div>

@@ -44,6 +44,16 @@ const SUGERIDAS = [
     tipo: 'asignar',
     explicacion: 'Cuando un lead entra a «{etapa}», queda asignado a la persona que elijas y su inicial aparece en la tarjeta.',
   },
+  {
+    id: 'checkin_anfitriona',
+    embudo: 'anfitriona',
+    etapa: 'anfitriona_asignada',
+    titulo: 'Pedir la fecha de check-in del vuelo',
+    tipo: 'recordatorio',
+    dias: 0,
+    nota: 'Completar la fecha de check-in del vuelo',
+    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el mismo día: «Completar la fecha de check-in del vuelo». Al cargar esa fecha en la ficha del lead, se crea otro recordatorio para pedir el saldo pendiente 45 días antes — eso no depende de esta automatización, ya viene armado.',
+  },
 ]
 
 // Ideas para más adelante: se muestran como tales, no están disponibles todavía

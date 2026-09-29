@@ -354,18 +354,20 @@ export default function Leads({ embudo = 'paquetes' }) {
       valor: lead.valor ?? 0,
       etiquetas: lead.etiquetas || [],
       responsable_id: lead.responsable_id || '',
+      fecha_checkin: lead.fecha_checkin || '',
     })
   }
 
   async function guardarLead() {
     if (!editForm.nombre.trim()) return
     setGuardandoLead(true)
-    // valor y etiquetas solo se mandan si la base ya tiene esas columnas
-    const { valor, etiquetas, responsable_id, ...basicos } = editForm
+    // valor, etiquetas, etc. solo se mandan si la base ya tiene esas columnas
+    const { valor, etiquetas, responsable_id, fecha_checkin, ...basicos } = editForm
     const extras = 'valor' in seleccionado
       ? { valor: Math.max(0, Number(String(valor).replace(',', '.')) || 0), etiquetas }
       : {}
     if ('responsable_id' in seleccionado) extras.responsable_id = responsable_id || null
+    if ('fecha_checkin' in seleccionado) extras.fecha_checkin = fecha_checkin || null
     const { data } = await leadsApi.update(seleccionado.id, {
       ...basicos,
       ...extras,
@@ -375,7 +377,9 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (data) {
       setLeads(prev => prev.map(l => l.id === data.id ? data : l))
       setSeleccionado(data)
-      if (data.estado !== seleccionado.estado) refrescarLead(data.id)
+      // El cambio de etapa o de fecha de check-in puede haber creado o movido
+      // un recordatorio automático — se releen para que se vea sin recargar.
+      if (data.estado !== seleccionado.estado || data.fecha_checkin !== seleccionado.fecha_checkin) refrescarLead(data.id)
     }
     setGuardandoLead(false)
   }
@@ -872,6 +876,20 @@ export default function Leads({ embudo = 'paquetes' }) {
                     <option value="">Sin responsable</option>
                     {usuarios.filter(u => u.activo !== false).map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
                   </select>
+                </div>
+              )}
+
+              {embudo === 'anfitriona' && 'fecha_checkin' in seleccionado && (
+                <div>
+                  <label htmlFor="checkin-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Fecha de check-in del vuelo</label>
+                  <input
+                    id="checkin-lead"
+                    type="date"
+                    value={editForm.fecha_checkin}
+                    onChange={e => setEditForm(p => ({ ...p, fecha_checkin: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                  />
+                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Al guardarla, se crea solo un recordatorio para pedir el saldo pendiente 45 días antes.</p>
                 </div>
               )}
 

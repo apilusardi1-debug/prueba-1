@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderTemplate } from '../_shared/plantillasWhatsapp.ts'
-import { moverAEtapaPaquetes } from '../_shared/embudoEntrada.ts'
+import { moverAEtapaPaquetes, moverAEtapaAnfitriona } from '../_shared/embudoEntrada.ts'
 
 // Número operativo (avisos automáticos a chofer/guía/cliente, solo plantillas)
 const META_TOKEN = Deno.env.get('META_WHATSAPP_TOKEN')
@@ -256,6 +256,14 @@ serve(async (req) => {
       } else if (/^detalle[ _-]*final/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phoneClean, 'pdf_enviado')
       }
+    }
+
+    // Un lead recién asignado a Anfitriona pasa a "En contacto con el cliente"
+    // en cuanto el equipo le manda un mensaje que menciona la palabra
+    // "anfitriona" (por ejemplo, para presentarla) — no importa si es texto o
+    // el epígrafe de una foto/archivo.
+    if (esCrm && /anfitriona/i.test(mensajeLegible)) {
+      await moverAEtapaAnfitriona(supabase, phoneClean, 'anfitriona_contacto')
     }
 
     return new Response(JSON.stringify(data), {

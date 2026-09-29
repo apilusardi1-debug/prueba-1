@@ -85,3 +85,29 @@ export async function moverAEtapaPaquetes(supabase: any, whatsapp: string, clave
 export function moverAFiltrado(supabase: any, whatsapp: string): Promise<void> {
   return moverAEtapaPaquetes(supabase, whatsapp, 'contactado')
 }
+
+// Mueve el lead de ese whatsapp a `claveDestino`, una etapa del embudo de
+// Anfitriona — mismo criterio "solo hacia adelante" que moverAEtapaPaquetes,
+// pero acá no hay "lead nuevo sin estado" que valga: si todavía no está en
+// Anfitriona (por ejemplo, un lead de Paquetes al que alguien le escribe la
+// palabra "anfitriona" antes de tiempo), no se toca.
+// deno-lint-ignore no-explicit-any
+export async function moverAEtapaAnfitriona(supabase: any, whatsapp: string, claveDestino: string): Promise<void> {
+  try {
+    const { data: lead, error } = await supabase.from('leads').select('id, estado').eq('whatsapp', whatsapp).maybeSingle()
+    if (error || !lead) return
+
+    const { data: etapaDestino } = await supabase.from('embudo_etapas').select('orden').eq('clave', claveDestino).maybeSingle()
+    if (!etapaDestino) return
+
+    const { data: etapaActual } = await supabase.from('embudo_etapas').select('orden, tipo, embudo').eq('clave', lead.estado).maybeSingle()
+    if (!etapaActual || etapaActual.embudo !== 'anfitriona' || etapaActual.tipo === 'perdida' || etapaActual.orden >= etapaDestino.orden) return
+
+    let consulta = supabase.from('leads').update({ estado: claveDestino }).eq('id', lead.id)
+    consulta = lead.estado ? consulta.eq('estado', lead.estado) : consulta.is('estado', null)
+    const { error: errorUpdate } = await consulta
+    if (errorUpdate) console.error('moverAEtapaAnfitriona update error:', { whatsapp, claveDestino, errorUpdate })
+  } catch (err) {
+    console.error('moverAEtapaAnfitriona error:', err)
+  }
+}

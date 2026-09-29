@@ -551,7 +551,7 @@ serve(async (req) => {
     const interes = detectarInteres(texto)
 
     const { data: leadExistente } = await supabase
-      .from('leads').select('id, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()
+      .from('leads').select('id, estado, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()
 
     if (!leadExistente) {
       await supabase.from('leads').insert({
@@ -567,6 +567,10 @@ serve(async (req) => {
       const cambios: Record<string, string> = {}
       if (interes.tipo && !leadExistente.interes_tipo) cambios.interes_tipo = interes.tipo
       if (interes.destino && !leadExistente.interes_destino) cambios.interes_destino = interes.destino
+      // Un lead perdido (por ejemplo, por 15 días sin actividad en Filtrado —
+      // ver leads_perder_inactivos_filtrado en la base) que vuelve a escribir
+      // es una consulta nueva: arranca de cero en el embudo de Paquetes.
+      if (leadExistente.estado === 'perdido') cambios.estado = 'nuevo'
       if (Object.keys(cambios).length) await supabase.from('leads').update(cambios).eq('id', leadExistente.id)
     }
 

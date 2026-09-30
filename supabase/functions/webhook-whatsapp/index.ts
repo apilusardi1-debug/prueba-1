@@ -180,7 +180,12 @@ function textoDesdeFlow(r: Record<string, string>): string {
     `Menores: ${cantidadMenores}`,
   ]
   if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
-  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
+  // Fernando de Noronha no tiene resorts all inclusive: el Flow muestra una
+  // lista de hospedaje sin esa opción para ese destino, en un campo aparte
+  // ("hospedaje_noronha") porque WhatsApp no permite deshabilitar una sola
+  // opción de un Dropdown según otro campo, solo mostrar/ocultar el campo entero.
+  const hospedaje = r.hospedaje || r.hospedaje_noronha
+  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[hospedaje] || hospedaje || ''}`)
   lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
   const noches = r.noches ? ` · ${r.noches} noches` : ''
   lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}${noches}`)

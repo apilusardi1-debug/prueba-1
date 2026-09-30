@@ -38,6 +38,13 @@ const PRESUPUESTO_FLOW: Record<string, string> = {
 const PAIS_FLOW: Record<string, string> = {
   argentina: 'Argentina', uruguay: 'Uruguay', chile: 'Chile', paraguay: 'Paraguay', peru: 'Perú', venezuela: 'Venezuela',
 }
+const MES_FLOW: Record<string, string> = {
+  enero: 'enero', febrero: 'febrero', marzo: 'marzo', abril: 'abril', mayo: 'mayo', junio: 'junio',
+  julio: 'julio', agosto: 'agosto', septiembre: 'septiembre', octubre: 'octubre', noviembre: 'noviembre', diciembre: 'diciembre',
+}
+const SEMANA_FLOW: Record<string, string> = {
+  primera: 'Primera semana', segunda: 'Segunda semana', tercera: 'Tercera semana', cuarta: 'Cuarta semana',
+}
 
 const TIPOS_MEDIA = ['image', 'audio', 'video', 'document', 'sticker']
 const ETIQUETA_MEDIA: Record<string, string> = {
@@ -153,14 +160,9 @@ async function enviarFlowDatosViaje(supabase: ReturnType<typeof createClient>, c
 // Arma una respuesta de flow (JSON con un valor por campo) como el mismo texto
 // "Campo: valor" línea por línea que ya entiende el lector de datosViaje.ts, así el
 // resto del filtro (pasoTrasRespuesta, extraerDatosViaje) no necesita saber que esto
-// vino de un formulario y no de texto escrito a mano.
-// El DatePicker devuelve "AAAA-MM-DD" (como lo pide Meta); se muestra como al equipo
-// le resulta natural leerlo ("DD/MM/AAAA").
-function fechaLegible(iso: string | undefined): string {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-')
-  return d && m && y ? `${d}/${m}/${y}` : iso
-}
+// vino de un formulario y no de texto escrito a mano. Se etiqueta "Período:" (no
+// "Fecha:") porque ya no se pide una fecha exacta — datosViaje.ts entiende las dos
+// palabras igual.
 
 // Campos individuales "edad_menor_1".."edad_menor_5" (uno por menor, el Flow
 // solo muestra los que corresponden a "cantidad_menores") — se juntan en una
@@ -182,7 +184,10 @@ function textoDesdeFlow(r: Record<string, string>): string {
   if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
   lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
   lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
-  lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}`)
+  const semana = SEMANA_FLOW[r.semana_mes] || r.semana_mes || ''
+  const mes = MES_FLOW[r.mes_viaje] || r.mes_viaje || ''
+  const noches = r.noches ? `${r.noches} noches` : ''
+  lineas.push(`Período: ${[semana && mes ? `${semana} de ${mes}` : (semana || mes), noches].filter(Boolean).join(' · ')}`)
   return lineas.join('\n')
 }
 

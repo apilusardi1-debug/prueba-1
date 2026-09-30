@@ -182,7 +182,8 @@ function textoDesdeFlow(r: Record<string, string>): string {
   if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
   lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
   lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
-  lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}`)
+  const noches = r.noches ? ` · ${r.noches} noches` : ''
+  lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}${noches}`)
   return lineas.join('\n')
 }
 

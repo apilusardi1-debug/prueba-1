@@ -47,6 +47,12 @@ function formatHora(ts) {
   return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Segundos a "mm:ss", para el cronómetro de grabación y el audio a revisar.
+function mmss(segundos) {
+  const s = Math.max(0, Math.floor(segundos))
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
 // Estado de entrega de un mensaje saliente, tal como lo informa Meta. Los
 // mensajes anteriores a este aviso no tienen estado: se muestran como enviados.
 function EstadoMensaje({ msg }) {
@@ -99,8 +105,13 @@ export default function WhatsAppCRM() {
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
   const [menuAccionesMobile, setMenuAccionesMobile] = useState(false)
   const [grabando, setGrabando] = useState(false)
+  const [pausado, setPausado] = useState(false)
   const [segundosGrabados, setSegundosGrabados] = useState(0)
   const [errorGrabacion, setErrorGrabacion] = useState('')
+  const [revisandoAudio, setRevisandoAudio] = useState(false)
+  const [duracionAudio, setDuracionAudio] = useState(0)
+  const [reproduciendo, setReproduciendo] = useState(false)
+  const [tiempoReproduccion, setTiempoReproduccion] = useState(0)
   const [esperandoDesde, setEsperandoDesde] = useState({}) // conversacion_id -> desde cuándo espera respuesta
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
@@ -163,6 +174,9 @@ export default function WhatsAppCRM() {
   const atajoPorTeclado = useRef(false)
   const grabadorRef = useRef(null)
   const timerGrabacionRef = useRef(null)
+  const segundosGrabadosRef = useRef(0) // espejo de segundosGrabados: ondataavailable lo lee en un closure viejo
+  const audioPreviewRef = useRef(null)
+  const audioPreviewUrlRef = useRef(null)
 
   // Reloj para que el aviso de ventana de 24 hs aparezca solo al vencer
   useEffect(() => {
@@ -621,8 +635,10 @@ export default function WhatsAppCRM() {
     inputRef.current?.focus()
   }
 
-  // Graba una nota de voz con el micrófono y la deja como adjunto, lista para
-  // enviar con el botón normal — mismo camino que un audio elegido a mano.
+  // Graba una nota de voz con el micrófono. Al terminar (no al cancelar) no se
+  // manda directo: se puede pausar y reanudar mientras se graba (como
+  // WhatsApp), y una vez terminada se puede escuchar antes de mandarla o
+  // descartarla y grabar de nuevo.
   // Se graba con opus-recorder (no con MediaRecorder del navegador) porque
   // Chrome/Edge solo pueden grabar en formato webm, que Meta no acepta; esta
   // librería graba directo en Ogg Opus, el único formato que WhatsApp
@@ -640,6 +656,8 @@ export default function WhatsAppCRM() {
     rec.ondataavailable = (arrayBuffer) => {
       const archivo = new File([arrayBuffer], `audio-${Date.now()}.ogg`, { type: 'audio/ogg; codecs=opus' })
       setAdjunto(archivo)
+      setDuracionAudio(segundosGrabadosRef.current)
+      setRevisandoAudio(true)
       rec.close()
     }
     try {
@@ -649,25 +667,82 @@ export default function WhatsAppCRM() {
       return
     }
     grabadorRef.current = rec
+    segundosGrabadosRef.current = 0
     setSegundosGrabados(0)
+    setPausado(false)
     setGrabando(true)
-    timerGrabacionRef.current = setInterval(() => setSegundosGrabados((s) => s + 1), 1000)
+    timerGrabacionRef.current = setInterval(() => {
+      segundosGrabadosRef.current += 1
+      setSegundosGrabados(segundosGrabadosRef.current)
+    }, 1000)
   }
 
+  async function pausarGrabacion() {
+    clearInterval(timerGrabacionRef.current)
+    try { await grabadorRef.current?.pause() } catch { /* nada que hacer si falla */ }
+    setPausado(true)
+  }
+
+  async function reanudarGrabacion() {
+    try { await grabadorRef.current?.resume() } catch { /* nada que hacer si falla */ }
+    setPausado(false)
+    timerGrabacionRef.current = setInterval(() => {
+      segundosGrabadosRef.current += 1
+      setSegundosGrabados(segundosGrabadosRef.current)
+    }, 1000)
+  }
+
+  // cancelar=true descarta todo (grabando o ya grabado, esperando revisión).
+  // cancelar=false termina de grabar y pasa a la revisión (ondataavailable).
   function detenerGrabacion(cancelar) {
     clearInterval(timerGrabacionRef.current)
     const rec = grabadorRef.current
     grabadorRef.current = null
     setGrabando(false)
+    setPausado(false)
+    if (cancelar) descartarAudio()
     if (!rec) return
     if (cancelar) {
       rec.ondataavailable = () => {} // se descarta: no se llama a setAdjunto
       rec.stop()
       rec.close()
     } else {
-      rec.stop() // ondataavailable (de iniciarGrabacion) guarda el archivo y cierra el grabador
+      rec.stop() // ondataavailable (de iniciarGrabacion) guarda el archivo y pasa a revisión
     }
   }
+
+  function descartarAudio() {
+    setRevisandoAudio(false)
+    setAdjunto(null)
+    setReproduciendo(false)
+    setTiempoReproduccion(0)
+    setDuracionAudio(0)
+  }
+
+  function alternarReproduccion() {
+    const audio = audioPreviewRef.current
+    if (!audio) return
+    if (reproduciendo) audio.pause()
+    else audio.play()
+  }
+
+  function saltarAPosicion(segundos) {
+    const audio = audioPreviewRef.current
+    if (audio) audio.currentTime = segundos
+    setTiempoReproduccion(segundos)
+  }
+
+  // El objeto URL del audio a revisar: se arma cuando hay algo que escuchar y
+  // se libera solo al cambiar o al desmontar, para no dejar memoria colgada.
+  useEffect(() => {
+    if (!revisandoAudio || !adjunto) return
+    const url = URL.createObjectURL(adjunto)
+    audioPreviewUrlRef.current = url
+    return () => {
+      URL.revokeObjectURL(url)
+      audioPreviewUrlRef.current = null
+    }
+  }, [revisandoAudio, adjunto])
 
   // Si se cambia de conversación o se cierra la pantalla en medio de una
   // grabación, no queda el micrófono prendido de fondo.
@@ -706,7 +781,7 @@ export default function WhatsAppCRM() {
 
     limpiarEspera(seleccionada.id)
 
-    setAdjunto(null)
+    descartarAudio() // limpia el adjunto y, si venía de grabar, también la revisión
     setTexto('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
     setEnviando(false)
@@ -1262,7 +1337,7 @@ export default function WhatsAppCRM() {
             </div>
           ) : (
           <>
-          {adjunto && (
+          {adjunto && !revisandoAudio && (
             <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
               {adjuntoPreview && <img src={adjuntoPreview} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
               <div className="min-w-0 flex-1">
@@ -1287,23 +1362,77 @@ export default function WhatsAppCRM() {
                 <button
                   onClick={() => detenerGrabacion(true)}
                   title="Cancelar grabación"
-                  className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <Ic n="trash" className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0 flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4" style={{ minHeight: '42px' }}>
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                  <span className="text-sm text-gray-700 dark:text-zinc-200 font-medium">Grabando...</span>
-                  <span className="text-sm text-gray-400 dark:text-zinc-500 font-mono ml-auto">
-                    {String(Math.floor(segundosGrabados / 60)).padStart(2, '0')}:{String(segundosGrabados % 60).padStart(2, '0')}
-                  </span>
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${pausado ? 'bg-gray-400' : 'bg-red-500 animate-pulse'}`} />
+                  <span className="text-sm text-gray-700 dark:text-zinc-200 font-medium">{pausado ? 'Pausado' : 'Grabando...'}</span>
+                  <span className="text-sm text-gray-400 dark:text-zinc-500 font-mono ml-auto">{mmss(segundosGrabados)}</span>
                 </div>
+                <button
+                  onClick={pausado ? reanudarGrabacion : pausarGrabacion}
+                  title={pausado ? 'Reanudar grabación' : 'Pausar grabación'}
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <Ic n={pausado ? 'mic' : 'pause'} className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => detenerGrabacion(false)}
                   title="Terminar grabación"
-                  className="w-[42px] h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 text-white transition-colors"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 text-white transition-colors"
                 >
                   <Ic n="check" className="w-4 h-4" />
+                </button>
+              </>
+            ) : revisandoAudio ? (
+              <>
+                <button
+                  onClick={descartarAudio}
+                  disabled={enviando}
+                  title="Descartar audio"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                >
+                  <Ic n="trash" className="w-4 h-4" />
+                </button>
+                <div className="flex-1 min-w-0 flex items-center gap-2.5 rounded-2xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3" style={{ minHeight: '42px' }}>
+                  <audio
+                    ref={audioPreviewRef}
+                    src={audioPreviewUrlRef.current || undefined}
+                    onPlay={() => setReproduciendo(true)}
+                    onPause={() => setReproduciendo(false)}
+                    onTimeUpdate={e => setTiempoReproduccion(e.currentTarget.currentTime)}
+                    onEnded={() => { setReproduciendo(false); setTiempoReproduccion(0) }}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={alternarReproduccion}
+                    title={reproduciendo ? 'Pausar' : 'Escuchar'}
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 text-white transition-colors"
+                  >
+                    <Ic n={reproduciendo ? 'pause' : 'play'} className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={duracionAudio || 1}
+                    step={0.1}
+                    value={Math.min(tiempoReproduccion, duracionAudio || 1)}
+                    onChange={e => saltarAPosicion(Number(e.target.value))}
+                    className="flex-1 min-w-0 accent-green-500"
+                  />
+                  <span className="text-xs text-gray-400 dark:text-zinc-500 font-mono shrink-0">
+                    {mmss(reproduciendo || tiempoReproduccion ? tiempoReproduccion : duracionAudio)}
+                  </span>
+                </div>
+                <button
+                  onClick={enviar}
+                  disabled={enviando}
+                  title="Enviar audio"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white transition-colors"
+                >
+                  {enviando ? '...' : <Ic n="send" className="w-4 h-4" />}
                 </button>
               </>
             ) : (

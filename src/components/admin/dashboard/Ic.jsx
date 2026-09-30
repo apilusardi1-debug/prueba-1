@@ -46,6 +46,9 @@ const TRAZOS = {
   bolt: <path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" />,
   bellOff: <><path d="M8.5 5.2A6 6 0 0 1 18 9c0 3 .7 4.9 1.5 6M6 9c0 6-2.5 7.5-2.5 7.5H15" /><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16" /></>,
   bot: <><rect x="4.5" y="8" width="15" height="11" rx="3" /><path d="M12 8V5M12 4.5h.01M9 13h.01M15 13h.01M2.5 12.5v3M21.5 12.5v3" /></>,
+  mic: <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></>,
+  play: <path d="M7 4l13 8-13 8z" />,
+  pause: <><rect x="6" y="4.5" width="4.5" height="15" rx="1.2" /><rect x="13.5" y="4.5" width="4.5" height="15" rx="1.2" /></>,
 }
 
 export default function Ic({ n, className = 'w-[18px] h-[18px]' }) {

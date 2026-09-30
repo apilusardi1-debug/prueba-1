@@ -32,6 +32,7 @@ import Excursiones from './pages/admin/Excursiones.jsx'
 import Agenda from './pages/admin/Agenda.jsx'
 import ChatInterno from './pages/admin/ChatInterno.jsx'
 import SiteConfig from './pages/admin/SiteConfig.jsx'
+import AsistenteEntrenamiento from './pages/admin/AsistenteEntrenamiento.jsx'
 import Equipo from './pages/admin/Equipo.jsx'
 import Hospedajes from './pages/admin/Hospedajes.jsx'
 import Videos from './pages/admin/Videos.jsx'
@@ -95,6 +96,7 @@ const router = createBrowserRouter([
       { path: '/admin/paquetes/cerradas',  element: <PropuestasLista estado="cerrada" /> },
       { path: '/admin/equipo',           element: <Equipo /> },
       { path: '/admin/configuracion',    element: <SiteConfig /> },
+      { path: '/admin/entrenar-asistente', element: <AsistenteEntrenamiento /> },
       { path: '/admin/crm/whatsapp',    element: <WhatsAppCRM /> },
       { path: '/admin/finanzas',        element: <Finanzas /> },
     ],

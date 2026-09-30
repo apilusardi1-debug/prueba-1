@@ -396,7 +396,7 @@ const GRUPOS_BOT = [
 const CLASE_CAMPO = 'w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none'
 
 // Filtrado de clientes de Paquetes: lo que el asistente le pregunta al cliente que elige Paquetes.
-function FiltroPaquetes({ cfg, setCfg }) {
+export function FiltroPaquetes({ cfg, setCfg, onGuardado }) {
   const [campos, setCampos] = useState({
     filtro_intro: cfg.filtro_intro ?? TEXTOS_POR_DEFECTO.intro,
     filtro_seguimiento: cfg.filtro_seguimiento ?? TEXTOS_POR_DEFECTO.seguimiento,
@@ -422,13 +422,13 @@ function FiltroPaquetes({ cfg, setCfg }) {
 
   async function alternar() {
     const { data } = await botApi.saveConfig({ filtro_activo: !activo })
-    if (data) setCfg(data)
+    if (data) { setCfg(data); onGuardado?.(data.filtro_activo ? 'Encendió el filtro de Paquetes' : 'Apagó el filtro de Paquetes') }
   }
 
   const metodo = cfg.filtro_metodo === 'flow' ? 'flow' : 'texto'
   async function alternarMetodo() {
     const { data } = await botApi.saveConfig({ filtro_metodo: metodo === 'flow' ? 'texto' : 'flow' })
-    if (data) setCfg(data)
+    if (data) { setCfg(data); onGuardado?.(`Cambió el filtro de Paquetes a "${data.filtro_metodo === 'flow' ? 'Formulario' : 'Mensaje de texto'}"`) }
   }
 
   async function guardar() {
@@ -439,7 +439,7 @@ function FiltroPaquetes({ cfg, setCfg }) {
       filtro_destinos: campos.filtro_destinos.trim(),
       filtro_presupuestos: campos.filtro_presupuestos.split('\n').map(l => l.trim()).filter(Boolean).join('\n'),
     })
-    if (data) setCfg(data)
+    if (data) { setCfg(data); onGuardado?.('Editó las preguntas del filtro de Paquetes', campos) }
     setEstado(error ? 'error' : 'ok')
     setGuardando(false)
     setTimeout(() => setEstado(null), 3000)

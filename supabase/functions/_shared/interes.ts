@@ -46,6 +46,32 @@ function normalizar(texto: string): string {
     .replace(/[óòôöõ]/g, 'o').replace(/[úùûü]/g, 'u').replace(/ñ/g, 'n').replace(/ç/g, 'c')
 }
 
+// Sinónimos extra cargados a mano desde "Entrenar al asistente" (tabla
+// asistente_sinonimos) — se suman por arriba de las palabras de siempre, no
+// las reemplazan. `tipo` es uno de TIPOS_INTERES o 'destino'; `valor` es el
+// nombre del destino cuando tipo = 'destino'.
+export interface SinonimoExtra { tipo: string; valor: string | null; palabras: string }
+
+function detectarInteresBase(t: string, extra?: SinonimoExtra[]): { tipo: string | null; destino: string | null } {
+  const encontrados = new Set(Object.entries(PALABRAS_TIPO).filter(([, re]) => re.test(t)).map(([id]) => id))
+  const destinosEncontrados = new Set(DESTINOS.filter(([, re]) => re.test(t)).map(([nombre]) => nombre))
+
+  for (const s of extra ?? []) {
+    const palabras = s.palabras.split(',').map(p => normalizar(p.trim())).filter(Boolean)
+    if (!palabras.some(p => p && t.includes(p))) continue
+    if (s.tipo === 'destino') { if (s.valor) destinosEncontrados.add(s.valor) }
+    else encontrados.add(s.tipo)
+  }
+
+  let tipo: string | null = null
+  if (!(encontrados.has('paquete') && encontrados.has('paseo'))) {
+    tipo = ['paquete', 'paseo', 'traslado', 'hospedaje'].find(id => encontrados.has(id)) ?? null
+  }
+
+  const destinos = [...destinosEncontrados]
+  return { tipo, destino: destinos.length ? destinos.join(' + ') : null }
+}
+
 // Devuelve el tipo y el destino que se reconocen en el texto (null si no hay).
 // Si el mensaje menciona a la vez paquete y paseo el tipo queda en null: es
 // mejor dejarlo en blanco que adivinar mal. Un paquete puede nombrar hotel y
@@ -54,15 +80,16 @@ function normalizar(texto: string): string {
 export function detectarInteres(texto: string | null | undefined): { tipo: string | null; destino: string | null } {
   const t = normalizar(String(texto ?? ''))
   if (!t.trim()) return { tipo: null, destino: null }
+  return detectarInteresBase(t)
+}
 
-  const encontrados = new Set(Object.entries(PALABRAS_TIPO).filter(([, re]) => re.test(t)).map(([id]) => id))
-  let tipo: string | null = null
-  if (!(encontrados.has('paquete') && encontrados.has('paseo'))) {
-    tipo = ['paquete', 'paseo', 'traslado', 'hospedaje'].find(id => encontrados.has(id)) ?? null
-  }
-
-  const destinos = DESTINOS.filter(([, re]) => re.test(t)).map(([nombre]) => nombre)
-  return { tipo, destino: destinos.length ? destinos.join(' + ') : null }
+// Igual que detectarInteres, pero sumando los sinónimos cargados a mano. La
+// usa el webhook (que ya tiene que leer la tabla para el asistente); el resto
+// del código sigue con detectarInteres tal cual, sin cambios.
+export function detectarInteresConExtras(texto: string | null | undefined, extra: SinonimoExtra[]): { tipo: string | null; destino: string | null } {
+  const t = normalizar(String(texto ?? ''))
+  if (!t.trim()) return { tipo: null, destino: null }
+  return detectarInteresBase(t, extra)
 }
 
 // Texto para mostrar el interés de un lead: "Paquete · Porto de Galinhas".

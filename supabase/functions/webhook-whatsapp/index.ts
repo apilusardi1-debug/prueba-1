@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { detectarInteres } from '../_shared/interes.ts'
+import { detectarInteresConExtras } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
 import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
@@ -552,9 +552,11 @@ serve(async (req) => {
     )
 
     // El interés (tipo de servicio + destino) se detecta por palabras clave en
-    // cada mensaje. Solo se completa lo que falta: lo que ya tenía el lead, ya
-    // sea detectado antes o cargado a mano, no se pisa.
-    const interes = detectarInteres(texto)
+    // cada mensaje, más los sinónimos que se carguen a mano en "Entrenar al
+    // asistente" (tabla asistente_sinonimos). Solo se completa lo que falta: lo
+    // que ya tenía el lead, ya sea detectado antes o cargado a mano, no se pisa.
+    const { data: sinonimos } = await supabase.from('asistente_sinonimos').select('tipo, valor, palabras')
+    const interes = detectarInteresConExtras(texto, sinonimos || [])
 
     const { data: leadExistente } = await supabase
       .from('leads').select('id, estado, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()

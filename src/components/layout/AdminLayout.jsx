@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
+import { puedeEntrenar } from '../../lib/entrenamiento.js'
 import { supabase, conversacionesApi } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
 import MenuAvisos from './MenuAvisos.jsx'
@@ -125,6 +126,11 @@ const Icon = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
+  Entrenar: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V5M12 4.5h.01M9 13h.01M15 13h.01M2.5 12.5v3M21.5 12.5v3"/>
+    </svg>
+  ),
   Chevron: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="6 9 12 15 18 9"/>
@@ -198,6 +204,7 @@ const NAV = [
   { path: '/admin/finanzas',    label: 'Finanzas',    icon: Icon.Finanzas },
   { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
   { path: '/admin/configuracion', label: 'Configuración', icon: Icon.Config },
+  { path: '/admin/entrenar-asistente', label: 'Entrenar al asistente', icon: Icon.Entrenar, soloEmails: true },
 ]
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
@@ -240,9 +247,11 @@ function Sidebar() {
     return () => { document.title = sinNumero() }
   }, [pendientesWhatsapp])
 
-  const rol = JSON.parse(localStorage.getItem('admin_session') || '{}').role
+  const sesionActual = JSON.parse(localStorage.getItem('admin_session') || '{}')
+  const rol = sesionActual.role
   const navVisible = NAV
     .map(item => {
+      if (item.soloEmails && !puedeEntrenar(sesionActual.email)) return null
       if (item.sub) {
         const sub = item.sub.filter(s => tieneAcceso(rol, s.path))
         return sub.length ? { ...item, sub } : null
@@ -461,6 +470,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/finanzas')) return 'Finanzas'
     if (pathname.startsWith('/admin/equipo')) return 'Equipo'
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración'
+    if (pathname.startsWith('/admin/entrenar-asistente')) return 'Entrenar al asistente'
     return 'Panel'
   }
 

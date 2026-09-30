@@ -532,6 +532,18 @@ export const botApi = {
   removeMiembro: (id) => supabase?.from('bot_reparto').delete().eq('id', id),
 }
 
+// ── Entrenar al asistente (solo Cristian y Abril — ver src/lib/entrenamiento.js) ──
+export const sinonimosApi = {
+  getAll: () => supabase?.from('asistente_sinonimos').select('*').order('created_at', { ascending: false }),
+  create: (data) => supabase?.from('asistente_sinonimos').insert(data).select().single(),
+  delete: (id) => supabase?.from('asistente_sinonimos').delete().eq('id', id),
+}
+
+export const bitacoraApi = {
+  getAll: () => supabase?.from('asistente_bitacora').select('*').order('created_at', { ascending: false }).limit(200),
+  registrar: (data) => supabase?.from('asistente_bitacora').insert(data),
+}
+
 // ── Usuarios del panel admin ─────────────────────────────────────────────────────
 // La tabla usuarios_admin tiene RLS activado sin políticas (bloqueada
 // para anon) — todo el acceso pasa por la Edge Function usuarios-admin,

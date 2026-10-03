@@ -255,13 +255,20 @@ serve(async (req) => {
     // del Generador de propuesta, y así hay que nombrar cualquier otro que se
     // suba a mano) mueve al lead a "Propuesta enviada" en el embudo de
     // Paquetes — un PDF con otro nombre (catálogo, voucher, etc) no lo mueve.
-    // Uno que empieza con "Detalle final" lo manda a "PDF de servicios enviado".
+    // El detalle de lo que el cliente eligió y cuánto paga por cada servicio
+    // sale de dos PDF distintos del Generador — "Detalle final" o "Detalles y
+    // Servicios" (en la práctica el equipo manda cualquiera de los dos para
+    // esto, confirmado 2026-10-01 con un caso real que "Detalle final" solo
+    // no cubría) — cualquiera de los dos manda a "Envío de detalle". Mismo
+    // destino al que ya manda el trigger de la base cuando la propuesta pasa
+    // a "archivada" (ver migración 20261001100000_etapa_envio_detalle.sql)
+    // — lo que pase primero, enviar el PDF o archivar la propuesta.
     if (esCrm && esMedia && media.tipo === 'document') {
       const nombreArchivo = String(media.nombre || '').trim()
       if (/^propuesta/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phoneClean, 'propuesta_enviada')
-      } else if (/^detalle[ _-]*final/i.test(nombreArchivo)) {
-        await moverAEtapaPaquetes(supabase, phoneClean, 'pdf_enviado')
+      } else if (/^detalle[ _-]*final/i.test(nombreArchivo) || /^detalles[ _-]*y[ _-]*servicios/i.test(nombreArchivo)) {
+        await moverAEtapaPaquetes(supabase, phoneClean, 'envio_detalle')
       }
     }
 

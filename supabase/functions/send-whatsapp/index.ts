@@ -255,13 +255,18 @@ serve(async (req) => {
     // del Generador de propuesta, y así hay que nombrar cualquier otro que se
     // suba a mano) mueve al lead a "Propuesta enviada" en el embudo de
     // Paquetes — un PDF con otro nombre (catálogo, voucher, etc) no lo mueve.
-    // Uno que empieza con "Detalle final" lo manda a "PDF de servicios enviado".
+    // Uno que empieza con "Detalle final" lo manda a "PDF de servicios enviado"
+    // (y de ahí entra solo a Anfitriona). Uno que empieza con "Detalle" pero
+    // NO sigue con "Final" es un PDF distinto (el detalle antes del pago) y
+    // manda a la etapa "Envío de detalle".
     if (esCrm && esMedia && media.tipo === 'document') {
       const nombreArchivo = String(media.nombre || '').trim()
       if (/^propuesta/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phoneClean, 'propuesta_enviada')
       } else if (/^detalle[ _-]*final/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phoneClean, 'pdf_enviado')
+      } else if (/^detalle(?![ _-]*final)/i.test(nombreArchivo)) {
+        await moverAEtapaPaquetes(supabase, phoneClean, 'envio_detalle')
       }
     }
 

@@ -956,17 +956,21 @@ export default function Leads({ embudo = 'paquetes' }) {
       )}
 
       {seleccionado && editForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
-          <div className="bg-white dark:bg-zinc-900 w-96 h-full shadow-xl dark:shadow-black/40 flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 w-[92vw] h-[90vh] rounded-2xl shadow-xl dark:shadow-black/40 flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
-              <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100">Lead</h2>
+            <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+              <div className="min-w-0">
+                <h2 className="font-bold text-lg text-gray-900 dark:text-zinc-100 truncate">{seleccionado.nombre || 'Lead'}</h2>
+                {seleccionado.whatsapp && <p className="text-xs text-gray-400 dark:text-zinc-500">{telefonoLegible(seleccionado.whatsapp)}</p>}
+              </div>
               <button onClick={() => { setSeleccionado(null); setConvertidoMsg('') }} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
             </div>
 
-            {/* Campos editables */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            {/* Campos editables: datos del lead a la izquierda, vuelos y seguimiento a la derecha */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
+            <div className="space-y-4 min-w-0">
 
               {[
                 { key: 'nombre',    label: 'Nombre',    type: 'text', placeholder: 'Nombre completo' },
@@ -1033,6 +1037,44 @@ export default function Leads({ embudo = 'paquetes' }) {
                 </div>
               )}
 
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etapa del embudo</label>
+                <select
+                  value={editForm.estado}
+                  onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                >
+                  <OpcionesEtapas etapas={etapas} />
+                </select>
+                {etapaDe(etapas, seleccionado.estado)?.tipo === 'perdida' && seleccionado.razon_perdida && (
+                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">
+                    Motivo: {RAZONES_PERDIDA.find(r => r.id === seleccionado.razon_perdida)?.label || seleccionado.razon_perdida}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Notas</label>
+                <textarea
+                  rows={4}
+                  value={editForm.notas}
+                  onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))}
+                  placeholder="Observaciones, preferencias, detalles..."
+                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500 resize-none"
+                />
+              </div>
+
+              {/* Guardar cambios */}
+              <button
+                onClick={() => guardarLead()}
+                disabled={guardandoLead}
+                className="w-full bg-gray-900 dark:bg-zinc-100 hover:bg-gray-700 dark:hover:bg-zinc-300 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
+              >
+                {guardandoLead ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+
+            <div className="space-y-4 min-w-0">
               {embudo === 'anfitriona' && 'fecha_vuelo_ida' in seleccionado && (
                 <div className="space-y-3 rounded-xl border border-gray-100 dark:border-zinc-800 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Vuelos</p>
@@ -1098,42 +1140,6 @@ export default function Leads({ embudo = 'paquetes' }) {
                   <p className="text-[11px] text-gray-400 dark:text-zinc-500">Al guardar se crean las alarmas: pedir el saldo 45 días antes del vuelo de ida, check in + checklist 48 hs antes del de ida, y check in 48 hs antes del de vuelta.</p>
                 </div>
               )}
-
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Etapa del embudo</label>
-                <select
-                  value={editForm.estado}
-                  onChange={e => setEditForm(p => ({ ...p, estado: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
-                >
-                  <OpcionesEtapas etapas={etapas} />
-                </select>
-                {etapaDe(etapas, seleccionado.estado)?.tipo === 'perdida' && seleccionado.razon_perdida && (
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">
-                    Motivo: {RAZONES_PERDIDA.find(r => r.id === seleccionado.razon_perdida)?.label || seleccionado.razon_perdida}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Notas</label>
-                <textarea
-                  rows={4}
-                  value={editForm.notas}
-                  onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))}
-                  placeholder="Observaciones, preferencias, detalles..."
-                  className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500 resize-none"
-                />
-              </div>
-
-              {/* Guardar cambios */}
-              <button
-                onClick={() => guardarLead()}
-                disabled={guardandoLead}
-                className="w-full bg-gray-900 dark:bg-zinc-100 hover:bg-gray-700 dark:hover:bg-zinc-300 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
-              >
-                {guardandoLead ? 'Guardando...' : 'Guardar cambios'}
-              </button>
 
               {/* Recordatorios de seguimiento */}
               <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-3">
@@ -1227,6 +1233,7 @@ export default function Leads({ embudo = 'paquetes' }) {
                   </button>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </div>

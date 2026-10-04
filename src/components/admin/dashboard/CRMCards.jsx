@@ -59,6 +59,16 @@ export function formatoReales(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+// El gasto de mensajes se muestra en dólares: las tarifas están en USD y la base
+// lo convierte a reales con la cotización de config_costos_whatsapp.
+export function formatoDolares(v) {
+  return Number(v || 0).toLocaleString('es-AR', { style: 'currency', currency: 'USD' })
+}
+
+function aDolares(brl, usdARate) {
+  return usdARate ? Number(brl) / Number(usdARate) : null
+}
+
 const fmt = n => Number(n || 0).toLocaleString('es-AR')
 const formatoFecha = d => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 
@@ -258,9 +268,10 @@ function Indicador({ icono, titulo, valor, detalle, pct }) {
   )
 }
 
-export function descargarReporte(datos, periodo, rango) {
+export function descargarReporte(datos, periodo, rango, usdARate) {
   if (!datos) return
   const num = n => String(n ?? '').replace('.', ',')
+  const usd = brl => { const v = aDolares(brl, usdARate); return v === null ? '' : num(v.toFixed(2)) }
   const ult = new Date(rango.hasta.getTime() - 1)
   const filas = [
     ['Reporte CRM - DreamTours'],
@@ -285,10 +296,10 @@ export function descargarReporte(datos, periodo, rango) {
     ['Esperando respuesta ahora (ultimos 7 dias)', datos.respuesta.pendientes?.cantidad],
     ['Espera mas larga ahora (seg)', num(datos.respuesta.pendientes?.max_seg)],
     ['Espera promedio de las que esperan ahora (seg)', num(datos.respuesta.pendientes?.promedio_seg)],
-    ['Gasto estimado en mensajes (BRL)', num(Number(datos.costo.total).toFixed(2))],
+    ['Gasto estimado en mensajes (USD)', usd(datos.costo.total)],
     [],
-    ['Dia', 'Conversaciones nuevas', 'Mensajes recibidos', 'Gasto estimado (BRL)'],
-    ...datos.por_dia.map(d => [d.dia, d.conversaciones_nuevas, d.mensajes_entrantes, num(Number(d.gasto).toFixed(2))]),
+    ['Dia', 'Conversaciones nuevas', 'Mensajes recibidos', 'Gasto estimado (USD)'],
+    ...datos.por_dia.map(d => [d.dia, d.conversaciones_nuevas, d.mensajes_entrantes, usd(d.gasto)]),
   ]
   const csv = filas.map(f => f.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')
   const bom = String.fromCharCode(0xFEFF)
@@ -302,6 +313,8 @@ export function descargarReporte(datos, periodo, rango) {
 
 export function TarjetaActividad({ metricas, periodo, setPeriodo }) {
   const oscuro = useTemaOscuro()
+  const [usdARate, setUsdARate] = useState(null)
+  useEffect(() => { configCostosApi.get()?.then(({ data }) => setUsdARate(data?.usd_a_brl ?? null)) }, [])
   const { datos, semana, cargando, rango } = metricas
   const esHoy = periodo === 'hoy'
   const fuente = esHoy ? semana : datos
@@ -339,7 +352,7 @@ export function TarjetaActividad({ metricas, periodo, setPeriodo }) {
             </div>
             <button
               type="button"
-              onClick={() => descargarReporte(datos, periodo, rango)}
+              onClick={() => descargarReporte(datos, periodo, rango, usdARate)}
               disabled={!datos || cargando}
               title="Descargar reporte (CSV)"
               className="grid h-8 w-8 place-items-center rounded-xl border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 dark:border-white/15 dark:text-zinc-300 dark:hover:bg-white/[0.08]"
@@ -463,8 +476,10 @@ export function TarjetaGasto({ datos, cargando, periodo, esAdmin, alCambiarTarif
 
   return (
     <div className={`dash-card transition-opacity ${cargando ? 'opacity-60' : ''}`}>
-      <Encabezado titulo="Gasto estimado en mensajes" sub="En reales, según el país de cada destinatario" derecha={<EtiquetaPeriodo periodo={periodo} />} />
-      <div className="mt-3 text-[38px] font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">{costo ? formatoReales(costo.total) : '—'}</div>
+      <Encabezado titulo="Gasto estimado en mensajes" sub="En dólares, según el país de cada destinatario" derecha={<EtiquetaPeriodo periodo={periodo} />} />
+      <div className="mt-3 text-[38px] font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
+        {costo && cfg ? formatoDolares(aDolares(costo.total, cfg.usd_a_brl)) : '—'}
+      </div>
       <div className="mt-4 flex items-center gap-4">
         <div className="relative h-24 w-24 shrink-0">
           <svg viewBox="0 0 100 100" className="h-full w-full">

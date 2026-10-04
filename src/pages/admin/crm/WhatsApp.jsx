@@ -11,6 +11,7 @@ import ModalNuevaReserva from '../../../components/ui/ModalNuevaReserva.jsx'
 import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
+import { avisar } from '../../../components/ui/Avisos.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
 // Mover un lead a mano a otro embudo (el chat detectó mal, o el contacto cambió de idea):
@@ -453,7 +454,7 @@ export default function WhatsAppCRM() {
     if (!respuesta.adjunto_path) return
     const file = await bajarAdjuntoRespuesta(respuesta)
     if (file) setAdjunto(file)
-    else alert('No se pudo cargar el archivo de esta respuesta. Probá de nuevo o adjuntalo a mano.')
+    else avisar('No se pudo cargar el archivo de esta respuesta. Probá de nuevo o adjuntalo a mano.')
   }
 
   function insertarRespuesta(respuesta) {
@@ -539,7 +540,7 @@ export default function WhatsAppCRM() {
     const { data: cuando, error } = await conversacionesApi.marcarAtendida(seleccionada.id, miUsuarioId)
     setMarcandoAtendida(false)
     if (error || !cuando) {
-      alert('No se pudo marcar como atendida. Probá de nuevo en un momento.')
+      avisar('No se pudo marcar como atendida. Probá de nuevo en un momento.')
       return
     }
     const cambios = { atendida_at: cuando, atendida_por: miUsuarioId || null }
@@ -554,7 +555,7 @@ export default function WhatsAppCRM() {
     const { error } = await conversacionesApi.desmarcarAtendida(seleccionada.id)
     setMarcandoAtendida(false)
     if (error) {
-      alert('No se pudo deshacer. Probá de nuevo en un momento.')
+      avisar('No se pudo deshacer. Probá de nuevo en un momento.')
       return
     }
     const cambios = { atendida_at: null, atendida_por: null }
@@ -598,10 +599,10 @@ export default function WhatsAppCRM() {
     const { data, error } = await sincronizarWhatsApp()
     setSincronizando(false)
     if (error) {
-      alert('Error al sincronizar: ' + error.message)
+      avisar('Error al sincronizar: ' + error.message)
       return
     }
-    alert(`Sincronización completa: ${data?.syncedConversaciones ?? 0} conversaciones nuevas importadas.`)
+    avisar(`Sincronización completa: ${data?.syncedConversaciones ?? 0} conversaciones nuevas importadas.`)
     conversacionesApi.getAll().then(({ data }) => {
       if (data) setConversaciones(data)
     })
@@ -631,7 +632,7 @@ export default function WhatsAppCRM() {
     const tipo = tipoAdjunto(file)
     const limite = LIMITE_ADJUNTO_MB[tipo]
     if (file.size > limite * 1024 * 1024) {
-      alert(`El archivo pesa ${formatoTamano(file.size)}. El máximo para ${NOMBRE_TIPO_ADJUNTO[tipo]} es ${limite} MB.`)
+      avisar(`El archivo pesa ${formatoTamano(file.size)}. El máximo para ${NOMBRE_TIPO_ADJUNTO[tipo]} es ${limite} MB.`)
       return
     }
     setAdjunto(file)
@@ -759,7 +760,7 @@ export default function WhatsAppCRM() {
     const { path, error: errSubida } = await subirAdjuntoCRM(seleccionada.id, file)
     if (errSubida) {
       setEnviando(false)
-      alert('No se pudo subir el archivo: ' + (errSubida.message || 'error desconocido'))
+      avisar('No se pudo subir el archivo: ' + (errSubida.message || 'error desconocido'))
       return
     }
 
@@ -776,7 +777,7 @@ export default function WhatsAppCRM() {
     })
     if (error) {
       setEnviando(false)
-      alert(await textoErrorEnvio(error))
+      avisar(await textoErrorEnvio(error))
       return
     }
 
@@ -796,7 +797,7 @@ export default function WhatsAppCRM() {
     if ((!textoEnviar && !adjunto) || !seleccionada || enviando) return
 
     if (hayCampoPendiente(textoEnviar)) {
-      alert('El mensaje todavía tiene {nombre} o {agente} sin completar. Escribí el dato a mano antes de enviarlo.')
+      avisar('El mensaje todavía tiene {nombre} o {agente} sin completar. Escribí el dato a mano antes de enviarlo.')
       return
     }
 
@@ -831,7 +832,7 @@ export default function WhatsAppCRM() {
     if (error) {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
-      alert(await textoErrorEnvio(error))
+      avisar(await textoErrorEnvio(error))
     } else {
       limpiarEspera(seleccionada.id)
     }
@@ -873,7 +874,7 @@ export default function WhatsAppCRM() {
     const { error } = await conversacionesApi.pausarAsistente(id, pausar)
     setCambiandoAsistente(false)
     if (error) {
-      alert('No se pudo cambiar el asistente de este chat. Probá de nuevo en un momento.')
+      avisar('No se pudo cambiar el asistente de este chat. Probá de nuevo en un momento.')
       return
     }
     setSeleccionada(prev => (prev && prev.id === id ? { ...prev, bot_pausado: pausar } : prev))

@@ -5,6 +5,7 @@ import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } fro
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 import AutomatizacionesEmbudo from '../../components/leads/AutomatizacionesEmbudo.jsx'
+import { avisar } from '../../components/ui/Avisos.jsx'
 
 // Tarjetas que se dibujan por etapa: el resto se ve con "Ver más". Con miles de
 // leads en una misma etapa dibujarlos todos trabaría la pantalla.
@@ -280,14 +281,14 @@ export default function Leads({ embudo = 'paquetes' }) {
   async function cambiarEstado(id, nuevoEstado, razonPerdida) {
     const lead = leads.find(l => l.id === id)
     if (lead && bloqueadoPorCheckin(lead, nuevoEstado)) {
-      alert('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
+      avisar('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
       abrirLead(lead)
       return
     }
     setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l))
     const { error } = await leadsApi.updateEstado(id, nuevoEstado, null, razonPerdida)
     if (error) {
-      alert('No se pudo mover el lead: ' + (error.message || 'error desconocido'))
+      avisar('No se pudo mover el lead: ' + (error.message || 'error desconocido'))
       if (lead) setLeads(prev => prev.map(l => l.id === id ? { ...l, estado: lead.estado } : l))
       return
     }
@@ -337,7 +338,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       cerrarRapido()
       refrescarLead(data.id)
     } else {
-      alert('No se pudo guardar el lead. Revisá la conexión.')
+      avisar('No se pudo guardar el lead. Revisá la conexión.')
     }
     setGuardandoRapido(false)
   }
@@ -373,7 +374,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       setMostrarFormLead(false)
       setFormLead(FORM_VACIO)
     } else {
-      alert('Error al guardar. Revisá la conexión.')
+      avisar('Error al guardar. Revisá la conexión.')
     }
     setEnviando(false)
   }
@@ -421,7 +422,7 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (embudoDeEtapa(etapaDe(etapas, editForm.estado)) === 'anfitriona') {
       const faltan = faltantesDeVuelos(editForm)
       if (faltan.length) {
-        alert('Para guardar este lead de Anfitriona faltan: ' + faltan.join(', ') + '.')
+        avisar('Para guardar este lead de Anfitriona faltan: ' + faltan.join(', ') + '.')
         return
       }
     }
@@ -429,7 +430,7 @@ export default function Leads({ embudo = 'paquetes' }) {
     // fecha del formulario, no la guardada: si la acaban de escribir junto
     // con el cambio de etapa, en el mismo guardado, no hace falta bloquear.
     if (editForm.estado !== seleccionado.estado && bloqueadoPorCheckin({ ...seleccionado, fecha_vuelo_ida: editForm.fecha_vuelo_ida }, editForm.estado)) {
-      alert('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
+      avisar('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
       return
     }
     // Si el destino es una etapa perdida, pide el motivo antes de guardar y se
@@ -460,7 +461,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       interes_destino: editForm.interes_destino.trim() || null,
     })
     if (error) {
-      alert('No se pudo guardar: ' + (error.message || 'error desconocido'))
+      avisar('No se pudo guardar: ' + (error.message || 'error desconocido'))
       setGuardandoLead(false)
       return
     }

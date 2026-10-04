@@ -4,6 +4,7 @@ import { reservasApi, excursionesApi, clientesApi } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import ModalNuevaReserva from '../../components/ui/ModalNuevaReserva.jsx'
+import { confirmar } from '../../components/ui/Avisos.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 const ESTADOS = {
@@ -82,7 +83,7 @@ export default function Reservas() {
 
   async function eliminarSeleccionadas() {
     const cantidad = seleccionadas.size
-    if (!confirm(`¿Eliminar ${cantidad} reserva${cantidad !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return
+    if (!await confirmar(`¿Eliminar ${cantidad} reserva${cantidad !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return
     const ids = [...seleccionadas]
     await Promise.all(ids.map(id => reservasApi.delete(id)))
     setReservas(prev => prev.filter(r => !seleccionadas.has(r.id)))

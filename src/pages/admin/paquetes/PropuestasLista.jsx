@@ -3,6 +3,7 @@ import { propuestasApi, subirDocumentoPropuesta } from '../../../lib/supabase.js
 import { generarPDFCierre, generarPDFDetallesYServicios } from '../../../lib/pdfPlantillaCierre.js'
 import { EQUIPAJE_LABELS } from '../../../lib/pdfPlantillaAereos.js'
 import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
+import { avisar } from '../../../components/ui/Avisos.jsx'
 
 function formatPrecio(n, moneda = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moneda }).format(n || 0)
@@ -215,7 +216,7 @@ export default function PropuestasLista({ estado }) {
     setProcesandoId(id)
     const { data, error } = await propuestasApi.actualizarEstado(id, nuevoEstado)
     setProcesandoId(null)
-    if (error) { alert('No se pudo actualizar la propuesta: ' + error.message); return }
+    if (error) { avisar('No se pudo actualizar la propuesta: ' + error.message); return }
     // Si el nuevo estado es el que esta lista muestra (ej: archivada -> enviada
     // en la misma pagina de "enviadas"), la agregamos de vuelta en vez de solo
     // sacarla, para que aparezca al toque sin recargar la pagina.
@@ -250,14 +251,14 @@ export default function PropuestasLista({ estado }) {
   async function guardarCampoDocumento(campo, valor) {
     if (!cerrandoPropuesta) return
     const { error } = await propuestasApi.update(cerrandoPropuesta.id, { [campo]: valor })
-    if (error) alert('No se pudo guardar: ' + error.message)
+    if (error) avisar('No se pudo guardar: ' + error.message)
   }
   async function subirDocumento(tipo, archivo) {
     if (!archivo) return
     setSubiendoDocumento(tipo)
     const { url, error } = await subirDocumentoPropuesta(archivo, tipo)
     setSubiendoDocumento('')
-    if (error) { alert('No se pudo subir el archivo: ' + error); return }
+    if (error) { avisar('No se pudo subir el archivo: ' + error); return }
     if (tipo === 'aereo') setAereoPdfUrl(url)
     else setHospedajeVoucherUrl(url)
     await guardarCampoDocumento(tipo === 'aereo' ? 'aereo_pdf_url' : 'hospedaje_voucher_url', url)

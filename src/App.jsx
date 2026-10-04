@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { AvisosPagina } from './components/ui/Avisos.jsx'
 
 // Layouts
 import PublicLayout from './components/layout/PublicLayout.jsx'
@@ -104,5 +105,10 @@ const router = createBrowserRouter([
 ])
 
 export default function App() {
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <AvisosPagina />
+    </>
+  )
 }

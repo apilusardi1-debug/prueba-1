@@ -48,11 +48,11 @@ const SUGERIDAS = [
     id: 'checkin_anfitriona',
     embudo: 'anfitriona',
     etapa: 'anfitriona_asignada',
-    titulo: 'Pedir la fecha de check-in del vuelo',
+    titulo: 'Pedir los datos de vuelo',
     tipo: 'recordatorio',
     dias: 0,
-    nota: 'Completar la fecha de check-in del vuelo',
-    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el mismo día: «Completar la fecha de check-in del vuelo». Al cargar esa fecha en la ficha del lead, se crean otros dos recordatorios — pedir el saldo pendiente 45 días antes y enviar el checklist 48 hs antes — eso no depende de esta automatización, ya viene armado.',
+    nota: 'Completar los datos de vuelo del lead',
+    explicacion: 'Cuando un lead entra a «{etapa}», se crea solo un recordatorio para el mismo día: «Completar los datos de vuelo del lead». Las alarmas de pago y check-in salen solas al cargar las fechas de vuelo en la ficha: pedir el saldo 45 días antes del vuelo de ida, check in + checklist 48 hs antes del de ida y check in 48 hs antes del de vuelta. Eso no depende de esta automatización.',
   },
 ]
 

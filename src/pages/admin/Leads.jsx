@@ -268,19 +268,19 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (seleccionado?.id === id) setSeleccionado(null)
   }
 
-  // Un lead de Anfitriona sin la fecha de check-in cargada no puede avanzar de
+  // Un lead de Anfitriona sin la fecha de vuelo de ida cargada no puede avanzar de
   // etapa (salvo a "Perdido": eso siempre tiene que poder hacerse). Se
   // verifica acá antes de guardar nada — el trigger de la base hace de
   // respaldo por si algo pasa por otro lado.
   function bloqueadoPorCheckin(lead, nuevoEstado) {
     const etapaActual = etapaDe(etapas, lead.estado)
-    return embudoDeEtapa(etapaActual) === 'anfitriona' && nuevoEstado !== 'anfitriona_perdido' && !lead.fecha_checkin
+    return embudoDeEtapa(etapaActual) === 'anfitriona' && nuevoEstado !== 'anfitriona_perdido' && !lead.fecha_vuelo_ida
   }
 
   async function cambiarEstado(id, nuevoEstado, razonPerdida) {
     const lead = leads.find(l => l.id === id)
     if (lead && bloqueadoPorCheckin(lead, nuevoEstado)) {
-      alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
+      alert('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
       abrirLead(lead)
       return
     }
@@ -394,17 +394,42 @@ export default function Leads({ embudo = 'paquetes' }) {
       valor: lead.valor ?? 0,
       etiquetas: lead.etiquetas || [],
       responsable_id: lead.responsable_id || '',
-      fecha_checkin: lead.fecha_checkin || '',
+      fecha_vuelo_ida: lead.fecha_vuelo_ida || '',
+      fecha_vuelo_vuelta: lead.fecha_vuelo_vuelta || '',
+      vuelo_interno: lead.vuelo_interno || '',
+      fecha_vuelo_interno_ida: lead.fecha_vuelo_interno_ida || '',
+      fecha_vuelo_interno_vuelta: lead.fecha_vuelo_interno_vuelta || '',
     })
+  }
+
+  // Datos de vuelo que se piden para cualquier lead de Anfitriona. Si el vuelo
+  // interno es Recife - Noronha, sus dos fechas también son obligatorias.
+  function faltantesDeVuelos(f) {
+    const faltan = []
+    if (!f.fecha_vuelo_ida) faltan.push('fecha del vuelo de ida')
+    if (!f.fecha_vuelo_vuelta) faltan.push('fecha del vuelo de vuelta')
+    if (!f.vuelo_interno) faltan.push('vuelo interno (o NO HAY)')
+    if (f.vuelo_interno === 'recife_noronha') {
+      if (!f.fecha_vuelo_interno_ida) faltan.push('fecha de ida del vuelo interno')
+      if (!f.fecha_vuelo_interno_vuelta) faltan.push('fecha de vuelta del vuelo interno')
+    }
+    return faltan
   }
 
   async function guardarLead(razonForzada) {
     if (!editForm.nombre.trim()) return
+    if (embudoDeEtapa(etapaDe(etapas, editForm.estado)) === 'anfitriona') {
+      const faltan = faltantesDeVuelos(editForm)
+      if (faltan.length) {
+        alert('Para guardar este lead de Anfitriona faltan: ' + faltan.join(', ') + '.')
+        return
+      }
+    }
     // Mismo bloqueo que al arrastrar la tarjeta — acá se compara contra la
     // fecha del formulario, no la guardada: si la acaban de escribir junto
     // con el cambio de etapa, en el mismo guardado, no hace falta bloquear.
-    if (editForm.estado !== seleccionado.estado && bloqueadoPorCheckin({ ...seleccionado, fecha_checkin: editForm.fecha_checkin }, editForm.estado)) {
-      alert('Cargá la fecha de check-in del vuelo antes de mover este lead a otra etapa de Anfitriona.')
+    if (editForm.estado !== seleccionado.estado && bloqueadoPorCheckin({ ...seleccionado, fecha_vuelo_ida: editForm.fecha_vuelo_ida }, editForm.estado)) {
+      alert('Cargá la fecha del vuelo de ida antes de mover este lead a otra etapa de Anfitriona.')
       return
     }
     // Si el destino es una etapa perdida, pide el motivo antes de guardar y se
@@ -412,12 +437,21 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (razonForzada === undefined && editForm.estado !== seleccionado.estado && pedirRazonSiPerdida(editForm.estado, razon => guardarLead(razon))) return
     setGuardandoLead(true)
     // valor, etiquetas, etc. solo se mandan si la base ya tiene esas columnas
-    const { valor, etiquetas, responsable_id, fecha_checkin, ...basicos } = editForm
+    const { valor, etiquetas, responsable_id, fecha_vuelo_ida, fecha_vuelo_vuelta, vuelo_interno, fecha_vuelo_interno_ida, fecha_vuelo_interno_vuelta, ...basicos } = editForm
     const extras = 'valor' in seleccionado
       ? { valor: Math.max(0, Number(String(valor).replace(',', '.')) || 0), etiquetas }
       : {}
     if ('responsable_id' in seleccionado) extras.responsable_id = responsable_id || null
-    if ('fecha_checkin' in seleccionado) extras.fecha_checkin = fecha_checkin || null
+    if ('fecha_vuelo_ida' in seleccionado) {
+      const interno = vuelo_interno === 'recife_noronha'
+      Object.assign(extras, {
+        fecha_vuelo_ida: fecha_vuelo_ida || null,
+        fecha_vuelo_vuelta: fecha_vuelo_vuelta || null,
+        vuelo_interno: vuelo_interno || null,
+        fecha_vuelo_interno_ida: interno ? fecha_vuelo_interno_ida || null : null,
+        fecha_vuelo_interno_vuelta: interno ? fecha_vuelo_interno_vuelta || null : null,
+      })
+    }
     if (razonForzada) extras.razon_perdida = razonForzada
     const { data, error } = await leadsApi.update(seleccionado.id, {
       ...basicos,
@@ -435,7 +469,7 @@ export default function Leads({ embudo = 'paquetes' }) {
       setSeleccionado(data)
       // El cambio de etapa o de fecha de check-in puede haber creado o movido
       // un recordatorio automático — se releen para que se vea sin recargar.
-      if (data.estado !== seleccionado.estado || data.fecha_checkin !== seleccionado.fecha_checkin) refrescarLead(data.id)
+      if (data.estado !== seleccionado.estado || data.fecha_vuelo_ida !== seleccionado.fecha_vuelo_ida || data.fecha_vuelo_vuelta !== seleccionado.fecha_vuelo_vuelta) refrescarLead(data.id)
     }
     setGuardandoLead(false)
   }
@@ -664,17 +698,16 @@ export default function Leads({ embudo = 'paquetes' }) {
                     const seguimiento = seguimientoDe(lead, etapa)
                     const interes = etiquetaInteres(lead)
                     const chip = 'max-w-full truncate rounded border border-gray-200 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400'
-                    // Ya compró el pasaje (entró a Anfitriona) pero todavía no se cargó
-                    // cuándo hace el check-in: no se puede avanzar de etapa hasta cargarla.
-                    const faltaCheckin = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' && !lead.fecha_checkin
-                    // Ya tiene el check-in cargado: si llegó la fecha de pedir el saldo
-                    // pendiente o de mandar el checklist, se resalta igual que faltaCheckin
-                    // (nunca se dan los dos juntos: estos recordatorios recién se crean
-                    // cuando ya se cargó la fecha).
+                    // Ya compró el pasaje (entró a Anfitriona) pero todavía no cargó sus
+                    // datos de vuelo: no se puede avanzar de etapa hasta cargarlos.
+                    const faltaCheckin = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' && faltantesDeVuelos(lead).length > 0
+                    // Ya tiene los datos de vuelo: si llegó la fecha de un recordatorio
+                    // de Anfitriona, se resalta igual que faltaCheckin (nunca se dan los
+                    // dos juntos: esos recordatorios recién se crean con las fechas).
                     const tareaVencida = !faltaCheckin && embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido'
                       ? recordatoriosDeLead(lead.id).find(r => NOTAS_TAREA_ANFITRIONA.includes(r.nota) && r.fecha <= hoyISO())
                       : null
-                    const alertaTarjeta = faltaCheckin ? 'Falta cargar la fecha de check-in del vuelo' : tareaVencida?.nota
+                    const alertaTarjeta = faltaCheckin ? 'Faltan datos de vuelo' : tareaVencida?.nota
                     return (
                       <div
                         key={lead.id}
@@ -999,17 +1032,69 @@ export default function Leads({ embudo = 'paquetes' }) {
                 </div>
               )}
 
-              {embudo === 'anfitriona' && 'fecha_checkin' in seleccionado && (
-                <div>
-                  <label htmlFor="checkin-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Fecha de check-in del vuelo</label>
-                  <input
-                    id="checkin-lead"
-                    type="date"
-                    value={editForm.fecha_checkin}
-                    onChange={e => setEditForm(p => ({ ...p, fecha_checkin: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
-                  />
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Al guardarla, se crean dos recordatorios: pedir el saldo pendiente (45 días antes) y enviar el checklist (48 hs antes).</p>
+              {embudo === 'anfitriona' && 'fecha_vuelo_ida' in seleccionado && (
+                <div className="space-y-3 rounded-xl border border-gray-100 dark:border-zinc-800 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Vuelos</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="vuelo-ida-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Vuelo de ida</label>
+                      <input
+                        id="vuelo-ida-lead"
+                        type="date"
+                        value={editForm.fecha_vuelo_ida}
+                        onChange={e => setEditForm(p => ({ ...p, fecha_vuelo_ida: e.target.value }))}
+                        className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="vuelo-vuelta-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Vuelo de vuelta</label>
+                      <input
+                        id="vuelo-vuelta-lead"
+                        type="date"
+                        value={editForm.fecha_vuelo_vuelta}
+                        onChange={e => setEditForm(p => ({ ...p, fecha_vuelo_vuelta: e.target.value }))}
+                        className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="vuelo-interno-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Vuelo interno</label>
+                    <select
+                      id="vuelo-interno-lead"
+                      value={editForm.vuelo_interno}
+                      onChange={e => setEditForm(p => ({ ...p, vuelo_interno: e.target.value }))}
+                      className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                    >
+                      <option value="">Elegí una opción</option>
+                      <option value="recife_noronha">Recife – Fernando de Noronha</option>
+                      <option value="no_hay">NO HAY</option>
+                    </select>
+                  </div>
+                  {editForm.vuelo_interno === 'recife_noronha' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="vuelo-interno-ida-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Ida del vuelo interno</label>
+                        <input
+                          id="vuelo-interno-ida-lead"
+                          type="date"
+                          value={editForm.fecha_vuelo_interno_ida}
+                          onChange={e => setEditForm(p => ({ ...p, fecha_vuelo_interno_ida: e.target.value }))}
+                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="vuelo-interno-vuelta-lead" className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Vuelta del vuelo interno</label>
+                        <input
+                          id="vuelo-interno-vuelta-lead"
+                          type="date"
+                          value={editForm.fecha_vuelo_interno_vuelta}
+                          onChange={e => setEditForm(p => ({ ...p, fecha_vuelo_interno_vuelta: e.target.value }))}
+                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/30 focus:border-brand-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-400 dark:text-zinc-500">Al guardar se crean las alarmas: pedir el saldo 45 días antes del vuelo de ida, check in + checklist 48 hs antes del de ida, y check in 48 hs antes del de vuelta.</p>
                 </div>
               )}
 

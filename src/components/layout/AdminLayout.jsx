@@ -224,6 +224,15 @@ const NAV = [
 ]
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
+const RAIL_ITEM = 'relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors'
+const RAIL_ACTIVO = 'bg-hero-sky text-zinc-950'
+const RAIL_INACTIVO = 'text-zinc-400 hover:bg-white/10 hover:text-white'
+const ICONO_ACTIVO = 'text-zinc-950'
+const ICONO_INACTIVO = 'text-zinc-500 group-hover:text-white'
+const SUB_ITEM = 'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors'
+const SUB_ACTIVO = 'text-hero-sky bg-white/10'
+const SUB_INACTIVO = 'text-zinc-400 hover:bg-white/10 hover:text-white'
+
 function Sidebar() {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
@@ -313,36 +322,30 @@ function Sidebar() {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen z-50 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 flex flex-col transition-all duration-300 ease-in-out
-        ${visible ? 'w-[290px]' : 'w-[90px]'}
-        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+      className={`fixed top-3 bottom-3 left-3 z-50 flex flex-col overflow-hidden rounded-[28px] bg-zinc-950 text-white shadow-xl transition-all duration-300 ease-in-out dark:bg-zinc-900
+        ${visible ? 'w-[270px]' : 'w-[84px]'}
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-[calc(100%_+_1rem)]'}
         lg:translate-x-0`}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo */}
-      <div className={`flex items-center py-6 px-5 border-b border-gray-100 dark:border-zinc-800 ${!visible ? 'justify-center' : ''}`}>
+      <div className={`flex items-center border-b border-white/10 py-6 px-5 ${!visible ? 'justify-center' : ''}`}>
         {visible ? (
-          <div className="w-full">
-            <img src="/logo-panel.png" alt="DreamTours" className="mx-auto hidden h-auto w-[132px] dark:block" />
-            <div className="dark:hidden">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Panel interno</p>
-              <p className="text-lg font-bold text-gray-900">DREAMTOURS</p>
-            </div>
-          </div>
+          <img src="/logo-panel.png" alt="DreamTours" className="mx-auto h-auto w-[132px]" />
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-            <span className="text-white dark:text-zinc-900 font-bold text-sm">D</span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-hero-sky">
+            <span className="text-sm font-bold text-zinc-950">D</span>
           </div>
         )}
       </div>
 
       {/* Nav */}
-      <div className="flex-1 overflow-y-auto no-scrollbar py-5 px-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar py-5 px-3">
         {visible && (
-          <p className="text-[11px] font-semibold text-gray-400 dark:text-zinc-600 uppercase tracking-wider mb-3 px-1">Menú</p>
+          <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Menú</p>
         )}
-        {!visible && <div className="flex justify-center mb-3"><Icon.Dots /></div>}
+        {!visible && <div className="mb-3 flex justify-center text-zinc-500"><Icon.Dots /></div>}
 
         <ul className="space-y-1">
           {navVisible.map((item, i) => {
@@ -354,11 +357,11 @@ function Sidebar() {
                 <li key={i}>
                   <button
                     onClick={() => toggleSub(i)}
-                    className={`menu-item group w-full ${!visible ? 'justify-center' : ''} ${
-                      parentActive ? 'menu-item-active' : 'menu-item-inactive'
+                    className={`group ${RAIL_ITEM} ${!visible ? 'justify-center px-0' : ''} ${
+                      parentActive ? RAIL_ACTIVO : RAIL_INACTIVO
                     }`}
                   >
-                    <span className={`relative size-6 flex-shrink-0 ${parentActive ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                    <span className={`relative size-6 flex-shrink-0 ${parentActive ? ICONO_ACTIVO : ICONO_INACTIVO}`}>
                       <item.icon />
                       {item.label === 'CRM' && pendientesWhatsapp > 0 && (
                         <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
@@ -372,7 +375,7 @@ function Sidebar() {
                             {pendientesWhatsapp}
                           </span>
                         )}
-                        <Icon.Chevron className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-500' : 'text-gray-400'}`} />
+                        <Icon.Chevron className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-hero-sky' : 'text-zinc-500'}`} />
                       </>
                     )}
                   </button>
@@ -383,14 +386,14 @@ function Sidebar() {
                       className="overflow-hidden transition-all duration-300 ease-in-out"
                       style={{ height: isOpen ? `${subHeights[i] || 0}px` : '0px' }}
                     >
-                      <ul className="mt-1 ml-3 space-y-1 border-l border-gray-100 dark:border-zinc-800 pl-3">
+                      <ul className="mt-1 ml-5 space-y-1 border-l border-white/10 pl-3">
                         {item.sub.map(s => (
                           <li key={s.path}>
                             <Link
                               to={s.path}
                               onClick={cerrarSiMobile}
-                              className={`menu-dropdown-item ${
-                                isActive(s.path, s.exact) ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'
+                              className={`${SUB_ITEM} ${
+                                isActive(s.path, s.exact) ? SUB_ACTIVO : SUB_INACTIVO
                               }`}
                             >
                               <span className="size-4 flex-shrink-0"><s.icon /></span>
@@ -416,11 +419,11 @@ function Sidebar() {
                 <Link
                   to={item.path}
                   onClick={cerrarSiMobile}
-                  className={`menu-item group ${!visible ? 'justify-center' : ''} ${
-                    active ? 'menu-item-active' : 'menu-item-inactive'
+                  className={`group ${RAIL_ITEM} ${!visible ? 'justify-center px-0' : ''} ${
+                    active ? RAIL_ACTIVO : RAIL_INACTIVO
                   }`}
                 >
-                  <span className={`size-6 flex-shrink-0 ${active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                  <span className={`size-6 flex-shrink-0 ${active ? ICONO_ACTIVO : ICONO_INACTIVO}`}>
                     <item.icon />
                   </span>
                   {visible && <span>{item.label}</span>}
@@ -432,20 +435,20 @@ function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-100 dark:border-zinc-800 px-4 py-4 space-y-1">
+      <div className="space-y-1 border-t border-white/10 px-3 py-4">
         <Link
           to="/"
           onClick={cerrarSiMobile}
-          className={`menu-item menu-item-inactive ${!visible ? 'justify-center' : ''}`}
+          className={`group ${RAIL_ITEM} ${RAIL_INACTIVO} ${!visible ? 'justify-center px-0' : ''}`}
         >
-          <span className="size-6 flex-shrink-0 menu-item-icon-inactive"><Icon.Globe /></span>
+          <span className={`size-6 flex-shrink-0 ${ICONO_INACTIVO}`}><Icon.Globe /></span>
           {visible && <span>Ver sitio público</span>}
         </Link>
         <button
           onClick={logout}
-          className={`menu-item menu-item-inactive w-full ${!visible ? 'justify-center' : ''}`}
+          className={`group w-full ${RAIL_ITEM} ${RAIL_INACTIVO} ${!visible ? 'justify-center px-0' : ''}`}
         >
-          <span className="size-6 flex-shrink-0 menu-item-icon-inactive"><Icon.Logout /></span>
+          <span className={`size-6 flex-shrink-0 ${ICONO_INACTIVO}`}><Icon.Logout /></span>
           {visible && <span>Cerrar sesión</span>}
         </button>
       </div>
@@ -571,7 +574,7 @@ function LayoutContent() {
       <Backdrop />
       {puedeAvisos && <AvisosCarteles carteles={avisos.carteles} alCerrar={avisos.cerrarCartel} alAbrir={abrirCartel} />}
       <div className={`transition-all duration-300 ease-in-out ${esWhatsApp ? 'flex h-dvh flex-col overflow-hidden' : ''} ${
-        isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]'
+        isExpanded || isHovered ? 'lg:ml-[286px]' : 'lg:ml-[100px]'
       }`}>
         <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} />
         {/* El CRM de WhatsApp necesita la pantalla fija: el header y la lista de conversaciones

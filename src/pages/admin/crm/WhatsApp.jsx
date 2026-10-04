@@ -64,8 +64,8 @@ function EstadoMensaje({ msg }) {
   const ESTADOS = {
     fallido: { icono: 'alert', clase: 'text-red-500 dark:text-red-300', titulo: 'No entregado' },
     leido: { icono: 'checks', clase: 'text-sky-500 dark:text-sky-300', titulo: `Leído ${hora}`.trim() },
-    entregado: { icono: 'checks', clase: 'text-green-100', titulo: `Entregado ${hora}`.trim() },
-    enviado: { icono: 'check', clase: 'text-green-100', titulo: 'Enviado' },
+    entregado: { icono: 'checks', clase: 'text-zinc-700 dark:text-sky-200', titulo: `Entregado ${hora}`.trim() },
+    enviado: { icono: 'check', clase: 'text-zinc-700 dark:text-sky-200', titulo: 'Enviado' },
   }
   const est = ESTADOS[msg.estado_envio] || ESTADOS.enviado
   return (
@@ -88,7 +88,7 @@ function formatPhone(phone) {
 function Avatar({ nombre, size = 'md' }) {
   const sizeClass = size === 'sm' ? 'w-9 h-9 text-sm' : 'w-12 h-12 text-lg'
   return (
-    <div className={`${sizeClass} rounded-full bg-[#1c4444] flex items-center justify-center font-bold text-white shrink-0`}>
+    <div className={`${sizeClass} rounded-full bg-hero-sky flex items-center justify-center font-bold text-zinc-950 shrink-0`}>
       {(nombre || '?')[0].toUpperCase()}
     </div>
   )
@@ -924,17 +924,17 @@ export default function WhatsAppCRM() {
     })
 
   return (
-    <div className="flex h-full bg-white dark:bg-zinc-900">
+    <div className="flex h-full gap-3 bg-gray-100 dark:bg-zinc-950 lg:p-3">
       {/* Panel izquierdo — lista de conversaciones. En el celular ocupa toda la pantalla y
           desaparece en cuanto se abre un chat (vuelve con la flecha del encabezado del chat). */}
-      <div className={`${seleccionada ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col border-r border-gray-200 dark:border-zinc-800 shrink-0`}>
+      <div className={`${seleccionada ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col overflow-hidden bg-white dark:bg-zinc-900 lg:rounded-3xl lg:shadow-sm shrink-0`}>
         <div className="px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-3">
             <h1 className="font-bold text-gray-900 dark:text-zinc-100 text-lg">WhatsApp</h1>
             <button
               onClick={sincronizar}
               disabled={sincronizando}
-              className="text-xs bg-green-50 dark:bg-green-950/30 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              className="text-xs bg-hero-sky/30 hover:bg-hero-sky/50 dark:bg-sky-900/40 dark:hover:bg-sky-900/60 text-zinc-900 dark:text-sky-200 font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
             >
               {sincronizando ? 'Sincronizando...' : '↻ Sincronizar'}
             </button>
@@ -944,7 +944,7 @@ export default function WhatsAppCRM() {
             placeholder="Buscar contacto o número..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            className="w-full bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+            className="w-full bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
           />
           <div className="flex gap-1.5 mt-2.5">
             {[
@@ -957,7 +957,7 @@ export default function WhatsAppCRM() {
                 onClick={() => elegirFiltro(f.id)}
                 className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
                   filtroAsignacion === f.id
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-hero-sky text-zinc-950'
                     : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700'
                 }`}
               >
@@ -968,7 +968,7 @@ export default function WhatsAppCRM() {
           <select
             value={filtroAsignacion.startsWith('u:') ? filtroAsignacion.slice(2) : ''}
             onChange={e => elegirFiltro(e.target.value ? `u:${e.target.value}` : 'todas')}
-            className="w-full mt-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
+            className="w-full mt-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky"
           >
             <option value="">Ver las asignadas a otra persona...</option>
             {usuarios.map(u => (
@@ -1009,7 +1009,7 @@ export default function WhatsAppCRM() {
               onClick={() => seleccionarConversacion(conv)}
               title={alerta ? `Hace ${alerta.horas} h que el cliente espera una respuesta` : undefined}
               className={`w-full text-left px-4 py-3.5 border-b border-gray-50 dark:border-zinc-800/50 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors ${claseAlerta} ${
-                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-[#1c4444]/10 dark:bg-[#1c4444]/30'} border-l-4 border-l-[#1c4444]` : ''
+                seleccionada?.id === conv.id ? `${alerta ? '' : 'bg-hero-sky/25 dark:bg-sky-900/40'} border-l-4 border-l-hero-sky` : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -1065,7 +1065,7 @@ export default function WhatsAppCRM() {
                   </span>
                 )}
                 {conv.no_leidos > 0 && (
-                  <span className="bg-green-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center font-medium shrink-0">
+                  <span className="bg-hero-sky text-zinc-950 text-xs rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center font-medium shrink-0">
                     {conv.no_leidos}
                   </span>
                 )}
@@ -1078,7 +1078,7 @@ export default function WhatsAppCRM() {
 
       {/* Panel derecho — chat */}
       {seleccionada ? (
-        <div className="chat-fondo flex-1 flex flex-col w-full">
+        <div className="chat-fondo flex-1 flex flex-col w-full min-w-0 overflow-hidden lg:rounded-3xl lg:shadow-sm">
           {/* Header del chat */}
           <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-3 py-2 sm:px-5 sm:py-3 flex flex-wrap items-center gap-2 sm:gap-3 shadow-sm dark:shadow-black/20">
             <button
@@ -1120,7 +1120,7 @@ export default function WhatsAppCRM() {
                   {marcandoAtendida ? 'Guardando...' : 'Marcar como atendida'}
                 </button>
               ) : atendidaVigente && (
-                <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                <span className="flex items-center gap-1.5 rounded-full bg-hero-sky/30 px-3 py-1.5 text-xs font-medium text-zinc-900 dark:bg-sky-900/40 dark:text-sky-200">
                   <Ic n="checkcircle" className="h-3.5 w-3.5" />
                   {atendidaPor ? `Atendida por ${atendidaPor}` : 'Atendida'}
                   <button
@@ -1158,7 +1158,7 @@ export default function WhatsAppCRM() {
                 >
                   <Ic n="bot" className="h-3.5 w-3.5" />
                   {asistentePausado ? 'Asistente pausado' : 'Asistente activo'}
-                  <span aria-hidden="true" className={`relative h-4 w-7 rounded-full transition-colors ${asistentePausado ? 'bg-amber-300 dark:bg-amber-700' : 'bg-green-500'}`}>
+                  <span aria-hidden="true" className={`relative h-4 w-7 rounded-full transition-colors ${asistentePausado ? 'bg-amber-300 dark:bg-amber-700' : 'bg-hero-sky'}`}>
                     <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${asistentePausado ? 'left-0.5' : 'left-3.5'}`} />
                   </span>
                 </button>
@@ -1289,7 +1289,7 @@ export default function WhatsAppCRM() {
                 href={`https://wa.me/${seleccionada.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+                className="text-xs text-sky-700 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 font-medium"
               >
                 Abrir en WhatsApp ↗
               </a>
@@ -1308,11 +1308,11 @@ export default function WhatsAppCRM() {
               >
                 <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
                   msg.direccion === 'saliente'
-                    ? 'bg-[#1c4444] text-white'
+                    ? 'bg-hero-sky text-zinc-950 dark:bg-sky-900/80 dark:text-sky-50'
                     : 'bg-white dark:bg-[#525252] text-gray-900 dark:text-zinc-100'
                 } ${msg.id?.toString().startsWith('temp-') ? 'opacity-70' : ''}`}>
                   {msg.origen === 'bot' && (
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-green-100 mb-1">Asistente automático</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:text-sky-200 mb-1">Asistente automático</p>
                   )}
                   {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
                   {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
@@ -1321,7 +1321,7 @@ export default function WhatsAppCRM() {
                       No se entregó. {textoFallo(msg.error_codigo, msg.error_envio)}
                     </p>
                   )}
-                  <p className={`text-xs mt-1 text-right ${msg.direccion === 'saliente' ? 'text-green-100' : 'text-gray-400 dark:text-zinc-400'}`}>
+                  <p className={`text-xs mt-1 text-right ${msg.direccion === 'saliente' ? 'text-zinc-700 dark:text-sky-200' : 'text-gray-400 dark:text-zinc-400'}`}>
                     {formatHora(msg.created_at)}
                     {msg.direccion === 'saliente' && (
                       <span className="ml-1"><EstadoMensaje msg={msg} /></span>
@@ -1387,7 +1387,7 @@ export default function WhatsAppCRM() {
                 <button
                   onClick={() => detenerGrabacion(false)}
                   title="Terminar grabación"
-                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 text-white transition-colors"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-hero-sky hover:brightness-95 !text-zinc-950 text-white transition-colors"
                 >
                   <Ic n="check" className="w-4 h-4" />
                 </button>
@@ -1415,7 +1415,7 @@ export default function WhatsAppCRM() {
                   <button
                     onClick={alternarReproduccion}
                     title={reproduciendo ? 'Pausar' : 'Escuchar'}
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 text-white transition-colors"
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-hero-sky hover:brightness-95 !text-zinc-950 text-white transition-colors"
                   >
                     <Ic n={reproduciendo ? 'pause' : 'play'} className="w-3.5 h-3.5" />
                   </button>
@@ -1436,7 +1436,7 @@ export default function WhatsAppCRM() {
                   onClick={enviar}
                   disabled={enviando}
                   title="Enviar audio"
-                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white transition-colors"
+                  className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl bg-hero-sky hover:brightness-95 !text-zinc-950 disabled:opacity-40 text-white transition-colors"
                 >
                   {enviando ? '...' : <Ic n="send" className="w-4 h-4" />}
                 </button>
@@ -1477,7 +1477,7 @@ export default function WhatsAppCRM() {
                             }
                           }}
                           placeholder="Buscar respuesta..."
-                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
+                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky"
                         />
                       </div>
                       <div className="max-h-56 overflow-y-auto py-1">
@@ -1601,7 +1601,7 @@ export default function WhatsAppCRM() {
                   }
                 }}
                 placeholder="Mensaje... (/ atajos rápidos)"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-full sm:rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 resize-none overflow-hidden"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-full sm:rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky resize-none overflow-hidden"
                 style={{ minHeight: '42px' }}
               />
             </div>
@@ -1609,7 +1609,7 @@ export default function WhatsAppCRM() {
               onClick={enviar}
               disabled={enviando || (!texto.trim() && !adjunto)}
               title="Enviar"
-              className="bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-9 h-9 sm:w-auto sm:h-auto sm:px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
+              className="bg-hero-sky hover:brightness-95 !text-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-9 h-9 sm:w-auto sm:h-auto sm:px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
             >
               {enviando ? (
                 '...'
@@ -1643,7 +1643,7 @@ export default function WhatsAppCRM() {
       {/* Panel derecho — ficha del cliente. En la compu es una columna más; en el celular tapa
           toda la pantalla (se cierra con la ✕ o tocando "Cliente" de nuevo). */}
       {panelCliente && seleccionada && (
-        <div className="fixed inset-0 z-50 lg:static lg:inset-auto lg:z-auto lg:w-80 lg:border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-y-auto">
+        <div className="fixed inset-0 z-50 lg:static lg:inset-auto lg:z-auto lg:w-80 lg:rounded-3xl lg:shadow-sm bg-white dark:bg-zinc-900 flex flex-col shrink-0 overflow-y-auto">
           <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
             <p className="font-semibold text-gray-900 dark:text-zinc-100">Ficha del contacto</p>
             <button

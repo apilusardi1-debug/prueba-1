@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi } from '../../lib/supabase.js'
+import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 import AutomatizacionesEmbudo from '../../components/leads/AutomatizacionesEmbudo.jsx'
+import AnfitrionaDatos, { faltantesHospedaje } from '../../components/leads/AnfitrionaDatos.jsx'
 import { avisar } from '../../components/ui/Avisos.jsx'
 
 // Tarjetas que se dibujan por etapa: el resto se ve con "Ver más". Con miles de
@@ -181,6 +182,7 @@ export default function Leads({ embudo = 'paquetes' }) {
   const [verMas, setVerMas] = useState({}) // clave de etapa -> tarjetas visibles
   const [usuarios, setUsuarios] = useState([])
   const [panelAuto, setPanelAuto] = useState(false)
+  const [hospedajes, setHospedajes] = useState([])
 
   // El menú para cambiar de embudo se cierra al hacer clic afuera o con Escape
   useEffect(() => {
@@ -198,12 +200,14 @@ export default function Leads({ embudo = 'paquetes' }) {
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: l }, { data: r }] = await Promise.all([
+        const [{ data: l }, { data: r }, { data: h }] = await Promise.all([
           leadsApi.getAll(),
           recordatoriosApi.getPendientes(),
+          anfitrionaApi.getHospedajes(),
         ])
         if (l) setLeads(l)
         if (r) setRecordatorios(r)
+        if (h) setHospedajes(h)
       } catch (_) {}
       setLoading(false)
     }
@@ -413,6 +417,19 @@ export default function Leads({ embudo = 'paquetes' }) {
     if (f.vuelo_interno === 'recife_noronha') {
       if (!f.fecha_vuelo_interno_ida) faltan.push('fecha de ida del vuelo interno')
       if (!f.fecha_vuelo_interno_vuelta) faltan.push('fecha de vuelta del vuelo interno')
+    }
+    return faltan
+  }
+
+  // Lo que le falta a un lead de Anfitriona para estar completo: los vuelos y, por cada
+  // hospedaje, proveedor, contacto y PIX. Sin ningún hospedaje también falta.
+  function faltantesAnfitriona(lead) {
+    const faltan = [...faltantesDeVuelos(lead)]
+    const propios = hospedajes.filter(h => h.lead_id === lead.id)
+    if (propios.length === 0) faltan.push('hospedajes')
+    for (const h of propios) {
+      const falta = faltantesHospedaje(h)
+      if (falta.length) faltan.push(`${falta.join(' y ')} de ${h.nombre}`)
     }
     return faltan
   }
@@ -699,27 +716,32 @@ export default function Leads({ embudo = 'paquetes' }) {
                     const seguimiento = seguimientoDe(lead, etapa)
                     const interes = etiquetaInteres(lead)
                     const chip = 'max-w-full truncate rounded border border-gray-200 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-zinc-400'
-                    // Ya compró el pasaje (entró a Anfitriona) pero todavía no cargó sus
-                    // datos de vuelo: no se puede avanzar de etapa hasta cargarlos.
-                    const faltaCheckin = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' && faltantesDeVuelos(lead).length > 0
-                    // Ya tiene los datos de vuelo: si llegó la fecha de un recordatorio
-                    // de Anfitriona, se resalta igual que faltaCheckin (nunca se dan los
-                    // dos juntos: esos recordatorios recién se crean con las fechas).
-                    const tareaVencida = !faltaCheckin && embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido'
+                    // Anfitriona: si al lead le falta información (vuelos, o proveedor,
+                    // contacto y PIX de cada hospedaje) la tarjeta queda en amarillo.
+                    // No frena el avance de etapa.
+                    const faltantes = embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido' ? faltantesAnfitriona(lead) : []
+                    const faltaInfo = faltantes.length > 0
+                    // Con la información completa, si llegó la fecha de un recordatorio de
+                    // Anfitriona se resalta en rojo (nunca se dan los dos juntos).
+                    const tareaVencida = !faltaInfo && embudo === 'anfitriona' && etapa.clave !== 'anfitriona_perdido'
                       ? recordatoriosDeLead(lead.id).find(r => NOTAS_TAREA_ANFITRIONA.includes(r.nota) && r.fecha <= hoyISO())
                       : null
-                    const alertaTarjeta = faltaCheckin ? 'Faltan datos de vuelo' : tareaVencida?.nota
+                    const alertaTarjeta = faltaInfo
+                      ? `Falta: ${faltantes[0]}${faltantes.length > 1 ? ` (+${faltantes.length - 1})` : ''}`
+                      : tareaVencida?.nota
                     return (
                       <div
                         key={lead.id}
                         draggable
                         onDragStart={e => e.dataTransfer.setData('text/plain', lead.id)}
                         onClick={() => abrirLead(lead)}
-                        title={alertaTarjeta || undefined}
+                        title={faltaInfo ? 'Falta: ' + faltantes.join(', ') : alertaTarjeta || undefined}
                         className={`group cursor-grab rounded-lg border bg-white px-2.5 py-2 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing dark:bg-zinc-900 dark:shadow-none ${
-                          alertaTarjeta
-                            ? 'border-red-300 ring-1 ring-red-200 dark:border-red-900 dark:ring-red-900/50'
-                            : 'border-gray-200 dark:border-white/[0.08]'
+                          faltaInfo
+                            ? 'border-amber-300 ring-1 ring-amber-200 dark:border-amber-800 dark:ring-amber-900/50'
+                            : alertaTarjeta
+                              ? 'border-red-300 ring-1 ring-red-200 dark:border-red-900 dark:ring-red-900/50'
+                              : 'border-gray-200 dark:border-white/[0.08]'
                         }`}
                       >
                         <div className="flex items-baseline justify-between gap-2 text-[11px] text-gray-500 dark:text-zinc-400">
@@ -731,7 +753,7 @@ export default function Leads({ embudo = 'paquetes' }) {
                           <p className="text-[11px] font-bold tabular-nums text-gray-700 dark:text-zinc-200">{formatoReales(lead.valor)}</p>
                         )}
                         {alertaTarjeta && (
-                          <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
+                          <p className={`mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${faltaInfo ? 'text-amber-700 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                             <Ic n="alert" className="h-3 w-3" /> {alertaTarjeta}
                           </p>
                         )}
@@ -1139,6 +1161,10 @@ export default function Leads({ embudo = 'paquetes' }) {
                   )}
                   <p className="text-[11px] text-gray-400 dark:text-zinc-500">Al guardar se crean las alarmas: pedir el saldo 45 días antes del vuelo de ida, check in + checklist 48 hs antes del de ida, y check in 48 hs antes del de vuelta.</p>
                 </div>
+              )}
+
+              {embudo === 'anfitriona' && (
+                <AnfitrionaDatos key={seleccionado.id} lead={seleccionado} hospedajes={hospedajes} setHospedajes={setHospedajes} />
               )}
 
               {/* Recordatorios de seguimiento */}

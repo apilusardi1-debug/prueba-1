@@ -247,6 +247,18 @@ export const trasladosApi = {
   delete: (id) => supabase?.from('traslados').delete().eq('id', id),
 }
 
+// ── Anfitriona: hospedajes de cada lead y saldos cargados a mano ───────────────
+export const anfitrionaApi = {
+  getHospedajes: () => supabase?.from('anfitriona_hospedajes').select('*').order('created_at'),
+  createHospedaje: (data) => supabase?.from('anfitriona_hospedajes').insert(data).select().single(),
+  updateHospedaje: (id, data) => supabase?.from('anfitriona_hospedajes').update(data).eq('id', id).select().single(),
+  deleteHospedaje: (id) => supabase?.from('anfitriona_hospedajes').delete().eq('id', id),
+  getSaldos: (leadId) => supabase?.from('anfitriona_saldos').select('*').eq('lead_id', leadId).order('created_at'),
+  createSaldo: (data) => supabase?.from('anfitriona_saldos').insert(data).select().single(),
+  updateSaldo: (id, data) => supabase?.from('anfitriona_saldos').update(data).eq('id', id).select().single(),
+  deleteSaldo: (id) => supabase?.from('anfitriona_saldos').delete().eq('id', id),
+}
+
 // ── Chat interno de operaciones (avisos a guía y chofer, sin pasar por Meta) ────
 export const operacionesApi = {
   // Reemplaza la operación (si ya estaba cerrada) y sus avisos por los nuevos: al

@@ -297,6 +297,9 @@ export default function WhatsAppCRM() {
             [...prev.map(c => c.id === payload.new.id ? payload.new : c)]
               .sort((a, b) => new Date(b.ultimo_mensaje_at) - new Date(a.ultimo_mensaje_at))
           )
+          // Si cambió quien la atiende (lo reasignó el servidor porque respondió otro),
+          // la conversación abierta tiene que mostrarlo sin recargar.
+          setSeleccionada(prev => (prev && prev.id === payload.new.id ? { ...prev, asignado_a: payload.new.asignado_a } : prev))
         }
       })
       .subscribe()
@@ -764,6 +767,7 @@ export default function WhatsAppCRM() {
       phone: seleccionada.whatsapp,
       nombre: seleccionada.contacto_nombre,
       conversacionId: seleccionada.id,
+      usuarioId: miUsuarioId,
     }
     const { error } = await enviarWhatsApp({
       ...datosContacto,
@@ -821,6 +825,7 @@ export default function WhatsAppCRM() {
       message: textoEnviar,
       nombre: seleccionada.contacto_nombre,
       conversacionId: seleccionada.id,
+      usuarioId: miUsuarioId,
     })
 
     if (error) {

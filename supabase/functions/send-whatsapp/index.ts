@@ -48,7 +48,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id } = await req.json()
+    const usuarioId: string | null = typeof usuario_id === 'string' && /^[0-9a-f-]{36}$/i.test(usuario_id) ? usuario_id : null
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -233,6 +234,7 @@ serve(async (req) => {
         // Qué número de Meta lo mandó: hace falta para el pozo de 1.000 gratis por mes de
         // CADA número (ver migración 20260925110000_costos_por_pais_whatsapp.sql)
         numero: esCrm ? 'crm' : 'operativo',
+        enviado_por: esCrm ? usuarioId : null,
         ...(esMedia ? {
           tipo: media.tipo,
           media_path: media.path,
@@ -249,6 +251,26 @@ serve(async (req) => {
         .update({ bot_estado: 'humano' })
         .eq('id', convId)
         .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
+    }
+
+    // Si la conversación la tiene asignada alguien que no respondió al último
+    // mensaje del contacto, y ahora responde otro usuario del equipo, la
+    // conversación pasa a quien respondió. Si el asignado ya respondió, no se toca.
+    if (esCrm && convId && usuarioId) {
+      const { data: conv } = await supabase.from('conversaciones').select('asignado_a').eq('id', convId).maybeSingle()
+      if (conv?.asignado_a && conv.asignado_a !== usuarioId) {
+        const { data: ultimoEntrante } = await supabase.from('mensajes')
+          .select('created_at').eq('conversacion_id', convId).eq('direccion', 'entrante')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        if (ultimoEntrante) {
+          const { data: respondioAsignado } = await supabase.from('mensajes')
+            .select('id').eq('conversacion_id', convId).eq('direccion', 'saliente')
+            .eq('enviado_por', conv.asignado_a).gt('created_at', ultimoEntrante.created_at).limit(1)
+          if (!respondioAsignado?.length) {
+            await supabase.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', convId)
+          }
+        }
+      }
     }
 
     // Un documento cuyo nombre empieza con "Propuesta" (así se llaman los PDF

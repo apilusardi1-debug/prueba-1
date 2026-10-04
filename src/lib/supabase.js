@@ -352,10 +352,10 @@ export const mensajesApi = {
 }
 
 // ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────
-export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media }) {
+export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media, usuarioId }) {
   if (!supabase) return { error: 'Sin conexión' }
   const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-    body: { phone, message, nombre, conversacion_id: conversacionId, media },
+    body: { phone, message, nombre, conversacion_id: conversacionId, media, usuario_id: usuarioId || null },
   })
   return { data, error }
 }

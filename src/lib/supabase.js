@@ -239,6 +239,14 @@ export const guiasApi = {
   delete: (id) => supabase?.from('guias').delete().eq('id', id),
 }
 
+// ── Traslados (planilla: fecha, hora, destino, pasajeros y equipaje) ───────────
+export const trasladosApi = {
+  getAll: () => supabase?.from('traslados').select('*, choferes(nombre)').order('fecha').order('hora'),
+  create: (data) => supabase?.from('traslados').insert(data).select('*, choferes(nombre)').single(),
+  update: (id, data) => supabase?.from('traslados').update(data).eq('id', id).select('*, choferes(nombre)').single(),
+  delete: (id) => supabase?.from('traslados').delete().eq('id', id),
+}
+
 // ── Chat interno de operaciones (avisos a guía y chofer, sin pasar por Meta) ────
 export const operacionesApi = {
   // Reemplaza la operación (si ya estaba cerrada) y sus avisos por los nuevos: al

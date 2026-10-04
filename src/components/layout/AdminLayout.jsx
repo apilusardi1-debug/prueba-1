@@ -100,6 +100,16 @@ const Icon = {
       <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
     </svg>
   ),
+  Traslados: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="10" width="18" height="7" rx="2"/><path d="M5.5 10l1.6-4h9.8l1.6 4M7 17v2.5M17 17v2.5"/>
+    </svg>
+  ),
+  Planilla: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>
+    </svg>
+  ),
   Enviadas: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -179,6 +189,12 @@ const NAV = [
     ],
   },
   { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
+  {
+    label: 'Traslados', icon: Icon.Traslados,
+    sub: [
+      { path: '/admin/traslados', label: 'Planilla', icon: Icon.Planilla, exact: true },
+    ],
+  },
   { path: '/admin/excursiones', label: 'Paseos',       icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
   { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
@@ -455,6 +471,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/clientes')) return 'Clientes'
     if (pathname.startsWith('/admin/crm/whatsapp')) return 'WhatsApp'
     if (pathname.startsWith('/admin/reservas')) return 'Reservas'
+    if (pathname.startsWith('/admin/traslados')) return 'Traslados'
     if (pathname.startsWith('/admin/excursiones')) return 'Paseos'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/operaciones/chat')) return 'Chat interno'

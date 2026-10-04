@@ -44,6 +44,7 @@ import Finanzas from './pages/admin/Finanzas.jsx'
 import ClientesPaquetes from './pages/admin/paquetes/ClientesPaquetes.jsx'
 import GeneradorPropuesta from './pages/admin/paquetes/GeneradorPropuesta.jsx'
 import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
+import Traslados from './pages/admin/Traslados.jsx'
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
       { path: '/admin/leads/anfitriona', element: <Leads key="anfitriona" embudo="anfitriona" /> },
       { path: '/admin/clientes',      element: <Clientes /> },
       { path: '/admin/reservas',      element: <Reservas /> },
+      { path: '/admin/traslados',     element: <Traslados /> },
       { path: '/admin/excursiones',   element: <Excursiones /> },
       { path: '/admin/agenda',            element: <Agenda /> },
       { path: '/admin/operaciones/chat',  element: <ChatInterno /> },

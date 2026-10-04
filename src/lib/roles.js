@@ -9,10 +9,10 @@ export const ROLES = {
   },
   operativo: {
     label: 'Operativo',
-    descripcion: 'Trabajo diario: reservas, agenda, excursiones, equipo, CRM y paquetes. Sin Finanzas ni Configuración.',
+    descripcion: 'Trabajo diario: reservas, traslados, agenda, excursiones, equipo, CRM y paquetes. Sin Finanzas ni Configuración.',
     acceso: [
       '/admin', '/admin/clientes', '/admin/leads', '/admin/crm/whatsapp',
-      '/admin/reservas', '/admin/excursiones', '/admin/agenda', '/admin/operaciones',
+      '/admin/reservas', '/admin/traslados', '/admin/excursiones', '/admin/agenda', '/admin/operaciones',
       '/admin/hospedajes', '/admin/videos', '/admin/paquetes', '/admin/equipo',
     ],
   },

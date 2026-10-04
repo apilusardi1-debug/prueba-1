@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { anfitrionaApi } from '../../lib/supabase.js'
+import { anfitrionaApi, hospedajesApi, propietariosApi } from '../../lib/supabase.js'
 import Ic from '../admin/dashboard/Ic.jsx'
 import { avisar, confirmar } from '../ui/Avisos.jsx'
 
@@ -51,10 +51,36 @@ export default function AnfitrionaDatos({ lead, hospedajes, setHospedajes }) {
 function SeccionHospedajes({ leadId, propios, setHospedajes }) {
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [catalogo, setCatalogo] = useState([])
+
+  useEffect(() => {
+    hospedajesApi.getAll().then(({ data }) => setCatalogo(data || []))
+  }, [])
 
   function setCampo(campo, valor) {
     setEditando(e => ({ ...e, form: { ...e.form, [campo]: valor } }))
   }
+
+  // Al elegir un hospedaje del catálogo se copian el proveedor y el contacto de su
+  // propietario (los que tenga cargados en Hospedajes). El PIX no está en el catálogo.
+  async function elegirDelCatalogo(c) {
+    setCampo('nombre', c.nombre)
+    const { data: p } = await propietariosApi.getByHospedaje(c.id)
+    if (!p) return
+    setEditando(e => ({
+      ...e,
+      form: {
+        ...e.form,
+        proveedor: p.nombre_dueno || e.form.proveedor,
+        contacto: p.contacto_dueno || e.form.contacto,
+      },
+    }))
+  }
+
+  const textoBuscado = editando?.form.nombre.trim().toLowerCase() || ''
+  const sugerencias = textoBuscado.length >= 2
+    ? catalogo.filter(c => c.nombre.toLowerCase().includes(textoBuscado) && c.nombre.toLowerCase() !== textoBuscado).slice(0, 5)
+    : []
 
   async function guardar() {
     const f = editando.form
@@ -102,7 +128,7 @@ function SeccionHospedajes({ leadId, propios, setHospedajes }) {
 
       {propios.map(h => {
         const falta = faltantesHospedaje(h)
-        if (editando?.id === h.id) return <FormularioHospedaje key={h.id} editando={editando} setCampo={setCampo} guardar={guardar} guardando={guardando} cancelar={() => setEditando(null)} />
+        if (editando?.id === h.id) return <FormularioHospedaje key={h.id} editando={editando} setCampo={setCampo} sugerencias={sugerencias} elegirDelCatalogo={elegirDelCatalogo} guardar={guardar} guardando={guardando} cancelar={() => setEditando(null)} />
         return (
           <div key={h.id} className="rounded-xl border border-gray-100 p-3 dark:border-zinc-800">
             <div className="flex items-start justify-between gap-2">
@@ -136,19 +162,32 @@ function SeccionHospedajes({ leadId, propios, setHospedajes }) {
       })}
 
       {editando && editando.id === null && (
-        <FormularioHospedaje editando={editando} setCampo={setCampo} guardar={guardar} guardando={guardando} cancelar={() => setEditando(null)} />
+        <FormularioHospedaje editando={editando} setCampo={setCampo} sugerencias={sugerencias} elegirDelCatalogo={elegirDelCatalogo} guardar={guardar} guardando={guardando} cancelar={() => setEditando(null)} />
       )}
     </div>
   )
 }
 
-function FormularioHospedaje({ editando, setCampo, guardar, guardando, cancelar }) {
+function FormularioHospedaje({ editando, setCampo, sugerencias, elegirDelCatalogo, guardar, guardando, cancelar }) {
   const f = editando.form
   return (
     <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/40 p-3 dark:border-zinc-700 dark:bg-zinc-800/40">
-      <div>
+      <div className="relative">
         <label className={ETIQUETA}>Nombre del hospedaje</label>
-        <input value={f.nombre} onChange={e => setCampo('nombre', e.target.value)} placeholder="Ej: Hotel Porto da Barra" className={CAMPO} />
+        <input value={f.nombre} onChange={e => setCampo('nombre', e.target.value)} placeholder="Escribí para buscar en Hospedajes" autoComplete="off" className={CAMPO} />
+        {sugerencias.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40">
+            {sugerencias.map(c => (
+              <button key={c.id} type="button" onClick={() => elegirDelCatalogo(c)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-zinc-800">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-gray-800 dark:text-zinc-200">{c.nombre}</span>
+                  {c.destino && <span className="block text-xs text-gray-400 dark:text-zinc-500">{c.destino}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>

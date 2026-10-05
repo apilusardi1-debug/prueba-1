@@ -1,9 +1,11 @@
 import { cabeceraPanel } from './sesionPanel.js'
+import { asegurarSesionPanel } from './supabase.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export async function sendWhatsAppTemplate(phone, template, params) {
+  await asegurarSesionPanel()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 20000) // 20 segundos máximo
 

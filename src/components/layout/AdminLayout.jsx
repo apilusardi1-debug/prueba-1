@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
 import { puedeEntrenar } from '../../lib/entrenamiento.js'
-import { supabase, conversacionesApi } from '../../lib/supabase.js'
+import { supabase, conversacionesApi, renovarSesionPanel } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
 import MenuAvisos from './MenuAvisos.jsx'
 import AvisosCarteles from './AvisosCarteles.jsx'
@@ -563,6 +563,26 @@ function LayoutContent() {
   const esWhatsApp = pathname.startsWith('/admin/crm/whatsapp')
   const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
   const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
+  // Mientras el panel esté abierto la sesión se renueva sola (el token dura una hora). Si el
+  // servidor la rechaza (usuario dado de baja o pasaron 7 días), se vuelve a la pantalla de entrada.
+  useEffect(() => {
+    if (!localStorage.getItem('admin_session')) return
+    const renovar = async () => {
+      if ((await renovarSesionPanel()) === false) {
+        localStorage.removeItem('admin_session')
+        navigate('/login')
+      }
+    }
+    renovar()
+    const cadaDiez = setInterval(renovar, 10 * 60 * 1000)
+    const alVolver = () => { if (document.visibilityState === 'visible') renovar() }
+    document.addEventListener('visibilitychange', alVolver)
+    return () => {
+      clearInterval(cadaDiez)
+      document.removeEventListener('visibilitychange', alVolver)
+    }
+  }, [navigate])
+
   const abrirCartel = c => {
     navigate(`/admin/crm/whatsapp?phone=${c.whatsapp}`)
     avisos.cerrarCartel(c.id)

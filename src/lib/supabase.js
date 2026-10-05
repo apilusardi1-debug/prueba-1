@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { cabeceraPanel } from './sesionPanel.js'
+import { cabeceraPanel, tokenPorVencer } from './sesionPanel.js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -375,6 +375,7 @@ export const mensajesApi = {
 // ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────
 export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media, usuarioId }) {
   if (!supabase) return { error: 'Sin conexión' }
+  await asegurarSesionPanel()
   const { data, error } = await supabase.functions.invoke('send-whatsapp', {
     body: { phone, message, nombre, conversacion_id: conversacionId, media, usuario_id: usuarioId || null },
     headers: cabeceraPanel(),
@@ -386,6 +387,7 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId, m
 // subida firmada de un solo uso (la clave pública no tiene permiso de escritura).
 export async function subirAdjuntoCRM(conversacionId, file) {
   if (!supabase) return { error: new Error('Sin conexión') }
+  await asegurarSesionPanel()
   const { data: prep, error } = await supabase.functions.invoke('send-whatsapp', {
     body: { accion: 'subida', conversacion_id: conversacionId, filename: file.name },
     headers: cabeceraPanel(),
@@ -573,9 +575,26 @@ export const bitacoraApi = {
 // que usa la service_role key del lado del servidor.
 async function invocarUsuariosAdmin(action, body = {}) {
   if (!supabase) return { ok: false, error: 'Sin conexión' }
-  const { data, error } = await supabase.functions.invoke('usuarios-admin', { body: { action, ...body } })
+  const { data, error } = await supabase.functions.invoke('usuarios-admin', { body: { action, ...body }, headers: cabeceraPanel() })
   if (error) return { ok: false, error: error.message }
   return data
+}
+
+// Renueva el token de la sesión del panel. Devuelve true si se renovó, false si el servidor
+// rechazó la sesión (usuario dado de baja o pasaron 7 días) y null si no hubo respuesta.
+export async function renovarSesionPanel() {
+  if (!supabase) return null
+  const { data, error } = await supabase.functions.invoke('usuarios-admin', { body: { action: 'renovar' }, headers: cabeceraPanel() })
+  if (error) return error.context?.status === 401 ? false : null
+  if (!data?.token) return null
+  const sesion = JSON.parse(localStorage.getItem('admin_session') || '{}')
+  localStorage.setItem('admin_session', JSON.stringify({ ...sesion, token: data.token }))
+  return true
+}
+
+// Antes de mandar un mensaje, si el token está por vencer se renueva.
+export async function asegurarSesionPanel() {
+  return tokenPorVencer() ? renovarSesionPanel() : true
 }
 
 export const usuariosAdminApi = {

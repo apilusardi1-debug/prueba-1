@@ -66,7 +66,7 @@ export const reservasApi = {
   // Para saber si cada cliente es de paquetes, de paseos o de las dos cosas: solo
   // lo que hace falta (a qué cliente, la categoría de la excursión), sin el resto
   // de los datos de la reserva
-  getCategoriasPorCliente: () => supabase?.from('reservas').select('cliente_id, excursiones(categoria)'),
+  getCategoriasPorCliente: () => supabase?.from('reservas').select('cliente_id, fecha, estado, created_at, excursiones(categoria)'),
   create: async (data) => {
     const result = await supabase?.from('reservas').insert(data).select().single()
     const r = result?.data
@@ -248,6 +248,14 @@ export const trasladosApi = {
   delete: (id) => supabase?.from('traslados').delete().eq('id', id),
 }
 
+// ── Saldos que se cargan a mano en el perfil del cliente (después se conectan con el generador) ──
+export const clientesSaldosApi = {
+  getSaldos: (clienteId) => supabase?.from('cliente_saldos').select('*').eq('cliente_id', clienteId).order('created_at'),
+  createSaldo: (data) => supabase?.from('cliente_saldos').insert(data).select().single(),
+  updateSaldo: (id, data) => supabase?.from('cliente_saldos').update(data).eq('id', id).select().single(),
+  deleteSaldo: (id) => supabase?.from('cliente_saldos').delete().eq('id', id),
+}
+
 // ── Anfitriona: hospedajes de cada lead y saldos cargados a mano ───────────────
 export const anfitrionaApi = {
   getHospedajes: () => supabase?.from('anfitriona_hospedajes').select('*').order('created_at'),
@@ -320,7 +328,7 @@ export const clientesApi = {
 export const reservasClienteApi = {
   getByCliente: (clienteId, whatsapp) =>
     supabase?.from('reservas')
-      .select('*, excursiones(nombre, destino)')
+      .select('*, excursiones(nombre, destino, categoria)')
       .or(`cliente_id.eq.${clienteId},cliente_whatsapp.eq.${whatsapp}`)
       .order('fecha', { ascending: false }),
 }

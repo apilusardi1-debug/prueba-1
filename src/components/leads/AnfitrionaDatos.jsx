@@ -43,7 +43,7 @@ export default function AnfitrionaDatos({ lead, hospedajes, setHospedajes }) {
   return (
     <div className="space-y-6">
       <SeccionHospedajes key={`h-${lead.id}`} leadId={lead.id} propios={propios} setHospedajes={setHospedajes} />
-      <SeccionSaldos key={`s-${lead.id}`} leadId={lead.id} />
+      <SeccionSaldos key={`s-${lead.id}`} id={lead.id} api={anfitrionaApi} campo="lead_id" />
     </div>
   )
 }
@@ -224,18 +224,20 @@ function FormularioHospedaje({ editando, setCampo, sugerencias, elegirDelCatalog
   )
 }
 
-function SeccionSaldos({ leadId }) {
+// Saldos cargados a mano. Sirve para cualquier entidad (lead de Anfitriona, cliente): "api" trae
+// las llamadas y "campo" es la columna que la vincula con la entidad.
+export function SeccionSaldos({ id, api, campo, conceptos = CONCEPTOS_SALDO, conceptoInicial = 'hospedaje' }) {
   const [saldos, setSaldos] = useState([])
 
   useEffect(() => {
-    anfitrionaApi.getSaldos(leadId).then(res => { if (res?.data) setSaldos(res.data) })
-  }, [leadId])
+    api.getSaldos(id).then(res => { if (res?.data) setSaldos(res.data) })
+  }, [id])
 
   const total = saldos.reduce((s, x) => s + Number(x.monto || 0), 0)
   const pagado = saldos.reduce((s, x) => s + Number(x.pagado || 0), 0)
 
   async function agregar() {
-    const res = await anfitrionaApi.createSaldo({ lead_id: leadId, concepto: 'hospedaje', descripcion: '', monto: 0, pagado: 0 })
+    const res = await api.createSaldo({ [campo]: id, concepto: conceptoInicial, descripcion: '', monto: 0, pagado: 0 })
     if (res?.error || !res?.data) return avisar('No se pudo agregar el saldo: ' + (res?.error?.message || 'error desconocido'))
     setSaldos(prev => [...prev, res.data])
   }
@@ -245,13 +247,13 @@ function SeccionSaldos({ leadId }) {
   }
 
   async function guardarCambio(id, cambios) {
-    const res = await anfitrionaApi.updateSaldo(id, cambios)
+    const res = await api.updateSaldo(id, cambios)
     if (res?.error) avisar('No se pudo guardar el saldo: ' + res.error.message)
   }
 
   async function eliminar(s) {
     if (!await confirmar('¿Eliminar este saldo?')) return
-    const res = await anfitrionaApi.deleteSaldo(s.id)
+    const res = await api.deleteSaldo(s.id)
     if (res?.error) return avisar('No se pudo eliminar el saldo: ' + res.error.message)
     setSaldos(prev => prev.filter(x => x.id !== s.id))
   }
@@ -280,7 +282,7 @@ function SeccionSaldos({ leadId }) {
           <div className="flex items-center gap-2">
             <select value={s.concepto} onChange={e => { cambiarLocal(s.id, { concepto: e.target.value }); guardarCambio(s.id, { concepto: e.target.value }) }}
               className="shrink-0 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-              {CONCEPTOS_SALDO.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              {conceptos.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
             <input value={s.descripcion || ''} placeholder="Descripción (ej: 3 noches, traslado ida)"
               onChange={e => cambiarLocal(s.id, { descripcion: e.target.value })}

@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   clientesApi, reservasClienteApi, pagosApi,
   actividadApi, notasClienteApi, excursionesApi, reservasApi, leadsApi, recordatoriosApi,
+  conversacionesApi, propuestasApi, clientesSaldosApi,
 } from '../../lib/supabase.js'
 import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
+import { SeccionSaldos } from '../../components/leads/AnfitrionaDatos.jsx'
 import { normalizarWhatsapp } from '../../lib/telefono.js'
 import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 
@@ -25,6 +27,63 @@ function fmtMonto(n, moneda = 'BRL') {
 // La categoría de la excursión (en la base: "paquetes" / "excursiones" / "traslados")
 // se muestra con el mismo nombre que usa el resto del panel (Embudo de paseos, etc.)
 const NOMBRE_CATEGORIA = { paquetes: 'Paquetes', excursiones: 'Paseos', traslados: 'Traslados' }
+
+const DIA_MS = 24 * 60 * 60 * 1000
+const soloDigitos = (valor) => String(valor || '').replace(/\D/g, '')
+
+const CONCEPTOS_SALDO_CLIENTE = [
+  { id: 'paquetes', label: 'Paquete' },
+  { id: 'paseos', label: 'Paseos' },
+  { id: 'traslados', label: 'Traslados' },
+  { id: 'hospedaje', label: 'Hospedaje' },
+  { id: 'restaurante', label: 'Restaurante' },
+  { id: 'otros', label: 'Otros servicios' },
+]
+
+const FILTROS_ACTIVIDAD = [
+  { id: 'activos', label: 'Activos (últimos 30 días)' },
+  { id: 'ya_vinieron', label: 'Ya vinieron' },
+  { id: 'viaje_proximo', label: 'Con viaje próximo' },
+  { id: 'solo_consulta', label: 'Solo consulta' },
+]
+
+// Para cada cliente: si tuvo consultas, propuestas o reservas en los últimos 30 días, si ya viajó,
+// si tiene un viaje próximo y si nunca reservó. Las consultas se cruzan por WhatsApp (solo números).
+function calcularActividad(clientes, reservas, conversaciones, propuestas) {
+  const hoy = new Date().toISOString().split('T')[0]
+  const marcar = (mapa, clave, ms) => { if (clave && ms > (mapa.get(clave) || 0)) mapa.set(clave, ms) }
+
+  const consultaPorTel = new Map()
+  for (const c of conversaciones) marcar(consultaPorTel, soloDigitos(c.whatsapp), Date.parse(c.ultimo_mensaje_at) || 0)
+  const propuestaPorCliente = new Map()
+  for (const p of propuestas) {
+    marcar(consultaPorTel, soloDigitos(p.cliente_whatsapp), Date.parse(p.created_at) || 0)
+    if (p.cliente_id) marcar(propuestaPorCliente, p.cliente_id, Date.parse(p.created_at) || 0)
+  }
+  const reservasPorCliente = new Map()
+  for (const r of reservas) {
+    if (!r.cliente_id) continue
+    if (!reservasPorCliente.has(r.cliente_id)) reservasPorCliente.set(r.cliente_id, [])
+    reservasPorCliente.get(r.cliente_id).push(r)
+  }
+
+  const mapa = {}
+  for (const c of clientes) {
+    const rs = reservasPorCliente.get(c.id) || []
+    const ultimo = Math.max(
+      consultaPorTel.get(soloDigitos(c.whatsapp)) || 0,
+      propuestaPorCliente.get(c.id) || 0,
+      ...rs.map(r => Date.parse(r.created_at) || 0),
+    )
+    mapa[c.id] = {
+      activo: ultimo >= Date.now() - 30 * DIA_MS,
+      yaViajo: rs.some(r => r.estado !== 'cancelada' && r.fecha && r.fecha < hoy),
+      viajeProximo: rs.some(r => r.estado !== 'cancelada' && r.fecha && r.fecha >= hoy),
+      soloConsulta: rs.length === 0,
+    }
+  }
+  return mapa
+}
 
 /* ─── colores y etiquetas de estado de reserva ─── */
 const ESTADO_RESERVA = {
@@ -75,6 +134,10 @@ export default function Clientes() {
   // Categorías de excursión (paquetes/paseos/traslados) que reservó cada cliente,
   // para saber de qué es cliente. Un cliente sin reservas todavía no tiene ninguna.
   const [categoriasPorCliente, setCategoriasPorCliente] = useState({})
+  const [filtroActividad, setFiltroActividad] = useState('') // '' | activos | ya_vinieron | viaje_proximo | solo_consulta
+  const [reservasData, setReservasData] = useState([])
+  const [conversacionesData, setConversacionesData] = useState([])
+  const [propuestasData, setPropuestasData] = useState([])
   const [perfil, setPerfil] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
@@ -93,8 +156,16 @@ export default function Clientes() {
         ;(mapa[r.cliente_id] ??= new Set()).add(cat)
       }
       setCategoriasPorCliente(mapa)
+      setReservasData(data || [])
     })
+    conversacionesApi.getAll().then(({ data }) => setConversacionesData(data || []))
+    propuestasApi.getAll().then(({ data }) => setPropuestasData(data || []))
   }, [])
+
+  const actividadPorCliente = useMemo(
+    () => calcularActividad(clientes, reservasData, conversacionesData, propuestasData),
+    [clientes, reservasData, conversacionesData, propuestasData],
+  )
 
   // Auto-abrir el perfil si viene ?cliente= desde Leads (al convertir un lead)
   useEffect(() => {
@@ -119,6 +190,14 @@ export default function Clientes() {
     if (filtroReservas === 'sin' && c.cantidad_reservas > 0) return false
     if (filtroPais && c.pais !== filtroPais) return false
     if (filtroTipo && !categoriasPorCliente[c.id]?.has(filtroTipo)) return false
+    if (filtroActividad) {
+      const act = actividadPorCliente[c.id]
+      if (!act) return false
+      if (filtroActividad === 'activos' && !act.activo) return false
+      if (filtroActividad === 'ya_vinieron' && !act.yaViajo) return false
+      if (filtroActividad === 'viaje_proximo' && !act.viajeProximo) return false
+      if (filtroActividad === 'solo_consulta' && !act.soloConsulta) return false
+    }
     // La fecha de alta es "hoy a las 00:00" en UTC del navegador; "Hasta" incluye todo ese día
     if (filtroDesde && c.created_at < `${filtroDesde}T00:00:00`) return false
     if (filtroHasta && c.created_at > `${filtroHasta}T23:59:59`) return false
@@ -199,6 +278,14 @@ export default function Clientes() {
           <option value="">Todos los tipos</option>
           {tipos.map(t => <option key={t} value={t}>{NOMBRE_CATEGORIA[t]}</option>)}
         </select>
+        <select
+          value={filtroActividad}
+          onChange={e => setFiltroActividad(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+        >
+          <option value="">Toda la actividad</option>
+          {FILTROS_ACTIVIDAD.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+        </select>
         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400">
           <span>Alta:</span>
           <input
@@ -219,9 +306,9 @@ export default function Clientes() {
             className="rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
           />
         </div>
-        {(filtroReservas !== 'todos' || filtroPais || filtroTipo || filtroDesde || filtroHasta) && (
+        {(filtroReservas !== 'todos' || filtroPais || filtroTipo || filtroActividad || filtroDesde || filtroHasta) && (
           <button
-            onClick={() => { setFiltroReservas('todos'); setFiltroPais(''); setFiltroTipo(''); setFiltroDesde(''); setFiltroHasta('') }}
+            onClick={() => { setFiltroReservas('todos'); setFiltroPais(''); setFiltroTipo(''); setFiltroActividad(''); setFiltroDesde(''); setFiltroHasta('') }}
             className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
           >
             Limpiar filtros
@@ -531,9 +618,13 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
   const totalPagado = pagos.filter(p => p.estado === 'confirmado').reduce((s, p) => s + Number(p.monto), 0)
   const excursionesCompletadas = reservas.filter(r => r.estado === 'completada').length
+  const paseosReservados = reservas
+    .filter(r => r.excursiones?.categoria === 'excursiones')
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
 
   const TABS = [
     { id: 'reservas',  label: 'Reservas',  count: reservas.length },
+    { id: 'saldo',     label: 'Saldo' },
     { id: 'pagos',     label: 'Pagos',     count: pagos.length },
     { id: 'actividad', label: 'Actividad', count: actividad.length },
     { id: 'notas',     label: 'Notas',     count: notas.length },
@@ -672,6 +763,25 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
           )}
         </div>
 
+        {!editando && paseosReservados.length > 0 && (
+          <div className="mx-6 mt-4 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-100 dark:divide-zinc-800">
+            <p className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Paseos reservados</p>
+            {paseosReservados.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-zinc-100">{r.excursiones?.nombre || 'Paseo sin nombre'}</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400">
+                    {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha'}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${ESTADO_RESERVA[estadoEfectivo(r)] || ''}`}>
+                  {ESTADO_RESERVA_LABEL[estadoEfectivo(r)] || r.estado}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Tabs ── */}
         <div className="flex border-b border-gray-100 dark:border-zinc-800 flex-shrink-0 px-6">
           {TABS.map(t => (
@@ -757,6 +867,20 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
                       )}
                     </div>
                   )})}
+                </div>
+              )}
+
+              {/* SALDO */}
+              {tab === 'saldo' && (
+                <div className="p-6">
+                  <SeccionSaldos
+                    key={cliente.id}
+                    id={cliente.id}
+                    api={clientesSaldosApi}
+                    campo="cliente_id"
+                    conceptos={CONCEPTOS_SALDO_CLIENTE}
+                    conceptoInicial="paquetes"
+                  />
                 </div>
               )}
 

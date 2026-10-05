@@ -6,6 +6,7 @@ import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
 import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
+import { firmaMetaValida } from '../_shared/firmaMeta.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -15,6 +16,7 @@ import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreg
 // app de Meta distintos, no tocados por este archivo.
 const META_VERIFY_TOKEN = Deno.env.get('META_VERIFY_TOKEN')
 const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
+const META_APP_SECRET = Deno.env.get('META_APP_SECRET')
 const META_API_VERSION = 'v21.0'
 const MEDIA_BUCKET = 'whatsapp-media'
 
@@ -482,6 +484,20 @@ async function correrBot(supabase: Supabase, convId: string, phone: string, mess
   }
 }
 
+// Meta reintenta cuando no recibe el 200 a tiempo: el mismo mensaje puede llegar dos veces.
+// Con wa_message_id único la segunda entrega no crea otra fila ni vuelve a correr el bot.
+// Devuelve null si el mensaje ya estaba. Si el upsert falla (por ejemplo, antes de correr la
+// migración de la clave única), guarda igual la fila de respaldo para no perder el mensaje.
+async function guardarEntrante(supabase: ReturnType<typeof createClient>, fila: Record<string, unknown>, respaldo = fila) {
+  const { data, error } = await supabase.from('mensajes')
+    .upsert(fila, { onConflict: 'wa_message_id', ignoreDuplicates: true })
+    .select('created_at')
+  if (!error) return data?.[0] ?? null
+  console.error('webhook-whatsapp guardar entrante falló, se guarda sin dedupe:', error.message)
+  const { data: plano } = await supabase.from('mensajes').insert(respaldo).select('created_at').single()
+  return plano ?? { created_at: null }
+}
+
 serve(async (req) => {
   const url = new URL(req.url)
 
@@ -496,8 +512,16 @@ serve(async (req) => {
     return new Response('Forbidden', { status: 403 })
   }
 
+  // Sin una firma válida de Meta no se procesa nada: la URL es pública y cualquiera
+  // podría mandar mensajes falsos que el asistente responde por WhatsApp.
+  const cuerpoCrudo = await req.text()
+  if (!(await firmaMetaValida(META_APP_SECRET, cuerpoCrudo, req.headers.get('x-hub-signature-256')))) {
+    console.error('webhook-whatsapp: firma de Meta inválida o META_APP_SECRET sin configurar')
+    return new Response('Firma inválida', { status: 401 })
+  }
+
   try {
-    const body = await req.json()
+    const body = JSON.parse(cuerpoCrudo)
     const value = body?.entry?.[0]?.changes?.[0]?.value
     const message = value?.messages?.[0]
 
@@ -550,6 +574,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+
+    if (message.id) {
+      const { data: previo } = await supabase.from('mensajes').select('id').eq('wa_message_id', message.id).limit(1)
+      if (previo?.length) return new Response('ok', { status: 200 })
+    }
 
     // El interés (tipo de servicio + destino) se detecta por palabras clave en
     // cada mensaje, más los sinónimos que se carguen a mano en "Entrenar al
@@ -626,11 +655,13 @@ serve(async (req) => {
       whatsapp: phone,
       texto,
       direccion: 'entrante',
+      wa_message_id: message.id ?? null,
     }
 
     if (!tipoMedia) {
-      const { data: fila } = await supabase.from('mensajes').insert(filaBase).select('created_at').single()
-      await correrBot(supabase, convId, phone, message, fila?.created_at ?? null)
+      const fila = await guardarEntrante(supabase, filaBase)
+      if (!fila) return new Response('ok', { status: 200 })
+      await correrBot(supabase, convId, phone, message, fila.created_at ?? null)
       return new Response('ok', { status: 200 })
     }
 
@@ -643,21 +674,16 @@ serve(async (req) => {
       console.error('webhook-whatsapp media error:', mediaErr)
     }
 
-    const { data: filaMedia, error: insertMediaErr } = await supabase.from('mensajes').insert({
+    const filaMedia = await guardarEntrante(supabase, {
       ...filaBase,
       tipo: tipoMedia,
       media_path: archivo?.path ?? null,
       media_mime: archivo?.mime ?? media?.mime_type ?? null,
       media_nombre: nombreArchivo,
-    }).select('created_at').single()
-    let desde: string | null = filaMedia?.created_at ?? null
-    if (insertMediaErr) {
-      console.error('webhook-whatsapp insert con media falló, guardando solo el texto:', insertMediaErr)
-      const { data: filaTexto } = await supabase.from('mensajes').insert(filaBase).select('created_at').single()
-      desde = filaTexto?.created_at ?? null
-    }
+    }, filaBase)
+    if (!filaMedia) return new Response('ok', { status: 200 })
 
-    await correrBot(supabase, convId, phone, message, desde)
+    await correrBot(supabase, convId, phone, message, filaMedia.created_at ?? null)
     return new Response('ok', { status: 200 })
   } catch (err) {
     // Devolvemos 200 igual aunque falle: si respondemos error, Meta reintenta

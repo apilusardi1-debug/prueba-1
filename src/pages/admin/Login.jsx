@@ -19,7 +19,7 @@ export default function Login() {
     const { ok, usuario } = await usuariosAdminApi.login(email.trim().toLowerCase(), hash)
 
     if (ok && usuario) {
-      localStorage.setItem('admin_session', JSON.stringify({ email: usuario.email, nombre: usuario.nombre, role: usuario.rol }))
+      localStorage.setItem('admin_session', JSON.stringify({ email: usuario.email, nombre: usuario.nombre, role: usuario.rol, token: usuario.token }))
       navigate(rutaInicial(usuario.rol))
     } else {
       setError('Email o contraseña incorrectos.')

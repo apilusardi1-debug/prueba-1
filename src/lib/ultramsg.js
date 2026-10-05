@@ -1,3 +1,5 @@
+import { cabeceraPanel } from './sesionPanel.js'
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -11,6 +13,7 @@ export async function sendWhatsAppTemplate(phone, template, params) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        ...cabeceraPanel(),
       },
       body: JSON.stringify({ phone, template, params }),
       signal: controller.signal,

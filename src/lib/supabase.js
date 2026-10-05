@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { cabeceraPanel } from './sesionPanel.js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -376,6 +377,7 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId, m
   if (!supabase) return { error: 'Sin conexión' }
   const { data, error } = await supabase.functions.invoke('send-whatsapp', {
     body: { phone, message, nombre, conversacion_id: conversacionId, media, usuario_id: usuarioId || null },
+    headers: cabeceraPanel(),
   })
   return { data, error }
 }
@@ -386,6 +388,7 @@ export async function subirAdjuntoCRM(conversacionId, file) {
   if (!supabase) return { error: new Error('Sin conexión') }
   const { data: prep, error } = await supabase.functions.invoke('send-whatsapp', {
     body: { accion: 'subida', conversacion_id: conversacionId, filename: file.name },
+    headers: cabeceraPanel(),
   })
   if (error || !prep?.token) return { error: error || new Error(prep?.error || 'No se pudo preparar la subida') }
   const { error: errSubida } = await supabase.storage

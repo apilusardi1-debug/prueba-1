@@ -2,6 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderTemplate } from '../_shared/plantillasWhatsapp.ts'
 import { moverAEtapaPaquetes, moverAEtapaAnfitriona } from '../_shared/embudoEntrada.ts'
+import { verificarSesion } from '../_shared/sesionPanel.ts'
+
+const PANEL_SESSION_SECRET = Deno.env.get('PANEL_SESSION_SECRET')
 
 // Número operativo (avisos automáticos a chofer/guía/cliente, solo plantillas)
 const META_TOKEN = Deno.env.get('META_WHATSAPP_TOKEN')
@@ -40,7 +43,7 @@ const FRASE_ESTADIA_CONFIRMADA = normalizarTexto('Tu reserva esta confirmada te 
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-panel-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -55,6 +58,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+
+    // Solo manda quien tiene una sesión del panel vigente y su usuario sigue activo: la clave
+    // pública del proyecto no alcanza para mandar mensajes.
+    const emailSesion = await verificarSesion(PANEL_SESSION_SECRET, req.headers.get('x-panel-token'))
+    const { data: usuarioSesion } = emailSesion
+      ? await supabase.from('usuarios_admin').select('activo').eq('email', emailSesion).maybeSingle()
+      : { data: null }
+    if (!usuarioSesion?.activo) {
+      return new Response(JSON.stringify({ error: 'Sesión del panel no válida. Volvé a entrar.' }), {
+        status: 401, headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
 
     // Paso previo a enviar un archivo desde el CRM: se devuelve una URL de
     // subida firmada de un solo uso, así el navegador sube directo al bucket
@@ -82,6 +97,10 @@ serve(async (req) => {
     // Argentina: 54 + número sin 9 (12 dígitos) → agregar 9 → 5492352560810
     if (phoneClean.startsWith('54') && !phoneClean.startsWith('549') && phoneClean.length === 12) {
       phoneClean = '549' + phoneClean.slice(2)
+    }
+    // Brasil: 55 + DDD + 8 dígitos de celular (que empiezan con 6 a 9) → falta el 9 de celular
+    if (phoneClean.startsWith('55') && phoneClean.length === 12 && /^[6-9]/.test(phoneClean.slice(4))) {
+      phoneClean = phoneClean.slice(0, 4) + '9' + phoneClean.slice(4)
     }
 
     // Dos casos: "template" = aviso automático del número operativo (chofer/

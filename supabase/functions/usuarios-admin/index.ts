@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { firmarSesion } from '../_shared/sesionPanel.ts'
 
 // Único punto de acceso a la tabla usuarios_admin. La tabla tiene RLS
 // activado sin políticas (bloqueada para anon/authenticated) — solo esta
@@ -35,7 +36,8 @@ serve(async (req) => {
       const email = String(body.email || '').trim().toLowerCase()
       const { data } = await supabase.from('usuarios_admin').select('*').eq('email', email).maybeSingle()
       if (data && data.activo && data.password_hash === body.password_hash) {
-        return json({ ok: true, usuario: { email: data.email, nombre: data.nombre, rol: data.rol } })
+        const token = await firmarSesion(Deno.env.get('PANEL_SESSION_SECRET') ?? '', data.email, data.rol)
+        return json({ ok: true, usuario: { email: data.email, nombre: data.nombre, rol: data.rol, token } })
       }
       return json({ ok: false })
     }

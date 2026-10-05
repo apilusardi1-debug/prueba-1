@@ -606,6 +606,18 @@ export const usuariosAdminApi = {
   create: (data) => invocarUsuariosAdmin('create', data),
   update: (id, data) => invocarUsuariosAdmin('update', { id, data }),
   delete: (id) => invocarUsuariosAdmin('delete', { id }),
+  permisos: () => invocarUsuariosAdmin('permisos'),
+  guardarPermisos: (tipo, secciones) => invocarUsuariosAdmin('permisos_guardar', { tipo, secciones }),
+}
+
+// Guarda en la sesión qué secciones ve cada tipo, para armar el menú y las rutas sin ir a la base en cada cambio de página.
+export async function cargarPermisosSesion() {
+  const { ok, permisos } = (await usuariosAdminApi.permisos()) || {}
+  if (!ok || !permisos) return false
+  const mapa = Object.fromEntries(permisos.map(p => [p.tipo, p.secciones || []]))
+  const sesion = JSON.parse(localStorage.getItem('admin_session') || '{}')
+  localStorage.setItem('admin_session', JSON.stringify({ ...sesion, permisos: mapa }))
+  return true
 }
 
 // Hash de contraseña (SHA-256) para no guardarla ni compararla en texto plano.

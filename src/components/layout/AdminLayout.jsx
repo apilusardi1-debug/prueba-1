@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext'
 import { tieneAcceso } from '../../lib/roles.js'
 import { puedeEntrenar } from '../../lib/entrenamiento.js'
-import { supabase, conversacionesApi, renovarSesionPanel } from '../../lib/supabase.js'
+import { supabase, conversacionesApi, renovarSesionPanel, cargarPermisosSesion } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
 import MenuAvisos from './MenuAvisos.jsx'
 import AvisosCarteles from './AvisosCarteles.jsx'
@@ -136,6 +136,11 @@ const Icon = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
+  Superadmin: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+    </svg>
+  ),
   Entrenar: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V5M12 4.5h.01M9 13h.01M15 13h.01M2.5 12.5v3M21.5 12.5v3"/>
@@ -221,6 +226,7 @@ const NAV = [
   { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
   { path: '/admin/configuracion', label: 'Configuración', icon: Icon.Config },
   { path: '/admin/entrenar-asistente', label: 'Entrenar al asistente', icon: Icon.Entrenar, soloEmails: true },
+  { path: '/admin/superadmin', label: 'Superadmin', icon: Icon.Superadmin },
 ]
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
@@ -491,6 +497,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/equipo')) return 'Equipo'
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración'
     if (pathname.startsWith('/admin/entrenar-asistente')) return 'Entrenar al asistente'
+    if (pathname.startsWith('/admin/superadmin')) return 'Superadmin'
     return 'Panel'
   }
 
@@ -563,15 +570,19 @@ function LayoutContent() {
   const esWhatsApp = pathname.startsWith('/admin/crm/whatsapp')
   const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
   const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
+  const [, setVersionPermisos] = useState(0)
   // Mientras el panel esté abierto la sesión se renueva sola (el token dura una hora). Si el
   // servidor la rechaza (usuario dado de baja o pasaron 7 días), se vuelve a la pantalla de entrada.
   useEffect(() => {
     if (!localStorage.getItem('admin_session')) return
     const renovar = async () => {
-      if ((await renovarSesionPanel()) === false) {
+      const renovada = await renovarSesionPanel()
+      if (renovada === false) {
         localStorage.removeItem('admin_session')
         navigate('/login')
+        return
       }
+      if (renovada && await cargarPermisosSesion()) setVersionPermisos(v => v + 1)
     }
     renovar()
     const cadaDiez = setInterval(renovar, 10 * 60 * 1000)

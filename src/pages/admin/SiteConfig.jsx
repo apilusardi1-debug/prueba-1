@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
 import { usuariosAdminApi, hashPassword, conceptosApi, botApi, embudoApi, supabase } from '../../lib/supabase.js'
-import { ROLES } from '../../lib/roles.js'
+import { ROLES, ROLES_ADMINISTRABLES } from '../../lib/roles.js'
 import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA, EMBUDOS, etapasDelEmbudo } from '../../lib/embudo.js'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
 import RespuestasRapidasAdmin from '../../components/admin/RespuestasRapidasAdmin.jsx'
@@ -60,7 +60,9 @@ function Field({ label, type = 'text', value, onChange, placeholder, hint }) {
 
 const FORM_USUARIO_VACIO = { nombre: '', email: '', password: '', rol: 'operativo', activo: true }
 
-function TabAccesos() {
+export function TabAccesos() {
+  const rolActual = JSON.parse(localStorage.getItem('admin_session') || '{}').role
+  const rolesOfrecidos = rolActual === 'superadmin' ? Object.keys(ROLES) : ROLES_ADMINISTRABLES
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -252,7 +254,7 @@ function TabAccesos() {
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Rol</label>
                 <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                  {Object.entries(ROLES).map(([id, r]) => <option key={id} value={id}>{r.label}</option>)}
+                  {rolesOfrecidos.map(id => <option key={id} value={id}>{ROLES[id].label}</option>)}
                 </select>
               </div>
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300">

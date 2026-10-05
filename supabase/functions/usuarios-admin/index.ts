@@ -21,17 +21,21 @@ const CORS = {
 // Nunca se devuelve password_hash al cliente, ni siquiera en el listado
 // de Accesos.
 const CAMPOS_PUBLICOS = 'id, nombre, email, rol, activo, created_at'
+const ROLES = ['superadmin', 'admin', 'operativo', 'ventas', 'lectura']
+// Lo que un admin (no superadmin) puede dar o quitar: nunca admins ni superadmins.
+const ROLES_QUE_ADMINISTRA_UN_ADMIN = ['operativo', 'ventas', 'lectura']
+const TIPOS_CON_SECCIONES = ['operativo', 'ventas', 'lectura']
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 }
 
-// Usuario activo de la sesión del panel, con su rol actual (lo lee de la base, no del token).
-async function usuarioDeLaSesion(token: string | null): Promise<{ email: string; rol: string } | null> {
+// Usuario activo de la sesión del panel, con su id y su rol actual (lo lee de la base, no del token).
+async function usuarioDeLaSesion(token: string | null): Promise<{ id: string; email: string; rol: string } | null> {
   const email = await verificarSesion(Deno.env.get('PANEL_SESSION_SECRET'), token)
   if (!email) return null
-  const { data } = await supabase.from('usuarios_admin').select('rol, activo').eq('email', email).maybeSingle()
-  return data?.activo ? { email, rol: data.rol } : null
+  const { data } = await supabase.from('usuarios_admin').select('id, rol, activo').eq('email', email).maybeSingle()
+  return data?.activo ? { id: data.id, email, rol: data.rol } : null
 }
 
 serve(async (req) => {
@@ -69,12 +73,33 @@ serve(async (req) => {
       return json({ ok: !error, usuarios: data || [], error: error?.message })
     }
 
-    if (sesion.rol !== 'admin') {
+    // Qué secciones ve cada tipo. Lo puede leer cualquier usuario activo (para armar el menú).
+    if (action === 'permisos') {
+      const { data, error } = await supabase.from('permisos_tipos').select('tipo, secciones')
+      return json({ ok: !error, permisos: data || [], error: error?.message })
+    }
+
+    if (action === 'permisos_guardar') {
+      if (sesion.rol !== 'superadmin') return json({ ok: false, error: 'Solo un superadmin puede cambiar los permisos.' }, 403)
+      const tipo = String(body.tipo || '')
+      if (!TIPOS_CON_SECCIONES.includes(tipo)) return json({ ok: false, error: 'Tipo inválido' }, 400)
+      const secciones = Array.isArray(body.secciones) ? body.secciones.map(String) : []
+      const { error } = await supabase.from('permisos_tipos').update({ secciones }).eq('tipo', tipo)
+      return json({ ok: !error, error: error?.message })
+    }
+
+    // Desde acá, crear, editar y borrar usuarios: solo admin o superadmin.
+    if (sesion.rol !== 'admin' && sesion.rol !== 'superadmin') {
       return json({ ok: false, error: 'Solo un admin puede cambiar los usuarios.' }, 403)
     }
+    const esSuperadmin = sesion.rol === 'superadmin'
 
     if (action === 'create') {
       const { nombre, email, password_hash, rol, activo } = body
+      if (!ROLES.includes(rol)) return json({ ok: false, error: 'Rol inválido' }, 400)
+      if (!esSuperadmin && !ROLES_QUE_ADMINISTRA_UN_ADMIN.includes(rol)) {
+        return json({ ok: false, error: 'Solo un superadmin puede crear admins.' }, 403)
+      }
       const { data, error } = await supabase.from('usuarios_admin')
         .insert({ nombre, email: String(email || '').trim().toLowerCase(), password_hash, rol, activo: activo ?? true })
         .select(CAMPOS_PUBLICOS).single()
@@ -82,13 +107,30 @@ serve(async (req) => {
     }
 
     if (action === 'update') {
-      const { id, data: cambios } = body
+      const { id, data: cambios = {} } = body
+      const { data: objetivo } = await supabase.from('usuarios_admin').select('id, rol').eq('id', id).maybeSingle()
+      if (!objetivo) return json({ ok: false, error: 'Usuario no encontrado' }, 404)
+      if (!esSuperadmin) {
+        if (objetivo.id === sesion.id) return json({ ok: false, error: 'No podés cambiar tu propio acceso.' }, 403)
+        if (!ROLES_QUE_ADMINISTRA_UN_ADMIN.includes(objetivo.rol)) {
+          return json({ ok: false, error: 'Solo un superadmin puede cambiar a un admin.' }, 403)
+        }
+        if (cambios.rol !== undefined && !ROLES_QUE_ADMINISTRA_UN_ADMIN.includes(cambios.rol)) {
+          return json({ ok: false, error: 'Solo un superadmin puede dar el rol de admin.' }, 403)
+        }
+      }
+      if (cambios.rol !== undefined && !ROLES.includes(cambios.rol)) return json({ ok: false, error: 'Rol inválido' }, 400)
       const { data, error } = await supabase.from('usuarios_admin').update(cambios).eq('id', id).select(CAMPOS_PUBLICOS).single()
       return json({ ok: !error, usuario: data, error: error?.message })
     }
 
     if (action === 'delete') {
       const { id } = body
+      if (id === sesion.id) return json({ ok: false, error: 'No podés dar de baja tu propio usuario.' }, 403)
+      const { data: objetivo } = await supabase.from('usuarios_admin').select('rol').eq('id', id).maybeSingle()
+      if (!esSuperadmin && objetivo && !ROLES_QUE_ADMINISTRA_UN_ADMIN.includes(objetivo.rol)) {
+        return json({ ok: false, error: 'Solo un superadmin puede borrar a un admin.' }, 403)
+      }
       const { error } = await supabase.from('usuarios_admin').delete().eq('id', id)
       return json({ ok: !error, error: error?.message })
     }

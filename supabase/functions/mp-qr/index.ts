@@ -7,7 +7,7 @@ const EXTERNAL_POS_ID = 'dreamstourcaja01'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-panel-token',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 }
 
@@ -81,8 +81,13 @@ async function getOrCreatePos() {
   return pos
 }
 
+import { sesionPanelValida } from '../_shared/guardaPanel.ts'
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (!(await sesionPanelValida(req))) {
+    return new Response(JSON.stringify({ error: 'Sesión del panel no válida. Volvé a entrar.' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  }
 
   try {
     const pos = await getOrCreatePos()

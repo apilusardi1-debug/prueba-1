@@ -27,7 +27,7 @@ const TENANT_ID = 'us-east-1:86bf154a-7d6b-4a83-8436-2e60cf5edcb8'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-panel-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -113,8 +113,13 @@ function mapearHabitaciones(det: any): any[] {
   })
 }
 
+import { sesionPanelValida } from '../_shared/guardaPanel.ts'
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (!(await sesionPanelValida(req))) {
+    return new Response(JSON.stringify({ error: 'Sesión del panel no válida. Volvé a entrar.' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  }
 
   try {
     const { url } = await req.json()

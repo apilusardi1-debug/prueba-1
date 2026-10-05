@@ -431,6 +431,7 @@ export async function convertirImagenABase64(url) {
   if (!supabase) return { error: 'Sin conexión' }
   const { data, error } = await supabase.functions.invoke('proxy-imagen', {
     body: { url },
+    headers: cabeceraPanel(),
   })
   return { data, error }
 }
@@ -440,6 +441,7 @@ export async function importarHospedajesDeLink(url) {
   if (!supabase) return { error: 'Sin conexión' }
   const { data, error } = await supabase.functions.invoke('import-hospedaje-link', {
     body: { url },
+    headers: cabeceraPanel(),
   })
   return { data, error }
 }
@@ -458,6 +460,7 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   // necesita una imagen con contenido, sin llegar a esperar los 150s del peor caso.
   const { data, error } = await supabase.functions.invoke('extraer-datos-vuelo', {
     body: { imagenBase64, mediaType },
+    headers: cabeceraPanel(),
     timeout: 60000,
   })
   if (!error) return { data, error }
@@ -483,7 +486,7 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
 // ── Sincronizar conversaciones históricas desde Evolution API ──────────────────
 export async function sincronizarWhatsApp() {
   if (!supabase) return { error: 'Sin conexión' }
-  const { data, error } = await supabase.functions.invoke('sync-whatsapp', {})
+  const { data, error } = await supabase.functions.invoke('sync-whatsapp', { headers: cabeceraPanel() })
   return { data, error }
 }
 

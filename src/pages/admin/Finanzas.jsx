@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi } from '../../lib/supabase.js'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
+import { cabeceraPanel } from '../../lib/sesionPanel.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -695,7 +696,7 @@ function TabMercadoPago({ movimientos }) {
     async function fetchQr() {
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/mp-qr`, {
-          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, ...cabeceraPanel() },
         })
         const data = await res.json()
         if (data.qr_image) {

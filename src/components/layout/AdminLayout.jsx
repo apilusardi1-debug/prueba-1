@@ -465,6 +465,11 @@ function Sidebar() {
 }
 
 /* ─── Header ────────────────────────────────────────────────────── */
+function inicialDeSesion() {
+  const sesion = JSON.parse(localStorage.getItem('admin_session') || '{}')
+  return (sesion.nombre || sesion.email || '?').charAt(0).toUpperCase()
+}
+
 function Header({ dark, setDark, avisos, puedeAvisos }) {
   const { toggleSidebar, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
@@ -543,7 +548,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
         </button>
 
         <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
-          <span className="text-white dark:text-zinc-900 text-xs font-semibold">A</span>
+          <span className="text-white dark:text-zinc-900 text-xs font-semibold">{inicialDeSesion()}</span>
         </div>
       </div>
     </header>

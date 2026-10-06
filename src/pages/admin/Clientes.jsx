@@ -502,7 +502,6 @@ function ModalNuevoCliente({ onGuardar, onCerrar }) {
    ════════════════════════════════════════════════ */
 function PerfilCliente({ cliente, onCerrar, onUpdate }) {
   const navigate = useNavigate()
-  const [tab, setTab] = useState('reservas')
   const [reservas, setReservas] = useState([])
   const [pagos, setPagos] = useState([])
   const [actividad, setActividad] = useState([])
@@ -622,13 +621,8 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
     .filter(r => r.excursiones?.categoria === 'excursiones')
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
 
-  const TABS = [
-    { id: 'reservas',  label: 'Reservas',  count: reservas.length },
-    { id: 'saldo',     label: 'Saldo' },
-    { id: 'pagos',     label: 'Pagos',     count: pagos.length },
-    { id: 'actividad', label: 'Actividad', count: actividad.length },
-    { id: 'notas',     label: 'Notas',     count: notas.length },
-  ]
+  const ETIQUETA = 'text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-500'
+  const CAMPO = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -637,359 +631,305 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
       {/* Ventana del perfil */}
       <div
-        className="relative flex h-[90vh] w-[92vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-zinc-900 dark:shadow-black/60"
+        className="relative flex h-[90vh] w-[92vw] flex-col overflow-hidden rounded-2xl bg-gray-100 shadow-2xl dark:bg-zinc-950 dark:shadow-black/60"
         onClick={e => e.stopPropagation()}
       >
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
 
-        <div className="flex min-h-0 flex-1">
-        {/* ── Columna de datos del cliente ── */}
-        <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-gray-100 p-5 dark:border-zinc-800">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-brand-700 dark:text-brand-400 text-lg font-bold flex-shrink-0">
-                {iniciales(cliente.nombre)}
+          {/* ── Columna izquierda: quién es el cliente ── */}
+          <div className="flex shrink-0 flex-col gap-3 lg:w-80 lg:overflow-y-auto">
+            <section className="dash-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-hero-sky/25 text-lg font-bold text-sky-700 dark:text-hero-sky">
+                    {iniciales(cliente.nombre)}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-bold text-gray-900 dark:text-zinc-100">{cliente.nombre}</h2>
+                    <p className="text-xs text-gray-500 dark:text-zinc-500">
+                      {[cliente.pais, cliente.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    onClick={() => setEditando(!editando)}
+                    className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
+                  >
+                    {editando ? 'Cancelar' : 'Editar'}
+                  </button>
+                  <button onClick={onCerrar} aria-label="Cerrar" className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-gray-400 transition-colors hover:bg-gray-100 dark:text-zinc-500 dark:hover:bg-white/5">×</button>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-gray-900 dark:text-zinc-100 text-lg leading-tight">{cliente.nombre}</h2>
-                <p className="text-sm text-gray-400 dark:text-zinc-600 mt-0.5">
-                  {[cliente.pais, cliente.ciudad].filter(Boolean).join(', ') || 'Sin ubicación'}
-                </p>
-                <div className="flex items-center gap-3 mt-1">
+
+              {!editando && (
+                <div className="mt-4 space-y-2 text-sm">
                   {cliente.whatsapp && (
                     <button
                       onClick={() => { onCerrar(); navigate(`/admin/crm/whatsapp?phone=${cliente.whatsapp}`) }}
-                      className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1"
+                      className="flex items-center gap-2 font-medium text-green-600 transition-colors hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                     >
                       <IcTxt n="chat" />{cliente.whatsapp}
                     </button>
                   )}
-                  {cliente.email && <span className="text-xs text-gray-400 dark:text-zinc-600">{cliente.email}</span>}
+                  {cliente.email && <p className="truncate text-gray-500 dark:text-zinc-400">{cliente.email}</p>}
+                  {etapaLead && (
+                    <button
+                      onClick={() => { onCerrar(); navigate(EMBUDOS.find(e => e.clave === embudoDeEtapa(etapaLead))?.ruta || '/admin/leads') }}
+                      title="Ver en el tablero de leads"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold text-gray-800 transition-opacity hover:opacity-80 dark:text-zinc-100"
+                      style={estiloFondoEtapa(etapaLead.color)}
+                    >
+                      <i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapaLead.color }} />
+                      <span className="truncate">{nombreEmbudo(embudoDeEtapa(etapaLead))} · {etapaLead.nombre}</span>
+                    </button>
+                  )}
                 </div>
-                {etapaLead && (
+              )}
+
+              {editando && (
+                <div className="mt-4 space-y-3">
+                  {[
+                    { key: 'nombre', label: 'Nombre' },
+                    { key: 'email', label: 'Email' },
+                    { key: 'whatsapp', label: 'WhatsApp' },
+                    { key: 'pais', label: 'País' },
+                    { key: 'ciudad', label: 'Ciudad' },
+                    { key: 'cantidad_pasajeros', label: 'Cantidad de pasajeros', type: 'number' },
+                  ].map(({ key, label, type }) => (
+                    <div key={key}>
+                      <label className={`${ETIQUETA} mb-1 block`}>{label}</label>
+                      <input type={type || 'text'} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} className={CAMPO} />
+                    </div>
+                  ))}
                   <button
-                    onClick={() => { onCerrar(); navigate(EMBUDOS.find(e => e.clave === embudoDeEtapa(etapaLead))?.ruta || '/admin/leads') }}
-                    title="Ver en el tablero de leads"
-                    className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-gray-800 dark:text-zinc-100 hover:opacity-80 transition-opacity"
-                    style={estiloFondoEtapa(etapaLead.color)}
+                    onClick={guardarPerfil}
+                    className="w-full rounded-xl bg-gray-900 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
                   >
-                    <i className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapaLead.color }} />
-                    <span className="truncate">{nombreEmbudo(embudoDeEtapa(etapaLead))} · {etapaLead.nombre}</span>
+                    Guardar cambios
                   </button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => setEditando(!editando)}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-              >
-                {editando ? 'Cancelar' : 'Editar'}
-              </button>
-              <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg transition-colors">×</button>
-            </div>
-          </div>
-
-          {/* Tarea emergente: saldo pendiente o checklist de Anfitriona ya vencidos */}
-          {tareaEmergente && (
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/60 dark:bg-red-950/40">
-              <Ic n="alert" className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-red-700 dark:text-red-400">{tareaEmergente.nota}</p>
-                <p className="text-xs text-red-500 dark:text-red-400/80">
-                  {tareaEmergente.fecha < hoyISO() ? 'Vencido' : 'Vence hoy'} · {fmtFecha(tareaEmergente.fecha)}
-                </p>
-              </div>
-              <button
-                onClick={completarTareaEmergente}
-                className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-              >
-                Marcar hecho
-              </button>
-            </div>
-          )}
-
-          {/* Editar datos */}
-          {editando && (
-            <div className="mt-1 grid grid-cols-1 gap-3">
-              {[
-                { key: 'nombre', label: 'Nombre', col: 2 },
-                { key: 'email', label: 'Email', col: 2 },
-                { key: 'whatsapp', label: 'WhatsApp' },
-                { key: 'pais', label: 'País' },
-                { key: 'ciudad', label: 'Ciudad' },
-                { key: 'cantidad_pasajeros', label: 'Cantidad de pasajeros', type: 'number' },
-              ].map(({ key, label, col, type }) => (
-                <div key={key} className={col === 2 ? 'col-span-2' : ''}>
-                  <label className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">{label}</label>
-                  <input
-                    type={type || 'text'}
-                    value={form[key]}
-                    onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                  />
                 </div>
-              ))}
-              <div className="col-span-2">
-                <button
-                  onClick={guardarPerfil}
-                  className="w-full bg-brand-500 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 text-white font-semibold text-sm py-2 rounded-xl transition-colors"
-                >
-                  Guardar cambios
-                </button>
-              </div>
-            </div>
-          )}
+              )}
+            </section>
 
-          {/* Stats */}
-          {!editando && (
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              {[
-                { label: 'Reservas', value: reservas.length, color: 'text-brand-600 dark:text-brand-400' },
-                { label: 'Completadas', value: excursionesCompletadas, color: 'text-green-600 dark:text-green-400' },
-                { label: 'Total pagado', value: totalPagado > 0 ? fmtMonto(totalPagado) : '—', color: 'text-amber-600 dark:text-amber-400' },
-              ].map(s => (
-                <div key={s.label} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3 text-center">
-                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-        {!editando && paseosReservados.length > 0 && (
-          <div className="rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-100 dark:divide-zinc-800">
-            <p className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Paseos reservados</p>
-            {paseosReservados.map(r => (
-              <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-zinc-100">{r.excursiones?.nombre || 'Paseo sin nombre'}</p>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400">
-                    {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha'}
+            {/* Tarea emergente: saldo pendiente o checklist de Anfitriona ya vencidos */}
+            {tareaEmergente && (
+              <section className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/60 dark:bg-red-950/40">
+                <Ic n="alert" className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-red-700 dark:text-red-400">{tareaEmergente.nota}</p>
+                  <p className="text-xs text-red-500 dark:text-red-400/80">
+                    {tareaEmergente.fecha < hoyISO() ? 'Vencido' : 'Vence hoy'} · {fmtFecha(tareaEmergente.fecha)}
                   </p>
                 </div>
-                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${ESTADO_RESERVA[estadoEfectivo(r)] || ''}`}>
-                  {ESTADO_RESERVA_LABEL[estadoEfectivo(r)] || r.estado}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        </aside>
+                <button onClick={completarTareaEmergente} className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600">
+                  Marcar hecho
+                </button>
+              </section>
+            )}
 
-        <main className="flex min-w-0 flex-1 flex-col">
-        {/* ── Tabs ── */}
-        <div className="flex border-b border-gray-100 dark:border-zinc-800 flex-shrink-0 px-6">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                tab === t.id
-                  ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                  : 'border-transparent text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-300'
-              }`}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600'}`}>
-                  {t.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Contenido ── */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl">
-          {cargando ? (
-            <div className="text-center py-12 text-gray-400 dark:text-zinc-600 text-sm">Cargando...</div>
-          ) : (
-            <>
-              {/* RESERVAS */}
-              {tab === 'reservas' && (
-                <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-                  <div className="px-6 py-3 flex justify-end">
-                    <button
-                      onClick={() => setModalReserva(true)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-brand-600 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-brand-700 dark:hover:bg-zinc-200 rounded-lg px-3 py-1.5 transition-colors"
-                    >
-                      <span className="text-sm leading-none">+</span> Nueva reserva
-                    </button>
-                  </div>
-                  {reservas.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-                      <IcGrande n="file" />
-                      <p className="text-sm">Sin reservas registradas</p>
-                    </div>
-                  ) : reservas.map(r => {
-                    const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
-                    const estado = estadoEfectivo(r)
-                    return (
-                    <div key={r.id} className="px-6 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">
-                            {r.excursiones?.nombre || 'Paseo'}
-                          </p>
-                          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
-                            <IcTxt n="cal" />{fmtFecha(r.fecha)} · <IcTxt n="users" />{r.personas} {r.personas === 1 ? 'persona' : 'personas'}
-                          </p>
-                          {r.hospedaje && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5"><IcTxt n="hotel" />{r.hospedaje}</p>}
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full border ${ESTADO_RESERVA[estado] || 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 border-gray-100 dark:border-zinc-700'}`}>
-                            {ESTADO_RESERVA_LABEL[estado] || estado}
-                          </span>
-                          <p className="text-sm font-bold text-gray-800 dark:text-zinc-200 mt-1">
-                            {r.total ? fmtMonto(r.total, r.moneda) : '—'}
-                          </p>
-                        </div>
-                      </div>
-                      {r.total > 0 && (
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 dark:border-zinc-800">
-                          <p className="text-xs text-gray-400 dark:text-zinc-600">
-                            {saldo > 0 ? <>Saldo pendiente: <span className="font-semibold text-amber-600 dark:text-amber-400">{fmtMonto(saldo, 'BRL')}</span></> : <span className="text-green-600 dark:text-green-400 font-semibold">Pagado por completo</span>}
-                          </p>
-                          {saldo > 0 && (
-                            <button
-                              onClick={() => setPagandoReserva(r)}
-                              className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300"
-                            >
-                              Registrar pago
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )})}
+            {!editando && (
+              <section className="dash-card grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xl font-bold text-gray-900 dark:text-zinc-100">{reservas.length}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-500">Reservas</p>
                 </div>
-              )}
-
-              {/* SALDO */}
-              {tab === 'saldo' && (
-                <div className="p-6">
-                  <SeccionSaldos
-                    key={cliente.id}
-                    id={cliente.id}
-                    api={clientesSaldosApi}
-                    campo="cliente_id"
-                    conceptos={CONCEPTOS_SALDO_CLIENTE}
-                    conceptoInicial="paquetes"
-                  />
+                <div>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{excursionesCompletadas}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-500">Completadas</p>
                 </div>
-              )}
+                <div>
+                  <p className="text-sm font-bold leading-6 text-amber-600 dark:text-amber-400">{totalPagado > 0 ? fmtMonto(totalPagado) : '—'}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-500">Pagado</p>
+                </div>
+              </section>
+            )}
 
-              {/* PAGOS */}
-              {tab === 'pagos' && (
-                <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-                  {pagos.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-                      <IcGrande n="card" />
-                      <p className="text-sm">Sin pagos registrados</p>
-                    </div>
-                  ) : pagos.map(p => (
-                    <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">{fmtMonto(p.monto, p.moneda)}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
-                          {p.metodo} · {fmtFecha(p.fecha_pago || p.created_at)}
+            <section className="dash-card">
+              <p className={`${ETIQUETA} mb-3`}>Paseos reservados</p>
+              {paseosReservados.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-zinc-600">Sin paseos reservados</p>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-white/10">
+                  {paseosReservados.map(r => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900 dark:text-zinc-100">{r.excursiones?.nombre || 'Paseo sin nombre'}</p>
+                        <p className="text-xs text-gray-500 dark:text-zinc-500">
+                          {r.fecha ? new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha'}
                         </p>
-                        {p.notas && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{p.notas}</p>}
                       </div>
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        p.estado === 'confirmado' ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400'
-                      }`}>
-                        {p.estado}
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${ESTADO_RESERVA[estadoEfectivo(r)] || ''}`}>
+                        {ESTADO_RESERVA_LABEL[estadoEfectivo(r)] || r.estado}
                       </span>
                     </div>
                   ))}
                 </div>
               )}
+            </section>
+          </div>
 
-              {/* ACTIVIDAD */}
-              {tab === 'actividad' && (
-                <div className="px-6 py-4">
-                  {actividad.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 dark:text-zinc-600">
-                      <IcGrande n="file" />
-                      <p className="text-sm">Sin actividad registrada aún</p>
-                    </div>
+          {/* ── Columna derecha: todo lo del cliente, sin pestañas ── */}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:overflow-y-auto">
+            {cargando ? (
+              <div className="dash-card text-center text-sm text-gray-400 dark:text-zinc-600">Cargando...</div>
+            ) : (
+              <>
+                <section className="dash-card !p-0 overflow-hidden">
+                  <div className="p-5">
+                    <SeccionSaldos
+                      key={cliente.id}
+                      id={cliente.id}
+                      api={clientesSaldosApi}
+                      campo="cliente_id"
+                      conceptos={CONCEPTOS_SALDO_CLIENTE}
+                      conceptoInicial="paquetes"
+                    />
+                  </div>
+                </section>
+
+                <section className="dash-card">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className={ETIQUETA}>Reservas · {reservas.length}</p>
+                    <button
+                      onClick={() => setModalReserva(true)}
+                      className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-gray-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                    >
+                      <span className="text-sm leading-none">+</span> Nueva reserva
+                    </button>
+                  </div>
+                  {reservas.length === 0 ? (
+                    <p className="text-sm text-gray-400 dark:text-zinc-600">Sin reservas registradas</p>
                   ) : (
-                    <div className="relative pl-6">
-                      <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-100 dark:bg-zinc-800" />
-                      <div className="space-y-4">
-                        {actividad.map(a => {
+                    <div className="divide-y divide-gray-100 dark:divide-white/10">
+                      {reservas.map(r => {
+                        const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
+                        const estado = estadoEfectivo(r)
+                        return (
+                          <div key={r.id} className="py-3 first:pt-0 last:pb-0">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{r.excursiones?.nombre || 'Paseo'}</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500">
+                                  <IcTxt n="cal" />{fmtFecha(r.fecha)} · <IcTxt n="users" />{r.personas} {r.personas === 1 ? 'persona' : 'personas'}
+                                </p>
+                                {r.hospedaje && <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500"><IcTxt n="hotel" />{r.hospedaje}</p>}
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${ESTADO_RESERVA[estado] || 'border-gray-100 bg-gray-50 text-gray-500 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-500'}`}>
+                                  {ESTADO_RESERVA_LABEL[estado] || estado}
+                                </span>
+                                <p className="mt-1 text-sm font-bold text-gray-800 dark:text-zinc-200">{r.total ? fmtMonto(r.total, r.moneda) : '—'}</p>
+                              </div>
+                            </div>
+                            {r.total > 0 && (
+                              <div className="mt-2 flex items-center justify-between text-xs">
+                                {saldo > 0
+                                  ? <p className="text-gray-500 dark:text-zinc-500">Pendiente <span className="font-semibold text-amber-600 dark:text-amber-400">{fmtMonto(saldo, 'BRL')}</span></p>
+                                  : <p className="font-semibold text-green-600 dark:text-green-400">Pagado por completo</p>}
+                                {saldo > 0 && (
+                                  <button onClick={() => setPagandoReserva(r)} className="font-semibold text-sky-700 hover:underline dark:text-hero-sky">
+                                    Registrar pago
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
+
+                <div className="grid gap-3 xl:grid-cols-2">
+                  <section className="dash-card">
+                    <p className={`${ETIQUETA} mb-3`}>Pagos · {pagos.length}</p>
+                    {pagos.length === 0 ? (
+                      <p className="text-sm text-gray-400 dark:text-zinc-600">Sin pagos registrados</p>
+                    ) : (
+                      <div className="divide-y divide-gray-100 dark:divide-white/10">
+                        {pagos.map(p => (
+                          <div key={p.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{fmtMonto(p.monto, p.moneda)}</p>
+                              <p className="text-xs text-gray-500 dark:text-zinc-500">{p.metodo} · {fmtFecha(p.fecha_pago || p.created_at)}</p>
+                            </div>
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              p.estado === 'confirmado' ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400'
+                            }`}>
+                              {p.estado}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="dash-card">
+                    <p className={`${ETIQUETA} mb-3`}>Actividad</p>
+                    {actividad.length === 0 ? (
+                      <p className="text-sm text-gray-400 dark:text-zinc-600">Sin actividad registrada</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {actividad.slice(0, 8).map(a => {
                           const cfg = ACTIVIDAD_ICON[a.tipo] || { icon: 'dot', color: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500' }
                           return (
-                            <div key={a.id} className="flex gap-3">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 -ml-3.5 z-10 ${cfg.color}`}>
-                                <Ic n={cfg.icon} className="h-3.5 w-3.5" />
+                            <div key={a.id} className="flex items-start gap-3">
+                              <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${cfg.color}`}>
+                                <Ic n={cfg.icon} className="h-3 w-3" />
                               </div>
-                              <div className="flex-1 pb-4">
-                                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{a.titulo}</p>
-                                {a.descripcion && <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">{a.descripcion}</p>}
-                                <p className="text-xs text-gray-300 dark:text-zinc-700 mt-1">{fmtFecha(a.created_at)}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-gray-800 dark:text-zinc-200">{a.titulo}</p>
+                                <p className="text-[11px] text-gray-400 dark:text-zinc-600">{fmtFecha(a.created_at)}</p>
                               </div>
                             </div>
                           )
                         })}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </section>
                 </div>
-              )}
 
-              {/* NOTAS */}
-              {tab === 'notas' && (
-                <div className="px-6 py-4">
-                  {/* Nueva nota */}
-                  <div className="mb-5">
+                <section className="dash-card">
+                  <p className={`${ETIQUETA} mb-3`}>Notas · {notas.length}</p>
+                  <div className="mb-4 flex gap-2">
                     <textarea
-                      rows={3}
+                      rows={2}
                       value={nuevaNota}
                       onChange={e => setNuevaNota(e.target.value)}
                       placeholder="Agregar nota interna..."
-                      className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                      className="min-w-0 flex-1 resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100"
                     />
                     <button
                       onClick={agregarNota}
                       disabled={!nuevaNota.trim()}
-                      className="mt-2 text-sm font-semibold px-4 py-2 bg-brand-500 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl transition-colors"
+                      className="self-end rounded-xl bg-gray-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
                     >
-                      + Agregar nota
+                      Agregar
                     </button>
                   </div>
-
-                  {/* Lista de notas */}
                   {notas.length === 0 ? (
-                    <p className="text-sm text-gray-400 dark:text-zinc-600 text-center py-4">Sin notas todavía</p>
+                    <p className="text-sm text-gray-400 dark:text-zinc-600">Sin notas todavía</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {notas.map(n => (
-                        <div key={n.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm text-gray-700 dark:text-zinc-300 flex-1">{n.contenido}</p>
-                            <button
-                              onClick={() => borrarNota(n.id)}
-                              className="text-gray-300 dark:text-zinc-700 hover:text-red-400 dark:hover:text-red-400 text-sm flex-shrink-0 transition-colors"
-                            >✕</button>
+                        <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-white/[0.03]">
+                          <div className="min-w-0">
+                            <p className="text-sm text-gray-800 dark:text-zinc-200">{n.contenido}</p>
+                            <p className="mt-1 text-[11px] text-gray-400 dark:text-zinc-600">
+                              {n.autor && <span className="font-medium">{n.autor} · </span>}
+                              {fmtFecha(n.created_at)}
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-2">
-                            {n.autor && <span className="font-medium">{n.autor} · </span>}
-                            {fmtFecha(n.created_at)}
-                          </p>
+                          <button onClick={() => borrarNota(n.id)} className="shrink-0 text-sm text-gray-300 transition-colors hover:text-red-400 dark:text-zinc-700 dark:hover:text-red-400">✕</button>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-            </>
-          )}
+                </section>
+              </>
+            )}
           </div>
-        </div>
-        </main>
         </div>
       </div>
 
@@ -1009,9 +949,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
           onCerrar={() => setPagandoReserva(null)}
           onGuardado={(nuevoPagado, clienteActualizado) => {
             setReservas(prev => prev.map(r => r.id === pagandoReserva.id ? { ...r, pagado: nuevoPagado } : r))
+            if (clienteActualizado) onUpdate(clienteActualizado)
             setPagandoReserva(null)
             pagosApi.getByCliente(cliente.id).then(({ data }) => setPagos(data || []))
-            if (clienteActualizado) onUpdate(clienteActualizado)
           }}
         />
       )}

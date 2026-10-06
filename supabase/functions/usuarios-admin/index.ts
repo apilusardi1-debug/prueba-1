@@ -25,6 +25,7 @@ const ROLES = ['superadmin', 'admin', 'operativo', 'ventas', 'lectura', 'logisti
 // Lo que un admin (no superadmin) puede dar o quitar: nunca admins ni superadmins.
 const ROLES_QUE_ADMINISTRA_UN_ADMIN = ['operativo', 'ventas', 'lectura', 'logistica', 'chofer']
 const TIPOS_CON_SECCIONES = ['operativo', 'ventas', 'lectura', 'logistica', 'chofer']
+const CLAVES_PLANTILLA = ['operacion_guia', 'operacion_chofer']
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
@@ -77,6 +78,25 @@ serve(async (req) => {
     if (action === 'permisos') {
       const { data, error } = await supabase.from('permisos_tipos').select('tipo, secciones')
       return json({ ok: !error, permisos: data || [], error: error?.message })
+    }
+
+    // Textos de los avisos internos de operación. Los lee cualquiera con sesión (Agenda los usa al cerrar).
+    if (action === 'plantillas') {
+      const { data, error } = await supabase.from('mensajes_plantillas').select('clave, texto, actualizado_at, actualizado_por')
+      return json({ ok: !error, plantillas: data || [], error: error?.message })
+    }
+
+    if (action === 'plantilla_guardar') {
+      if (sesion.rol !== 'admin' && sesion.rol !== 'superadmin') {
+        return json({ ok: false, error: 'Solo admin o superadmin pueden editar los mensajes.' }, 403)
+      }
+      const clave = String(body.clave || '')
+      if (!CLAVES_PLANTILLA.includes(clave)) return json({ ok: false, error: 'Mensaje inválido' }, 400)
+      const texto = String(body.texto || '').trim()
+      if (!texto || texto.length > 4000) return json({ ok: false, error: 'El mensaje tiene que tener texto (máximo 4000 caracteres).' }, 400)
+      const { error } = await supabase.from('mensajes_plantillas')
+        .upsert({ clave, texto, actualizado_at: new Date().toISOString(), actualizado_por: sesion.email }, { onConflict: 'clave' })
+      return json({ ok: !error, error: error?.message })
     }
 
     if (action === 'permisos_guardar') {

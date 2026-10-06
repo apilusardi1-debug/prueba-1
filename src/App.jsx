@@ -47,6 +47,7 @@ import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
 import Traslados from './pages/admin/Traslados.jsx'
 import Superadmin from './pages/admin/Superadmin.jsx'
 import OperacionesEnCurso from './pages/admin/OperacionesEnCurso.jsx'
+import Mensajes from './pages/admin/Mensajes.jsx'
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -104,6 +105,7 @@ const router = createBrowserRouter([
       { path: '/admin/entrenar-asistente', element: <AsistenteEntrenamiento /> },
       { path: '/admin/superadmin', element: <Superadmin /> },
       { path: '/admin/operaciones/en-curso', element: <OperacionesEnCurso /> },
+      { path: '/admin/mensajes', element: <Mensajes /> },
       { path: '/admin/crm/whatsapp',    element: <WhatsAppCRM /> },
       { path: '/admin/finanzas',        element: <Finanzas /> },
     ],

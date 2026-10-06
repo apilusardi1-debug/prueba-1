@@ -29,6 +29,7 @@ export const SECCIONES = [
   { clave: 'agenda', nombre: 'Agenda', ruta: '/admin/agenda' },
   { clave: 'operaciones', nombre: 'Operaciones', ruta: '/admin/operaciones/en-curso' },
   { clave: 'chat_interno', nombre: 'Chat interno', ruta: '/admin/operaciones/chat' },
+  { clave: 'mensajes', nombre: 'Mensajes', ruta: '/admin/mensajes' },
   { clave: 'hospedajes', nombre: 'Hospedajes', ruta: '/admin/hospedajes' },
   { clave: 'videos', nombre: 'Videos', ruta: '/admin/videos' },
   { clave: 'paquetes_clientes', nombre: 'Paquetes: clientes', ruta: '/admin/paquetes/clientes' },

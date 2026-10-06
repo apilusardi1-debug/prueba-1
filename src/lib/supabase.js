@@ -616,6 +616,8 @@ export const usuariosAdminApi = {
   delete: (id) => invocarUsuariosAdmin('delete', { id }),
   permisos: () => invocarUsuariosAdmin('permisos'),
   guardarPermisos: (tipo, secciones) => invocarUsuariosAdmin('permisos_guardar', { tipo, secciones }),
+  plantillas: () => invocarUsuariosAdmin('plantillas'),
+  guardarPlantilla: (clave, texto) => invocarUsuariosAdmin('plantilla_guardar', { clave, texto }),
 }
 
 // Guarda en la sesión qué secciones ve cada tipo, para armar el menú y las rutas sin ir a la base en cada cambio de página.

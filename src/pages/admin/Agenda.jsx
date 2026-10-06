@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi } from '../../lib/supabase.js'
+import { MENSAJES_OPERACION, rellenarPlantilla } from '../../lib/mensajesDefault.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
 import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
@@ -778,6 +779,10 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       const hora = new Date().getHours()
       const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
+      // Textos de los avisos internos, editables desde Mensajes. Si no se pueden leer, se usan los de siempre.
+      const { plantillas: guardadas } = (await usuariosAdminApi.plantillas()) || {}
+      const plantillaDe = (clave) => guardadas?.find((p) => p.clave === clave)?.texto || MENSAJES_OPERACION[clave].texto
+
       async function enviar(destino, phone, template, params) {
         if (!phone) {
           logs.push({ destino, phone: '—', ok: false, error: 'Sin número de WhatsApp guardado' })
@@ -820,10 +825,10 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
 
       // Aviso interno al GUÍA: antes salía por WhatsApp (aviso_guia), ahora queda en
       // su link personal (chat interno) — el costo por mensaje de Meta era el motivo
-      const mensajeGuia = [
-        `🗺 *${excursion.nombre}*`, `📅 ${fechaFmtPt}`, `🕐 SAÍDA: ${horario.partida} — Volta: ${horario.regreso}`,
-        '', '*Passageiros da operação:*', '', pasajeros.map(bloquePasajeroGuia).join('\n\n'),
-      ].join('\n')
+      const mensajeGuia = rellenarPlantilla(plantillaDe('operacion_guia'), {
+        excursion: excursion.nombre, fecha: fechaFmtPt, salida: horario.partida, volta: horario.regreso,
+        pasajeros: pasajeros.map(bloquePasajeroGuia).join('\n\n'),
+      })
       const avisos = [{ destinatario: 'guia', guia_id: guiaAsignado.id, mensaje: mensajeGuia, pasajeros: pasajeros.map(datosPasajero) }]
 
       // Aviso interno a cada CHOFER, solo con sus pasajeros (antes aviso_chofer)
@@ -836,11 +841,11 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       for (const [cid, sus] of Object.entries(porChofer)) {
         const chofer = choferes.find((c) => c.id === cid)
         if (!chofer) continue
-        const mensajeChofer = [
-          `🗺 *${excursion.nombre}*`, `📅 ${fechaFmtPt}`, `🕐 SAÍDA: ${horario.partida}`,
-          '', '*Seus passageiros:*', '', sus.map(bloquePasajeroChofer).join('\n\n'),
-          '', `Qualquer dúvida sobre a operação, fale com o guia *${guiaAsignado.nombre}* 📱 +${guiaAsignado.whatsapp}`,
-        ].join('\n')
+        const mensajeChofer = rellenarPlantilla(plantillaDe('operacion_chofer'), {
+          excursion: excursion.nombre, fecha: fechaFmtPt, salida: horario.partida,
+          pasajeros: sus.map(bloquePasajeroChofer).join('\n\n'),
+          guia: guiaAsignado.nombre, guia_whatsapp: guiaAsignado.whatsapp,
+        })
         avisos.push({ destinatario: 'chofer', chofer_id: cid, mensaje: mensajeChofer, pasajeros: sus.map(datosPasajero) })
       }
 

@@ -202,6 +202,7 @@ const NAV = [
   },
   { path: '/admin/excursiones', label: 'Paseos',       icon: Icon.Excursiones },
   { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
+  { path: '/admin/operaciones/en-curso', label: 'Operaciones', icon: Icon.Agenda },
   { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
   {
     label: 'Hospedajes', icon: Icon.Hospedajes,
@@ -484,6 +485,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/excursiones')) return 'Paseos'
     if (pathname.startsWith('/admin/agenda')) return 'Agenda'
     if (pathname.startsWith('/admin/operaciones/chat')) return 'Chat interno'
+    if (pathname.startsWith('/admin/operaciones/en-curso')) return 'Operaciones'
     if (pathname.startsWith('/admin/hospedajes/nuevo')) return 'Nuevo hospedaje'
     if (pathname.startsWith('/admin/hospedajes/importar-laplaya')) return 'Importar desde La Playa'
     if (pathname.startsWith('/admin/hospedajes/importar')) return 'Importar desde Niara'

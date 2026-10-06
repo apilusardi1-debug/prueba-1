@@ -21,10 +21,10 @@ const CORS = {
 // Nunca se devuelve password_hash al cliente, ni siquiera en el listado
 // de Accesos.
 const CAMPOS_PUBLICOS = 'id, nombre, email, rol, activo, created_at'
-const ROLES = ['superadmin', 'admin', 'operativo', 'ventas', 'lectura']
+const ROLES = ['superadmin', 'admin', 'operativo', 'ventas', 'lectura', 'logistica', 'chofer']
 // Lo que un admin (no superadmin) puede dar o quitar: nunca admins ni superadmins.
-const ROLES_QUE_ADMINISTRA_UN_ADMIN = ['operativo', 'ventas', 'lectura']
-const TIPOS_CON_SECCIONES = ['operativo', 'ventas', 'lectura']
+const ROLES_QUE_ADMINISTRA_UN_ADMIN = ['operativo', 'ventas', 'lectura', 'logistica', 'chofer']
+const TIPOS_CON_SECCIONES = ['operativo', 'ventas', 'lectura', 'logistica', 'chofer']
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
@@ -86,6 +86,18 @@ serve(async (req) => {
       const secciones = Array.isArray(body.secciones) ? body.secciones.map(String) : []
       const { error } = await supabase.from('permisos_tipos').update({ secciones }).eq('tipo', tipo)
       return json({ ok: !error, error: error?.message })
+    }
+
+    // Logística solo puede dar de alta cuentas de choferes; no edita ni borra nada.
+    if (sesion.rol === 'logistica') {
+      if (action === 'create' && body.rol === 'chofer') {
+        const { nombre, email, password_hash, activo } = body
+        const { data, error } = await supabase.from('usuarios_admin')
+          .insert({ nombre, email: String(email || '').trim().toLowerCase(), password_hash, rol: 'chofer', activo: activo ?? true })
+          .select(CAMPOS_PUBLICOS).single()
+        return json({ ok: !error, usuario: data, error: error?.message })
+      }
+      return json({ ok: false, error: 'Logística solo puede crear cuentas de choferes.' }, 403)
     }
 
     // Desde acá, crear, editar y borrar usuarios: solo admin o superadmin.

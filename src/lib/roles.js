@@ -7,10 +7,12 @@ export const ROLES = {
   operativo: { label: 'Operativo', descripcion: 'Trabajo diario. Las secciones las define el superadmin.' },
   ventas: { label: 'Ventas', descripcion: 'Trabajo de ventas. Las secciones las define el superadmin.' },
   lectura: { label: 'Solo lectura', descripcion: 'Consulta. Las secciones las define el superadmin.' },
+  logistica: { label: 'Logística', descripcion: 'Coordina las operaciones con choferes, guías y clientes. Puede crear cuentas de choferes.' },
+  chofer: { label: 'Chofer', descripcion: 'Solo ve el chat interno de sus operaciones.' },
 }
 
 // Roles que un admin (no superadmin) puede dar o quitar.
-export const ROLES_ADMINISTRABLES = ['operativo', 'ventas', 'lectura']
+export const ROLES_ADMINISTRABLES = ['operativo', 'ventas', 'lectura', 'logistica', 'chofer']
 
 // Cada sección es una página del panel. "ruta" es el inicio de la URL; "exacta" significa que
 // solo vale para esa URL, sin sus subrutas (como el embudo de paquetes frente al de paseos).
@@ -25,7 +27,8 @@ export const SECCIONES = [
   { clave: 'traslados', nombre: 'Traslados', ruta: '/admin/traslados' },
   { clave: 'paseos', nombre: 'Paseos', ruta: '/admin/excursiones' },
   { clave: 'agenda', nombre: 'Agenda', ruta: '/admin/agenda' },
-  { clave: 'chat_interno', nombre: 'Chat interno', ruta: '/admin/operaciones' },
+  { clave: 'operaciones', nombre: 'Operaciones', ruta: '/admin/operaciones/en-curso' },
+  { clave: 'chat_interno', nombre: 'Chat interno', ruta: '/admin/operaciones/chat' },
   { clave: 'hospedajes', nombre: 'Hospedajes', ruta: '/admin/hospedajes' },
   { clave: 'videos', nombre: 'Videos', ruta: '/admin/videos' },
   { clave: 'paquetes_clientes', nombre: 'Paquetes: clientes', ruta: '/admin/paquetes/clientes' },

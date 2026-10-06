@@ -641,8 +641,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
         onClick={e => e.stopPropagation()}
       >
 
-        {/* ── Header ── */}
-        <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+        <div className="flex min-h-0 flex-1">
+        {/* ── Columna de datos del cliente ── */}
+        <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-gray-100 p-5 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-brand-700 dark:text-brand-400 text-lg font-bold flex-shrink-0">
@@ -709,7 +710,7 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
 
           {/* Editar datos */}
           {editando && (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-1 grid grid-cols-1 gap-3">
               {[
                 { key: 'nombre', label: 'Nombre', col: 2 },
                 { key: 'email', label: 'Email', col: 2 },
@@ -754,10 +755,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
               ))}
             </div>
           )}
-        </div>
 
         {!editando && paseosReservados.length > 0 && (
-          <div className="mx-6 mt-4 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-100 dark:divide-zinc-800">
+          <div className="rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-100 dark:divide-zinc-800">
             <p className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Paseos reservados</p>
             {paseosReservados.map(r => (
               <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -774,7 +774,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
             ))}
           </div>
         )}
+        </aside>
 
+        <main className="flex min-w-0 flex-1 flex-col">
         {/* ── Tabs ── */}
         <div className="flex border-b border-gray-100 dark:border-zinc-800 flex-shrink-0 px-6">
           {TABS.map(t => (
@@ -798,7 +800,8 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
         </div>
 
         {/* ── Contenido ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl">
           {cargando ? (
             <div className="text-center py-12 text-gray-400 dark:text-zinc-600 text-sm">Cargando...</div>
           ) : (
@@ -984,6 +987,9 @@ function PerfilCliente({ cliente, onCerrar, onUpdate }) {
               )}
             </>
           )}
+          </div>
+        </div>
+        </main>
         </div>
       </div>
 

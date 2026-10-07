@@ -1289,15 +1289,6 @@ export default function WhatsAppCRM() {
                   </div>
                 )}
               </div>
-              {/* Ficha del lead: la misma ventana que se llena en el embudo (Leads.jsx) */}
-              <button
-                onClick={() => leadVinculado && navigate(`/admin/leads?lead=${leadVinculado.id}`)}
-                disabled={!leadVinculado}
-                title={leadVinculado ? 'Ver la ficha de este lead en el embudo' : 'Este contacto todavía no tiene un lead en el embudo'}
-                className="text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:enabled:bg-gray-100 dark:hover:enabled:bg-zinc-700"
-              >
-                Ver ficha
-              </button>
               <a
                 href={`https://wa.me/${seleccionada.whatsapp}`}
                 target="_blank"
@@ -1698,12 +1689,14 @@ export default function WhatsAppCRM() {
                     {clienteVinculado.cantidad_pasajeros} pasajero{clienteVinculado.cantidad_pasajeros !== 1 ? 's' : ''} habitual
                   </p>
                 )}
-                <button
-                  onClick={() => navigate(`/admin/clientes?cliente=${clienteVinculado.id}`)}
-                  className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
-                >
-                  Ver perfil completo →
-                </button>
+                {leadVinculado && (
+                  <button
+                    onClick={() => navigate(`/admin/leads?lead=${leadVinculado.id}`)}
+                    className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
+                  >
+                    Ver ficha completa →
+                  </button>
+                )}
               </div>
             ) : (
               <div>
@@ -1715,6 +1708,14 @@ export default function WhatsAppCRM() {
                 >
                   {convirtiendoCliente ? 'Convirtiendo...' : 'Convertir a cliente'}
                 </button>
+                {leadVinculado && (
+                  <button
+                    onClick={() => navigate(`/admin/leads?lead=${leadVinculado.id}`)}
+                    className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
+                  >
+                    Ver ficha completa →
+                  </button>
+                )}
               </div>
             )}
 

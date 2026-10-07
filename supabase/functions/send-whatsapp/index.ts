@@ -304,12 +304,21 @@ serve(async (req) => {
     // destino al que ya manda el trigger de la base cuando la propuesta pasa
     // a "archivada" (ver migración 20261001100000_etapa_envio_detalle.sql)
     // — lo que pase primero, enviar el PDF o archivar la propuesta.
+    //
+    // Importante: para encontrar al lead hay que usar `phone` tal cual llegó
+    // (lo mismo que guardan conversaciones.whatsapp y leads.whatsapp), no
+    // `phoneClean` — ese ya tiene el 9 agregado para que Meta entregue el
+    // mensaje, y en los números de Brasil que llegan sin el 9 (wa_id de Meta
+    // inconsistente, ver CLAUDE.md) ese agregado hacía que el whatsapp ya no
+    // matcheara con el del lead y la automatización no moviera nada, sin
+    // avisar el error (caso real de Marcos, 2026-10-07: PDF enviado, el lead
+    // se quedó en "Filtrado").
     if (esCrm && esMedia && media.tipo === 'document') {
       const nombreArchivo = String(media.nombre || '').trim()
       if (/^propuesta/i.test(nombreArchivo)) {
-        await moverAEtapaPaquetes(supabase, phoneClean, 'propuesta_enviada')
+        await moverAEtapaPaquetes(supabase, phone, 'propuesta_enviada')
       } else if (/^detalle[ _-]*final/i.test(nombreArchivo) || /^detalles[ _-]*y[ _-]*servicios/i.test(nombreArchivo)) {
-        await moverAEtapaPaquetes(supabase, phoneClean, 'envio_detalle')
+        await moverAEtapaPaquetes(supabase, phone, 'envio_detalle')
       }
     }
 
@@ -318,13 +327,13 @@ serve(async (req) => {
     // "anfitriona" (por ejemplo, para presentarla) — no importa si es texto o
     // el epígrafe de una foto/archivo.
     if (esCrm && /anfitriona/i.test(mensajeLegible)) {
-      await moverAEtapaAnfitriona(supabase, phoneClean, 'anfitriona_contacto')
+      await moverAEtapaAnfitriona(supabase, phone, 'anfitriona_contacto')
     }
 
     // Cuando se le manda al lead el mensaje de reserva confirmada, pasa solo a
     // "Estadía confirmada".
     if (esCrm && normalizarTexto(mensajeLegible).includes(FRASE_ESTADIA_CONFIRMADA)) {
-      await moverAEtapaAnfitriona(supabase, phoneClean, 'anfitriona_confirmada')
+      await moverAEtapaAnfitriona(supabase, phone, 'anfitriona_confirmada')
     }
 
     return new Response(JSON.stringify(data), {

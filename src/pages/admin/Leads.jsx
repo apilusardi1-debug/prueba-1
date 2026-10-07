@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
@@ -148,6 +148,7 @@ function OpcionesEtapas({ etapas, claseOpcion }) {
 
 export default function Leads({ embudo = 'paquetes' }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [vista, setVista] = useState('kanban')
@@ -213,6 +214,17 @@ export default function Leads({ embudo = 'paquetes' }) {
     }
     cargar()
   }, [])
+
+  // Abrir la ficha directo si se llega con ?lead= (por ejemplo, desde "Ver ficha"
+  // en el chat del CRM) — el lead puede ser de cualquier embudo, no hace falta
+  // estar en la ruta que le corresponde: `leads` ya trae todos.
+  useEffect(() => {
+    const idLead = searchParams.get('lead')
+    if (!idLead || !leads.length) return
+    const lead = leads.find(l => String(l.id) === idLead)
+    if (lead) abrirLead(lead)
+    setSearchParams({}, { replace: true })
+  }, [leads, searchParams])
 
   // Personas del panel: para mostrar el responsable de cada lead
   useEffect(() => {

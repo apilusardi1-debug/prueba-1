@@ -1233,44 +1233,6 @@ export default function Leads({ embudo = 'paquetes' }) {
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-3">
-                {/* Convertir a cliente */}
-                {convertidoMsg === 'ok' && (
-                  <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm px-4 py-3 rounded-xl">
-                    Convertido a cliente correctamente
-                  </div>
-                )}
-                {convertidoMsg === 'ya_existe' && (
-                  <div className="bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400 text-sm px-4 py-3 rounded-xl">
-                    Ya existe como cliente con ese WhatsApp
-                  </div>
-                )}
-                <button
-                  onClick={() => convertirACliente(seleccionado)}
-                  disabled={convirtiendo || convertidoMsg === 'ok'}
-                  className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-zinc-100 hover:bg-brand-700 dark:hover:bg-zinc-200 disabled:opacity-50 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl transition-colors text-sm"
-                >
-                  {convirtiendo ? 'Convirtiendo...' : convertidoMsg === 'ok' ? 'Ya es cliente' : 'Convertir a cliente'}
-                </button>
-
-                {clienteConvertidoId && (
-                  <button
-                    onClick={() => navigate(`/admin/clientes?cliente=${clienteConvertidoId}`)}
-                    className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
-                  >
-                    Ver perfil del cliente
-                  </button>
-                )}
-
-                {seleccionado.whatsapp && (
-                  <button
-                    onClick={() => { setSeleccionado(null); setConvertidoMsg(''); navigate(`/admin/crm/whatsapp?phone=${seleccionado.whatsapp}`) }}
-                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
-                  >
-                    Abrir en WhatsApp
-                  </button>
-                )}
-              </div>
             </div>
             </div>
           </div>

@@ -121,17 +121,17 @@ export const leadsApi = {
 // Etapas del embudo de ventas (Leads). leads.estado guarda la clave de la etapa.
 // Automatizaciones por etapa: se cumplen en la base cuando un lead entra a la etapa
 export const embudoAutoApi = {
-  getAll: () => supabase?.from('embudo_automatizaciones').select('*').order('created_at'),
-  create: (data) => supabase?.from('embudo_automatizaciones').insert(data).select().single(),
-  update: (id, data) => supabase?.from('embudo_automatizaciones').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('embudo_automatizaciones').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('embudo_automatizaciones', 'list'),
+  create: (data) => invocarCatalogoInterno('embudo_automatizaciones', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('embudo_automatizaciones', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('embudo_automatizaciones', 'delete', { id }),
 }
 
 export const embudoApi = {
-  getAll: () => supabase?.from('embudo_etapas').select('*').order('orden'),
-  create: (data) => supabase?.from('embudo_etapas').insert(data).select().single(),
-  update: (clave, data) => supabase?.from('embudo_etapas').update(data).eq('clave', clave).select().single(),
-  delete: (clave) => supabase?.from('embudo_etapas').delete().eq('clave', clave),
+  getAll: () => invocarCatalogoInterno('embudo_etapas', 'list'),
+  create: (data) => invocarCatalogoInterno('embudo_etapas', 'create', { data }),
+  update: (clave, data) => invocarCatalogoInterno('embudo_etapas', 'update', { id: clave, data }),
+  delete: (clave) => invocarCatalogoInterno('embudo_etapas', 'delete', { id: clave }),
 }
 
 // ── Recordatorios de seguimiento (leads) ─────────────────────────────────────────
@@ -508,27 +508,28 @@ export const movimientosApi = {
 
 // ── Costos por excursión ───────────────────────────────────────────────────────
 export const costosExcursionApi = {
-  getAll: () => supabase?.from('costos_excursion').select('*').eq('activo', true).order('concepto'),
-  getByExcursion: (excursionId) => supabase?.from('costos_excursion').select('*').eq('excursion_id', excursionId).eq('activo', true),
-  create: (data) => supabase?.from('costos_excursion').insert(data).select().single(),
-  update: (id, data) => supabase?.from('costos_excursion').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('costos_excursion').update({ activo: false }).eq('id', id),
+  getAll: () => invocarCatalogoInterno('costos_excursion', 'list', { filtros: { activo: true } }),
+  getByExcursion: (excursionId) => invocarCatalogoInterno('costos_excursion', 'list', { filtros: { excursion_id: excursionId, activo: true } }),
+  create: (data) => invocarCatalogoInterno('costos_excursion', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('costos_excursion', 'update', { id, data }),
+  // Baja lógica (activo: false), no se borra la fila — igual que antes.
+  delete: (id) => invocarCatalogoInterno('costos_excursion', 'update', { id, data: { activo: false } }),
 }
 
 // ── Conceptos de movimiento (Finanzas) ───────────────────────────────────────────
 export const conceptosApi = {
-  getAll: () => supabase?.from('conceptos_movimiento').select('*').order('nombre'),
-  create: (data) => supabase?.from('conceptos_movimiento').insert(data).select().single(),
-  update: (id, data) => supabase?.from('conceptos_movimiento').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('conceptos_movimiento').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('conceptos_movimiento', 'list'),
+  create: (data) => invocarCatalogoInterno('conceptos_movimiento', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('conceptos_movimiento', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('conceptos_movimiento', 'delete', { id }),
 }
 
 // ── Respuestas rápidas (CRM WhatsApp) ────────────────────────────────────────────
 export const respuestasRapidasApi = {
-  getAll: () => supabase?.from('respuestas_rapidas').select('*').order('titulo'),
-  create: (data) => supabase?.from('respuestas_rapidas').insert(data).select().single(),
-  update: (id, data) => supabase?.from('respuestas_rapidas').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('respuestas_rapidas').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('respuestas_rapidas', 'list'),
+  create: (data) => invocarCatalogoInterno('respuestas_rapidas', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('respuestas_rapidas', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('respuestas_rapidas', 'delete', { id }),
 }
 
 // ── Métricas del CRM para el Dashboard ───────────────────────────────────────────
@@ -589,6 +590,18 @@ async function invocarUsuariosAdmin(action, body = {}) {
   const { data, error } = await supabase.functions.invoke('usuarios-admin', { body: { action, ...body }, headers: cabeceraPanel() })
   if (error) return { ok: false, error: error.message }
   return data
+}
+
+// Catálogos internos chicos (sin datos de clientes ni de plata) que ya no se leen/escriben
+// directo desde el navegador — pasan por la Edge Function catalogo-interno, que exige una
+// sesión del panel vigente. Devuelve la misma forma {data, error} que supabase-js, para no
+// tener que tocar el código que ya consume estas funciones.
+async function invocarCatalogoInterno(tabla, accion, extra = {}) {
+  if (!supabase) return { data: null, error: { message: 'Sin conexión' } }
+  const { data: resp, error } = await supabase.functions.invoke('catalogo-interno', { body: { tabla, accion, ...extra }, headers: cabeceraPanel() })
+  if (error) return { data: null, error: { message: error.message } }
+  if (!resp.ok) return { data: null, error: { message: resp.error || 'Error desconocido' } }
+  return { data: resp.datos ?? resp.dato ?? null, error: null }
 }
 
 // Renueva el token de la sesión del panel. Devuelve true si se renovó, false si el servidor

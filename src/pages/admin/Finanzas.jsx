@@ -1,10 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi } from '../../lib/supabase.js'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
-import { cabeceraPanel } from '../../lib/sesionPanel.js'
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
@@ -368,7 +364,6 @@ export default function Finanzas() {
         {[
           { id: 'movimientos', label: 'Movimientos' },
           { id: 'costos', label: 'Costos operativos' },
-          { id: 'mercadopago', label: 'Mercado Pago' },
         ].map(t => (
           <button
             key={t.id}
@@ -499,11 +494,6 @@ export default function Finanzas() {
       {/* ── Tab: Costos operativos ───────────────────────────────────────────── */}
       {tab === 'costos' && (
         <TabCostos excursiones={excursiones} costos={costos} setCostos={setCostos} />
-      )}
-
-      {/* ── Tab: Mercado Pago ────────────────────────────────────────────────── */}
-      {tab === 'mercadopago' && (
-        <TabMercadoPago movimientos={movimientos} />
       )}
 
       {/* ── Modal: Nuevo movimiento ──────────────────────────────────────────── */}
@@ -682,115 +672,6 @@ export default function Finanzas() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// ── Tab Mercado Pago ──────────────────────────────────────────────────────────
-function TabMercadoPago({ movimientos }) {
-  const [qrImage, setQrImage] = useState(null)
-  const [cargandoQr, setCargandoQr] = useState(true)
-  const [errorQr, setErrorQr] = useState(null)
-
-  useEffect(() => {
-    async function fetchQr() {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/mp-qr`, {
-          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, ...cabeceraPanel() },
-        })
-        const data = await res.json()
-        if (data.qr_image) {
-          setQrImage(data.qr_image)
-        } else {
-          setErrorQr(data.error || 'No se pudo obtener el QR')
-        }
-      } catch (err) {
-        setErrorQr(err.message)
-      } finally {
-        setCargandoQr(false)
-      }
-    }
-    fetchQr()
-  }, [])
-
-  async function descargarQr() {
-    if (!qrImage) return
-    const res = await fetch(qrImage)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'qr-dreamtours-mercadopago.png'
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const pagosMp = movimientos.filter(m => m.referencia_mp)
-    .sort((a, b) => b.fecha.localeCompare(a.fecha))
-    .slice(0, 20)
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* QR */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-6 flex flex-col items-center gap-5">
-        <div className="text-center">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">QR Mercado Pago</h2>
-          <p className="text-sm text-gray-400 dark:text-zinc-600 mt-1">El cliente escanea, ingresa el monto y paga</p>
-        </div>
-
-        {cargandoQr ? (
-          <div className="w-56 h-56 bg-gray-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-gray-400 dark:text-zinc-600 text-sm">
-            Cargando QR...
-          </div>
-        ) : errorQr ? (
-          <div className="w-56 h-56 bg-red-50 dark:bg-red-950/40 rounded-2xl flex items-center justify-center text-center p-4">
-            <p className="text-sm text-red-500 dark:text-red-400">{errorQr}</p>
-          </div>
-        ) : (
-          <img
-            src={qrImage}
-            alt="QR Mercado Pago"
-            className="w-56 h-56 rounded-2xl border border-gray-100 dark:border-zinc-800"
-          />
-        )}
-
-        <div className="w-full space-y-2">
-          <button
-            onClick={descargarQr}
-            disabled={!qrImage}
-            className="w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
-          >
-            Descargar QR
-          </button>
-          <p className="text-xs text-center text-gray-400 dark:text-zinc-600">
-            Los pagos quedan registrados automáticamente en Movimientos
-          </p>
-        </div>
-      </div>
-
-      {/* Últimos pagos MP */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
-        <h2 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Últimos pagos recibidos</h2>
-
-        {pagosMp.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-            <IcGrande n="card" />
-            <p className="text-sm">Aún no hay pagos registrados via MP QR</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {pagosMp.map(m => (
-              <div key={m.id} className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{m.persona_nombre || 'Cliente'}</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-600">{formatFecha(m.fecha)} · {m.notas}</p>
-                </div>
-                <span className="text-sm font-bold text-green-600 dark:text-green-400">+{formatMonto(m.monto, m.moneda)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }

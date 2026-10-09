@@ -28,7 +28,7 @@ const SECCIONES = [
   {
     titulo: 'Con quién los compartimos',
     parrafos: [
-      'Compartimos solo lo necesario para prestarte el servicio: con los choferes, guías y hospedajes que participan de tu viaje. Además usamos proveedores tecnológicos que procesan datos en nuestro nombre: la plataforma de WhatsApp Business de Meta para la mensajería, servicios de almacenamiento y alojamiento web, y Mercado Pago para cobros cuando corresponde.',
+      'Compartimos solo lo necesario para prestarte el servicio: con los choferes, guías y hospedajes que participan de tu viaje. Además usamos proveedores tecnológicos que procesan datos en nuestro nombre: la plataforma de WhatsApp Business de Meta para la mensajería, y servicios de almacenamiento y alojamiento web.',
       'No vendemos tus datos personales ni los usamos para publicidad de terceros.',
     ],
   },

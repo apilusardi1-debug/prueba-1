@@ -587,7 +587,7 @@ function TabAsistente() {
       <div>
         <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Asistente automático</h2>
         <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">
-          Al primer mensaje de un contacto nuevo pregunta si busca Paquetes o Paseos y le asigna la conversación a alguien de ese grupo, en turnos.
+          Al primer mensaje de un contacto nuevo pregunta qué busca (Paquetes, Paseos, Traslados u Hospedajes — estas dos últimas entran al mismo circuito que Paseos y Paquetes) y le asigna la conversación a alguien de ese grupo, en turnos.
           Deja de intervenir apenas una persona responde a mano. En un chat puntual se puede pausar con el interruptor «Asistente» del encabezado de la conversación.
         </p>
       </div>
@@ -643,7 +643,7 @@ function TabAsistente() {
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Saludo y pregunta inicial (se envía con los botones Paquetes / Paseos)</label>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Saludo y pregunta inicial (se envía con el menú Paquetes / Paseos / Traslados / Hospedajes)</label>
           <textarea rows={2} value={textos.saludo} onChange={e => setTextos(t => ({ ...t, saludo: e.target.value }))} className={CLASE_CAMPO} />
         </div>
         <div>

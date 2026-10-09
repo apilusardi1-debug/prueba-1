@@ -1047,7 +1047,7 @@ export default function WhatsAppCRM() {
                       <span
                         title={conv.bot_estado === 'filtrando'
                           ? 'El asistente le está pidiendo los datos para la propuesta'
-                          : 'El asistente espera que elija Paquetes o Paseos'}
+                          : 'El asistente espera que elija una opción del menú'}
                         className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
                       >
                         Asistente

@@ -92,16 +92,17 @@ function sinAcentos(t: string): string {
 }
 
 // Devuelve la opción del menú elegida (una de OPCIONES_MENU) o null si no se entiende o es
-// ambigua. Los números "1" a "4" solo valen si el menú ya se mostró. El menú tiene 4 opciones
-// (Paquetes, Paseos, Traslados, Hospedajes) — WhatsApp no permite más de 3 botones de
-// respuesta rápida, por eso se manda como lista (interactive.list_reply, no button_reply).
+// ambigua. Los números "1" y "2" solo valen si el menú ya se mostró. El menú vuelve a ser de
+// 2 botones (WhatsApp permite 3 como máximo), pero cada uno junta dos cosas: "Paquetes/
+// Hospedajes" y "Paseos/Traslados" — por eso el texto libre sigue reconociendo las 4 palabras
+// por separado (alguien puede escribir "traslado" sin tocar el botón).
 const OPCIONES_MENU: Record<string, RegExp> = {
   paquetes: /paquete/,
   paseos: /\bpaseo|excursion|\btours?\b/,
   traslados: /traslado|translado|transfer/,
   hospedajes: /hotel|hospedaje|alojamiento|pousada|posada|hostel/,
 }
-const NUMERO_OPCION: Record<string, string> = { '1': 'paquetes', '2': 'paseos', '3': 'traslados', '4': 'hospedajes' }
+const NUMERO_OPCION: Record<string, string> = { '1': 'paquetes', '2': 'paseos' }
 
 // deno-lint-ignore no-explicit-any
 function interpretarGrupo(message: any, permitirNumeros: boolean): string | null {
@@ -110,7 +111,7 @@ function interpretarGrupo(message: any, permitirNumeros: boolean): string | null
   const t = sinAcentos(String(message?.text?.body ?? message?.button?.text ?? '').toLowerCase()).trim()
   if (!t) return null
   if (permitirNumeros) {
-    const m = /^([1-4])\W*$/.exec(t)
+    const m = /^([1-2])\W*$/.exec(t)
     if (m) return NUMERO_OPCION[m[1]]
   }
   const encontradas = Object.entries(OPCIONES_MENU).filter(([, re]) => re.test(t)).map(([id]) => id)
@@ -253,32 +254,25 @@ async function procesarEstados(supabase: ReturnType<typeof createClient>, estado
   }
 }
 
-// 4 opciones no entran en botones de respuesta rápida (WhatsApp permite 3 como máximo), por
-// eso el menú se manda como lista (interactive.type 'list') — el cliente toca "Elegir" y ve
-// las 4 filas. "Traslados" y "Hospedajes" no tienen equipo ni embudo propio: se tratan como
-// Paseos y Paquetes respectivamente (ver GRUPO_REAL en ejecutarBot).
+// 2 botones (el máximo de WhatsApp es 3), cada uno junta dos cosas: "Paquetes/Hospedajes" no
+// tiene equipo ni embudo propio para Hospedajes, se trata como Paquetes; "Paseos/Traslados"
+// igual, Traslados se trata como Paseos (ver GRUPO_REAL en ejecutarBot).
 async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: string, phone: string, intro: string) {
   const wamid = await enviarMeta({
     to: phone,
     type: 'interactive',
     interactive: {
-      type: 'list',
+      type: 'button',
       body: { text: intro },
       action: {
-        button: 'Elegir',
-        sections: [{
-          title: '¿En qué te ayudamos?',
-          rows: [
-            { id: 'paquetes', title: 'Paquetes' },
-            { id: 'paseos', title: 'Paseos' },
-            { id: 'traslados', title: 'Traslados' },
-            { id: 'hospedajes', title: 'Hospedajes' },
-          ],
-        }],
+        buttons: [
+          { type: 'reply', reply: { id: 'paquetes', title: 'Paquetes/Hospedajes' } },
+          { type: 'reply', reply: { id: 'paseos', title: 'Paseos/Traslados' } },
+        ],
       },
     },
   })
-  await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes / Paseos / Traslados / Hospedajes]`, wamid)
+  await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes/Hospedajes / Paseos/Traslados]`, wamid)
 }
 
 async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto: string, convId: string, phone: string, grupo: string | null) {
@@ -466,10 +460,12 @@ async function ejecutarBot(supabase: Supabase, convId: string, phone: string, me
 
   const esperando = conv.bot_estado === 'esperando'
   const opcionElegida = grupoElegido(message, esperando, textosDeLaRafaga(hilo))
-  // "Traslados" y "Hospedajes" son dos filas más del menú, pero no tienen equipo de reparto
-  // ni embudo propio — entran al mismo circuito que Paseos y Paquetes respectivamente (mismo
-  // criterio que ya se usa con el interés detectado por palabra clave, ver GRUPO_POR_INTERES
-  // en el webhook). Un hospedaje sigue pidiendo los datos del filtro, igual que un paquete.
+  // "Traslados" y "Hospedajes" no tienen equipo de reparto ni embudo propio — entran al mismo
+  // circuito que Paseos y Paquetes respectivamente (mismo criterio que ya se usa con el
+  // interés detectado por palabra clave, ver GRUPO_POR_INTERES en el webhook). El botón del
+  // menú ya manda directo el id "paseos"/"paquetes"; esta traducción hace falta para cuando
+  // el contacto escribe "traslado" u "hospedaje" en texto libre en vez de tocar el botón. Un
+  // hospedaje sigue pidiendo los datos del filtro, igual que un paquete.
   const GRUPO_REAL: Record<string, string> = { traslados: 'paseos', hospedajes: 'paquetes' }
   const grupo = opcionElegida ? (GRUPO_REAL[opcionElegida] ?? opcionElegida) : null
 

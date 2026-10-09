@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { supabase, guardarSiteConfig } from '../lib/supabase.js'
 
 // Valores por defecto — se usan cuando Supabase no está conectado todavía
 export const CONFIG_DEFAULTS = {
@@ -57,19 +57,14 @@ export function SiteConfigProvider({ children }) {
     loadConfig()
   }, [])
 
-  // Guarda un campo (o varios) en Supabase y actualiza el estado local
+  // Guarda un campo (o varios) en Supabase y actualiza el estado local. Pasa por
+  // catalogo-interno (exige sesión del panel) — la fila id=1 ya existe siempre, así que un
+  // update alcanza (antes era upsert, pero acá nunca hace falta crearla).
   async function saveConfig(updates) {
     setConfig(prev => ({ ...prev, ...updates }))
     if (!supabase) return { ok: false, error: 'Supabase no configurado' }
-    try {
-      const { error } = await supabase
-        .from('site_config')
-        .upsert({ id: 1, ...updates, updated_at: new Date().toISOString() })
-      if (error) throw error
-      return { ok: true }
-    } catch (err) {
-      return { ok: false, error: err.message }
-    }
+    const { error } = await guardarSiteConfig(updates)
+    return error ? { ok: false, error: error.message } : { ok: true }
   }
 
   return (

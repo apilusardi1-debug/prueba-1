@@ -604,6 +604,12 @@ async function invocarCatalogoInterno(tabla, accion, extra = {}) {
   return { data: resp.datos ?? resp.dato ?? null, error: null }
 }
 
+// Guarda site_config (fila única, id=1). La lectura (SiteConfigContext) sigue siendo directa a
+// la tabla porque es pública — la usa toda la web; solo escribir pasa por catalogo-interno.
+export function guardarSiteConfig(updates) {
+  return invocarCatalogoInterno('site_config', 'update', { id: 1, data: { ...updates, updated_at: new Date().toISOString() } })
+}
+
 // Renueva el token de la sesión del panel. Devuelve true si se renovó, false si el servidor
 // rechazó la sesión (usuario dado de baja o pasaron 7 días) y null si no hubo respuesta.
 export async function renovarSesionPanel() {
@@ -665,12 +671,14 @@ export const propuestasApi = {
 }
 
 // ── Videos de la agencia (sección reels de la Home) ──────────────────────────────
+// getAll/getAllAdmin siguen hablando directo a la tabla: la lectura es pública (la usa la
+// Home), la RLS la deja pasar sin sesión. Solo escribir pasa por catalogo-interno.
 export const agenciaVideosApi = {
   getAll: () => supabase?.from('agencia_videos').select('*').eq('activo', true).order('orden'),
   getAllAdmin: () => supabase?.from('agencia_videos').select('*').order('orden'),
-  create: (data) => supabase?.from('agencia_videos').insert(data).select().single(),
-  update: (id, data) => supabase?.from('agencia_videos').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('agencia_videos').delete().eq('id', id),
+  create: (data) => invocarCatalogoInterno('agencia_videos', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('agencia_videos', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('agencia_videos', 'delete', { id }),
 }
 
 async function subirArchivoAgenciaVideo(archivo, carpeta) {

@@ -39,6 +39,10 @@ const TABLAS: Record<string, TablaCfg> = {
   embudo_automatizaciones: { pk: 'id', orderBy: 'created_at' },
   respuestas_rapidas: { pk: 'id', orderBy: 'titulo' },
   costos_excursion: { pk: 'id', orderBy: 'concepto' },
+  // Lectura pública (policy de RLS aparte, sin pasar por acá): esta función solo
+  // se usa para sus escrituras, que siguen siendo admin.
+  agencia_videos: { pk: 'id', orderBy: 'orden' },
+  site_config: { pk: 'id', orderBy: 'id' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {

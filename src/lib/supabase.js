@@ -144,12 +144,14 @@ export const recordatoriosApi = {
 }
 
 // ── Hospedajes ─────────────────────────────────────────────────────────────────
+// getAll/getById/getDestinos siguen hablando directo a la tabla: la lectura es pública (la
+// usan las páginas de hoteles del sitio). Solo escribir pasa por catalogo-interno.
 export const hospedajesApi = {
   getAll: () => supabase?.from('hospedajes').select('*').eq('activa', true).order('nombre'),
   getById: (id) => supabase?.from('hospedajes').select('*').eq('id', id).single(),
-  create: (data) => supabase?.from('hospedajes').insert(data).select().single(),
-  update: (id, data) => supabase?.from('hospedajes').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('hospedajes').delete().eq('id', id),
+  create: (data) => invocarCatalogoInterno('hospedajes', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('hospedajes', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('hospedajes', 'delete', { id }),
   // Destinos ya usados en el catálogo, para el combo "elegir o agregar nuevo"
   // del formulario de alta.
   getDestinos: async () => {
@@ -166,38 +168,42 @@ export const hospedajesApi = {
 //    20260830b_propietarios_por_habitacion.sql). Un complejo con departamentos
 //    de distintos dueños (ej: Cupe Beach Living) usa el dueño por habitación
 //    en vez de por hospedaje. ──
+// Sin lectura pública a propósito (tiene el contacto del dueño) — las cuatro funciones
+// pasan por catalogo-interno, que ya exige sesión del panel.
+async function buscarPropietario(filtro) {
+  const { data } = await invocarCatalogoInterno('hospedajes_propietarios', 'list', { filtros: filtro })
+  return data?.[0] || null
+}
 export const propietariosApi = {
-  getByHospedaje: (hospedajeId) => supabase?.from('hospedajes_propietarios').select('*').eq('hospedaje_id', hospedajeId).maybeSingle(),
-  getByHabitacion: (habitacionId) => supabase?.from('hospedajes_propietarios').select('*').eq('habitacion_id', habitacionId).maybeSingle(),
+  getByHospedaje: async (hospedajeId) => ({ data: await buscarPropietario({ hospedaje_id: hospedajeId }), error: null }),
+  getByHabitacion: async (habitacionId) => ({ data: await buscarPropietario({ habitacion_id: habitacionId }), error: null }),
   // No usamos .upsert(): el índice único de esta tabla es parcial (hospedaje_id
   // O habitacion_id, nunca los dos) y PostgREST no puede resolver el ON CONFLICT
   // contra un índice parcial ("no unique or exclusion constraint matching").
   // Por eso primero buscamos y después update/insert a mano.
   upsertHospedaje: async (hospedajeId, { nombre_dueno, contacto_dueno }) => {
-    const { data: existente } = await supabase.from('hospedajes_propietarios').select('id').eq('hospedaje_id', hospedajeId).maybeSingle()
-    if (existente) {
-      return supabase.from('hospedajes_propietarios').update({ nombre_dueno, contacto_dueno }).eq('id', existente.id).select().single()
-    }
-    return supabase.from('hospedajes_propietarios').insert({ hospedaje_id: hospedajeId, habitacion_id: null, nombre_dueno, contacto_dueno }).select().single()
+    const existente = await buscarPropietario({ hospedaje_id: hospedajeId })
+    if (existente) return invocarCatalogoInterno('hospedajes_propietarios', 'update', { id: existente.id, data: { nombre_dueno, contacto_dueno } })
+    return invocarCatalogoInterno('hospedajes_propietarios', 'create', { data: { hospedaje_id: hospedajeId, habitacion_id: null, nombre_dueno, contacto_dueno } })
   },
   upsertHabitacion: async (habitacionId, { nombre_dueno, contacto_dueno }) => {
-    const { data: existente } = await supabase.from('hospedajes_propietarios').select('id').eq('habitacion_id', habitacionId).maybeSingle()
-    if (existente) {
-      return supabase.from('hospedajes_propietarios').update({ nombre_dueno, contacto_dueno }).eq('id', existente.id).select().single()
-    }
-    return supabase.from('hospedajes_propietarios').insert({ habitacion_id: habitacionId, hospedaje_id: null, nombre_dueno, contacto_dueno }).select().single()
+    const existente = await buscarPropietario({ habitacion_id: habitacionId })
+    if (existente) return invocarCatalogoInterno('hospedajes_propietarios', 'update', { id: existente.id, data: { nombre_dueno, contacto_dueno } })
+    return invocarCatalogoInterno('hospedajes_propietarios', 'create', { data: { habitacion_id: habitacionId, hospedaje_id: null, nombre_dueno, contacto_dueno } })
   },
 }
 
 // ── Habitaciones de un hospedaje (tipos: Estándar, Superior, etc. — o, en un
 //    complejo de departamentos de distintos dueños, cada departamento) ─────────
+// getByHospedaje sigue directo (lectura pública, la arma la página del hotel). El resto
+// escribe, pasa por catalogo-interno.
 export const habitacionesApi = {
   getByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').select('*').eq('hospedaje_id', hospedajeId).order('nombre'),
-  create: (data) => supabase?.from('hospedaje_habitaciones').insert(data).select().single(),
-  update: (id, data) => supabase?.from('hospedaje_habitaciones').update(data).eq('id', id).select().single(),
-  createMany: (filas) => supabase?.from('hospedaje_habitaciones').insert(filas).select(),
-  delete: (id) => supabase?.from('hospedaje_habitaciones').delete().eq('id', id),
-  deleteByHospedaje: (hospedajeId) => supabase?.from('hospedaje_habitaciones').delete().eq('hospedaje_id', hospedajeId),
+  create: (data) => invocarCatalogoInterno('hospedaje_habitaciones', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('hospedaje_habitaciones', 'update', { id, data }),
+  createMany: (filas) => invocarCatalogoInterno('hospedaje_habitaciones', 'create', { data: filas }),
+  delete: (id) => invocarCatalogoInterno('hospedaje_habitaciones', 'delete', { id }),
+  deleteByHospedaje: (hospedajeId) => invocarCatalogoInterno('hospedaje_habitaciones', 'delete', { filtros: { hospedaje_id: hospedajeId } }),
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────────

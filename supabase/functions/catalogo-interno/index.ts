@@ -48,6 +48,12 @@ const TABLAS: Record<string, TablaCfg> = {
   site_config: { pk: 'id', orderBy: 'id' },
   traslados: { pk: 'id', orderBy: ['fecha', 'hora'], select: '*, choferes(nombre)' },
   propuestas: { pk: 'id', orderBy: '-created_at' },
+  // Lectura pública aparte (RLS): la usan las páginas de hoteles del sitio.
+  hospedajes: { pk: 'id', orderBy: 'nombre' },
+  hospedaje_habitaciones: { pk: 'id', orderBy: 'nombre' },
+  // Sin lectura pública — a propósito, tiene el contacto del dueño (ver el
+  // comentario de propietariosApi en src/lib/supabase.js).
+  hospedajes_propietarios: { pk: 'id', orderBy: 'id' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {
@@ -82,7 +88,10 @@ serve(async (req) => {
     }
 
     if (accion === 'create') {
-      const { data: fila, error } = await supabase.from(tabla).insert(data).select(cfg.select || '*').single()
+      // Un array inserta varias filas de una (ej. las habitaciones de un hospedaje nuevo);
+      // un objeto solo, como siempre, devuelve esa única fila.
+      const consulta = supabase.from(tabla).insert(data).select(cfg.select || '*')
+      const { data: fila, error } = Array.isArray(data) ? await consulta : await consulta.single()
       return json({ ok: !error, dato: fila, error: error?.message })
     }
 
@@ -93,9 +102,18 @@ serve(async (req) => {
     }
 
     if (accion === 'delete') {
-      if (!id) return json({ ok: false, error: 'Falta id' }, 400)
-      const { error } = await supabase.from(tabla).delete().eq(cfg.pk, id)
-      return json({ ok: !error, error: error?.message })
+      // Por id (lo normal) o por filtros (ej. borrar todas las habitaciones de un hospedaje).
+      if (id) {
+        const { error } = await supabase.from(tabla).delete().eq(cfg.pk, id)
+        return json({ ok: !error, error: error?.message })
+      }
+      if (filtros) {
+        let consulta = supabase.from(tabla).delete()
+        for (const [campo, valor] of Object.entries(filtros)) consulta = consulta.eq(campo, valor)
+        const { error } = await consulta
+        return json({ ok: !error, error: error?.message })
+      }
+      return json({ ok: false, error: 'Falta id o filtros' }, 400)
     }
 
     return json({ ok: false, error: 'Acción inválida' }, 400)

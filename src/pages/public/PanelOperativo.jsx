@@ -70,11 +70,41 @@ function Aviso({ aviso, onConfirmar, cambiando }) {
   )
 }
 
+// Instalable como ícono en el celular — solo para choferes por ahora (pedido de Cristian,
+// 2026-10-09). Cada tag se agrega/saca a mano del <head> porque esta es una SPA con un solo
+// index.html: todas las rutas comparten el mismo documento, así que no se puede dejar esto
+// fijo ahí (rompería el resto del sitio). El manifest es por chofer (ver api/chofer-manifest.js)
+// para que el ícono instalado abra siempre SU link, no uno genérico.
+function useInstalablePWA(activo, token) {
+  useEffect(() => {
+    if (!activo) return
+    const agregados = []
+    const agregar = (tag, attrs) => {
+      const el = document.createElement(tag)
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v))
+      document.head.appendChild(el)
+      agregados.push(el)
+    }
+    agregar('link', { rel: 'manifest', href: `/api/chofer-manifest?token=${token}` })
+    agregar('link', { rel: 'apple-touch-icon', href: '/icon-chofer-192.png' })
+    agregar('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' })
+    agregar('meta', { name: 'apple-mobile-web-app-title', content: 'DT Motorista' })
+    agregar('meta', { name: 'theme-color', content: '#000000' })
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw-chofer.js', { scope: '/chofer/' }).catch(() => {})
+    }
+
+    return () => agregados.forEach((el) => el.remove())
+  }, [activo, token])
+}
+
 export default function PanelOperativo({ tipo }) {
   const { token } = useParams()
   const [persona, setPersona] = useState(undefined) // undefined = cargando, null = no existe
   const [avisos, setAvisos] = useState([])
   const [cambiandoId, setCambiandoId] = useState(null)
+  useInstalablePWA(tipo === 'chofer', token)
 
   const cargarAvisos = useCallback(async (personaId) => {
     if (!personaId) return

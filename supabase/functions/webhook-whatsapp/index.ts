@@ -611,6 +611,16 @@ serve(async (req) => {
       if (Object.keys(cambios).length) await supabase.from('leads').update(cambios).eq('id', leadExistente.id)
     }
 
+    // Un interés de Traslado o de Hospedaje (detectado por palabra clave, sin pasar por el
+    // menú de Paquetes/Paseos) manda igual al embudo correspondiente -- pedido de Cristian,
+    // 2026-10-09: traslado entra a Paseos, hospedaje entra a Paquetes. Usa el mismo mecanismo
+    // y la misma guarda que el menú (enviarLeadAlEmbudoPorGrupo no mueve a un lead que ya
+    // esté trabajado, solo a uno recién llegado), así que es seguro llamarlo en cada mensaje.
+    const GRUPO_POR_INTERES: Record<string, string> = { traslado: 'paseos', hospedaje: 'paquetes' }
+    if (interes.tipo && GRUPO_POR_INTERES[interes.tipo]) {
+      await enviarLeadAlEmbudoPorGrupo(supabase, phone, GRUPO_POR_INTERES[interes.tipo])
+    }
+
     const { data: convExistente } = await supabase
       .from('conversaciones').select('id, no_leidos, contacto_nombre').eq('whatsapp', phone).maybeSingle()
 

@@ -264,14 +264,14 @@ export const clientesSaldosApi = {
 
 // ── Anfitriona: hospedajes de cada lead y saldos cargados a mano ───────────────
 export const anfitrionaApi = {
-  getHospedajes: () => supabase?.from('anfitriona_hospedajes').select('*').order('created_at'),
-  createHospedaje: (data) => supabase?.from('anfitriona_hospedajes').insert(data).select().single(),
-  updateHospedaje: (id, data) => supabase?.from('anfitriona_hospedajes').update(data).eq('id', id).select().single(),
-  deleteHospedaje: (id) => supabase?.from('anfitriona_hospedajes').delete().eq('id', id),
-  getSaldos: (leadId) => supabase?.from('anfitriona_saldos').select('*').eq('lead_id', leadId).order('created_at'),
-  createSaldo: (data) => supabase?.from('anfitriona_saldos').insert(data).select().single(),
-  updateSaldo: (id, data) => supabase?.from('anfitriona_saldos').update(data).eq('id', id).select().single(),
-  deleteSaldo: (id) => supabase?.from('anfitriona_saldos').delete().eq('id', id),
+  getHospedajes: () => invocarCatalogoInterno('anfitriona_hospedajes', 'list'),
+  createHospedaje: (data) => invocarCatalogoInterno('anfitriona_hospedajes', 'create', { data }),
+  updateHospedaje: (id, data) => invocarCatalogoInterno('anfitriona_hospedajes', 'update', { id, data }),
+  deleteHospedaje: (id) => invocarCatalogoInterno('anfitriona_hospedajes', 'delete', { id }),
+  getSaldos: (leadId) => invocarCatalogoInterno('anfitriona_saldos', 'list', { filtros: { lead_id: leadId } }),
+  createSaldo: (data) => invocarCatalogoInterno('anfitriona_saldos', 'create', { data }),
+  updateSaldo: (id, data) => invocarCatalogoInterno('anfitriona_saldos', 'update', { id, data }),
+  deleteSaldo: (id) => invocarCatalogoInterno('anfitriona_saldos', 'delete', { id }),
 }
 
 // ── Chat interno de operaciones (avisos a guía y chofer, sin pasar por Meta) ────

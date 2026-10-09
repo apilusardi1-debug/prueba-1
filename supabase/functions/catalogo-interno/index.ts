@@ -54,6 +54,8 @@ const TABLAS: Record<string, TablaCfg> = {
   // Sin lectura pública — a propósito, tiene el contacto del dueño (ver el
   // comentario de propietariosApi en src/lib/supabase.js).
   hospedajes_propietarios: { pk: 'id', orderBy: 'id' },
+  anfitriona_hospedajes: { pk: 'id', orderBy: 'created_at' },
+  anfitriona_saldos: { pk: 'id', orderBy: 'created_at' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {

@@ -658,16 +658,16 @@ export async function hashPassword(texto) {
 
 // ── Propuestas de paquetes ──────────────────────────────────────────────────────
 export const propuestasApi = {
-  getAll: () => supabase?.from('propuestas').select('*').order('created_at', { ascending: false }),
-  getByEstado: (estado) => supabase?.from('propuestas').select('*').eq('estado', estado).order('created_at', { ascending: false }),
-  getByWhatsapp: (whatsapp) => supabase?.from('propuestas').select('*').eq('cliente_whatsapp', whatsapp).order('created_at', { ascending: false }),
-  create: (data) => supabase?.from('propuestas').insert(data).select().single(),
-  update: (id, data) => supabase?.from('propuestas').update(data).eq('id', id).select().single(),
-  actualizarEstado: (id, estado) => supabase?.from('propuestas').update({
-    estado,
-    cerrada_at: (estado === 'cerrada' || estado === 'rechazada') ? new Date().toISOString() : null,
-  }).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('propuestas').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('propuestas', 'list'),
+  getByEstado: (estado) => invocarCatalogoInterno('propuestas', 'list', { filtros: { estado } }),
+  getByWhatsapp: (whatsapp) => invocarCatalogoInterno('propuestas', 'list', { filtros: { cliente_whatsapp: whatsapp } }),
+  create: (data) => invocarCatalogoInterno('propuestas', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('propuestas', 'update', { id, data }),
+  actualizarEstado: (id, estado) => invocarCatalogoInterno('propuestas', 'update', {
+    id,
+    data: { estado, cerrada_at: (estado === 'cerrada' || estado === 'rechazada') ? new Date().toISOString() : null },
+  }),
+  delete: (id) => invocarCatalogoInterno('propuestas', 'delete', { id }),
 }
 
 // ── Videos de la agencia (sección reels de la Home) ──────────────────────────────

@@ -30,6 +30,8 @@ function json(body: unknown, status = 200) {
 
 interface TablaCfg {
   pk: string
+  // Un campo antepuesto con "-" ordena descendente (ej. "-created_at"), igual que la
+  // convención habitual de APIs REST.
   orderBy: string | string[]
   select?: string // default '*' — para joins, como traslados trayendo el nombre del chofer
 }
@@ -45,6 +47,7 @@ const TABLAS: Record<string, TablaCfg> = {
   agencia_videos: { pk: 'id', orderBy: 'orden' },
   site_config: { pk: 'id', orderBy: 'id' },
   traslados: { pk: 'id', orderBy: ['fecha', 'hora'], select: '*, choferes(nombre)' },
+  propuestas: { pk: 'id', orderBy: '-created_at' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {
@@ -69,7 +72,10 @@ serve(async (req) => {
 
     if (accion === 'list') {
       let consulta = supabase.from(tabla).select(cfg.select || '*')
-      for (const campo of ordenes) consulta = consulta.order(campo)
+      for (const campo of ordenes) {
+        const desc = campo.startsWith('-')
+        consulta = consulta.order(desc ? campo.slice(1) : campo, { ascending: !desc })
+      }
       if (filtros) for (const [campo, valor] of Object.entries(filtros)) consulta = consulta.eq(campo, valor)
       const { data: filas, error } = await consulta
       return json({ ok: !error, datos: filas || [], error: error?.message })

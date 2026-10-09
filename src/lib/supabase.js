@@ -242,10 +242,10 @@ export const guiasApi = {
 
 // ── Traslados (planilla: fecha, hora, destino, pasajeros y equipaje) ───────────
 export const trasladosApi = {
-  getAll: () => supabase?.from('traslados').select('*, choferes(nombre)').order('fecha').order('hora'),
-  create: (data) => supabase?.from('traslados').insert(data).select('*, choferes(nombre)').single(),
-  update: (id, data) => supabase?.from('traslados').update(data).eq('id', id).select('*, choferes(nombre)').single(),
-  delete: (id) => supabase?.from('traslados').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('traslados', 'list'),
+  create: (data) => invocarCatalogoInterno('traslados', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('traslados', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('traslados', 'delete', { id }),
 }
 
 // ── Saldos que se cargan a mano en el perfil del cliente (después se conectan con el generador) ──

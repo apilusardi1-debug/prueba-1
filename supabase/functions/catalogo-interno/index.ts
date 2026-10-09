@@ -30,7 +30,8 @@ function json(body: unknown, status = 200) {
 
 interface TablaCfg {
   pk: string
-  orderBy: string
+  orderBy: string | string[]
+  select?: string // default '*' — para joins, como traslados trayendo el nombre del chofer
 }
 
 const TABLAS: Record<string, TablaCfg> = {
@@ -43,6 +44,7 @@ const TABLAS: Record<string, TablaCfg> = {
   // se usa para sus escrituras, que siguen siendo admin.
   agencia_videos: { pk: 'id', orderBy: 'orden' },
   site_config: { pk: 'id', orderBy: 'id' },
+  traslados: { pk: 'id', orderBy: ['fecha', 'hora'], select: '*, choferes(nombre)' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {
@@ -63,21 +65,24 @@ serve(async (req) => {
     const email = await emailDeLaSesion(req.headers.get('x-panel-token'))
     if (!email) return json({ ok: false, error: 'Sesión del panel no válida. Volvé a entrar.' }, 401)
 
+    const ordenes = Array.isArray(cfg.orderBy) ? cfg.orderBy : [cfg.orderBy]
+
     if (accion === 'list') {
-      let consulta = supabase.from(tabla).select('*').order(cfg.orderBy)
+      let consulta = supabase.from(tabla).select(cfg.select || '*')
+      for (const campo of ordenes) consulta = consulta.order(campo)
       if (filtros) for (const [campo, valor] of Object.entries(filtros)) consulta = consulta.eq(campo, valor)
       const { data: filas, error } = await consulta
       return json({ ok: !error, datos: filas || [], error: error?.message })
     }
 
     if (accion === 'create') {
-      const { data: fila, error } = await supabase.from(tabla).insert(data).select().single()
+      const { data: fila, error } = await supabase.from(tabla).insert(data).select(cfg.select || '*').single()
       return json({ ok: !error, dato: fila, error: error?.message })
     }
 
     if (accion === 'update') {
       if (!id) return json({ ok: false, error: 'Falta id' }, 400)
-      const { data: fila, error } = await supabase.from(tabla).update(data).eq(cfg.pk, id).select().single()
+      const { data: fila, error } = await supabase.from(tabla).update(data).eq(cfg.pk, id).select(cfg.select || '*').single()
       return json({ ok: !error, dato: fila, error: error?.message })
     }
 

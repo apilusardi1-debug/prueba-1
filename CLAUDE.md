@@ -125,7 +125,6 @@ Hasta 2026-10-08 casi todas las tablas tenían una policy `acceso_total_temporal
 
 ## Pendientes actuales
 - [ ] Regenerar el token permanente del número operativo (`META_WHATSAPP_TOKEN`); necesita la aprobación de Florencia. Mientras tanto no sale `aviso_cliente` (el chat interno de guía/chofer no depende de este token)
-- [ ] Correr la migración `20260925100000_chat_interno_operaciones.sql` (chat interno de guía/chofer: agrega `token` a `guias`/`choferes`, crea `operaciones` y `operaciones_avisos`)
 - [ ] CRM: plantilla de reapertura para responder pasadas las 24 hs (consultar con Florencia)
 - [ ] CRM: tiempos de respuesta por persona y gasto real en el Dashboard (Meta informa el costo de cada mensaje en los avisos de estado)
 - [ ] Plan para migrar el número real de Kommo al CRM propio

@@ -94,7 +94,7 @@ export default function ExcursionDetalle() {
     setError(null)
     try {
       const personas = (form.adultos || 0) + (form.menores || 0)
-      const { error } = await reservasApi.create({
+      const { error } = await reservasApi.crearPublica({
         excursion_id: ex.id,
         fecha: form.fecha,
         cliente_nombre: form.nombre.trim(),

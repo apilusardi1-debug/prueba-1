@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase.js'
+import { supabase, reservasApi } from '../../lib/supabase.js'
 import { hoyISO } from '../../lib/embudo.js'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
 
@@ -33,10 +33,7 @@ export default function OperacionesEnCurso() {
         .select('id, excursion_id, fecha, cerrada_at, excursiones(nombre, hora_salida), guias(nombre), operaciones_avisos(id, destinatario, leido_at, confirmado_at, choferes(nombre), guias(nombre))')
         .gte('fecha', hoy)
         .order('fecha'),
-      supabase?.from('reservas')
-        .select('id, excursion_id, fecha, cliente_nombre, personas, hospedaje, ubicacion, estado')
-        .gte('fecha', hoy)
-        .neq('estado', 'cancelada'),
+      reservasApi.getEnCursoDesde(hoy),
     ]).then(([ops, res]) => {
       setOperaciones(ops?.data || [])
       setReservas(res?.data || [])

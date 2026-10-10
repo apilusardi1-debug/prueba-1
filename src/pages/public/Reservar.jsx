@@ -59,7 +59,7 @@ export default function Reservar() {
 
   async function confirmar(pagarSena) {
     setGuardando(true)
-    const { data } = await reservasApi.create({
+    await reservasApi.crearPublica({
       excursion_id: id,
       cliente_nombre: form.nombre,
       cliente_whatsapp: form.whatsapp.replace(/\D/g, ''),
@@ -76,7 +76,7 @@ export default function Reservar() {
       vendedor_codigo: vendedor ? form.codigo_vendedor.toUpperCase() : null,
       seña_pagada: pagarSena,
     })
-    setReservaCreada(data)
+    setReservaCreada({ seña_pagada: pagarSena })
     setPaso(3)
     setGuardando(false)
   }

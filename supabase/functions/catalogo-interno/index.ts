@@ -2,10 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { verificarSesion } from '../_shared/sesionPanel.ts'
 
-// Punto de acceso único para un grupo de catálogos internos chicos que hasta ahora se leían y
-// escribían directo desde el navegador con la clave pública, sin pasar por ninguna sesión
-// (plan de endurecer RLS tabla por tabla, ver CLAUDE.md — este es el primer grupo, el de menor
-// riesgo: ninguna tiene datos de clientes ni de plata, y ninguna la usa la web pública).
+// Punto de acceso único para un grupo de tablas que hasta ahora se leían y escribían directo
+// desde el navegador con la clave pública, sin pasar por ninguna sesión (plan de endurecer RLS
+// tabla por tabla, ver CLAUDE.md). Algunas (`hospedajes`, `agencia_videos`, `site_config`,
+// `excursiones`) tienen además una lectura pública por RLS aparte, sin pasar por acá — la web
+// las necesita sin sesión. `reservas` tiene además un INSERT público por RLS (el formulario de
+// reserva del sitio), también aparte de esta función.
 //
 // Por ahora el único control es "hay una sesión del panel vigente y el usuario sigue activo" —
 // igual que ya podía hacer cualquiera logueado, no se le saca permiso a nadie que lo tuviera.
@@ -34,6 +36,7 @@ interface TablaCfg {
   // convención habitual de APIs REST.
   orderBy: string | string[]
   select?: string // default '*' — para joins, como traslados trayendo el nombre del chofer
+  onConflict?: string // default: pk — para 'upsert' en una columna distinta a la clave (ej. whatsapp)
 }
 
 const TABLAS: Record<string, TablaCfg> = {
@@ -56,6 +59,14 @@ const TABLAS: Record<string, TablaCfg> = {
   hospedajes_propietarios: { pk: 'id', orderBy: 'id' },
   anfitriona_hospedajes: { pk: 'id', orderBy: 'created_at' },
   anfitriona_saldos: { pk: 'id', orderBy: 'created_at' },
+  // Lectura pública aparte (RLS): la usa el catálogo del sitio. El UPDATE de
+  // cupos_disponibles que dispara una reserva pública no pasa por acá, es la función
+  // ajustar_cupos_excursion (ver migración del trío excursiones/reservas/clientes).
+  excursiones: { pk: 'id', orderBy: 'nombre' },
+  // INSERT público aparte (RLS, solo insertar): lo usa el formulario de reserva del sitio.
+  // Leer/editar/borrar una reserva sigue siendo solo admin, acá.
+  reservas: { pk: 'id', orderBy: 'fecha', select: '*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)' },
+  clientes: { pk: 'id', orderBy: 'nombre', onConflict: 'whatsapp' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {
@@ -69,7 +80,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { tabla, accion, id, data, filtros } = await req.json()
+    const { tabla, accion, id, data, filtros, o } = await req.json()
     const cfg = TABLAS[tabla]
     if (!cfg) return json({ ok: false, error: 'Tabla no habilitada en catalogo-interno' }, 400)
 
@@ -84,7 +95,21 @@ serve(async (req) => {
         const desc = campo.startsWith('-')
         consulta = consulta.order(desc ? campo.slice(1) : campo, { ascending: !desc })
       }
-      if (filtros) for (const [campo, valor] of Object.entries(filtros)) consulta = consulta.eq(campo, valor)
+      // Cada filtro es "campo: valor" (igual a) o "campo: {op, valor}" para otra comparación
+      // (ej. { fecha: { op: 'gte', valor: hoy } }) — alcanza con eq/neq/gt/gte/lt/lte, lo único
+      // que necesitó algún llamador hasta ahora.
+      if (filtros) for (const [campo, cond] of Object.entries(filtros)) {
+        if (cond && typeof cond === 'object' && 'op' in (cond as Record<string, unknown>)) {
+          const { op, valor } = cond as { op: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte'; valor: unknown }
+          // deno-lint-ignore no-explicit-any
+          consulta = (consulta as any)[op](campo, valor)
+        } else {
+          consulta = consulta.eq(campo, cond)
+        }
+      }
+      // "o" es un string crudo de supabase-js .or(), ej. "cliente_id.eq.X,cliente_whatsapp.eq.Y"
+      // (reservas de un cliente: por id o por el whatsapp de reservas viejas sin vincular).
+      if (o) consulta = consulta.or(o)
       const { data: filas, error } = await consulta
       return json({ ok: !error, datos: filas || [], error: error?.message })
     }
@@ -94,6 +119,12 @@ serve(async (req) => {
       // un objeto solo, como siempre, devuelve esa única fila.
       const consulta = supabase.from(tabla).insert(data).select(cfg.select || '*')
       const { data: fila, error } = Array.isArray(data) ? await consulta : await consulta.single()
+      return json({ ok: !error, dato: fila, error: error?.message })
+    }
+
+    if (accion === 'upsert') {
+      const { data: fila, error } = await supabase.from(tabla)
+        .upsert(data, { onConflict: cfg.onConflict || cfg.pk }).select(cfg.select || '*').single()
       return json({ ok: !error, dato: fila, error: error?.message })
     }
 

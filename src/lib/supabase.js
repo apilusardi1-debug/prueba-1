@@ -28,12 +28,14 @@ export function normalizarExcursion(e) {
 }
 
 // ── Excursiones ────────────────────────────────────────────────────────────────
+// getAll/getById siguen directo (lectura pública, la usa el catálogo del sitio). Solo
+// crear/editar/borrar pasa por catalogo-interno.
 export const excursionesApi = {
   getAll: () => supabase?.from('excursiones').select('*').eq('activa', true).order('nombre'),
   getById: (id) => supabase?.from('excursiones').select('*').eq('id', id).single(),
-  create: (data) => supabase?.from('excursiones').insert(data).select().single(),
-  update: (id, data) => supabase?.from('excursiones').update(data).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('excursiones').delete().eq('id', id),
+  create: (data) => invocarCatalogoInterno('excursiones', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('excursiones', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('excursiones', 'delete', { id }),
 }
 
 // Mantiene sincronizados los contadores "cacheados" que dependen de las
@@ -42,33 +44,47 @@ export const excursionesApi = {
 // reserva los actualice automáticamente, sin tener que acordarse en cada
 // pantalla — así fue como total_gastado y estos dos quedaron desincronizados
 // antes de este fix.
+//
+// ajustarCuposDisponibles pasa por una función de la base (RPC, security definer) en vez de
+// leer+escribir la tabla directo: así puede ajustar el cupo sin sesión, para cuando la llama
+// una reserva pública (Reservar.jsx, ExcursionDetalle.jsx) — sin abrir el UPDATE de
+// excursiones entero a cualquiera. ajustarCantidadReservas sí necesita sesión (pasa por
+// catalogo-interno), pero eso nunca es un problema: una reserva pública siempre tiene
+// cliente_id vacío (no crea ni vincula un cliente), así que esta función no se llega a usar
+// para esas.
 async function ajustarCantidadReservas(clienteId, delta) {
   if (!supabase || !clienteId || !delta) return
-  const { data: cliente } = await supabase.from('clientes').select('cantidad_reservas').eq('id', clienteId).single()
+  const { data } = await invocarCatalogoInterno('clientes', 'list', { filtros: { id: clienteId } })
+  const cliente = data?.[0]
   if (!cliente) return
   const nuevo = Math.max((cliente.cantidad_reservas || 0) + delta, 0)
-  await supabase.from('clientes').update({ cantidad_reservas: nuevo }).eq('id', clienteId)
+  await invocarCatalogoInterno('clientes', 'update', { id: clienteId, data: { cantidad_reservas: nuevo } })
 }
 
 async function ajustarCuposDisponibles(excursionId, delta) {
   if (!supabase || !excursionId || !delta) return
-  const { data: excursion } = await supabase.from('excursiones').select('cupos, cupos_disponibles').eq('id', excursionId).single()
-  if (!excursion) return
-  const tope = excursion.cupos ?? 0
-  const nuevo = Math.min(Math.max((excursion.cupos_disponibles ?? tope) + delta, 0), tope)
-  await supabase.from('excursiones').update({ cupos_disponibles: nuevo }).eq('id', excursionId)
+  await supabase.rpc('ajustar_cupos_excursion', { p_excursion_id: excursionId, p_delta: delta })
 }
 
 // ── Reservas ───────────────────────────────────────────────────────────────────
+// Leer/editar/borrar una reserva es solo admin (catalogo-interno). Crear una es distinto
+// según quién la haga: desde el panel usa `create` (misma función, con sesión); desde el sitio
+// público (sin sesión) usa `crearPublica`, que entra por un INSERT abierto de RLS en vez de
+// catalogo-interno, y no pide la fila de vuelta (leer reservas es solo admin) — ya tiene en
+// `data` todo lo que necesita mostrar.
 export const reservasApi = {
-  getAll: () => supabase?.from('reservas').select('*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').order('fecha'),
-  getByWhatsapp: (whatsapp) => supabase?.from('reservas').select('*, excursiones(nombre, imagen)').eq('cliente_whatsapp', whatsapp),
-  // Para saber si cada cliente es de paquetes, de paseos o de las dos cosas: solo
-  // lo que hace falta (a qué cliente, la categoría de la excursión), sin el resto
-  // de los datos de la reserva
-  getCategoriasPorCliente: () => supabase?.from('reservas').select('cliente_id, fecha, estado, created_at, excursiones(categoria)'),
+  getAll: () => invocarCatalogoInterno('reservas', 'list'),
+  getByWhatsapp: (whatsapp) => invocarCatalogoInterno('reservas', 'list', { filtros: { cliente_whatsapp: whatsapp } }),
+  // Operaciones en curso (Francisco): todo lo que no sea de un día ya pasado y no esté cancelado.
+  getEnCursoDesde: (fecha) => invocarCatalogoInterno('reservas', 'list', {
+    filtros: { fecha: { op: 'gte', valor: fecha }, estado: { op: 'neq', valor: 'cancelada' } },
+  }),
+  // Para saber si cada cliente es de paquetes, de paseos o de las dos cosas: antes pedía
+  // solo un puñado de columnas; ahora viaja el mismo select que el resto (un poco más
+  // pesado, pero evita sumar otra combinación al catálogo de la función).
+  getCategoriasPorCliente: () => invocarCatalogoInterno('reservas', 'list'),
   create: async (data) => {
-    const result = await supabase?.from('reservas').insert(data).select().single()
+    const result = await invocarCatalogoInterno('reservas', 'create', { data })
     const r = result?.data
     if (r) {
       await ajustarCantidadReservas(r.cliente_id, 1)
@@ -76,22 +92,32 @@ export const reservasApi = {
     }
     return result
   },
+  crearPublica: async (data) => {
+    const { error } = await supabase?.from('reservas').insert(data) || {}
+    if (!error) {
+      await ajustarCantidadReservas(data.cliente_id, 1)
+      if (data.estado !== 'cancelada') await ajustarCuposDisponibles(data.excursion_id, -(data.personas || 0))
+    }
+    return { error }
+  },
   updateEstado: async (id, estado) => {
-    const { data: antes } = await supabase?.from('reservas').select('excursion_id, personas, estado').eq('id', id).single() || {}
-    const result = await supabase?.from('reservas').update({ estado }).eq('id', id).select().single()
+    const { data: lista } = await invocarCatalogoInterno('reservas', 'list', { filtros: { id } })
+    const antes = lista?.[0]
+    const result = await invocarCatalogoInterno('reservas', 'update', { id, data: { estado } })
     if (antes && antes.estado !== estado) {
       if (estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
       else if (antes.estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, -(antes.personas || 0))
     }
     return result
   },
-  updatePago: (id, pagado) => supabase?.from('reservas').update({ pagado }).eq('id', id).select().single(),
+  updatePago: (id, pagado) => invocarCatalogoInterno('reservas', 'update', { id, data: { pagado } }),
   updateCostoOperativo: (id, { costo_operativo, costo_operativo_moneda, costo_operativo_detalle }) =>
-    supabase?.from('reservas').update({ costo_operativo, costo_operativo_moneda, costo_operativo_detalle }).eq('id', id).select().single(),
-  updateAsignacion: (id, data) => supabase?.from('reservas').update(data).eq('id', id).select('*, excursiones(nombre), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)').single(),
+    invocarCatalogoInterno('reservas', 'update', { id, data: { costo_operativo, costo_operativo_moneda, costo_operativo_detalle } }),
+  updateAsignacion: (id, data) => invocarCatalogoInterno('reservas', 'update', { id, data }),
   delete: async (id) => {
-    const { data: antes } = await supabase?.from('reservas').select('cliente_id, excursion_id, personas, estado').eq('id', id).single() || {}
-    const result = await supabase?.from('reservas').delete().eq('id', id)
+    const { data: lista } = await invocarCatalogoInterno('reservas', 'list', { filtros: { id } })
+    const antes = lista?.[0]
+    const result = await invocarCatalogoInterno('reservas', 'delete', { id })
     if (antes) {
       await ajustarCantidadReservas(antes.cliente_id, -1)
       if (antes.estado !== 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
@@ -325,24 +351,31 @@ export const vendedoresApi = {
 }
 
 // ── Clientes ───────────────────────────────────────────────────────────────────
+// Sin lectura pública a propósito (datos personales) — las 7 funciones pasan por
+// catalogo-interno. getById/getByWhatsapp devuelven null en vez de un error cuando no
+// encuentran nada (antes usaban .single(), que tira error con 0 filas) — ningún llamador
+// miraba ese error, todos chequean solo si vino data, así que el cambio no afecta a nadie.
 export const clientesApi = {
-  getAll: () => supabase?.from('clientes').select('*').order('nombre'),
-  getById: (id) => supabase?.from('clientes').select('*').eq('id', id).single(),
-  getByWhatsapp: (whatsapp) => supabase?.from('clientes').select('*').eq('whatsapp', whatsapp).single(),
-  upsert: (data) => supabase?.from('clientes').upsert(data, { onConflict: 'whatsapp' }).select().single(),
-  create: (data) => supabase?.from('clientes').insert(data).select().single(),
-  update: (id, data) => supabase?.from('clientes').update(data).eq('id', id).select().single(),
-  updateNotas: (id, notas) => supabase?.from('clientes').update({ notas }).eq('id', id).select().single(),
-  delete: (id) => supabase?.from('clientes').delete().eq('id', id),
+  getAll: () => invocarCatalogoInterno('clientes', 'list'),
+  getById: (id) => invocarCatalogoInterno('clientes', 'list', { filtros: { id } }).then((r) => ({ data: r.data?.[0] || null, error: r.error })),
+  getByWhatsapp: (whatsapp) => invocarCatalogoInterno('clientes', 'list', { filtros: { whatsapp } }).then((r) => ({ data: r.data?.[0] || null, error: r.error })),
+  upsert: (data) => invocarCatalogoInterno('clientes', 'upsert', { data }),
+  create: (data) => invocarCatalogoInterno('clientes', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('clientes', 'update', { id, data }),
+  updateNotas: (id, notas) => invocarCatalogoInterno('clientes', 'update', { id, data: { notas } }),
+  delete: (id) => invocarCatalogoInterno('clientes', 'delete', { id }),
 }
 
 // ── Reservas por cliente ────────────────────────────────────────────────────────
 export const reservasClienteApi = {
-  getByCliente: (clienteId, whatsapp) =>
-    supabase?.from('reservas')
-      .select('*, excursiones(nombre, destino, categoria)')
-      .or(`cliente_id.eq.${clienteId},cliente_whatsapp.eq.${whatsapp}`)
-      .order('fecha', { ascending: false }),
+  // catalogo-interno siempre ordena "reservas" por fecha ascendente (lo que necesita Reservas.jsx);
+  // acá hace falta al revés (la más reciente primero), así que se reordena del lado del
+  // cliente — son pocas filas, las de un solo cliente, no hace falta pedirle otro orden a la función.
+  getByCliente: async (clienteId, whatsapp) => {
+    const res = await invocarCatalogoInterno('reservas', 'list', { o: `cliente_id.eq.${clienteId},cliente_whatsapp.eq.${whatsapp}` })
+    if (res.data) res.data = [...res.data].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
+    return res
+  },
 }
 
 // ── Pagos ──────────────────────────────────────────────────────────────────────

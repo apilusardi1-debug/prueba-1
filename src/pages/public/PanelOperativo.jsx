@@ -99,6 +99,80 @@ function useInstalablePWA(activo, token) {
   }, [activo, token])
 }
 
+// Notificaciones push (parte 2 del ícono instalable, pedido de Cristian 2026-10-09) — solo
+// choferes, igual que useInstalablePWA. Hay que pedirle permiso al usuario con un toque suyo
+// (no se puede pedir solo al entrar), por eso es un botón y no algo automático.
+const VAPID_PUBLIC_KEY = 'BJoB-50M9BKcf0or8UrCaxPvIOoD4_H60od0lBCOGHTFXj1J4tTBSn60yQExLUBpZogGjCq45tTtHbTQgewF2_g'
+
+function urlBase64ToUint8Array(base64url) {
+  const pad = '='.repeat((4 - (base64url.length % 4)) % 4)
+  const base64 = (base64url + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
+}
+
+function BotonNotificaciones({ choferId }) {
+  // cargando | no_soportado | denegado | inactivo | activando | activo
+  const [estado, setEstado] = useState('cargando')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setEstado('no_soportado')
+      return
+    }
+    if (Notification.permission === 'denied') { setEstado('denegado'); return }
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setEstado(sub ? 'activo' : 'inactivo'))
+      .catch(() => setEstado('inactivo'))
+  }, [])
+
+  async function activar() {
+    setEstado('activando')
+    setError('')
+    try {
+      const permiso = await Notification.requestPermission()
+      if (permiso !== 'granted') { setEstado('denegado'); return }
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
+      const { error: errGuardar } = await panelOperativoApi.guardarPush(choferId, sub.toJSON())
+      if (errGuardar) throw errGuardar
+      setEstado('activo')
+    } catch (err) {
+      setError(err.message || 'Não foi possível ativar')
+      setEstado('inactivo')
+    }
+  }
+
+  if (estado === 'cargando' || estado === 'no_soportado') return null
+
+  if (estado === 'activo') {
+    return (
+      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-400">
+        <Ic n="check" className="h-3.5 w-3.5" /> Notificações ativadas
+      </p>
+    )
+  }
+
+  return (
+    <div className="text-center">
+      <button
+        onClick={activar}
+        disabled={estado === 'activando' || estado === 'denegado'}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+      >
+        <Ic n="bell" className="h-3.5 w-3.5" />
+        {estado === 'activando' ? 'Ativando...' : estado === 'denegado' ? 'Notificações bloqueadas no celular' : 'Ativar notificações'}
+      </button>
+      {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+    </div>
+  )
+}
+
 export default function PanelOperativo({ tipo }) {
   const { token } = useParams()
   const [persona, setPersona] = useState(undefined) // undefined = cargando, null = no existe
@@ -140,6 +214,8 @@ export default function PanelOperativo({ tipo }) {
           <img src="/logo-panel.png" alt="DreamTours" className="mx-auto mb-3 h-auto w-28" />
           {persona && <p className="text-sm text-zinc-500">{TITULO[tipo]} · <span className="font-semibold text-zinc-200">{persona.nombre}</span></p>}
         </div>
+
+        {persona && tipo === 'chofer' && <BotonNotificaciones choferId={persona.id} />}
 
         {persona === undefined && <p className="text-center text-sm text-zinc-500">Carregando...</p>}
 

@@ -307,6 +307,12 @@ export const panelOperativoApi = {
   getAvisos: (campo, id) => supabase?.from('operaciones_avisos').select('*, operaciones(fecha, excursiones(nombre))').eq(campo, id).order('created_at', { ascending: false }),
   marcarLeido: (id) => supabase?.from('operaciones_avisos').update({ leido_at: new Date().toISOString() }).eq('id', id).is('leido_at', null),
   marcarConfirmado: (id, confirmado) => supabase?.from('operaciones_avisos').update({ confirmado_at: confirmado ? new Date().toISOString() : null }).eq('id', id),
+  // Notificaciones push (solo choferes, por ahora). Mismo criterio de acceso que el resto de
+  // esta paginita: lo protege el token del link, no una sesión.
+  getPush: (endpoint) => supabase?.from('chofer_push_subscripciones').select('id').eq('endpoint', endpoint).maybeSingle(),
+  guardarPush: (choferId, sub) => supabase?.from('chofer_push_subscripciones')
+    .upsert({ chofer_id: choferId, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth }, { onConflict: 'endpoint' }),
+  sacarPush: (endpoint) => supabase?.from('chofer_push_subscripciones').delete().eq('endpoint', endpoint),
 }
 
 // ── Vendedores ─────────────────────────────────────────────────────────────────

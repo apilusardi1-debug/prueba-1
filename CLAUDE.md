@@ -48,6 +48,7 @@ git push origin main   # Vercel despliega automáticamente
 - `usuarios-admin` — login y gestión de usuarios del panel
 - `proxy-imagen` — descarga imágenes para los PDF de propuestas
 - `catalogo-interno` — punto de acceso único para un grupo de tablas internas (ver "RLS — endurecida tabla por tabla" más abajo)
+- `enviar-push-chofer` — manda la notificación push al chofer cuando se crea su aviso (ver "Chat interno" más abajo). Desplegada con `--no-verify-jwt` (la llama un trigger de la base, no una persona)
 - `sync-whatsapp`, `whatsapp-status`, `health-check` — heredadas de WuzAPI (desconectado)
 - Código compartido entre funciones y frontend: `supabase/functions/_shared/` (detección de interés, estados de entrega, etiquetas del asistente, embudo de entrada, filtrado de Paquetes, lectura de los datos del viaje)
 
@@ -59,6 +60,7 @@ git push origin main   # Vercel despliega automáticamente
 - `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` — Evolution API (instalado en VPS, pendiente de configurar)
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — uso interno en Edge Functions
 - `PANEL_SESSION_SECRET` — firma del token de sesión del panel (HMAC-SHA256)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` — firman las notificaciones push a choferes (protocolo Web Push estándar, no dependen de ningún servicio externo)
 
 ## WhatsApp — Arquitectura
 Hay DOS flujos, con dos números y dos apps de Meta distintos. Ambos usan Meta Cloud API directo (sin proveedor intermedio).
@@ -68,6 +70,7 @@ Al **cerrar una operación** (Agenda), al CLIENTE se le manda `aviso_cliente` po
 - **Función**: `send-whatsapp` (solo para `aviso_cliente`). **Frontend**: `src/lib/ultramsg.js` (`sendWhatsAppTemplate`, el nombre es histórico), `operacionesApi`/`panelOperativoApi` en `src/lib/supabase.js`
 - **Estado**: `aviso_cliente` no envía nada hasta regenerar el token operativo (ver Secrets); el chat interno de guía/chofer no depende de ese token y ya está en producción
 - **Migración**: `supabase/migrations/20260925100000_chat_interno_operaciones.sql` (agrega `token` a `guias`/`choferes`, crea `operaciones` y `operaciones_avisos`)
+- **Choferes, además**: su link se puede instalar como ícono en el celular (manifest por chofer en `api/chofer-manifest.js`, íconos en `public/icon-chofer-*.png`, service worker `public/sw-chofer.js`) y recibir notificaciones push cuando se crea su aviso — botón "Ativar notificações" en `PanelOperativo.jsx`, probado en producción el 2026-10-10. Tabla `chofer_push_subscripciones` + trigger en `operaciones_avisos` que llama a `enviar-push-chofer` (migración `20261010120000_chofer_push.sql`). Por ahora solo choferes, no guías
 
 ### 2. CRM comercial (atención al cliente)
 Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **+55 81 99719-9422** (app "DreamsTour CRM" `3006251579723473`, WABA `847194981749193`, phone number id `1254559544416464`).

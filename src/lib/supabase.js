@@ -330,7 +330,18 @@ export const operacionesApi = {
 // La paginita pública del guía/chofer (sin sesión de admin: entra con su link personal)
 export const panelOperativoApi = {
   getPorToken: (tabla, token) => supabase?.from(tabla).select('id, nombre, token').eq('token', token).maybeSingle(),
-  getAvisos: (campo, id) => supabase?.from('operaciones_avisos').select('*, operaciones(fecha, excursiones(nombre))').eq(campo, id).order('created_at', { ascending: false }),
+  // Pedido de Cristian, 2026-10-11: pasada la fecha del paseo el aviso ya cumplió su función y
+  // deja de mostrarse acá — pero no se borra de la base, el admin lo sigue viendo en Agenda >
+  // Gestionar como historial. Se filtra del lado del cliente (no en la consulta) porque filtrar
+  // por una columna de la tabla embebida (operaciones.fecha) necesita el join "!inner" de
+  // PostgREST, sin uso en ningún otro lado de este proyecto todavía.
+  getAvisos: async (campo, id) => {
+    const { data, error } = await supabase
+      ?.from('operaciones_avisos').select('*, operaciones(fecha, excursiones(nombre))')
+      .eq(campo, id).order('created_at', { ascending: false }) || {}
+    const hoy = new Date().toISOString().split('T')[0]
+    return { data: data?.filter(a => (a.operaciones?.fecha || hoy) >= hoy), error }
+  },
   marcarLeido: (id) => supabase?.from('operaciones_avisos').update({ leido_at: new Date().toISOString() }).eq('id', id).is('leido_at', null),
   marcarConfirmado: (id, confirmado) => supabase?.from('operaciones_avisos').update({ confirmado_at: confirmado ? new Date().toISOString() : null }).eq('id', id),
   // Notificaciones push (solo choferes, por ahora). Mismo criterio de acceso que el resto de

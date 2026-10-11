@@ -319,6 +319,12 @@ serve(async (req) => {
         await moverAEtapaPaquetes(supabase, phone, 'propuesta_enviada')
       } else if (/^detalle[ _-]*final/i.test(nombreArchivo) || /^detalles[ _-]*y[ _-]*servicios/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phone, 'envio_detalle')
+      } else if (/^pdf[ _-]*de[ _-]*cierre/i.test(nombreArchivo)) {
+        // Se manda recién después de "Ya pagó, reserva confirmada" — el lead no se
+        // queda parado acá: el trigger de la base lo redirige al instante a
+        // Anfitriona y deja un comprobante de 24hs en el tablero (ver migración
+        // 20261011100000_pdf_cierre_registro_y_anfitriona.sql).
+        await moverAEtapaPaquetes(supabase, phone, 'pdf_enviado')
       }
     }
 

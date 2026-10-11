@@ -67,6 +67,10 @@ const TABLAS: Record<string, TablaCfg> = {
   // Leer/editar/borrar una reserva sigue siendo solo admin, acá.
   reservas: { pk: 'id', orderBy: 'fecha', select: '*, excursiones(nombre, categoria, cupos), choferes(id, nombre, whatsapp), guias(id, nombre, whatsapp)' },
   clientes: { pk: 'id', orderBy: 'nombre', onConflict: 'whatsapp' },
+  // Solo lectura desde el frontend (lo escribe el trigger de la base, ver
+  // migración 20261011100000) -- comprobante de "se mandó el PDF de cierre",
+  // se muestra como tarjeta fantasma 24hs en el tablero de Paquetes.
+  leads_pdf_cierre_registro: { pk: 'id', orderBy: '-creado_at' },
 }
 
 async function emailDeLaSesion(token: string | null): Promise<string | null> {

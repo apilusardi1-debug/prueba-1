@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi } from '../../lib/supabase.js'
+import { leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi, leadsPdfCierreRegistroApi } from '../../lib/supabase.js'
 import { TIPOS_INTERES, DESTINOS_INTERES, detectarInteres, etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { useEtapas, etapaDe, claveVisible, estiloFondoEtapa, etapasDelEmbudo, embudoDeEtapa, nombreEmbudo, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
@@ -184,6 +184,8 @@ export default function Leads({ embudo = 'paquetes' }) {
   const [usuarios, setUsuarios] = useState([])
   const [panelAuto, setPanelAuto] = useState(false)
   const [hospedajes, setHospedajes] = useState([])
+  // Comprobantes de "PDF de cierre enviado" (no son leads, ver leadsPdfCierreRegistroApi)
+  const [registroPdfCierre, setRegistroPdfCierre] = useState([])
 
   // El menú para cambiar de embudo se cierra al hacer clic afuera o con Escape
   useEffect(() => {
@@ -201,14 +203,16 @@ export default function Leads({ embudo = 'paquetes' }) {
   useEffect(() => {
     async function cargar() {
       try {
-        const [{ data: l }, { data: r }, { data: h }] = await Promise.all([
+        const [{ data: l }, { data: r }, { data: h }, { data: pc }] = await Promise.all([
           leadsApi.getAll(),
           recordatoriosApi.getPendientes(),
           anfitrionaApi.getHospedajes(),
+          embudo === 'paquetes' ? leadsPdfCierreRegistroApi.getRecientes() : Promise.resolve({ data: [] }),
         ])
         if (l) setLeads(l)
         if (r) setRecordatorios(r)
         if (h) setHospedajes(h)
+        if (pc) setRegistroPdfCierre(pc)
       } catch (_) {}
       setLoading(false)
     }
@@ -662,6 +666,9 @@ export default function Leads({ embudo = 'paquetes' }) {
             const mostrados = enEtapa.slice(0, verMas[etapa.clave] || POR_ETAPA)
             const restantes = enEtapa.length - mostrados.length
             const valorEtapa = enEtapa.reduce((t, l) => t + (Number(l.valor) || 0), 0)
+            // "PDF de cierre enviado" no retiene leads de verdad (se redirigen solos a
+            // Anfitriona) — lo que se ve acá son comprobantes de 24hs, no leads.
+            const comprobantes = etapa.clave === 'pdf_enviado' ? registroPdfCierre : []
             return (
               <div
                 key={etapa.clave}
@@ -672,7 +679,10 @@ export default function Leads({ embudo = 'paquetes' }) {
               >
                 <div className="border-t-[3px] px-1 pb-2 pt-2 text-center" style={{ borderTopColor: etapa.color }}>
                   <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-gray-800 dark:text-zinc-100" title={etapa.nombre}>{etapa.nombre}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-zinc-400">{enEtapa.length} {enEtapa.length === 1 ? 'lead' : 'leads'}: {formatoReales(valorEtapa)}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-zinc-400">
+                    {enEtapa.length} {enEtapa.length === 1 ? 'lead' : 'leads'}: {formatoReales(valorEtapa)}
+                    {comprobantes.length > 0 && ` · ${comprobantes.length} comprobante${comprobantes.length === 1 ? '' : 's'}`}
+                  </p>
                 </div>
 
                 <div className="max-h-[calc(100vh-17rem)] min-h-[5rem] space-y-2 overflow-y-auto pb-1">
@@ -816,6 +826,23 @@ export default function Leads({ embudo = 'paquetes' }) {
                       </div>
                     )
                   })}
+
+                  {comprobantes.map(c => (
+                    <div
+                      key={c.id}
+                      title="Comprobante de envío, no es un lead — el lead real ya está en Anfitriona"
+                      className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2 opacity-70 dark:border-white/10 dark:bg-white/[0.03]"
+                    >
+                      <div className="flex items-baseline justify-between gap-2 text-[11px] text-gray-500 dark:text-zinc-400">
+                        <span className="truncate">{telefonoLegible(c.lead_whatsapp) || 'Sin teléfono'}</span>
+                        <span className="shrink-0 tabular-nums">{fechaTarjeta(c.creado_at)}</span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[13px] font-extrabold uppercase text-gray-500 dark:text-zinc-400" title={c.lead_nombre}>{c.lead_nombre}</p>
+                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-zinc-500">
+                        <Ic n="check" className="h-3 w-3" /> Ya está con Anfitriona
+                      </p>
+                    </div>
+                  ))}
 
                   {restantes > 0 && (
                     <button

@@ -366,6 +366,18 @@ export const clientesApi = {
   delete: (id) => invocarCatalogoInterno('clientes', 'delete', { id }),
 }
 
+// ── Comprobantes de "PDF de cierre enviado" ─────────────────────────────────────
+// Tarjetas fantasma del tablero de Paquetes (ver leads_redirigir_anfitriona en la
+// migración 20261011100000): no son leads, solo un registro de que se mandó el PDF.
+// La limpieza de más de 24hs la hace un cron en la base; acá además se filtra por
+// las dudas (ej. si el cron todavía no corrió esa hora).
+export const leadsPdfCierreRegistroApi = {
+  getRecientes: () => {
+    const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    return invocarCatalogoInterno('leads_pdf_cierre_registro', 'list', { filtros: { creado_at: { op: 'gte', valor: desde } } })
+  },
+}
+
 // ── Reservas por cliente ────────────────────────────────────────────────────────
 export const reservasClienteApi = {
   // catalogo-interno siempre ordena "reservas" por fecha ascendente (lo que necesita Reservas.jsx);

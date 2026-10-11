@@ -30,9 +30,10 @@ const DESTINO_FLOW: Record<string, string> = {
   porto_de_galinhas: 'Porto de Galinhas', maragogi: 'Maragogi', pipa: 'Pipa',
   fernando_de_noronha: 'Fernando de Noronha', maceio: 'Maceió',
 }
+// 3 categorías (pedido de Cristian, 2026-10-11, antes 4 separadas) y multi-selección, igual
+// que destino — "Posada" y "Departamento" quedan juntas en una sola opción.
 const HOSPEDAJE_FLOW: Record<string, string> = {
-  resort_all_inclusive: 'Resort todo incluido (All Inclusive)', hotel_media_pension: 'Hotel con media pensión',
-  posada_desayuno: 'Posada con desayuno incluido', depto_amoblado: 'Departamento amoblado cerca de la playa/centro',
+  posada_departamento: 'Posada/Departamento', hotel: 'Hotel', resort_all_inclusive: 'Resort All Inclusive',
 }
 // Mismo formato que ya usa datosViaje.ts (puntos de miles) — acá en una función aparte porque
 // ese archivo no se importa en este webhook.
@@ -198,7 +199,9 @@ function textoDesdeFlow(r: Record<string, any>): string {
     `Menores: ${cantidadMenores}`,
   ]
   if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
-  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
+  // Hospedaje también es multi-selección (pedido de Cristian, 2026-10-11), mismo criterio que destino.
+  const hospedajes: string[] = Array.isArray(r.hospedaje) ? r.hospedaje : (r.hospedaje ? [r.hospedaje] : [])
+  lineas.push(`Hospedaje: ${hospedajes.map((h) => HOSPEDAJE_FLOW[h] || h).join(', ')}`)
   // Presupuesto es un campo numérico libre (pedido de Cristian, 2026-10-11, antes 3 rangos
   // fijos) — el Flow solo manda el número, acá se le pone el formato (puntos de miles) y la
   // moneda, siempre en dólares.

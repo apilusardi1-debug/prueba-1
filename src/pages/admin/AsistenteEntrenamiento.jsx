@@ -123,7 +123,7 @@ function Rama({ children }) {
 }
 
 function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
-  const [nodoAbierto, setNodoAbierto] = useState(null) // 'saludo' | 'filtro' | 'derivacion' | 'sin_asignar' | null
+  const [nodoAbierto, setNodoAbierto] = useState(null) // 'saludo' | 'filtro' | 'derivacion_paquetes' | 'derivacion_paseos' | 'sin_asignar' | null
 
   return (
     <div>
@@ -143,25 +143,30 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
               activo={cfg.filtro_activo}
               onClick={() => setNodoAbierto('filtro')}
             />
+            <NodoArbol
+              titulo="3. Mensaje al derivar"
+              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paquetes (habla de haber completado el formulario)."
+              onClick={() => setNodoAbierto('derivacion_paquetes')}
+            />
           </Rama>
           <Rama>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-zinc-500 -mt-1">Elige Paseos</p>
             <NodoArbol
               titulo="2. Deriva directo"
               descripcion="No tiene filtro propio: pasa directo a una persona del equipo de Paseos."
-              onClick={() => setNodoAbierto('derivacion')}
+              onClick={() => setNodoAbierto('derivacion_paseos')}
+            />
+            <NodoArbol
+              titulo="3. Mensaje al derivar"
+              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paseos (nunca completó ningún formulario)."
+              onClick={() => setNodoAbierto('derivacion_paseos')}
             />
           </Rama>
         </div>
         <div className="flex gap-4 pl-4">
           <NodoArbol
-            titulo="3. Mensaje al derivar"
-            descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo."
-            onClick={() => setNodoAbierto('derivacion')}
-          />
-          <NodoArbol
-            titulo="3. Nadie disponible"
-            descripcion="Lo que recibe si en ese grupo no hay nadie para asignarle en ese momento."
+            titulo="4. Nadie disponible"
+            descripcion="Lo que recibe si en ese grupo no hay nadie para asignarle en ese momento (mismo mensaje para los dos grupos)."
             onClick={() => setNodoAbierto('sin_asignar')}
           />
         </div>
@@ -177,7 +182,8 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
             <div className="p-5">
               {nodoAbierto === 'saludo' && <EditorSaludo cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
               {nodoAbierto === 'filtro' && <FiltroPaquetes cfg={cfg} setCfg={setCfg} onGuardado={registrarCambio} />}
-              {nodoAbierto === 'derivacion' && <EditorTexto campo="mensaje_derivacion" titulo="Mensaje al derivar" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
+              {nodoAbierto === 'derivacion_paquetes' && <EditorTexto campo="mensaje_derivacion" titulo="Mensaje al derivar (Paquetes)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
+              {nodoAbierto === 'derivacion_paseos' && <EditorTexto campo="mensaje_derivacion_paseos" titulo="Mensaje al derivar (Paseos/Traslados)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
               {nodoAbierto === 'sin_asignar' && <EditorTexto campo="mensaje_sin_asignar" titulo="Mensaje cuando no hay nadie disponible" cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
             </div>
           </div>

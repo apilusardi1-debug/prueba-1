@@ -357,10 +357,13 @@ async function enviarTextoBot(supabase: Supabase, convId: string, phone: string,
   await guardarMensajeBot(supabase, convId, phone, texto, wamid)
 }
 
-// Deriva a una persona del grupo; si no hay a quién, deja la conversación sin asignar.
+// Deriva a una persona del grupo; si no hay a quién, deja la conversación sin asignar. El
+// mensaje de derivación es distinto por grupo (pedido de Cristian, 2026-10-11): Paquetes ya
+// completó un formulario, Paseos/Traslados nunca pasó por uno.
 // deno-lint-ignore no-explicit-any
 async function derivarOCerrar(supabase: Supabase, cfg: any, convId: string, phone: string, grupo: string) {
-  const derivada = await derivar(supabase, cfg.mensaje_derivacion, convId, phone, grupo)
+  const mensaje = grupo === 'paseos' ? cfg.mensaje_derivacion_paseos : cfg.mensaje_derivacion
+  const derivada = await derivar(supabase, mensaje, convId, phone, grupo)
   if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo)
 }
 

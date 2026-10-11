@@ -34,8 +34,10 @@ const HOSPEDAJE_FLOW: Record<string, string> = {
   resort_all_inclusive: 'Resort todo incluido (All Inclusive)', hotel_media_pension: 'Hotel con media pensión',
   posada_desayuno: 'Posada con desayuno incluido', depto_amoblado: 'Departamento amoblado cerca de la playa/centro',
 }
-const PRESUPUESTO_FLOW: Record<string, string> = {
-  '1000_2000': '1.000 a 2.000 USD', '2000_2500': '2.000 a 2.500 USD', '2500_3000': '2.500 a 3.000 USD',
+// Mismo formato que ya usa datosViaje.ts (puntos de miles) — acá en una función aparte porque
+// ese archivo no se importa en este webhook.
+function formatoMonto(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 const PAIS_FLOW: Record<string, string> = {
   argentina: 'Argentina', uruguay: 'Uruguay', chile: 'Chile', paraguay: 'Paraguay', peru: 'Perú', venezuela: 'Venezuela',
@@ -178,25 +180,30 @@ function fechaLegible(iso: string | undefined): string {
 // que antes, sin tocar ese archivo.
 const MAX_MENORES_FLOW = 5
 
-function textoDesdeFlow(r: Record<string, string>): string {
+// deno-lint-ignore no-explicit-any
+function textoDesdeFlow(r: Record<string, any>): string {
   const cantidadMenores = r.hay_menores === 'si' ? (Number(r.cantidad_menores) || 0) : 0
   const edades = Array.from({ length: MAX_MENORES_FLOW }, (_, i) => r[`edad_menor_${i + 1}`]).filter(Boolean).slice(0, cantidadMenores)
+  // Destino es multi-selección (pedido de Cristian, 2026-10-11): el Flow lo manda como
+  // array de ids ("CheckboxGroup"). "Porto de Galinhas, Maragogi" junto en una sola línea
+  // de texto — detectarInteres (interes.ts) ya sabe unir varios destinos encontrados en un
+  // mismo texto con " + ", no hace falta tocar nada de ese lado.
+  const destinos: string[] = Array.isArray(r.destino) ? r.destino : (r.destino ? [r.destino] : [])
   const lineas = [
     `Nombre: ${r.nombre ?? ''}`,
-    `Destino: ${DESTINO_FLOW[r.destino] || r.destino || ''}`,
+    `Destino: ${destinos.map((d) => DESTINO_FLOW[d] || d).join(', ')}`,
     `País: ${PAIS_FLOW[r.pais] || r.pais || ''}`,
     `Origen: ${r.origen ?? ''}`,
     `Adultos: ${r.adultos ?? ''}`,
     `Menores: ${cantidadMenores}`,
   ]
   if (edades.length) lineas.push(`Edades: ${edades.join(', ')}`)
-  // Fernando de Noronha no tiene resorts all inclusive: el Flow muestra una
-  // lista de hospedaje sin esa opción para ese destino, en un campo aparte
-  // ("hospedaje_noronha") porque WhatsApp no permite deshabilitar una sola
-  // opción de un Dropdown según otro campo, solo mostrar/ocultar el campo entero.
-  const hospedaje = r.hospedaje || r.hospedaje_noronha
-  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[hospedaje] || hospedaje || ''}`)
-  lineas.push(`Presupuesto: ${PRESUPUESTO_FLOW[r.presupuesto] || r.presupuesto || ''}`)
+  lineas.push(`Hospedaje: ${HOSPEDAJE_FLOW[r.hospedaje] || r.hospedaje || ''}`)
+  // Presupuesto es un campo numérico libre (pedido de Cristian, 2026-10-11, antes 3 rangos
+  // fijos) — el Flow solo manda el número, acá se le pone el formato (puntos de miles) y la
+  // moneda, siempre en dólares.
+  const presupuestoNum = Number(r.presupuesto)
+  lineas.push(`Presupuesto: ${r.presupuesto && !isNaN(presupuestoNum) ? `${formatoMonto(presupuestoNum)} USD` : (r.presupuesto ?? '')}`)
   const noches = r.noches ? ` · ${r.noches} noches` : ''
   lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}${noches}`)
   return lineas.join('\n')
@@ -575,7 +582,8 @@ serve(async (req) => {
     // Respuesta del formulario "Datos del viaje" (WhatsApp Flow): llega como un mensaje
     // interactivo con los campos en JSON, no como texto. Se convierte a "Campo: valor"
     // para que el resto del filtro (que ya sabe leer eso) no note la diferencia.
-    let datosFlow: Record<string, string> | null = null
+    // deno-lint-ignore no-explicit-any
+    let datosFlow: Record<string, any> | null = null
     if (message.interactive?.type === 'nfm_reply' && message.interactive.nfm_reply?.response_json) {
       try { datosFlow = JSON.parse(message.interactive.nfm_reply.response_json) } catch { /* sigue por el camino de siempre */ }
     }

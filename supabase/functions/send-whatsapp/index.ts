@@ -319,7 +319,9 @@ serve(async (req) => {
         await moverAEtapaPaquetes(supabase, phone, 'propuesta_enviada')
       } else if (/^detalle[ _-]*final/i.test(nombreArchivo) || /^detalles[ _-]*y[ _-]*servicios/i.test(nombreArchivo)) {
         await moverAEtapaPaquetes(supabase, phone, 'envio_detalle')
-      } else if (/^pdf[ _-]*de[ _-]*cierre/i.test(nombreArchivo)) {
+      } else if (/cierre/i.test(nombreArchivo)) {
+        // Alcanza con que el nombre tenga la palabra "cierre" en cualquier parte (pedido
+        // de Cristian, 2026-10-11 — antes exigía que empezara con "PDF de Cierre").
         // Se manda recién después de "Ya pagó, reserva confirmada" — el lead no se
         // queda parado acá: el trigger de la base lo redirige al instante a
         // Anfitriona y deja un comprobante de 24hs en el tablero (ver migración

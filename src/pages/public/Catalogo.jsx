@@ -115,7 +115,7 @@ export default function Catalogo({ categoria }) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {filtrados.map(ex => (
                   <Link key={ex.id} to={`/excursiones/${ex.id}`}
-                    className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+                    className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
                     <div className="relative h-52 overflow-hidden bg-surface-variant flex-shrink-0">
                       <img
                         src={ex.imagen || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}

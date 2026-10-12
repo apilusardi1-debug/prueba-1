@@ -19,7 +19,7 @@ export default {
           900: 'rgb(var(--brand-900) / <alpha-value>)',
           950: 'rgb(var(--brand-950) / <alpha-value>)',
         },
-        'deep-ocean':               '#002147',
+        'deep-ocean':               '#072e40',
         'tropical-sun':             '#FFC107',
         'sand-beige':               '#F4F1EA',
         'lush-green':               '#2D5A27',

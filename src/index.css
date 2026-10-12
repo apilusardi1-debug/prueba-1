@@ -142,7 +142,7 @@
 }
 
 .glass-overlay {
-  background: linear-gradient(to bottom, rgba(0, 33, 71, 0.2), rgba(0, 33, 71, 0.85));
+  background: linear-gradient(to bottom, rgba(7,46,64, 0.2), rgba(7,46,64, 0.85));
 }
 
 .hero-overlay {

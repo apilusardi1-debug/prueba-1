@@ -1,46 +1,54 @@
 import { useLang } from '../../context/LanguageContext.jsx'
 
+const VALORES = [
+  { icono: 'beach_access', title: 'Especialistas en Nordeste', text: 'Conocemos cada rincón del Nordeste Brasilero. Nuestro equipo viaja regularmente para brindarte la mejor experiencia.' },
+  { icono: 'flight', title: 'Paquetes completos', text: 'Nos encargamos de todo: vuelos, traslados, hospedaje y paseos. Vos solo pensá en disfrutar.' },
+  { icono: 'forum', title: 'Atención personalizada', text: 'Te acompañamos desde la consulta hasta que volvés a casa. Siempre disponibles por WhatsApp.' },
+]
+
+const DESTINOS = ['Porto de Galinhas', 'Maragogi', 'Maceió', 'Pipa', 'Fernando de Noronha']
+
 export default function Nosotros() {
   const { t } = useLang()
 
   return (
-    <div style={{ backgroundColor: '#f9f3e3', minHeight: '100vh' }}>
-      {/* Hero */}
-      <div style={{ borderBottom: '1px solid #e8d09a', padding: '72px 16px 56px', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.25em', color: '#b07420', textTransform: 'uppercase', marginBottom: 16 }}>
-          La agencia
-        </p>
-        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: '#1C1208', lineHeight: 1.0, marginBottom: 20 }}>
-          DREAMTOURS
-        </h1>
-        <p style={{ fontSize: '1.1rem', color: '#1C1208AA', maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
-          {t('about_text')}
-        </p>
-      </div>
+    <div className="bg-surface min-h-screen">
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="bg-hero-navy pt-32 pb-16 md:pb-20">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
+            Quiénes somos
+          </h1>
+          <p className="font-body-md text-body-lg text-hero-cream/90 max-w-2xl mt-4">
+            {t('about_text')}
+          </p>
+        </div>
+      </section>
 
-      <div className="max-w-4xl mx-auto px-4 py-16">
+      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-12 md:py-16">
         {/* Valores */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
-          {[
-            { icon: '🏖️', title: 'Especialistas en Nordeste', text: 'Conocemos cada rincón del Nordeste Brasilero. Nuestro equipo viaja regularmente para brindarte la mejor experiencia.' },
-            { icon: '✈️', title: 'Paquetes completos', text: 'Nos encargamos de todo: vuelos, traslados, hospedaje y paseos. Vos solo pensá en disfrutar.' },
-            { icon: '💬', title: 'Atención personalizada', text: 'Te acompañamos desde la consulta hasta que volvés a casa. Siempre disponibles por WhatsApp.' },
-          ].map(({ icon, title, text }) => (
-            <div key={title} style={{ background: 'white', borderRadius: 20, padding: '28px 24px', border: '1px solid #e8d09a', textAlign: 'center' }}>
-              <p style={{ fontSize: '2.5rem', marginBottom: 12 }}>{icon}</p>
-              <h3 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1.1rem', color: '#1C1208', marginBottom: 8 }}>{title}</h3>
-              <p style={{ fontSize: '0.85rem', color: '#1C1208AA', lineHeight: 1.6 }}>{text}</p>
+        <div className="grid md:grid-cols-3 gap-4 md:gap-gutter mb-12">
+          {VALORES.map(({ icono, title, text }) => (
+            <div key={title} className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-hero-navy/10">
+              <div className="w-16 h-16 rounded-full bg-hero-cream flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-hero-navy text-[32px]">{icono}</span>
+              </div>
+              <h3 className="font-display-hero uppercase text-hero-navy text-2xl tracking-wide mb-2">{title}</h3>
+              <p className="font-body-md text-[15px] leading-relaxed text-on-surface-variant">{text}</p>
             </div>
           ))}
         </div>
 
         {/* Destinos */}
-        <div style={{ background: '#f2e4c0', borderRadius: 20, padding: '32px', marginBottom: 16 }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.2em', color: '#b07420', textTransform: 'uppercase', marginBottom: 8 }}>Operamos en</p>
-          <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: '1.5rem', color: '#1C1208', marginBottom: 20 }}>Nuestros destinos</h2>
+        <div className="bg-hero-cream rounded-2xl p-8 mb-6">
+          <h2 className="font-display-hero uppercase text-hero-navy mb-5"
+            style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
+            Nuestros destinos
+          </h2>
           <div className="flex flex-wrap gap-3">
-            {['🐠 Porto de Galinhas', '🪸 Maragogi', '🌴 Maceió', '🏄 Pipa', '🐢 Fernando de Noronha'].map((d) => (
-              <span key={d} style={{ background: 'white', border: '1px solid #d9a83a', color: '#8a581e', fontWeight: 600, padding: '8px 18px', borderRadius: 999, fontSize: '0.85rem' }}>
+            {DESTINOS.map(d => (
+              <span key={d} className="bg-white border border-hero-navy/20 text-hero-navy font-label-lg text-[14px] px-5 py-2 rounded-full">
                 {d}
               </span>
             ))}
@@ -48,12 +56,12 @@ export default function Nosotros() {
         </div>
 
         {/* CTA */}
-        <div style={{ background: '#1C1208', borderRadius: 20, padding: '48px 32px', textAlign: 'center', marginTop: 16 }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.25em', color: '#d9a83a', textTransform: 'uppercase', marginBottom: 16 }}>Hablemos</p>
-          <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 900, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: '#f9f3e3', lineHeight: 1.15, marginBottom: 12 }}>
+        <div className="bg-hero-navy rounded-2xl px-8 py-12 text-center">
+          <h2 className="font-display-hero uppercase text-hero-cream mb-3"
+            style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', letterSpacing: '0.01em' }}>
             ¿Listo para tu próximo viaje?
           </h2>
-          <p style={{ color: '#e8d09a88', fontSize: '0.95rem', marginBottom: 32, fontWeight: 300 }}>
+          <p className="font-body-md text-body-md text-hero-cream/70 mb-8">
             Hablá con nosotros y armamos el paquete perfecto para vos.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -61,21 +69,19 @@ export default function Nosotros() {
               href="https://wa.me/5491100000000?text=Hola!%20Quiero%20armar%20un%20viaje%20al%20Nordeste%20Brasilero"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#b07420', color: '#f9f3e3', fontWeight: 700, padding: '14px 32px', borderRadius: 999, fontSize: '0.95rem', textDecoration: 'none', transition: 'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background='#8a581e'}
-              onMouseLeave={e => e.currentTarget.style.background='#b07420'}
+              className="inline-flex items-center justify-center gap-2 bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity"
             >
-              💬 WhatsApp
+              <span className="material-symbols-outlined text-[20px]">chat</span>
+              WhatsApp
             </a>
             <a
               href="https://www.instagram.com/dreamtours_esp/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1.5px solid #f9f3e344', color: '#f9f3e3', fontWeight: 600, padding: '14px 32px', borderRadius: 999, fontSize: '0.95rem', textDecoration: 'none', transition: 'all 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background='rgba(249,243,227,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.background='transparent'}
+              className="inline-flex items-center justify-center gap-2 border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:bg-hero-yellow hover:text-hero-navy transition-colors"
             >
-              📸 Instagram
+              <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+              Instagram
             </a>
           </div>
         </div>

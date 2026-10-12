@@ -14,8 +14,8 @@ export default function MisReservas() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <h1 className="text-2xl font-bold mb-2">Mis reservas</h1>
+    <div className="max-w-2xl mx-auto px-4 pt-32 pb-12">
+      <h1 className="font-display-hero uppercase text-hero-navy text-4xl tracking-wide mb-2">Mis reservas</h1>
       <p className="text-gray-500 mb-8 text-sm">Ingresá tu número de WhatsApp para ver el estado de tus reservas.</p>
 
       <form onSubmit={buscar} className="flex gap-3 mb-8">
@@ -24,9 +24,9 @@ export default function MisReservas() {
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
           placeholder="Ej: 1145678901"
-          className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
         />
-        <button type="submit" className="bg-brand-600 hover:bg-brand-700 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors">
+        <button type="submit" className="bg-hero-navy hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors">
           Buscar
         </button>
       </form>
@@ -35,7 +35,7 @@ export default function MisReservas() {
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-3">📭</p>
           <p>No encontramos reservas para ese número.</p>
-          <p className="text-xs mt-2">¿Necesitás ayuda? <a href="https://wa.me/5491100000000" className="text-brand-600 hover:underline">Contactanos</a></p>
+          <p className="text-xs mt-2">¿Necesitás ayuda? <a href="https://wa.me/5491100000000" className="text-hero-navy hover:underline">Contactanos</a></p>
         </div>
       )}
 

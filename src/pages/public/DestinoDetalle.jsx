@@ -19,7 +19,7 @@ function Estrellas({ n }) {
 function CardPaquete({ ex }) {
   return (
     <Link to={`/excursiones/${ex.id}`}
-      className="group block rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+      className="group block rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
       <div className="h-52 overflow-hidden bg-surface-variant">
         <img src={ex.imagen} alt={ex.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
       </div>
@@ -323,7 +323,7 @@ function SeccionEditorial({ destino }) {
 function CardHospedaje({ h }) {
   return (
     <Link to={`/hoteles/${h.id}`}
-      className="group block rounded-2xl overflow-hidden bg-white border border-hero-navy/10 hover:border-hero-navy/40 hover:shadow-[0_10px_30px_rgba(0,33,71,0.08)] transition-all">
+      className="group block rounded-2xl overflow-hidden bg-white border border-hero-navy/10 hover:border-hero-navy/40 hover:shadow-[0_10px_30px_rgba(7,46,64,0.08)] transition-all">
       <div className="h-44 overflow-hidden bg-surface-variant">
         {h.imagen ? (
           <img src={h.imagen} alt={h.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />

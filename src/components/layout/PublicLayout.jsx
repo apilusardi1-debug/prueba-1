@@ -61,7 +61,7 @@ export default function PublicLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const iconColor = scrolled ? '#002147' : 'white'
+  const iconColor = scrolled ? '#072e40' : 'white'
 
   return (
     <div className="min-h-screen bg-surface overflow-x-hidden">
@@ -96,7 +96,7 @@ export default function PublicLayout() {
               <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
                 style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
                 onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
-              <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
+              <span style={{ display: 'none', fontFamily: '"Bebas Neue", sans-serif', fontSize: '1.75rem', color: scrolled ? '#072e40' : 'white' }}>
                 DreamTours
               </span>
             </span>
@@ -105,7 +105,7 @@ export default function PublicLayout() {
               <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
                 style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
                 onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
-              <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: scrolled ? '#002147' : 'white' }}>
+              <span style={{ display: 'none', fontFamily: '"Bebas Neue", sans-serif', fontSize: '1.75rem', color: scrolled ? '#072e40' : 'white' }}>
                 DreamTours
               </span>
             </Link>
@@ -116,7 +116,7 @@ export default function PublicLayout() {
               <button
                 onClick={() => setLangDropdownOpen(v => !v)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full font-label-lg text-label-lg text-white transition-all duration-200 hover:opacity-90"
-                style={{ backgroundColor: scrolled ? '#002147' : 'rgba(26, 56, 90, 0.85)' }}
+                style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(26, 56, 90, 0.85)' }}
               >
                 <span>{languages.find(l => l.code === lang)?.flag}</span>
                 <span className="hidden sm:inline">{languages.find(l => l.code === lang)?.label}</span>
@@ -138,14 +138,14 @@ export default function PublicLayout() {
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
               target="_blank" rel="noopener noreferrer"
               className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
-              style={{ backgroundColor: scrolled ? '#002147' : 'rgba(32, 67, 97, 0.9)' }}>
+              style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(32, 67, 97, 0.9)' }}>
               Contactanos
             </a>
             {/* Mis Reservas */}
             {!standalone && (
               <Link to="/mis-reservas"
                 className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
-                style={{ backgroundColor: scrolled ? '#002147' : 'rgba(32, 67, 97, 0.9)' }}>
+                style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(32, 67, 97, 0.9)' }}>
                 Mis Reservas
               </Link>
             )}
@@ -227,7 +227,7 @@ export default function PublicLayout() {
             <img src="/logo.png" alt="DreamTours" className="h-24 md:h-28 w-auto object-contain"
               style={{ filter: 'brightness(0) invert(1)' }}
               onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
-            <span style={{ display: 'none', fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
+            <span style={{ display: 'none', fontFamily: '"Bebas Neue", sans-serif', fontSize: '1.75rem', color: 'white' }}>
               DreamTours
             </span>
             <div className="flex items-center gap-5">

@@ -185,12 +185,12 @@ export default function Home() {
       </section>
 
       {/* ── SERVICIOS ────────────────────────────────────────── */}
-      <section className="bg-white -mt-8 relative z-20 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,33,71,0.05)]">
+      <section className="bg-white -mt-8 relative z-20 rounded-t-3xl shadow-[0_-10px_40px_rgba(7,46,64,0.05)]">
         <div className="py-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
             {SERVICIOS.map(({ label, icono, to }) => (
               <Link key={to} to={to}
-                className="flex flex-col items-center p-6 bg-surface rounded-xl hover:shadow-[0_10px_30px_rgba(0,33,71,0.08)] transition-all duration-300 group border border-hero-navy/10">
+                className="flex flex-col items-center p-6 bg-surface rounded-xl hover:shadow-[0_10px_30px_rgba(7,46,64,0.08)] transition-all duration-300 group border border-hero-navy/10">
                 <div className="w-16 h-16 rounded-full bg-hero-cream flex items-center justify-center mb-4 group-hover:bg-hero-cream/60 transition-colors">
                   <img src={icono} alt="" className="w-11 h-11 object-contain" />
                 </div>
@@ -241,10 +241,12 @@ export default function Home() {
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.02em' }}>
             Reserva tu Paseo
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          {/* En el celular, carrusel horizontal (una tarjeta y un poco de la siguiente);
+              desde md, grilla de tres */}
+          <div className="no-scrollbar flex md:grid md:grid-cols-3 gap-4 md:gap-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory scroll-px-margin-mobile -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-2 md:pb-0">
             {excursionesDestacadas.map(e => (
               <Link key={e.id} to={`/excursiones/${e.id}`}
-                className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+                className="snap-start flex-shrink-0 w-[82%] md:w-auto group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
                 <div className="h-64 md:h-80 overflow-hidden">
                   <img src={e.imagen} alt={e.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
@@ -435,7 +437,7 @@ export default function Home() {
             ¿Querés armar tu viaje a medida?
           </h2>
           <div className="bg-white border-2 border-hero-navy rounded-2xl p-8 max-w-lg">
-            <p className="font-display-hero uppercase text-hero-navy text-xl leading-snug tracking-wide mb-8">
+            <p className="font-body-md text-body-lg text-hero-navy mb-8">
               Completá el formulario y nuestro equipo se va a contactar para diseñar un viaje 100% personalizado según tus intereses, tiempos y presupuesto.
             </p>
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}

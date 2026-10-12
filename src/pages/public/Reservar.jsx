@@ -88,19 +88,19 @@ export default function Reservar() {
   )
 
   if (!excursion) return (
-    <div className="text-center py-24">
+    <div className="text-center pt-40 pb-24">
       <p className="text-xl text-gray-700">Paseo no encontrado.</p>
-      <Link to="/excursiones" className="text-brand-600 hover:underline mt-2 block">← Volver</Link>
+      <Link to="/excursiones" className="text-hero-navy hover:underline mt-2 block">← Volver</Link>
     </div>
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
-      <Link to={`/excursiones/${id}`} className="text-sm text-brand-600 hover:underline mb-6 inline-block">
+    <div className="max-w-2xl mx-auto px-4 pt-32 pb-10">
+      <Link to={`/excursiones/${id}`} className="text-sm text-hero-navy hover:underline mb-6 inline-block">
         ← Volver al detalle
       </Link>
 
-      <h1 className="text-2xl font-bold mb-1">{excursion.nombre}</h1>
+      <h1 className="font-display-hero uppercase text-hero-navy text-4xl tracking-wide mb-1">{excursion.nombre}</h1>
       <p className="text-gray-500 text-sm mb-8">{excursion.destino} · {excursion.duracion}</p>
 
       {/* Stepper */}
@@ -109,11 +109,11 @@ export default function Reservar() {
           {PASOS.slice(0, 3).map((p, i) => (
             <div key={p} className="flex items-center gap-2 flex-1">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                i < paso ? 'bg-green-500 text-white' : i === paso ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-400'
+                i < paso ? 'bg-green-500 text-white' : i === paso ? 'bg-hero-navy text-white' : 'bg-gray-200 text-gray-400'
               }`}>
                 {i < paso ? '✓' : i + 1}
               </div>
-              <span className={`text-sm ${i === paso ? 'font-semibold text-brand-700' : 'text-gray-400'}`}>{p}</span>
+              <span className={`text-sm ${i === paso ? 'font-semibold text-hero-navy' : 'text-gray-400'}`}>{p}</span>
               {i < 2 && <div className="flex-1 h-px bg-gray-200" />}
             </div>
           ))}
@@ -130,21 +130,21 @@ export default function Reservar() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
               <input type="text" value={form.nombre} onChange={e => set('nombre', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
                 placeholder="Juan Pérez" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp *</label>
               <input type="tel" value={form.whatsapp} onChange={e => set('whatsapp', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
                 placeholder="5491112345678" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
                 placeholder="juan@email.com" />
             </div>
 
@@ -152,19 +152,19 @@ export default function Reservar() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Adultos *</label>
                 <input type="number" min="0" value={form.adultos} onChange={e => set('adultos', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Menores</label>
                 <input type="number" min="0" value={form.menores} onChange={e => set('menores', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky" />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Hospedaje / Dirección de pickup</label>
               <input type="text" value={form.hospedaje} onChange={e => set('hospedaje', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky"
                 placeholder="Hotel, dirección..." />
             </div>
 
@@ -178,7 +178,7 @@ export default function Reservar() {
                   type="text"
                   value={form.codigo_vendedor}
                   onChange={e => { set('codigo_vendedor', e.target.value.toUpperCase()); setVendedor(null); setCodigoError('') }}
-                  className={`flex-1 border rounded-xl px-3 py-2.5 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+                  className={`flex-1 border rounded-xl px-3 py-2.5 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-hero-sky ${
                     vendedor ? 'border-green-400 bg-green-50' : codigoError ? 'border-red-300' : 'border-gray-200'
                   }`}
                   placeholder="Ej: JUAN01"
@@ -216,8 +216,8 @@ export default function Reservar() {
                     <button key={f} onClick={() => set('fecha', f)}
                       className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm transition-colors ${
                         form.fecha === f
-                          ? 'border-brand-500 bg-brand-50 text-brand-700 font-semibold'
-                          : 'border-gray-200 hover:border-brand-300 text-gray-700'
+                          ? 'border-hero-navy bg-hero-sky/15 text-hero-navy font-semibold'
+                          : 'border-gray-200 hover:border-hero-sky text-gray-700'
                       }`}>
                       📅 {label}
                     </button>
@@ -228,13 +228,13 @@ export default function Reservar() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fecha deseada *</label>
                 <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky" />
               </div>
             )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionales</label>
               <textarea rows={3} value={form.notas} onChange={e => set('notas', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky resize-none"
                 placeholder="Alergias, restricciones, consultas..." />
             </div>
           </div>
@@ -278,7 +278,7 @@ export default function Reservar() {
               )}
               <div className="flex justify-between py-2">
                 <span className="font-bold text-gray-800">Total</span>
-                <span className="font-bold text-brand-700 text-lg">
+                <span className="font-bold text-hero-navy text-lg">
                   {total.toLocaleString('pt-BR', { style: 'currency', currency: excursion.moneda || 'BRL' })}
                 </span>
               </div>
@@ -287,7 +287,7 @@ export default function Reservar() {
             {/* QR de pago */}
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-center mb-4">
               <p className="text-sm font-semibold text-gray-700 mb-1">Pago de seña (30%)</p>
-              <p className="text-2xl font-bold text-brand-700 mb-4">
+              <p className="text-2xl font-bold text-hero-navy mb-4">
                 {seña.toLocaleString('pt-BR', { style: 'currency', currency: excursion.moneda || 'BRL' })}
               </p>
               <img src={QR_PLACEHOLDER} alt="QR de pago" className="mx-auto w-44 h-44 rounded-xl border border-gray-200" />
@@ -317,12 +317,12 @@ export default function Reservar() {
         {/* ── PASO 3: Confirmado ── */}
         {paso === 3 && (
           <div className="text-center py-6">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold mb-2">¡Reserva recibida!</h2>
+            <span className="material-symbols-outlined text-hero-navy text-[64px] mb-2" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+            <h2 className="font-display-hero uppercase text-hero-navy text-4xl tracking-wide mb-2">¡Reserva recibida!</h2>
             <p className="text-gray-500 mb-2">
               Gracias <strong>{form.nombre}</strong>. Registramos tu reserva para
             </p>
-            <p className="font-semibold text-brand-700 mb-1">{excursion.nombre}</p>
+            <p className="font-semibold text-hero-navy mb-1">{excursion.nombre}</p>
             <p className="text-gray-400 text-sm mb-6">
               {form.fecha ? new Date(form.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
             </p>
@@ -343,7 +343,7 @@ export default function Reservar() {
               💬 Confirmar por WhatsApp
             </a>
             <br />
-            <Link to="/excursiones" className="text-brand-600 hover:underline text-sm">
+            <Link to="/excursiones" className="text-hero-navy hover:underline text-sm">
               Ver más excursiones
             </Link>
           </div>
@@ -363,7 +363,7 @@ export default function Reservar() {
                 (paso === 0 && (!form.nombre.trim() || !form.whatsapp.trim() || personas === 0)) ||
                 (paso === 1 && !form.fecha)
               }
-              className="bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
+              className="bg-hero-navy hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
             >
               Siguiente →
             </button>

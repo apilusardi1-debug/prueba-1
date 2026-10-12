@@ -30,13 +30,13 @@ function generarMarea(destino) {
 }
 
 function getEstado(a) {
-  if (a <= 0.79) return { label: 'IDEAL',      bg: '#00b4c8', color: '#001a1f' }
-  if (a <= 1.0)  return { label: 'ACEPTABLE',  bg: '#c49b2f', color: '#1a1000' }
+  if (a <= 0.79) return { label: 'IDEAL',      bg: '#88d1f4', color: '#072e40' }
+  if (a <= 1.0)  return { label: 'ACEPTABLE',  bg: '#f2e000', color: '#072e40' }
   return               { label: 'NO IDEAL',    bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
 }
 
 const C = {
-  bg: '#0b1e2d', teal: '#00b4c8', white: '#ffffff',
+  bg: '#072e40', teal: '#88d1f4', white: '#ffffff',
   muted: 'rgba(255,255,255,0.5)', rowBorder: 'rgba(255,255,255,0.07)',
   cardBorder: 'rgba(255,255,255,0.08)',
 }
@@ -48,15 +48,15 @@ export default function Marea() {
 
   return (
     <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: '80px' }}>
-      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '64px 24px 0' }}>
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '128px 24px 0' }}>
 
         {/* Label */}
-        <p style={{ fontFamily:"'Helvetica Neue',Arial,sans-serif", fontSize:'11px', fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:C.teal, marginBottom:'20px' }}>
+        <p style={{ fontSize:'11px', fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:C.teal, marginBottom:'20px' }}>
           Tabla de Marea · Nordeste
         </p>
 
         {/* H1 */}
-        <h1 style={{ fontFamily:"'Playfair Display',Georgia,serif", fontWeight:700, fontSize:'clamp(2.6rem,6vw,4.2rem)', lineHeight:1.05, letterSpacing:'-0.02em', color:C.white, marginBottom:'20px', maxWidth:'680px' }}>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontWeight:400, fontSize:'clamp(2.6rem,6vw,4.2rem)', lineHeight:1.05, letterSpacing:'0.01em', color:C.white, marginBottom:'20px', maxWidth:'680px' }}>
           Elegí el día perfecto<br/>para las piscinas naturales
         </h1>
 
@@ -70,7 +70,7 @@ export default function Marea() {
                 textTransform:'uppercase', cursor:'pointer',
                 border: active ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
                 background: active ? C.teal : 'transparent',
-                color: active ? '#001a1f' : 'rgba(255,255,255,0.7)',
+                color: active ? '#072e40' : 'rgba(255,255,255,0.7)',
                 transition:'all 0.18s',
               }}>{d}</button>
             )
@@ -78,25 +78,25 @@ export default function Marea() {
         </div>
 
         {/* Card próxima ventana ideal */}
-        <div style={{ background:'rgba(0,180,200,0.07)', border:'1px solid rgba(0,180,200,0.2)', borderRadius:'14px', padding:'24px 28px', marginBottom:'12px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
+        <div style={{ background:'rgba(136,209,244,0.07)', border:'1px solid rgba(136,209,244,0.2)', borderRadius:'14px', padding:'24px 28px', marginBottom:'12px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
           <div>
             <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:C.teal, marginBottom:'10px' }}>
               Próxima ventana ideal · {destinoSel}
             </p>
-            <p style={{ fontFamily:"'Playfair Display',Georgia,serif", fontSize:'clamp(1.8rem,4vw,2.6rem)', fontWeight:500, color:C.white, lineHeight:1 }}>
+            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(1.8rem,4vw,2.6rem)', fontWeight:400, color:C.white, lineHeight:1 }}>
               {proximaIdeal.diaLabel.charAt(0)+proximaIdeal.diaLabel.slice(1).toLowerCase()} {proximaIdeal.diaN} · {proximaIdeal.bajahora} h
             </p>
           </div>
           <div style={{ display:'flex', gap:'40px' }}>
             <div style={{ textAlign:'right' }}>
               <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Altura Mín.</p>
-              <p style={{ fontFamily:"'Playfair Display',serif", fontSize:'2rem', fontWeight:600, color:C.teal, lineHeight:1 }}>
+              <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2rem', fontWeight:400, color:C.teal, lineHeight:1 }}>
                 {String(proximaIdeal.bajaAltura).replace('.',',')} m
               </p>
             </div>
             <div style={{ textAlign:'right' }}>
               <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Duración</p>
-              <p style={{ fontFamily:"'Playfair Display',serif", fontSize:'2rem', fontWeight:600, color:C.white, lineHeight:1 }}>~3h</p>
+              <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2rem', fontWeight:400, color:C.white, lineHeight:1 }}>~3h</p>
             </div>
           </div>
         </div>
@@ -114,9 +114,9 @@ export default function Marea() {
           {mareas.map((d, idx) => {
             const estado = getEstado(d.bajaAltura)
             return (
-              <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'20px 24px', alignItems:'center', borderBottom: idx<mareas.length-1 ? `1px solid ${C.rowBorder}` : 'none', background: idx===0 ? 'rgba(0,180,200,0.04)' : 'transparent' }}>
+              <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'20px 24px', alignItems:'center', borderBottom: idx<mareas.length-1 ? `1px solid ${C.rowBorder}` : 'none', background: idx===0 ? 'rgba(136,209,244,0.04)' : 'transparent' }}>
                 <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
-                  <span style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:600, color:C.white, lineHeight:1 }}>{d.diaN}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.5rem', fontWeight:400, color:C.white, lineHeight:1 }}>{d.diaN}</span>
                   <span style={{ fontSize:'11px', fontWeight:700, letterSpacing:'0.06em', color:C.muted }}>{d.diaLabel}</span>
                 </div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>

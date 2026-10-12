@@ -63,41 +63,45 @@ export default function Privacidad() {
   const whatsapp = config?.whatsapp
 
   return (
-    <div style={{ backgroundColor: '#f9f3e3', minHeight: '100vh' }}>
-      <div style={{ borderBottom: '1px solid #e8d09a', padding: '72px 16px 48px', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.25em', color: '#b07420', textTransform: 'uppercase', marginBottom: 16 }}>
-          Legal
-        </p>
-        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, fontSize: 'clamp(2rem,5vw,3.5rem)', color: '#1C1208', lineHeight: 1.05, marginBottom: 16 }}>
-          Política de privacidad
-        </h1>
-        <p style={{ fontSize: '0.9rem', color: '#1C1208AA' }}>Última actualización: 19 de septiembre de 2026</p>
-      </div>
+    <div className="bg-surface min-h-screen">
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="bg-hero-navy pt-32 pb-16 md:pb-20">
+        <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+          <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
+            Política de privacidad
+          </h1>
+          <p className="font-display-hero uppercase text-hero-cream"
+            style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
+            Última actualización: 19 de septiembre de 2026
+          </p>
+        </div>
+      </section>
 
-      <div className="max-w-3xl mx-auto px-4 py-14 space-y-10">
+      <div className="max-w-3xl mx-auto px-margin-mobile py-12 md:py-16 space-y-10">
         {SECCIONES.map(({ titulo, parrafos, lista }) => (
           <section key={titulo}>
-            <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1.3rem', color: '#1C1208', marginBottom: 12 }}>
+            <h2 className="font-display-hero uppercase text-hero-navy text-3xl tracking-wide mb-3">
               {titulo}
             </h2>
             {parrafos?.map((p, i) => (
-              <p key={i} style={{ fontSize: '0.95rem', color: '#1C1208CC', lineHeight: 1.75, marginBottom: 10 }}>{p}</p>
+              <p key={i} className="font-body-md text-[15px] leading-relaxed text-on-surface-variant mb-2.5">{p}</p>
             ))}
             {lista && (
-              <ul style={{ paddingLeft: 20, listStyle: 'disc' }}>
+              <ul className="pl-5 list-disc">
                 {lista.map((item, i) => (
-                  <li key={i} style={{ fontSize: '0.95rem', color: '#1C1208CC', lineHeight: 1.75, marginBottom: 6 }}>{item}</li>
+                  <li key={i} className="font-body-md text-[15px] leading-relaxed text-on-surface-variant mb-1.5">{item}</li>
                 ))}
               </ul>
             )}
           </section>
         ))}
 
-        <section style={{ background: '#f2e4c0', borderRadius: 20, padding: '28px 24px' }}>
-          <h2 style={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, fontSize: '1.3rem', color: '#1C1208', marginBottom: 10 }}>
+        <section className="bg-hero-cream rounded-2xl p-7">
+          <h2 className="font-display-hero uppercase text-hero-navy text-3xl tracking-wide mb-2.5">
             Contacto
           </h2>
-          <p style={{ fontSize: '0.95rem', color: '#1C1208CC', lineHeight: 1.7, marginBottom: 14 }}>
+          <p className="font-body-md text-[15px] leading-relaxed text-on-surface-variant mb-4">
             Para cualquier consulta sobre esta política o sobre tus datos, escribinos por WhatsApp.
           </p>
           {whatsapp && (
@@ -105,7 +109,7 @@ export default function Privacidad() {
               href={`https://wa.me/${whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-block', background: '#1C1208', color: '#f9f3e3', fontWeight: 600, fontSize: '0.9rem', padding: '10px 22px', borderRadius: 999 }}
+              className="inline-block bg-hero-navy text-white font-label-lg text-[14px] px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity"
             >
               Escribir por WhatsApp
             </a>

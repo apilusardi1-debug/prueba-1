@@ -196,6 +196,8 @@ export function useAvisosMensajes({ habilitado, navigate }) {
       .channel('avisos-mensajes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, async ({ new: msg }) => {
         if (msg?.direccion !== 'entrante') return
+        // El historial importado de Kommo no es un mensaje nuevo: no suena ni avisa
+        if (msg.origen === 'kommo') return
         let conv = conversaciones.current.get(msg.conversacion_id)
         if (!conv) {
           const { data } = await supabase.from('conversaciones').select('*').eq('id', msg.conversacion_id).maybeSingle()

@@ -570,6 +570,15 @@ serve(async (req) => {
 
     if (!message) return new Response('ok', { status: 200 })
 
+    // Solo se atienden los mensajes escritos al número del CRM. Si la app queda suscrita a
+    // otra cuenta de WhatsApp (por ejemplo la del número que todavía usa Kommo), esos
+    // mensajes no entran al inbox ni los contesta el asistente desde el número equivocado.
+    const numeroDestino: string | undefined = value?.metadata?.phone_number_id
+    if (META_CRM_PHONE_NUMBER_ID && numeroDestino && String(numeroDestino) !== META_CRM_PHONE_NUMBER_ID) {
+      console.log(`webhook-whatsapp: mensaje para otro número (${numeroDestino}), se ignora`)
+      return new Response('ok', { status: 200 })
+    }
+
     const phone: string | undefined = message.from
     if (!phone) return new Response('ok', { status: 200 })
 

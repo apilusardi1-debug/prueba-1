@@ -125,6 +125,16 @@ Hasta 2026-10-08 casi todas las tablas tenían una policy `acceso_total_temporal
 
 **Pendiente** (quedan abiertas): el resto de las ~35 tablas, ninguna con la urgencia del trío de arriba.
 
+## En curso: migración de Kommo al CRM propio (estado al 2026-10-12)
+Corte del número real previsto para el **15 o 16/10**; el 17/10 vence el acceso a la API de historial de Kommo.
+- **Plan completo y decisiones**: memoria `project_transferencia_kommo.md`, en la carpeta de memorias del otro proyecto de Claude (`C:\Users\kasem\.claude\projects\c--Users-kasem-prueba-1-VS-CODE-ARCH\memory\`).
+- **Bloqueo real**: la API de chats de Kommo responde 400 "Channel must be linked to your client". Se le pidió a soporte de Kommo que vincule el canal de WhatsApp a la integración "Exportação histórico DreamTours" (id `194ad67c-81ed-48c8-88d5-768ec854ff2c`). El acceso a esa API vence el **17/10**. No depende de Florencia.
+- **Scripts** (fuera del repo): `C:\Users\kasem\kommo-exportacion\exportar-mensajes-kommo.mjs` y `cargar-mensajes-kommo.mjs`. Pendiente en el de carga: normalizar el teléfono (dígito 9) antes de buscar la conversación, y bajar adjuntos.
+- **Migración reescrita** sobre la versión vigente de `crm_metricas` (4 parámetros) y con el filtro también en `crm_sin_responder`. La versión anterior del archivo rompía el Dashboard. Cristian la corrió el 2026-10-12 y el Dashboard quedó funcionando.
+- **Memoria "Migracion 17"** (`project_migracion_17.md` en la carpeta de memorias de este proyecto): ahí se guarda todo lo importante del tema y la lista de pasos día a día. Leerla primero al retomar.
+- **Webhook**: `webhook-whatsapp` ignora los mensajes que no son para `META_CRM_PHONE_NUMBER_ID` (desplegado). `avisosMensajes.js` no avisa por mensajes con `origen = 'kommo'`.
+- **Cuenta real en Meta** (consulta de solo lectura con token temporal de la app "DreamsTour CRM"): la app ya puede leer la WABA `273455669191563`; la única app suscrita es Kommo; el número real está `CONNECTED`, calidad `GREEN`, `CLOUD_API`, phone number id `286111201255899`. No registrar el número, no suscribir la app ni quitar a Kommo hasta el día de la migración.
+
 ## Pendientes actuales
 - [ ] Regenerar el token permanente del número operativo (`META_WHATSAPP_TOKEN`); necesita la aprobación de Florencia. Mientras tanto no sale `aviso_cliente` (el chat interno de guía/chofer no depende de este token)
 - [ ] CRM: plantilla de reapertura para responder pasadas las 24 hs (consultar con Florencia)

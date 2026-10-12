@@ -188,10 +188,14 @@ export default function PublicLayout() {
       )}
 
       {/* Content */}
-      <main className="pb-16 md:pb-0"><Outlet /></main>
+      <main><Outlet /></main>
 
       {/* Footer */}
-      <footer className="bg-deep-ocean w-full py-16 mt-12">
+      {/* El Home termina en una sección de color a todo el ancho: sin margen arriba
+          del footer, para que no quede una franja blanca entre las dos. El espacio
+          para la barra inferior del celular va al final del footer (no entre el
+          contenido y el footer, donde también dejaba una franja blanca). */}
+      <footer className={`bg-deep-ocean w-full pt-16 pb-32 md:pb-16 ${pathname === '/' ? '' : 'mt-12'}`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           {/* Nav links */}
           <nav className="flex flex-col items-center md:items-start gap-4">
@@ -245,7 +249,7 @@ export default function PublicLayout() {
           </div>
         </div>
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mt-12 pt-6 border-t border-surface-variant/20">
-          <p className="text-sm text-sand-beige/60 text-center">© 2025 DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
+          <p className="text-sm text-sand-beige/60 text-center">© {new Date().getFullYear()} DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
         </div>
       </footer>
 

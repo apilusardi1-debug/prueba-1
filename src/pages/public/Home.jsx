@@ -151,6 +151,7 @@ export default function Home() {
         <div className="absolute inset-0">
           <video
             src={config?.hero_video || '/hero.mp4'}
+            poster={config?.hero_video ? undefined : '/hero-poster.jpg'}
             autoPlay loop muted playsInline
             className="w-full h-full object-cover"
           />
@@ -243,11 +244,11 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {excursionesDestacadas.map(e => (
               <Link key={e.id} to={`/excursiones/${e.id}`}
-                className="group block rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
+                className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(0,33,71,0.12)] hover:shadow-[0_12px_32px_rgba(0,33,71,0.2)] transition-shadow">
                 <div className="h-64 md:h-80 overflow-hidden">
                   <img src={e.imagen} alt={e.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
-                <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
+                <div className="flex-1 bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
                   <h3 className="font-display-hero uppercase text-hero-cream text-xl md:text-2xl leading-none line-clamp-2">
                     {e.nombre}
                   </h3>

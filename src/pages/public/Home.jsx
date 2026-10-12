@@ -443,7 +443,7 @@ export default function Home() {
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-xl px-8 py-4 rounded-full hover:opacity-90 transition-opacity">
-              Cupos Abiertos
+              Armá tu viaje
               <span className="material-symbols-outlined text-hero-yellow text-2xl">flight</span>
             </a>
           </div>

@@ -4,6 +4,7 @@ import { destinos } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
+import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 
 const RESENAS = [
   {
@@ -36,7 +37,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo funcionan las piscinas naturales?',
-    a: 'Las piscinas se forman solo con marea baja (menos de 0.7 metros). Nuestros guías conocen los horarios exactos de cada día para que no te pierdas el momento ideal.',
+    a: 'Las piscinas se forman solo con marea baja (0,60 metros o menos). Nuestros guías conocen los horarios exactos de cada día para que no te pierdas el momento ideal.',
   },
   {
     q: '¿Qué moneda usan? ¿Puedo pagar con tarjeta?',
@@ -117,6 +118,7 @@ function StatPill({ valor, label, tall, className = '' }) {
 export default function Home() {
   const { config } = useSiteConfig()
   const [faqOpen, setFaqOpen] = useState(null)
+  const mareaHoy = diaDeMarea(hoyEnDestino())
   const [excursionesDestacadas, setExcursionesDestacadas] = useState([])
   const [videosAgencia, setVideosAgencia] = useState([])
   const [videoActivo, setVideoActivo] = useState(null)
@@ -350,26 +352,30 @@ export default function Home() {
               </p>
             </div>
             <div className="bg-hero-sky rounded-2xl p-5">
-              <div className="flex justify-between items-center pb-3 border-b border-hero-navy/15">
-                <div className="flex items-center gap-2 text-hero-navy">
-                  <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
-                  <span className="font-label-lg text-label-sm uppercase">Marea Baja</span>
-                </div>
-                <div className="text-right text-hero-navy">
-                  <div className="font-label-lg text-[14px]">09:30 AM</div>
-                  <div className="font-label-sm text-[12px] text-hero-navy/60">0.2m</div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center pt-3">
-                <div className="flex items-center gap-2 text-hero-navy">
-                  <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
-                  <span className="font-label-lg text-label-sm uppercase">Marea Alta</span>
-                </div>
-                <div className="text-right text-hero-navy">
-                  <div className="font-label-lg text-[14px]">03:45 PM</div>
-                  <div className="font-label-sm text-[12px] text-hero-navy/60">2.1m</div>
-                </div>
-              </div>
+              {mareaHoy ? (
+                <>
+                  <div className="flex justify-between items-center pb-3 border-b border-hero-navy/15">
+                    <span className="font-label-lg text-label-sm uppercase text-hero-navy">Hoy</span>
+                    <span className="font-label-lg text-label-sm uppercase text-hero-navy">
+                      Piscinas: {mareaHoy.mejor ? `${mareaHoy.estado.label} a las ${mareaHoy.mejor.hora}` : mareaHoy.estado.label}
+                    </span>
+                  </div>
+                  {mareaHoy.mareas.map(m => (
+                    <div key={m.hora} className="flex justify-between items-center pt-3">
+                      <div className="flex items-center gap-2 text-hero-navy">
+                        <span className="material-symbols-outlined text-[18px]">{m.tipo === 'baja' ? 'arrow_downward' : 'arrow_upward'}</span>
+                        <span className="font-label-lg text-label-sm uppercase">Marea {m.tipo}</span>
+                      </div>
+                      <div className="text-right text-hero-navy">
+                        <span className="font-label-lg text-[14px]">{m.hora}</span>
+                        <span className="font-label-sm text-[12px] text-hero-navy/60 ml-2">{formatoAltura(m.altura)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="font-body-md text-body-md text-hero-navy">Consultá los mejores días para las piscinas naturales.</p>
+              )}
               <div className="mt-4 text-center">
                 <Link to="/marea" className="inline-flex items-center gap-1 font-label-lg text-label-sm uppercase text-hero-navy hover:opacity-70 transition-opacity">
                   Ver tabla completa

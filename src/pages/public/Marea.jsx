@@ -1,143 +1,126 @@
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { hoyEnDestino, proximosDias, proximaVentana, formatoAltura, ULTIMO_DIA } from '../../data/mareas.js'
 
-const DESTINOS = ['Porto de Galinhas', 'Maragogi', 'Maceió']
-const DIAS_CORTOS_LABEL = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
+const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const DIAS_A_MOSTRAR = 14
 
-function generarMarea(destino) {
-  const hoy = new Date()
-  const dias = []
-  const seed = destino.length * 7
-  for (let i = 0; i < 8; i++) {
-    const fecha = new Date(hoy)
-    fecha.setDate(hoy.getDate() + i)
-    const minBase = (seed + i * 48) % 60
-    const hrBaja = 9 + (i % 4)
-    const hrAlta = hrBaja + 6
-    const minBaja = (minBase + i * 2) % 60
-    const minAlta = (minBase + 18 + i * 2) % 60
-    const alturaBaja = parseFloat((0.3 + i * 0.09 + Math.sin(i + seed * 0.1) * 0.06).toFixed(1))
-    const alturaAlta = parseFloat((1.8 + Math.sin(i * 0.8 + seed * 0.05) * 0.3).toFixed(1))
-    dias.push({
-      fecha, diaN: fecha.getDate(),
-      diaLabel: DIAS_CORTOS_LABEL[fecha.getDay()],
-      bajahora: `${String(hrBaja).padStart(2,'0')}:${String(minBaja).padStart(2,'0')}`,
-      bajaAltura: alturaBaja,
-      altaHora: `${String(hrAlta > 23 ? hrAlta - 24 : hrAlta).padStart(2,'0')}:${String(minAlta).padStart(2,'0')}`,
-      altaAltura: alturaAlta,
-    })
-  }
-  return dias
+function partesFecha(fechaISO) {
+  const d = new Date(`${fechaISO}T12:00:00Z`)
+  return { semana: DIAS_SEMANA[d.getUTCDay()], dia: d.getUTCDate(), mes: MESES[d.getUTCMonth()] }
 }
 
-function getEstado(a) {
-  if (a <= 0.79) return { label: 'IDEAL',      bg: '#88d1f4', color: '#072e40' }
-  if (a <= 1.0)  return { label: 'ACEPTABLE',  bg: '#f2e000', color: '#072e40' }
-  return               { label: 'NO IDEAL',    bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
+const ESTILO_ESTADO = {
+  ideal:   'bg-hero-sky text-hero-navy',
+  posible: 'bg-hero-yellow text-hero-navy',
+  no:      'bg-white/10 text-hero-cream/50',
 }
 
-const C = {
-  bg: '#072e40', teal: '#88d1f4', white: '#ffffff',
-  muted: 'rgba(255,255,255,0.5)', rowBorder: 'rgba(255,255,255,0.07)',
-  cardBorder: 'rgba(255,255,255,0.08)',
+// Horas y alturas de un tipo de marea. En el celular, la altura va debajo de la
+// hora; la marea baja que sirve para las piscinas se resalta en celeste.
+function Mareas({ lista, destacada }) {
+  if (!lista.length) return <span className="text-hero-cream/30">—</span>
+  return (
+    <div className="flex flex-col gap-2 md:gap-1">
+      {lista.map(m => {
+        const resaltar = destacada?.hora === m.hora
+        return (
+          <div key={m.hora} className="flex flex-col md:flex-row md:items-baseline md:gap-2 leading-tight">
+            <span className={`font-label-lg text-[15px] ${resaltar ? 'text-hero-sky' : 'text-white'}`}>{m.hora}</span>
+            <span className={`font-label-sm text-[12px] ${resaltar ? 'text-hero-sky/80' : 'text-hero-cream/60'}`}>{formatoAltura(m.altura)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function Marea() {
-  const [destinoSel, setDestinoSel] = useState(DESTINOS[0])
-  const mareas = generarMarea(destinoSel)
-  const proximaIdeal = mareas.find(d => d.bajaAltura <= 0.7) || mareas[0]
+  const hoy = hoyEnDestino()
+  const dias = proximosDias(hoy, DIAS_A_MOSTRAR)
+  const ventana = proximaVentana(hoy)
+  const fin = partesFecha(ULTIMO_DIA)
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: '80px' }}>
-      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '128px 24px 0' }}>
-
-        {/* Label */}
-        <p style={{ fontSize:'11px', fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:C.teal, marginBottom:'20px' }}>
-          Tabla de Marea · Nordeste
-        </p>
-
-        {/* H1 */}
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontWeight:400, fontSize:'clamp(2.6rem,6vw,4.2rem)', lineHeight:1.05, letterSpacing:'0.01em', color:C.white, marginBottom:'20px', maxWidth:'680px' }}>
-          Elegí el día perfecto<br/>para las piscinas naturales
+    <div className="bg-hero-navy min-h-screen">
+      <div className="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto pt-32 pb-20">
+        <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
+          style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
+          Tabla de marea
         </h1>
-
-        {/* Tabs */}
-        <div style={{ display:'flex', gap:'8px', marginBottom:'32px', flexWrap:'wrap' }}>
-          {DESTINOS.map(d => {
-            const active = destinoSel === d
-            return (
-              <button key={d} onClick={() => setDestinoSel(d)} style={{
-                padding:'10px 22px', borderRadius:'6px', fontSize:'12px', fontWeight:700, letterSpacing:'0.08em',
-                textTransform:'uppercase', cursor:'pointer',
-                border: active ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
-                background: active ? C.teal : 'transparent',
-                color: active ? '#072e40' : 'rgba(255,255,255,0.7)',
-                transition:'all 0.18s',
-              }}>{d}</button>
-            )
-          })}
-        </div>
-
-        {/* Card próxima ventana ideal */}
-        <div style={{ background:'rgba(136,209,244,0.07)', border:'1px solid rgba(136,209,244,0.2)', borderRadius:'14px', padding:'24px 28px', marginBottom:'12px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
-          <div>
-            <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:C.teal, marginBottom:'10px' }}>
-              Próxima ventana ideal · {destinoSel}
-            </p>
-            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(1.8rem,4vw,2.6rem)', fontWeight:400, color:C.white, lineHeight:1 }}>
-              {proximaIdeal.diaLabel.charAt(0)+proximaIdeal.diaLabel.slice(1).toLowerCase()} {proximaIdeal.diaN} · {proximaIdeal.bajahora} h
-            </p>
-          </div>
-          <div style={{ display:'flex', gap:'40px' }}>
-            <div style={{ textAlign:'right' }}>
-              <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Altura Mín.</p>
-              <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2rem', fontWeight:400, color:C.teal, lineHeight:1 }}>
-                {String(proximaIdeal.bajaAltura).replace('.',',')} m
-              </p>
-            </div>
-            <div style={{ textAlign:'right' }}>
-              <p style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.16em', textTransform:'uppercase', color:C.muted, marginBottom:'8px' }}>Duración</p>
-              <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2rem', fontWeight:400, color:C.white, lineHeight:1 }}>~3h</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabla */}
-        <div style={{ borderRadius:'14px', overflow:'hidden', border:`1px solid ${C.cardBorder}` }}>
-          {/* Header */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'14px 24px', borderBottom:`1px solid ${C.rowBorder}` }}>
-            {['DÍA','MAREA BAJA','MAREA ALTA','ESTADO'].map((h,i) => (
-              <p key={h} style={{ fontSize:'10px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:C.muted, textAlign:i===3?'right':'left' }}>{h}</p>
-            ))}
-          </div>
-
-          {/* Filas */}
-          {mareas.map((d, idx) => {
-            const estado = getEstado(d.bajaAltura)
-            return (
-              <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 1.4fr 1.4fr 1fr', padding:'20px 24px', alignItems:'center', borderBottom: idx<mareas.length-1 ? `1px solid ${C.rowBorder}` : 'none', background: idx===0 ? 'rgba(136,209,244,0.04)' : 'transparent' }}>
-                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'1.5rem', fontWeight:400, color:C.white, lineHeight:1 }}>{d.diaN}</span>
-                  <span style={{ fontSize:'11px', fontWeight:700, letterSpacing:'0.06em', color:C.muted }}>{d.diaLabel}</span>
-                </div>
-                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
-                  <span style={{ fontSize:'1rem', fontWeight:600, color:C.white }}>{d.bajahora}</span>
-                  <span style={{ fontSize:'0.82rem', fontWeight:700, color:C.teal }}>{String(d.bajaAltura).replace('.',',')} m</span>
-                </div>
-                <div style={{ display:'flex', alignItems:'baseline', gap:'8px' }}>
-                  <span style={{ fontSize:'1rem', fontWeight:500, color:'rgba(255,255,255,0.6)' }}>{d.altaHora}</span>
-                  <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.35)' }}>{String(d.altaAltura).replace('.',',')} m</span>
-                </div>
-                <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                  <span style={{ display:'inline-block', padding:'5px 14px', borderRadius:'999px', fontSize:'10px', fontWeight:700, letterSpacing:'0.1em', background:estado.bg, color:estado.color }}>{estado.label}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:'24px' }}>
-          * Datos orientativos. Para excursiones acuáticas, consultá con tu guía local.
+        <p className="font-display-hero uppercase text-hero-cream mb-4"
+          style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
+          Porto de Galinhas y Maragogi
         </p>
+        <p className="font-body-md text-body-md text-hero-cream/70 max-w-2xl mb-10">
+          Las piscinas naturales aparecen con la marea baja. Las mejores salidas son de día, con la marea en 0,60 m o menos; cuanto más baja, mejor.
+        </p>
+
+        {dias.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 p-8 text-center">
+            <p className="font-body-md text-body-md text-hero-cream/80 mb-6">
+              Estamos actualizando la tabla de mareas. Escribinos y te pasamos los mejores días para tu viaje.
+            </p>
+            <Link to="/" className="inline-block border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:bg-hero-yellow hover:text-hero-navy transition-colors">
+              Volver al inicio
+            </Link>
+          </div>
+        ) : (
+          <>
+            {/* Próxima salida posible a las piscinas */}
+            {ventana && (() => {
+              const f = partesFecha(ventana.fecha)
+              return (
+                <div className="rounded-2xl bg-hero-sky/10 border border-hero-sky/25 p-6 md:p-7 mb-4 flex flex-wrap items-center justify-between gap-6">
+                  <div>
+                    <p className="font-label-lg text-[11px] uppercase tracking-[0.2em] text-hero-sky mb-2">
+                      {ventana.fecha === hoy ? 'Hoy se puede ir a las piscinas' : 'Próximo día para las piscinas'}
+                    </p>
+                    <p className="font-display-hero uppercase text-white leading-none" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
+                      {f.semana} {f.dia} {f.mes} · {ventana.mejor.hora} h
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-label-lg text-[11px] uppercase tracking-[0.16em] text-hero-cream/50 mb-2">Marea baja</p>
+                    <p className="font-display-hero text-hero-sky leading-none text-[2rem]">{formatoAltura(ventana.mejor.altura)}</p>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Tabla */}
+            <div className="rounded-2xl border border-white/10 overflow-hidden">
+              <div className="grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-3 border-b border-white/10">
+                {['Día', 'Marea baja', 'Marea alta', 'Piscinas'].map((h, i) => (
+                  <p key={h} className={`font-label-lg text-[10px] uppercase tracking-[0.16em] text-hero-cream/50 ${i === 3 ? 'text-right' : ''}`}>{h}</p>
+                ))}
+              </div>
+              {dias.map((d, i) => {
+                const f = partesFecha(d.fecha)
+                return (
+                  <div key={d.fecha}
+                    className={`grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-4 items-center ${i < dias.length - 1 ? 'border-b border-white/[0.07]' : ''} ${d.fecha === hoy ? 'bg-hero-sky/[0.06]' : ''}`}>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display-hero text-white text-[1.6rem] leading-none">{f.dia}</span>
+                      <span className="font-label-lg text-[11px] uppercase text-hero-cream/50">{d.fecha === hoy ? 'Hoy' : f.semana}</span>
+                    </div>
+                    <Mareas lista={d.mareas.filter(m => m.tipo === 'baja')} destacada={d.mejor} />
+                    <Mareas lista={d.mareas.filter(m => m.tipo === 'alta')} />
+                    <div className="flex justify-end">
+                      <span className={`inline-block px-3 py-1 rounded-full font-label-lg text-[10px] uppercase tracking-wider whitespace-nowrap ${ESTILO_ESTADO[d.estado.id]}`}>
+                        {d.estado.label}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="font-body-md text-[12px] text-hero-cream/40 text-center mt-6">
+              Previsión de mareas de referencia, cargada hasta el {fin.dia} de {fin.mes}. Confirmá con tu guía antes del paseo.
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

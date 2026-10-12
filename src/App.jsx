@@ -46,6 +46,7 @@ import GeneradorPropuesta from './pages/admin/paquetes/GeneradorPropuesta.jsx'
 import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
 import Traslados from './pages/admin/Traslados.jsx'
 import TrasladosInfo from './pages/public/TrasladosInfo.jsx'
+import PaquetesInfo from './pages/public/PaquetesInfo.jsx'
 import Superadmin from './pages/admin/Superadmin.jsx'
 import OperacionesEnCurso from './pages/admin/OperacionesEnCurso.jsx'
 import Mensajes from './pages/admin/Mensajes.jsx'
@@ -56,7 +57,7 @@ const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { path: '/',                      element: <Home /> },
-      { path: '/paquetes',              element: <Catalogo categoria="paquetes" /> },
+      { path: '/paquetes',              element: <PaquetesInfo /> },
       { path: '/excursiones',           element: <Catalogo categoria="excursiones" /> },
       { path: '/excursiones/:id',       element: <ExcursionDetalle /> },
       { path: '/reservar/:id',          element: <Reservar /> },

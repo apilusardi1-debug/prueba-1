@@ -45,6 +45,7 @@ import ClientesPaquetes from './pages/admin/paquetes/ClientesPaquetes.jsx'
 import GeneradorPropuesta from './pages/admin/paquetes/GeneradorPropuesta.jsx'
 import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
 import Traslados from './pages/admin/Traslados.jsx'
+import TrasladosInfo from './pages/public/TrasladosInfo.jsx'
 import Superadmin from './pages/admin/Superadmin.jsx'
 import OperacionesEnCurso from './pages/admin/OperacionesEnCurso.jsx'
 import Mensajes from './pages/admin/Mensajes.jsx'
@@ -64,7 +65,7 @@ const router = createBrowserRouter([
       { path: '/destinos/:id',          element: <DestinoDetalle /> },
       { path: '/hoteles',               element: <Hoteles /> },
       { path: '/hoteles/:id',           element: <HotelDetalle /> },
-      { path: '/traslados',             element: <Catalogo categoria="traslados" /> },
+      { path: '/traslados',             element: <TrasladosInfo /> },
       { path: '/marea',                 element: <Marea /> },
       { path: '/nosotros',              element: <Nosotros /> },
       { path: '/privacidad',            element: <Privacidad /> },

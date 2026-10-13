@@ -4,6 +4,7 @@ import { detectarInteresConExtras } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo, conEtiqueta } from '../_shared/etiquetas.ts'
 import { leerPedidoWebPaseos, destinosDelPedido, ETIQUETA_PEDIDO_WEB, etiquetaVendedor, type PedidoWebPaseos } from '../_shared/pedidoWebPaseos.ts'
+import { esPedidoWebPaquete } from '../_shared/pedidoWebPaquete.ts'
 import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
@@ -472,6 +473,31 @@ async function completarLeadConPedidoWeb(supabase: Supabase, phone: string, pedi
   }
 }
 
+// Formulario de /paquetes del sitio: trae los mismos datos que el formulario del asistente,
+// así que el lead entra al embudo de Paquetes ya filtrado, conteste o no el asistente
+// (puede estar apagado, el chat pausado o ya atendido por una persona). Mismas guardas de
+// siempre: no se mueve a un lead que el equipo ya está trabajando en otra etapa.
+async function recibirPedidoWebPaquete(supabase: Supabase, phone: string, texto: string, esNuevo: boolean) {
+  try {
+    const { data: lead } = await supabase.from('leads').select('id, nombre, notas, etiquetas').eq('whatsapp', phone).maybeSingle()
+    if (!lead) return
+    const etiquetas: string[] = lead.etiquetas ?? []
+    const cambios: Record<string, unknown> = { etiquetas: conEtiqueta(etiquetas, ETIQUETA_PEDIDO_WEB) ?? etiquetas }
+    const { nombre } = extraerDatosViaje([texto])
+    if (nombre && !nombreValido(lead.nombre)) cambios.nombre = nombre
+    if (!esNuevo) {
+      const fecha = new Date().toLocaleDateString('es-AR', { timeZone: 'America/Recife' })
+      cambios.notas = [lead.notas, `Pedido desde la web (${fecha}):\n${texto}`].filter(Boolean).join('\n\n')
+    }
+    await supabase.from('leads').update(cambios).eq('id', lead.id)
+  } catch (err) {
+    console.error('recibirPedidoWebPaquete error:', err)
+  }
+  await etiquetarLeadPorGrupo(supabase, phone, 'paquetes')
+  await enviarLeadAlEmbudoPorGrupo(supabase, phone, 'paquetes')
+  await moverAFiltrado(supabase, phone)
+}
+
 // La conversación, solo si el asistente puede actuar en ella ahora.
 async function convDondeActua(supabase: Supabase, convId: string) {
   // select('*'): así funciona igual antes y después de correr la migración de bot_pausado
@@ -505,6 +531,14 @@ async function ejecutarBot(supabase: Supabase, convId: string, phone: string, me
   // dos opciones y el asistente mostraría el menú igual).
   if (textosDeLaRafaga(hilo).some((t) => leerPedidoWebPaseos(t))) {
     await derivarOCerrar(supabase, cfg, conv.id, phone, 'paseos')
+    return
+  }
+  // El formulario de /paquetes ya trae todo lo que pregunta el filtro: directo a una persona
+  // de Paquetes, sin menú ni preguntas (también si estaba a mitad del cuestionario).
+  const pedidoPaquete = textosDeLaRafaga(hilo).find((t) => esPedidoWebPaquete(t))
+  if (pedidoPaquete) {
+    await guardarNombreDicho(supabase, conv, phone, extraerDatosViaje([pedidoPaquete]).nombre)
+    await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
     return
   }
   if (conv.bot_estado === 'filtrando') {
@@ -673,9 +707,11 @@ serve(async (req) => {
     // prefiere lo detectado por palabra clave (usa los nombres de la lista de destinos) y,
     // si no reconoce ninguno, los destinos que vienen entre paréntesis en el pedido.
     const pedidoWeb = leerPedidoWebPaseos(texto)
+    // El formulario de /paquetes ("Armar mi paquete") ya trae todos los datos del filtro.
+    const pedidoPaquete = !pedidoWeb && esPedidoWebPaquete(texto)
     const interes = pedidoWeb
       ? { tipo: 'paseo', destino: interesDetectado.destino ?? destinosDelPedido(pedidoWeb) }
-      : interesDetectado
+      : pedidoPaquete ? { tipo: 'paquete', destino: interesDetectado.destino } : interesDetectado
 
     const { data: leadExistente } = await supabase
       .from('leads').select('id, estado, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()
@@ -709,6 +745,7 @@ serve(async (req) => {
       await etiquetarLeadPorGrupo(supabase, phone, 'paseos')
       await enviarLeadAlEmbudoPorGrupo(supabase, phone, 'paseos')
     }
+    if (pedidoPaquete) await recibirPedidoWebPaquete(supabase, phone, texto, !leadExistente)
 
     // Un interés de Traslado o de Hospedaje (detectado por palabra clave, sin pasar por el
     // menú de Paquetes/Paseos) manda igual al embudo correspondiente -- pedido de Cristian,

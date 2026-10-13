@@ -26,7 +26,7 @@ const LABEL = 'block font-label-lg text-label-sm uppercase text-hero-navy/80 mb-
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-function Contador({ label, valor, min, onChange }) {
+export function Contador({ label, valor, min, onChange }) {
   return (
     <div className="flex items-center justify-between bg-white border-2 border-hero-navy/15 rounded-xl px-3.5 py-2.5">
       <span className="font-body-md text-[13px] text-on-surface-variant font-medium">{label}</span>

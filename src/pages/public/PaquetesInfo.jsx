@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { destinos } from '../../data/mockData.js'
-import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
 
 // Página que explica cómo funcionan los paquetes. Antes /paquetes era el
 // catálogo filtrado con paquetes armados de antemano; los paquetes se arman a
@@ -29,30 +30,23 @@ const GESTIONES = [
   'Asistencia y orientación durante todo el viaje',
 ]
 
-const MENSAJE_WA = `Hola! Quiero armar un paquete.
-Destinos:
-Fechas:
-Adultos:
-Menores (edades):
-Presupuesto:`
-
 const TITULO = 'font-display-hero uppercase text-hero-navy mb-6'
 const TITULO_ESTILO = { fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }
 
 export default function PaquetesInfo() {
-  const { config } = useSiteConfig()
-  const waHref = `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(MENSAJE_WA)}`
+  const [formAbierto, setFormAbierto] = useState(false)
 
   const Boton = () => (
-    <a href={waHref} target="_blank" rel="noopener noreferrer"
+    <button type="button" onClick={() => setFormAbierto(true)}
       className="inline-flex items-center justify-center gap-2 bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
-      <span className="material-symbols-outlined text-[20px]">chat</span>
+      <span className="material-symbols-outlined text-[20px]">edit_note</span>
       Armar mi paquete
-    </a>
+    </button>
   )
 
   return (
     <div className="bg-surface min-h-screen">
+      {formAbierto && <FormularioPaquete onClose={() => setFormAbierto(false)} />}
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="bg-hero-navy pt-32 pb-16 md:pb-20">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">

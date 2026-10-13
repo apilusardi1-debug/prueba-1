@@ -499,17 +499,21 @@ async function ejecutarBot(supabase: Supabase, convId: string, phone: string, me
   if (!conv) return
 
   const hilo = await cargarHilo(supabase, convId)
+  // El pedido de la web ya dice que son paseos: va directo a ese equipo, sin menú y aunque
+  // estuviera a mitad del cuestionario de Paquetes. Así tampoco depende de las palabras del
+  // mensaje (un paseo con "traslado" u "hotel" en el nombre haría que el texto coincida con
+  // dos opciones y el asistente mostraría el menú igual).
+  if (textosDeLaRafaga(hilo).some((t) => leerPedidoWebPaseos(t))) {
+    await derivarOCerrar(supabase, cfg, conv.id, phone, 'paseos')
+    return
+  }
   if (conv.bot_estado === 'filtrando') {
     await seguirFiltro(supabase, cfg, conv, phone, hilo)
     return
   }
 
   const esperando = conv.bot_estado === 'esperando'
-  // El pedido de la web ya dice que son paseos: va directo a ese equipo, sin menú. Así no
-  // depende de las palabras del mensaje (un paseo con "traslado" u "hotel" en el nombre
-  // haría que el texto coincida con dos opciones y el asistente mostraría el menú igual).
-  const pedidoWeb = textosDeLaRafaga(hilo).some((t) => leerPedidoWebPaseos(t))
-  const opcionElegida = pedidoWeb ? 'paseos' : grupoElegido(message, esperando, textosDeLaRafaga(hilo))
+  const opcionElegida = grupoElegido(message, esperando, textosDeLaRafaga(hilo))
   // "Traslados" y "Hospedajes" no tienen equipo de reparto ni embudo propio — entran al mismo
   // circuito que Paseos y Paquetes respectivamente (mismo criterio que ya se usa con el
   // interés detectado por palabra clave, ver GRUPO_POR_INTERES en el webhook). El botón del
@@ -697,7 +701,14 @@ serve(async (req) => {
       if (Object.keys(cambios).length) await supabase.from('leads').update(cambios).eq('id', leadExistente.id)
     }
 
-    if (pedidoWeb) await completarLeadConPedidoWeb(supabase, phone, pedidoWeb, texto, !leadExistente)
+    if (pedidoWeb) {
+      await completarLeadConPedidoWeb(supabase, phone, pedidoWeb, texto, !leadExistente)
+      // Un pedido de paseos de la web entra siempre al embudo de Paseos, conteste o no el
+      // asistente (puede estar apagado, el chat pausado o ya atendido por una persona).
+      // Misma guarda de siempre: no se mueve a un lead que el equipo ya está trabajando.
+      await etiquetarLeadPorGrupo(supabase, phone, 'paseos')
+      await enviarLeadAlEmbudoPorGrupo(supabase, phone, 'paseos')
+    }
 
     // Un interés de Traslado o de Hospedaje (detectado por palabra clave, sin pasar por el
     // menú de Paquetes/Paseos) manda igual al embudo correspondiente -- pedido de Cristian,

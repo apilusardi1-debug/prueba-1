@@ -60,11 +60,12 @@ const DESTINOS_HOME = [
 // explícito; después siguen los demás paseos activos, en orden alfabético.
 const PASEOS_DESTACADOS_HOME = ['Maragogi', 'Praia dos Carneiros', 'Isla de Santo Aleixo']
 
+// A los costados, a la altura de las fotos; en la punta del carrusel la flecha de ese lado se esconde
 function FlechaCarrusel({ lado, onClick, deshabilitada }) {
   return (
     <button type="button" onClick={onClick} disabled={deshabilitada}
       aria-label={lado === 'izq' ? 'Paseos anteriores' : 'Paseos siguientes'}
-      className="w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-hero-navy bg-white text-hero-navy flex items-center justify-center shadow-[0_4px_12px_rgba(7,46,64,0.15)] hover:bg-hero-navy hover:text-hero-cream transition-colors disabled:opacity-30 disabled:pointer-events-none">
+      className={`absolute z-10 top-32 md:top-40 -translate-y-1/2 ${lado === 'izq' ? 'left-0 md:-left-6' : 'right-0 md:-right-6'} w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-hero-navy bg-white text-hero-navy flex items-center justify-center shadow-[0_4px_12px_rgba(7,46,64,0.15)] hover:bg-hero-navy hover:text-hero-cream transition-[opacity,background-color,color] disabled:opacity-0 disabled:pointer-events-none`}>
       <span className="material-symbols-outlined text-[24px]">{lado === 'izq' ? 'chevron_left' : 'chevron_right'}</span>
     </button>
   )
@@ -91,14 +92,12 @@ function CarruselPaseos({ children }) {
   const mover = (dir) => pista.current?.scrollBy({ left: dir * pista.current.clientWidth, behavior: 'smooth' })
 
   return (
-    <div>
+    <div className="relative">
+      <FlechaCarrusel lado="izq" onClick={() => mover(-1)} deshabilitada={puntas.inicio} />
+      <FlechaCarrusel lado="der" onClick={() => mover(1)} deshabilitada={puntas.fin} />
       <div ref={pista} onScroll={medir}
         className="no-scrollbar flex gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory scroll-px-margin-mobile md:scroll-px-0 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-2">
         {children}
-      </div>
-      <div className="flex justify-center gap-3 mt-6">
-        <FlechaCarrusel lado="izq" onClick={() => mover(-1)} deshabilitada={puntas.inicio} />
-        <FlechaCarrusel lado="der" onClick={() => mover(1)} deshabilitada={puntas.fin} />
       </div>
     </div>
   )

@@ -56,9 +56,53 @@ const DESTINOS_HOME = [
   { id: 'maceio',  nombre: 'Maceió',               imagen: '/Maceio.jpeg' },
 ]
 
-// Los 3 paseos más conocidos, en este orden — pedido explícito, no los 3
-// primeros que traiga la base alfabéticamente.
+// Los 3 paseos más conocidos van primero en el carrusel, en este orden — pedido
+// explícito; después siguen los demás paseos activos, en orden alfabético.
 const PASEOS_DESTACADOS_HOME = ['Maragogi', 'Praia dos Carneiros', 'Isla de Santo Aleixo']
+
+function FlechaCarrusel({ lado, onClick, deshabilitada }) {
+  return (
+    <button type="button" onClick={onClick} disabled={deshabilitada}
+      aria-label={lado === 'izq' ? 'Paseos anteriores' : 'Paseos siguientes'}
+      className="w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-hero-navy bg-white text-hero-navy flex items-center justify-center shadow-[0_4px_12px_rgba(7,46,64,0.15)] hover:bg-hero-navy hover:text-hero-cream transition-colors disabled:opacity-30 disabled:pointer-events-none">
+      <span className="material-symbols-outlined text-[24px]">{lado === 'izq' ? 'chevron_left' : 'chevron_right'}</span>
+    </button>
+  )
+}
+
+// Carrusel horizontal sin avance automático: cada flecha corre una "página" (lo
+// que entra a la vista). Las flechas se apagan al llegar a cada punta.
+function CarruselPaseos({ children }) {
+  const pista = useRef(null)
+  const [puntas, setPuntas] = useState({ inicio: true, fin: false })
+
+  function medir() {
+    const el = pista.current
+    if (!el) return
+    setPuntas({ inicio: el.scrollLeft <= 4, fin: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 })
+  }
+
+  useEffect(() => {
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [children])
+
+  const mover = (dir) => pista.current?.scrollBy({ left: dir * pista.current.clientWidth, behavior: 'smooth' })
+
+  return (
+    <div>
+      <div ref={pista} onScroll={medir}
+        className="no-scrollbar flex gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory scroll-px-margin-mobile md:scroll-px-0 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-2">
+        {children}
+      </div>
+      <div className="flex justify-center gap-3 mt-6">
+        <FlechaCarrusel lado="izq" onClick={() => mover(-1)} deshabilitada={puntas.inicio} />
+        <FlechaCarrusel lado="der" onClick={() => mover(1)} deshabilitada={puntas.fin} />
+      </div>
+    </div>
+  )
+}
 
 const SERVICIOS = [
   { label: 'Paquetes Aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
@@ -129,9 +173,8 @@ export default function Home() {
         const { data, error } = await excursionesApi.getAll()
         if (!error && data) {
           const paseos = data.map(normalizarExcursion).filter(e => e.categoria === 'excursiones')
-          setExcursionesDestacadas(
-            PASEOS_DESTACADOS_HOME.map(nombre => paseos.find(e => e.nombre === nombre)).filter(Boolean)
-          )
+          const primeros = PASEOS_DESTACADOS_HOME.map(nombre => paseos.find(e => e.nombre === nombre)).filter(Boolean)
+          setExcursionesDestacadas([...primeros, ...paseos.filter(e => !primeros.includes(e))])
         }
       } catch (_) {}
     }
@@ -243,12 +286,12 @@ export default function Home() {
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.02em' }}>
             Reserva tu Paseo
           </h2>
-          {/* En el celular, carrusel horizontal (una tarjeta y un poco de la siguiente);
-              desde md, grilla de tres */}
-          <div className="no-scrollbar flex md:grid md:grid-cols-3 gap-4 md:gap-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory scroll-px-margin-mobile -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-2 md:pb-0">
+          {/* Carrusel que se mueve solo con las flechas (o deslizando): en el celular una
+              tarjeta y un poco de la siguiente, desde md tres por vista */}
+          <CarruselPaseos>
             {excursionesDestacadas.map(e => (
               <Link key={e.id} to={`/excursiones/${e.id}`}
-                className="snap-start flex-shrink-0 w-[82%] md:w-auto group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
+                className="snap-start flex-shrink-0 w-[82%] md:w-[calc((100%-4rem)/3)] group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
                 <div className="h-64 md:h-80 overflow-hidden">
                   <img src={e.imagen} alt={e.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
@@ -265,7 +308,7 @@ export default function Home() {
                 </div>
               </Link>
             ))}
-          </div>
+          </CarruselPaseos>
           <div className="mt-10 text-center">
             <Link to="/excursiones" className="border-2 border-deep-ocean text-deep-ocean font-label-lg text-label-lg px-8 py-3 rounded hover:bg-deep-ocean hover:text-white transition-colors inline-block">
               Ver Todos los Paseos

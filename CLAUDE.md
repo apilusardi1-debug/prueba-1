@@ -137,6 +137,15 @@ Corte del número real previsto para el **15 o 16/10**; el 17/10 vence el acceso
 - **Webhook**: `webhook-whatsapp` ignora los mensajes que no son para `META_CRM_PHONE_NUMBER_ID` (desplegado). `avisosMensajes.js` no avisa por mensajes con `origen = 'kommo'`.
 - **Cuenta real en Meta** (consulta de solo lectura con token temporal de la app "DreamsTour CRM"): la app ya puede leer la WABA `273455669191563`; la única app suscrita es Kommo; el número real está `CONNECTED`, calidad `GREEN`, `CLOUD_API`, phone number id `286111201255899`. No registrar el número, no suscribir la app ni quitar a Kommo hasta el día de la migración.
 
+### 360dialog y coexistencia (decidido el 2026-10-13)
+El número real va a pasar de Kommo a **360dialog** (proveedor oficial, plan Regular) para mantener la **coexistencia**: el mismo número funciona en la app WhatsApp Business del celular y en nuestro CRM. Es un solo corte, de madrugada (1 a 2 hs), fecha a definir. Se crea una cuenta de WhatsApp (WABA) nueva: se pierden las 7 plantillas y el nombre visible, y el Flow "Datos del viaje" hay que crearlo de nuevo ahí.
+- **Código ya desplegado y probado con el entorno de prueba de 360dialog** (recepción, asistente y respuesta a mano; sin probar archivos, mensajes enviados desde el celular ni historial): `supabase/functions/_shared/proveedorWhatsapp.ts`, `webhook-whatsapp` y `send-whatsapp`.
+- **Interruptor**: el secret `D360_API_KEY`. Si está cargado, el número del CRM envía y recibe por 360dialog; si no está (como hoy), todo sigue por Meta directo. Otros secrets: `D360_BASE_URL` (opcional, para el entorno de prueba), `D360_WEBHOOK_AUTH` ("usuario:clave": 360dialog no firma con nuestro App Secret, manda Basic Auth) y `FLOW_ID_PAQUETES` (id del Flow en la cuenta nueva).
+- El webhook acepta avisos con firma de Meta **o** con la credencial de 360dialog. Lo que el equipo mande desde el celular entra como mensaje saliente con `origen = 'celular'`. El historial que sincroniza Meta al conectar se guarda crudo en el bucket `whatsapp-media/historial-360dialog/` (falta el importador).
+- Si el Flow no se puede enviar, el asistente manda las preguntas por texto en vez de quedarse callado.
+- **Migración pendiente de correr** (recién hace falta el día del corte): `20261013100000_mensajes_desde_celular.sql`, para que los mensajes del celular no cuenten como gasto.
+- **Al desplegar `webhook-whatsapp` o `send-whatsapp`**: hacer `git pull` antes, siempre. Se despliega lo que hay en la computadora, y una versión vieja borra todo esto.
+
 ## Pendientes actuales
 - [ ] Regenerar el token permanente del número operativo (`META_WHATSAPP_TOKEN`); necesita la aprobación de Florencia. Mientras tanto no sale `aviso_cliente` (el chat interno de guía/chofer no depende de este token)
 - [ ] CRM: plantilla de reapertura para responder pasadas las 24 hs (consultar con Florencia)

@@ -9,6 +9,7 @@ import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEnt
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
 import { firmaMetaValida } from '../_shared/firmaMeta.ts'
+import { destinoMensajesCrm, descargarMediaCrm, autorizacion360Valida } from '../_shared/proveedorWhatsapp.ts'
 
 // Webhook oficial de Meta Cloud API para el número de CRM (leads/clientes).
 // Reemplaza la versión anterior, que hablaba el formato de WuzAPI (form-encoded
@@ -19,7 +20,6 @@ import { firmaMetaValida } from '../_shared/firmaMeta.ts'
 const META_VERIFY_TOKEN = Deno.env.get('META_VERIFY_TOKEN')
 const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
 const META_APP_SECRET = Deno.env.get('META_APP_SECRET')
-const META_API_VERSION = 'v21.0'
 const MEDIA_BUCKET = 'whatsapp-media'
 
 // WhatsApp Flow "Datos del viaje" (filtro de Paquetes): alternativa al mensaje de texto,
@@ -27,7 +27,9 @@ const MEDIA_BUCKET = 'whatsapp-media'
 // le llega a cualquier cliente, no solo a números de prueba. Al subir un cambio de
 // contenido (assets) Meta lo vuelve a poner en borrador solo — hay que publicarlo de
 // nuevo después de cada edición, o el cliente vuelve a ver el aviso de "solo prueba".
-const FLOW_ID_PAQUETES = '2122264095351293'
+// El Flow pertenece a la cuenta de WhatsApp (WABA) donde se creó: si el número cambia de
+// cuenta hay que volver a crearlo ahí y cargar su id nuevo en el secret FLOW_ID_PAQUETES.
+const FLOW_ID_PAQUETES = Deno.env.get('FLOW_ID_PAQUETES') ?? '2122264095351293'
 const DESTINO_FLOW: Record<string, string> = {
   porto_de_galinhas: 'Porto de Galinhas', maragogi: 'Maragogi', pipa: 'Pipa',
   fernando_de_noronha: 'Fernando de Noronha', maceio: 'Maceió',
@@ -65,14 +67,7 @@ const EXT_POR_MIME: Record<string, string> = {
 // temporal y bajarlo con el mismo token. Se guarda en un bucket privado y en el
 // mensaje queda solo la ruta.
 async function guardarMedia(supabase: ReturnType<typeof createClient>, mediaId: string, convId: string, msgId: string) {
-  const headers = { Authorization: `Bearer ${META_CRM_TOKEN}` }
-  const infoRes = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${mediaId}`, { headers })
-  if (!infoRes.ok) throw new Error(`Meta media info ${infoRes.status}`)
-  const info = await infoRes.json()
-  const fileRes = await fetch(info.url, { headers })
-  if (!fileRes.ok) throw new Error(`Meta media download ${fileRes.status}`)
-  const bytes = new Uint8Array(await fileRes.arrayBuffer())
-  const mime = String(info.mime_type || fileRes.headers.get('content-type') || 'application/octet-stream').split(';')[0].trim()
+  const { bytes, mime } = await descargarMediaCrm(mediaId, META_CRM_TOKEN)
   const ext = EXT_POR_MIME[mime] || 'bin'
   const path = `${convId}/${msgId.replace(/[^A-Za-z0-9]/g, '').slice(-40)}.${ext}`
   const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, bytes, { contentType: mime, upsert: true })
@@ -126,9 +121,10 @@ function interpretarGrupo(message: any, permitirNumeros: boolean): string | null
 // Devuelve el id del mensaje en Meta (wamid), con el que después llegan los
 // avisos de entregado / leído / fallido.
 async function enviarMeta(cuerpo: Record<string, unknown>): Promise<string | null> {
-  const res = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${META_CRM_PHONE_NUMBER_ID}/messages`, {
+  const destino = destinoMensajesCrm(META_CRM_TOKEN, META_CRM_PHONE_NUMBER_ID)
+  const res = await fetch(destino.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${META_CRM_TOKEN}` },
+    headers: { 'Content-Type': 'application/json', ...destino.headers },
     body: JSON.stringify({ messaging_product: 'whatsapp', ...cuerpo }),
   })
   if (!res.ok) throw new Error(`Meta ${res.status}: ${await res.text()}`)
@@ -406,9 +402,18 @@ async function iniciarFiltro(supabase: Supabase, cfg: any, conv: any, phone: str
     await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
     return
   }
+  // Si el formulario no sale (por ejemplo, el Flow no existe en la cuenta de WhatsApp por la
+  // que se está enviando), el contacto no se queda sin respuesta: van las preguntas por texto.
+  let salioFlow = false
   if (cfg?.filtro_metodo === 'flow') {
-    await enviarFlowDatosViaje(supabase, conv.id, phone)
-  } else {
+    try {
+      await enviarFlowDatosViaje(supabase, conv.id, phone)
+      salioFlow = true
+    } catch (err) {
+      console.error('webhook-whatsapp: no se pudo enviar el Flow, van las preguntas por texto:', err)
+    }
+  }
+  if (!salioFlow) {
     await enviarTextoBot(supabase, conv.id, phone, mensajePreguntas(configFiltro(cfg), paso.faltan))
   }
   await supabase.from('conversaciones').update({ bot_estado: 'filtrando', bot_intentos: 1, grupo: 'paquetes' }).eq('id', conv.id)
@@ -605,6 +610,73 @@ async function guardarEntrante(supabase: ReturnType<typeof createClient>, fila: 
   return plano ?? { created_at: null }
 }
 
+// Historial de coexistencia: se guarda el aviso entero en el bucket privado, sin interpretarlo.
+async function guardarHistorialCrudo(supabase: Supabase, cuerpoCrudo: string) {
+  const ruta = `historial-360dialog/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`
+  const { error } = await supabase.storage.from(MEDIA_BUCKET)
+    .upload(ruta, new TextEncoder().encode(cuerpoCrudo), { contentType: 'application/json' })
+  if (error) console.error('webhook-whatsapp: no se pudo guardar el historial:', error.message)
+  else console.log(`webhook-whatsapp: historial guardado en ${ruta}`)
+}
+
+// Mensajes que el equipo manda desde la app WhatsApp Business del celular (coexistencia).
+// Se guardan como salientes con origen "celular" y, como cualquier respuesta a mano, apagan
+// al asistente en esa conversación. Si el mismo eco llega dos veces no se duplica.
+// deno-lint-ignore no-explicit-any
+async function procesarEcos(supabase: Supabase, ecos: any[]) {
+  for (const eco of ecos) {
+    try {
+      const phone: string | undefined = eco?.to
+      if (!phone || !eco?.id) continue
+      const tipoMedia: string | null = TIPOS_MEDIA.includes(eco.type) ? eco.type : null
+      const media = tipoMedia ? eco[tipoMedia] : null
+      const nombreArchivo: string | null = media?.filename ?? null
+      const texto: string = eco.text?.body ?? media?.caption ??
+        (tipoMedia ? `${ETIQUETA_MEDIA[tipoMedia]}${nombreArchivo ? `: ${nombreArchivo}` : ''}` : `[Mensaje de tipo ${eco.type}]`)
+      const cuando = eco.timestamp ? new Date(Number(eco.timestamp) * 1000).toISOString() : new Date().toISOString()
+
+      let { data: conv } = await supabase.from('conversaciones').select('id').eq('whatsapp', phone).maybeSingle()
+      if (!conv) {
+        const { data: nueva } = await supabase.from('conversaciones')
+          .insert({ whatsapp: phone, contacto_nombre: phone, ultimo_mensaje: texto, ultimo_mensaje_at: cuando, no_leidos: 0 })
+          .select('id').single()
+        conv = nueva
+      }
+      if (!conv?.id) continue
+
+      let archivo: { path: string; mime: string } | null = null
+      try {
+        if (media?.id) archivo = await guardarMedia(supabase, media.id, conv.id, eco.id)
+      } catch (mediaErr) {
+        console.error('webhook-whatsapp media de eco error:', mediaErr)
+      }
+
+      const { data: guardado, error } = await supabase.from('mensajes').upsert({
+        conversacion_id: conv.id,
+        whatsapp: phone,
+        texto,
+        direccion: 'saliente',
+        origen: 'celular',
+        wa_message_id: eco.id,
+        estado_envio: 'enviado',
+        estado_envio_at: cuando,
+        cobro: 'servicio',
+        numero: 'crm',
+        created_at: cuando,
+        ...(tipoMedia ? { tipo: tipoMedia, media_path: archivo?.path ?? null, media_mime: archivo?.mime ?? media?.mime_type ?? null, media_nombre: nombreArchivo } : {}),
+      }, { onConflict: 'wa_message_id', ignoreDuplicates: true }).select('id')
+      if (error) { console.error('webhook-whatsapp eco error:', error.message); continue }
+      if (!guardado?.length) continue
+
+      await supabase.from('conversaciones').update({ ultimo_mensaje: texto, ultimo_mensaje_at: cuando }).eq('id', conv.id)
+      await supabase.from('conversaciones').update({ bot_estado: 'humano' }).eq('id', conv.id)
+        .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
+    } catch (err) {
+      console.error('webhook-whatsapp eco error:', err)
+    }
+  }
+}
+
 serve(async (req) => {
   const url = new URL(req.url)
 
@@ -619,23 +691,43 @@ serve(async (req) => {
     return new Response('Forbidden', { status: 403 })
   }
 
-  // Sin una firma válida de Meta no se procesa nada: la URL es pública y cualquiera
-  // podría mandar mensajes falsos que el asistente responde por WhatsApp.
+  // Sin una firma válida de Meta (o la credencial que se le configuró a 360dialog) no se
+  // procesa nada: la URL es pública y cualquiera podría mandar mensajes falsos que el
+  // asistente responde por WhatsApp.
   const cuerpoCrudo = await req.text()
-  if (!(await firmaMetaValida(META_APP_SECRET, cuerpoCrudo, req.headers.get('x-hub-signature-256')))) {
-    console.error('webhook-whatsapp: firma de Meta inválida o META_APP_SECRET sin configurar')
+  const vieneDeMeta = await firmaMetaValida(META_APP_SECRET, cuerpoCrudo, req.headers.get('x-hub-signature-256'))
+  const vieneDe360 = !vieneDeMeta && autorizacion360Valida(req.headers.get('authorization'))
+  if (!vieneDeMeta && !vieneDe360) {
+    console.error('webhook-whatsapp: aviso sin firma de Meta ni credencial de 360dialog válidas')
     return new Response('Firma inválida', { status: 401 })
   }
 
   try {
     const body = JSON.parse(cuerpoCrudo)
+    // deno-lint-ignore no-explicit-any
+    const cambios: any[] = (body?.entry ?? []).flatMap((en: any) => en?.changes ?? [])
+
+    // Coexistencia con la app del celular: el historial que Meta sincroniza al conectar el
+    // número se guarda tal cual llega (solo se puede pedir una vez), para importarlo después.
+    if (body?.event === 'history' || cambios.some((c) => c?.field === 'history')) {
+      await guardarHistorialCrudo(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), cuerpoCrudo)
+      return new Response('ok', { status: 200 })
+    }
+    // Lo que el equipo manda desde el celular llega como "eco": queda en el CRM como saliente.
+    // deno-lint-ignore no-explicit-any
+    const ecos = cambios.filter((c) => c?.field === 'smb_message_echoes').flatMap((c: any) => c?.value?.message_echoes ?? [])
+    if (ecos.length) {
+      await procesarEcos(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), ecos)
+      return new Response('ok', { status: 200 })
+    }
+
     const value = body?.entry?.[0]?.changes?.[0]?.value
     const message = value?.messages?.[0]
 
     // Los avisos de "statuses" (enviado / entregado / leído / fallido) llegan al
     // mismo endpoint, sin "messages": actualizan el estado de nuestros mensajes.
     // deno-lint-ignore no-explicit-any
-    const estados = (body?.entry ?? []).flatMap((en: any) => en?.changes ?? []).flatMap((c: any) => c?.value?.statuses ?? [])
+    const estados = cambios.flatMap((c: any) => c?.value?.statuses ?? [])
     if (estados.length) {
       await procesarEstados(
         createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
@@ -648,8 +740,9 @@ serve(async (req) => {
     // Solo se atienden los mensajes escritos al número del CRM. Si la app queda suscrita a
     // otra cuenta de WhatsApp (por ejemplo la del número que todavía usa Kommo), esos
     // mensajes no entran al inbox ni los contesta el asistente desde el número equivocado.
+    // Los avisos de 360dialog no pasan por este filtro: su webhook se configura por número.
     const numeroDestino: string | undefined = value?.metadata?.phone_number_id
-    if (META_CRM_PHONE_NUMBER_ID && numeroDestino && String(numeroDestino) !== META_CRM_PHONE_NUMBER_ID) {
+    if (!vieneDe360 && META_CRM_PHONE_NUMBER_ID && numeroDestino && String(numeroDestino) !== META_CRM_PHONE_NUMBER_ID) {
       console.log(`webhook-whatsapp: mensaje para otro número (${numeroDestino}), se ignora`)
       return new Response('ok', { status: 200 })
     }

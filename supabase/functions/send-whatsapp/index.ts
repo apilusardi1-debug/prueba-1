@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderTemplate } from '../_shared/plantillasWhatsapp.ts'
 import { moverAEtapaPaquetes, moverAEtapaAnfitriona } from '../_shared/embudoEntrada.ts'
 import { verificarSesion } from '../_shared/sesionPanel.ts'
+import { usa360dialog, destinoMensajesCrm } from '../_shared/proveedorWhatsapp.ts'
 
 const PANEL_SESSION_SECRET = Deno.env.get('PANEL_SESSION_SECRET')
 
@@ -113,7 +114,10 @@ serve(async (req) => {
     const metaToken = esCrm ? META_CRM_TOKEN : META_TOKEN
     const metaPhoneNumberId = esCrm ? META_CRM_PHONE_NUMBER_ID : META_PHONE_NUMBER_ID
 
-    if (!metaToken || !metaPhoneNumberId) {
+    // El número del CRM puede ir por 360dialog (ver _shared/proveedorWhatsapp.ts): en ese
+    // caso no hacen falta el token ni el id de número de Meta.
+    const crmPor360 = esCrm && usa360dialog
+    if (!crmPor360 && (!metaToken || !metaPhoneNumberId)) {
       return new Response(JSON.stringify({
         error: esCrm
           ? 'Falta configurar META_CRM_WHATSAPP_TOKEN / META_CRM_PHONE_NUMBER_ID en los secrets de Supabase.'
@@ -176,12 +180,12 @@ serve(async (req) => {
     const metaController = new AbortController()
     const metaTimer = setTimeout(() => metaController.abort(), 15000)
 
-    const res = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${metaPhoneNumberId}/messages`, {
+    const destino = esCrm
+      ? destinoMensajesCrm(metaToken, metaPhoneNumberId)
+      : { url: `https://graph.facebook.com/${META_API_VERSION}/${metaPhoneNumberId}/messages`, headers: { Authorization: `Bearer ${metaToken}` } }
+    const res = await fetch(destino.url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${metaToken}`,
-      },
+      headers: { 'Content-Type': 'application/json', ...destino.headers },
       body: JSON.stringify(metaBody),
       signal: metaController.signal,
     })

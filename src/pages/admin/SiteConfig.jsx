@@ -919,6 +919,7 @@ export default function SiteConfig() {
   const [form, setForm] = useState(config)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null) // 'ok' | 'error'
+  const [errorGuardar, setErrorGuardar] = useState('')
   const [tab, setTab] = useState('sitio')
 
   // Sincroniza el form cuando carga la config de Supabase
@@ -939,7 +940,9 @@ export default function SiteConfig() {
     const result = await saveConfig(Object.fromEntries(CAMPOS_EDITABLES.map(k => [k, form[k]])))
     setSaving(false)
     setStatus(result.ok ? 'ok' : 'error')
-    setTimeout(() => setStatus(null), 3000)
+    setErrorGuardar(result.ok ? '' : String(result.error || ''))
+    // El error queda a la vista hasta el próximo intento; el "guardado" se va solo
+    if (result.ok) setTimeout(() => setStatus(null), 3000)
   }
 
   function handleReset() {
@@ -1079,7 +1082,7 @@ export default function SiteConfig() {
           <span className="text-sm font-semibold text-green-600 dark:text-green-400">Guardado correctamente</span>
         )}
         {status === 'error' && (
-          <span className="text-sm font-semibold text-red-600 dark:text-red-400">Error: ¿Supabase conectado?</span>
+          <span className="text-sm font-semibold text-red-600 dark:text-red-400">No se pudo guardar{errorGuardar ? `: ${errorGuardar}` : '.'}</span>
         )}
       </div>
 

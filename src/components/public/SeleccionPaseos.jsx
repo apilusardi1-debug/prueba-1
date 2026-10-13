@@ -3,10 +3,13 @@ import { useLocation } from 'react-router-dom'
 import { useSeleccionPaseos } from '../../context/SeleccionPaseosContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { formatPrecio } from '../../data/mockData.js'
+import { armarMensajePedidoWeb } from '../../../supabase/functions/_shared/pedidoWebPaseos.ts'
 
 // Panel "Mi selección" + botón flotante que lo abre. La reserva de paseos no
 // se cierra en el sitio: el cliente elige paseos, fechas de estadía y
 // pasajeros, y se le abre WhatsApp con el mensaje ya armado para la agencia.
+// El formato del mensaje vive en _shared/pedidoWebPaseos.ts: el CRM lo reconoce
+// y completa el lead solo (paseos, destino, vendedor).
 // No hay total: algunos paseos se cobran por persona y otros por vehículo o
 // sesión, y el precio de los menores varía — un total estimado saldría mal.
 
@@ -22,7 +25,6 @@ const CAMPO = 'w-full border-2 border-hero-navy/15 focus:border-hero-navy rounde
 const LABEL = 'block font-label-lg text-label-sm uppercase text-hero-navy/80 mb-1.5'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
-const fechaLegible = (iso) => iso.split('-').reverse().join('/')
 
 function Contador({ label, valor, min, onChange }) {
   return (
@@ -37,22 +39,6 @@ function Contador({ label, valor, min, onChange }) {
       </div>
     </div>
   )
-}
-
-export function armarMensaje({ paseos, desde, hasta, adultos, edades, codigo }) {
-  const menores = edades.length
-  const pasajeros = `${adultos} adulto${adultos !== 1 ? 's' : ''}` + (menores
-    ? ` y ${menores} menor${menores !== 1 ? 'es' : ''} (edad${menores !== 1 ? 'es' : ''}: ${edades.join(', ')})`
-    : '')
-  const lineas = [
-    '¡Hola DreamTours! Me interesan estos paseos:',
-    ...paseos.map(p => `• ${p.nombre}${p.destino && !p.nombre.includes(p.destino) ? ` (${p.destino})` : ''}`),
-    '',
-    `Fechas de estadía: del ${fechaLegible(desde)} al ${fechaLegible(hasta)}`,
-    `Pasajeros: ${pasajeros}`,
-  ]
-  if (codigo) lineas.push(`Código de vendedor: ${codigo}`)
-  return lineas.join('\n')
 }
 
 export default function SeleccionPaseos() {
@@ -93,7 +79,7 @@ export default function SeleccionPaseos() {
     if (hasta < desde) { setError('La fecha de salida tiene que ser posterior a la de llegada.'); return }
     if (edades.some(e => e === '')) { setError('Indicá la edad de cada menor.'); return }
     setError(null)
-    const texto = armarMensaje({ paseos, desde, hasta, adultos, edades, codigo: codigo.trim() })
+    const texto = armarMensajePedidoWeb({ paseos, desde, hasta, adultos, edadesMenores: edades, codigoVendedor: codigo.trim() })
     window.open(`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 

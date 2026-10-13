@@ -2,7 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { detectarInteresConExtras } from '../_shared/interes.ts'
 import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
-import { etiquetarLeadPorGrupo } from '../_shared/etiquetas.ts'
+import { etiquetarLeadPorGrupo, conEtiqueta } from '../_shared/etiquetas.ts'
+import { leerPedidoWebPaseos, destinosDelPedido, ETIQUETA_PEDIDO_WEB, etiquetaVendedor, type PedidoWebPaseos } from '../_shared/pedidoWebPaseos.ts'
 import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
@@ -439,6 +440,38 @@ async function seguirFiltro(supabase: Supabase, cfg: any, conv: any, phone: stri
   await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
 }
 
+// Pedido de paseos que llega desde "Mi selección" del sitio: se marca el lead con la
+// etiqueta "Pedido web" y, si trae un código de vendedor que existe, con el vendedor.
+// A un lead que ya existía se le suma el pedido a las notas (al nuevo ya se le guardó
+// el mensaje entero como nota al crearlo). Un fallo acá nunca debe frenar el webhook.
+async function completarLeadConPedidoWeb(supabase: Supabase, phone: string, pedido: PedidoWebPaseos, texto: string, esNuevo: boolean) {
+  try {
+    const { data: lead } = await supabase.from('leads').select('id, notas, etiquetas').eq('whatsapp', phone).maybeSingle()
+    if (!lead) return
+
+    let etiquetas: string[] = lead.etiquetas ?? []
+    etiquetas = conEtiqueta(etiquetas, ETIQUETA_PEDIDO_WEB) ?? etiquetas
+    let notaVendedor = ''
+    if (pedido.codigoVendedor) {
+      const { data: vendedor } = await supabase.from('vendedores').select('nombre, codigo_referido')
+        .eq('codigo_referido', pedido.codigoVendedor).maybeSingle()
+      if (vendedor) etiquetas = conEtiqueta(etiquetas, etiquetaVendedor(vendedor.nombre, vendedor.codigo_referido)) ?? etiquetas
+      else notaVendedor = `\n(El código de vendedor ${pedido.codigoVendedor} no existe en Vendedores)`
+    }
+
+    const cambios: Record<string, unknown> = { etiquetas }
+    if (!esNuevo) {
+      const fecha = new Date().toLocaleDateString('es-AR', { timeZone: 'America/Recife' })
+      cambios.notas = [lead.notas, `Pedido desde la web (${fecha}):\n${texto}${notaVendedor}`].filter(Boolean).join('\n\n')
+    } else if (notaVendedor) {
+      cambios.notas = `${lead.notas ?? texto}${notaVendedor}`
+    }
+    await supabase.from('leads').update(cambios).eq('id', lead.id)
+  } catch (err) {
+    console.error('completarLeadConPedidoWeb error:', err)
+  }
+}
+
 // La conversación, solo si el asistente puede actuar en ella ahora.
 async function convDondeActua(supabase: Supabase, convId: string) {
   // select('*'): así funciona igual antes y después de correr la migración de bot_pausado
@@ -472,7 +505,11 @@ async function ejecutarBot(supabase: Supabase, convId: string, phone: string, me
   }
 
   const esperando = conv.bot_estado === 'esperando'
-  const opcionElegida = grupoElegido(message, esperando, textosDeLaRafaga(hilo))
+  // El pedido de la web ya dice que son paseos: va directo a ese equipo, sin menú. Así no
+  // depende de las palabras del mensaje (un paseo con "traslado" u "hotel" en el nombre
+  // haría que el texto coincida con dos opciones y el asistente mostraría el menú igual).
+  const pedidoWeb = textosDeLaRafaga(hilo).some((t) => leerPedidoWebPaseos(t))
+  const opcionElegida = pedidoWeb ? 'paseos' : grupoElegido(message, esperando, textosDeLaRafaga(hilo))
   // "Traslados" y "Hospedajes" no tienen equipo de reparto ni embudo propio — entran al mismo
   // circuito que Paseos y Paquetes respectivamente (mismo criterio que ya se usa con el
   // interés detectado por palabra clave, ver GRUPO_POR_INTERES en el webhook). El botón del
@@ -627,7 +664,14 @@ serve(async (req) => {
     // asistente" (tabla asistente_sinonimos). Solo se completa lo que falta: lo
     // que ya tenía el lead, ya sea detectado antes o cargado a mano, no se pisa.
     const { data: sinonimos } = await supabase.from('asistente_sinonimos').select('tipo, valor, palabras')
-    const interes = detectarInteresConExtras(texto, sinonimos || [])
+    const interesDetectado = detectarInteresConExtras(texto, sinonimos || [])
+    // El pedido de "Mi selección" del sitio ya dice qué quiere: paseos. Para el destino se
+    // prefiere lo detectado por palabra clave (usa los nombres de la lista de destinos) y,
+    // si no reconoce ninguno, los destinos que vienen entre paréntesis en el pedido.
+    const pedidoWeb = leerPedidoWebPaseos(texto)
+    const interes = pedidoWeb
+      ? { tipo: 'paseo', destino: interesDetectado.destino ?? destinosDelPedido(pedidoWeb) }
+      : interesDetectado
 
     const { data: leadExistente } = await supabase
       .from('leads').select('id, estado, interes_tipo, interes_destino').eq('whatsapp', phone).maybeSingle()
@@ -652,6 +696,8 @@ serve(async (req) => {
       if (leadExistente.estado === 'perdido') cambios.estado = 'nuevo'
       if (Object.keys(cambios).length) await supabase.from('leads').update(cambios).eq('id', leadExistente.id)
     }
+
+    if (pedidoWeb) await completarLeadConPedidoWeb(supabase, phone, pedidoWeb, texto, !leadExistente)
 
     // Un interés de Traslado o de Hospedaje (detectado por palabra clave, sin pasar por el
     // menú de Paquetes/Paseos) manda igual al embudo correspondiente -- pedido de Cristian,

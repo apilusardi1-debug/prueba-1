@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AvisosPagina } from './components/ui/Avisos.jsx'
 
 // Layouts
@@ -11,7 +11,6 @@ import Home from './pages/public/Home.jsx'
 import Catalogo from './pages/public/Catalogo.jsx'
 import ExcursionDetalle from './pages/public/ExcursionDetalle.jsx'
 import Reservar from './pages/public/Reservar.jsx'
-import MisReservas from './pages/public/MisReservas.jsx'
 import Destinos from './pages/public/Destinos.jsx'
 import DestinoDetalle from './pages/public/DestinoDetalle.jsx'
 import Hoteles from './pages/public/Hoteles.jsx'
@@ -61,7 +60,8 @@ const router = createBrowserRouter([
       { path: '/excursiones',           element: <Catalogo categoria="excursiones" /> },
       { path: '/excursiones/:id',       element: <ExcursionDetalle /> },
       { path: '/reservar/:id',          element: <Reservar /> },
-      { path: '/mis-reservas',          element: <MisReservas /> },
+      // La consulta de reservas no existe más (los paseos se reservan por WhatsApp): links viejos van a Paseos
+      { path: '/mis-reservas',          element: <Navigate to="/excursiones" replace /> },
       { path: '/destinos',              element: <Destinos /> },
       { path: '/destinos/:id',          element: <DestinoDetalle /> },
       { path: '/hoteles',               element: <Hoteles /> },

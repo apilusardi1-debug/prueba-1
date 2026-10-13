@@ -14,7 +14,6 @@ const NAV_LINKS = [
   { to: '/destinos',    label: 'Destinos',          icon: 'map' },
   { to: '/marea',       label: 'Tabla de Marea',    icon: 'waves' },
   { to: '/nosotros',    label: 'Nosotros',          icon: 'group' },
-  { to: '/mis-reservas',label: 'Mis Reservas',      icon: 'confirmation_number' },
 ]
 
 const FOOTER_LINKS = [
@@ -144,14 +143,6 @@ export default function PublicLayout() {
               style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(32, 67, 97, 0.9)' }}>
               Contactanos
             </a>
-            {/* Mis Reservas */}
-            {!standalone && (
-              <Link to="/mis-reservas"
-                className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
-                style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(32, 67, 97, 0.9)' }}>
-                Mis Reservas
-              </Link>
-            )}
           </div>
         </div>
       </header>

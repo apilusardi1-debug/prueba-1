@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
+import { SeleccionPaseosProvider } from '../../context/SeleccionPaseosContext.jsx'
+import SeleccionPaseos from '../public/SeleccionPaseos.jsx'
 
 const NAV_LINKS = [
   { to: '/paquetes',    label: 'Paquetes Aéreos',  icon: 'flight' },
@@ -64,6 +66,7 @@ export default function PublicLayout() {
   const iconColor = scrolled ? '#072e40' : 'white'
 
   return (
+    <SeleccionPaseosProvider>
     <div className="min-h-screen bg-surface overflow-x-hidden">
 
       {/* Header */}
@@ -279,6 +282,8 @@ export default function PublicLayout() {
         </nav>
       )}
 
+      {!standalone && <SeleccionPaseos />}
     </div>
+    </SeleccionPaseosProvider>
   )
 }

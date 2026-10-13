@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
+import { BotonAgregarPaseo } from '../../components/public/SeleccionPaseos.jsx'
 
 // No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
 // vehículo, con varias personas incluidas) — se aclara acá abajo del precio
@@ -114,8 +115,11 @@ export default function Catalogo({ categoria }) {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {filtrados.map(ex => (
-                  <Link key={ex.id} to={`/excursiones/${ex.id}`}
+                  // La tarjeta no es un solo link: adentro está el botón de agregar a
+                  // la selección, y un botón dentro de un link no es válido.
+                  <div key={ex.id}
                     className="group flex flex-col rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
+                    <Link to={`/excursiones/${ex.id}`} className="flex flex-col flex-1">
                     <div className="relative h-52 overflow-hidden bg-surface-variant flex-shrink-0">
                       <img
                         src={ex.imagen || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
@@ -150,6 +154,12 @@ export default function Catalogo({ categoria }) {
                         )}
                       </div>
                     </div>
+                    </Link>
+                    {ex.categoria === 'excursiones' && (
+                      <div className="bg-white px-5 pb-5">
+                        <BotonAgregarPaseo ex={ex} className="w-full py-3" />
+                      </div>
+                    )}
                     <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
                       <div>
                         <span className="font-label-sm text-[10px] uppercase text-hero-cream/70 block leading-none mb-1">Desde</span>
@@ -160,9 +170,9 @@ export default function Catalogo({ categoria }) {
                           )}
                         </span>
                       </div>
-                      <span className="font-label-lg text-label-sm uppercase text-hero-cream group-hover:underline whitespace-nowrap">Ver detalle</span>
+                      <Link to={`/excursiones/${ex.id}`} className="font-label-lg text-label-sm uppercase text-hero-cream hover:underline whitespace-nowrap">Ver detalle</Link>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </>

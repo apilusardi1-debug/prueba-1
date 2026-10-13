@@ -912,6 +912,8 @@ function TabEmbudo() {
   )
 }
 
+const CAMPOS_EDITABLES = ['hero_cta', 'hero_imagen', 'color_primario', 'color_acento', 'whatsapp', 'instagram_url']
+
 export default function SiteConfig() {
   const { config, saveConfig, loading } = useSiteConfig()
   const [form, setForm] = useState(config)
@@ -928,10 +930,13 @@ export default function SiteConfig() {
     return (val) => setForm(prev => ({ ...prev, [key]: val }))
   }
 
+  // Solo se guardan los campos que se editan en esta pantalla. `form` también trae
+  // valores por defecto que no son columnas de site_config (hero_titulo, hero_subtitulo,
+  // tiktok_url) y, si se mandaban, la base rechazaba el guardado entero.
   async function handleSave() {
     setSaving(true)
     setStatus(null)
-    const result = await saveConfig(form)
+    const result = await saveConfig(Object.fromEntries(CAMPOS_EDITABLES.map(k => [k, form[k]])))
     setSaving(false)
     setStatus(result.ok ? 'ok' : 'error')
     setTimeout(() => setStatus(null), 3000)

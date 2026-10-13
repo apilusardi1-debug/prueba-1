@@ -5,6 +5,7 @@ import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
+import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
 const RESENAS = [
   {
@@ -61,6 +62,34 @@ const DESTINOS_HOME = [
 const PASEOS_DESTACADOS_HOME = ['Maragogi', 'Praia dos Carneiros', 'Isla de Santo Aleixo']
 
 // A los costados, a la altura de las fotos; en la punta del carrusel la flecha de ese lado se esconde
+// Posteo o reel de Instagram (link pegado en Admin > Videos). La página /embed/ avisa
+// su alto con postMessage ("MEASURE"): así la tarjeta mide lo justo, sin espacio vacío
+// ni corte, sea foto, carrusel o reel.
+function PosteoInstagram({ url }) {
+  const marco = useRef(null)
+  const [alto, setAlto] = useState(560)
+
+  useEffect(() => {
+    function onMensaje(e) {
+      if (e.source !== marco.current?.contentWindow || !/^https:\/\/(www\.)?instagram\.com$/.test(e.origin)) return
+      try {
+        const datos = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (datos?.type === 'MEASURE' && datos.details?.height > 0) setAlto(Math.ceil(datos.details.height))
+      } catch (_) {}
+    }
+    window.addEventListener('message', onMensaje)
+    return () => window.removeEventListener('message', onMensaje)
+  }, [])
+
+  return (
+    <div className="flex-shrink-0 w-[300px] md:w-[326px] rounded-2xl overflow-hidden bg-white">
+      <iframe ref={marco} src={urlEmbedInstagram(url)} title="Posteo de Instagram de DreamTours"
+        loading="lazy" scrolling="no" allowTransparency allow="encrypted-media; clipboard-write"
+        className="block w-full border-0" style={{ height: alto }} />
+    </div>
+  )
+}
+
 function FlechaCarrusel({ lado, onClick, deshabilitada }) {
   return (
     <button type="button" onClick={onClick} disabled={deshabilitada}
@@ -511,8 +540,10 @@ export default function Home() {
             <p className="font-body-md text-body-md text-hero-cream/70">Momentos reales de nuestros pasajeros en el Nordeste Brasilero</p>
           </div>
           <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
-            <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {videosAgencia.map(v => (
+            <div className="flex items-start gap-4" style={{ width: 'max-content' }}>
+              {videosAgencia.map(v => esLinkInstagram(v.video_url) ? (
+                <PosteoInstagram key={v.id} url={v.video_url} />
+              ) : (
                 <button key={v.id} onClick={() => setVideoActivo(v)}
                   className="group relative rounded-2xl overflow-hidden flex-shrink-0 text-left"
                   style={{ width: 'clamp(180px, 20vw, 240px)', aspectRatio: '9/16' }}>
@@ -534,6 +565,14 @@ export default function Home() {
               ))}
             </div>
           </div>
+          {config?.instagram_url && (
+            <div className="mt-8 text-center px-margin-mobile">
+              <a href={config.instagram_url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 border-2 border-hero-cream text-hero-cream font-label-lg text-label-lg px-8 py-3 rounded-full hover:bg-hero-cream hover:text-hero-navy transition-colors">
+                Seguinos en Instagram
+              </a>
+            </div>
+          )}
         </section>
       )}
 

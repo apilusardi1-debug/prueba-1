@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react'
 import { subirVideoAgencia, subirThumbnailVideoAgencia } from '../../lib/supabase.js'
+import { esLinkInstagram, normalizarLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
 export const EMPTY_VIDEO_AGENCIA = {
   titulo: '', video_url: '', thumbnail_url: '', activo: true,
 }
 
+const PESTANA = (activa) => `flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+  activa ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-zinc-100 shadow-sm' : 'text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200'
+}`
+
 export default function VideoAgenciaForm({ form, setForm, error }) {
+  // Un posteo de Instagram se guarda como su link en video_url (ver src/lib/instagram.js)
+  const [modo, setModo] = useState(form.video_url && !esLinkInstagram(form.video_url) ? 'video' : 'instagram')
   const [subiendoVideo, setSubiendoVideo] = useState(false)
   const [subiendoThumb, setSubiendoThumb] = useState(false)
   const videoRef = useRef()
@@ -35,6 +42,35 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
     <div className="space-y-3 text-sm">
       {error && <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
 
+      <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-zinc-800">
+        <button type="button" className={PESTANA(modo === 'instagram')}
+          onClick={() => { if (modo !== 'instagram') { setModo('instagram'); setForm(p => ({ ...p, video_url: '', thumbnail_url: '' })) } }}>
+          Link de Instagram
+        </button>
+        <button type="button" className={PESTANA(modo === 'video')}
+          onClick={() => { if (modo !== 'video') { setModo('video'); setForm(p => ({ ...p, video_url: '' })) } }}>
+          Subir video
+        </button>
+      </div>
+
+      {modo === 'instagram' ? (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Link del posteo o reel *</label>
+          <input type="url" value={form.video_url} placeholder="https://www.instagram.com/reel/..."
+            onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))}
+            className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">
+            En Instagram, abrí el posteo, tocá los tres puntitos (o el avión de compartir) y elegí "Copiar enlace". La cuenta tiene que ser pública.
+          </p>
+          {form.video_url.trim() && !esLinkInstagram(form.video_url) && (
+            <p className="text-[11px] text-red-500 dark:text-red-400 mt-1">Ese link no parece de un posteo o reel de Instagram.</p>
+          )}
+          {esLinkInstagram(form.video_url) && (
+            <iframe src={urlEmbedInstagram(form.video_url)} title="Vista previa" scrolling="no"
+              className="mt-3 mx-auto block w-full max-w-[326px] h-[420px] rounded-lg border border-gray-200 dark:border-zinc-700 bg-white" />
+          )}
+        </div>
+      ) : (<>
       <div>
         <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Video *</label>
         <input ref={videoRef} type="file" accept="video/*" onChange={handleVideo} className="hidden" />
@@ -69,6 +105,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
         )}
         <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Si no cargás una, se muestra el video directamente como miniatura.</p>
       </div>
+      </>)}
 
       <div>
         <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Título (opcional)</label>
@@ -86,10 +123,11 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
 }
 
 export function datosDesdeFormVideo(form) {
+  const instagram = normalizarLinkInstagram(form.video_url)
   return {
     titulo: form.titulo.trim(),
-    video_url: form.video_url.trim(),
-    thumbnail_url: form.thumbnail_url.trim(),
+    video_url: instagram ?? form.video_url.trim(),
+    thumbnail_url: instagram ? '' : form.thumbnail_url.trim(),
     activo: form.activo,
   }
 }

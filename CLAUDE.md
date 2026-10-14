@@ -119,6 +119,7 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - **No usar UltraMsg**: instancia detenida por falta de pago
 - **Sin métodos de pago**: se sacó Mercado Pago (2026-10-08, pedido de Cristian — "nadie va a pagar por la app"). Finanzas sigue existiendo, pero es control manual de caja; no hay ningún cobro conectado ni se va a conectar
 - **Sin emojis** en la interfaz nueva: usar los iconos de línea de `src/components/admin/dashboard/Ic.jsx`
+- **Botones del sitio público**: usar `BTN_PRINCIPAL` (amarillo, para cotizar/consultar/armar/agregar), `BTN_SECUNDARIO` / `BTN_SECUNDARIO_OSCURO` (contorno fino, para ver más o navegar) y `BTN_ELEGIDO` de `src/components/public/botones.js`, no armar estilos a mano (2026-10-14)
 - **Estilo del panel**: paleta gris/negro con la clase `brand-*` (variables CSS en `src/index.css`) y tarjetas `dash-card`; la web pública conserva su azul
 - **Migraciones**: Cristian las corre en el SQL Editor de Supabase. Primero el SQL y después desplegar las funciones que lo usan (`npx supabase functions deploy <nombre> --project-ref przvftnhwwistmcbkeon`)
 - **Commits**: `git status -uall` completo y `git add` archivo por archivo; en la raíz hay archivos sueltos que no se suben

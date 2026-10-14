@@ -4,6 +4,7 @@ import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, hospedajesApi } from '../../lib/supabase.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 
 const HOSPEDAJES_PREVIEW = 6
 
@@ -26,11 +27,11 @@ function CardPaquete({ ex }) {
       <div className="bg-hero-navy px-5 py-4">
         <h3 className="font-display-hero uppercase text-hero-cream text-lg leading-tight mb-2 line-clamp-2">{ex.nombre}</h3>
         <div className="flex items-center justify-between gap-3">
-          <span className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">
+          <span className="font-label-sm text-[12px] uppercase text-hero-cream/90 whitespace-nowrap">
             Desde {formatPrecio(ex.precio, ex.moneda)}
           </span>
           {ex.duracion && (
-            <span className="font-label-sm text-[11px] uppercase text-hero-yellow font-bold whitespace-nowrap">{ex.duracion}</span>
+            <span className="font-label-sm text-[12px] uppercase text-hero-yellow font-bold whitespace-nowrap">{ex.duracion}</span>
           )}
         </div>
       </div>
@@ -66,7 +67,7 @@ function SeccionEditorial({ destino }) {
               <div key={d.titulo} className="bg-hero-cream rounded-2xl p-6">
                 <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{d.icono}</span>
                 <h3 className="font-display-hero uppercase text-hero-navy text-base mb-2">{d.titulo}</h3>
-                <p className="font-body-md text-body-md text-hero-navy/70 leading-snug">{d.texto}</p>
+                <p className="font-body-md text-body-md text-hero-navy/80 leading-snug">{d.texto}</p>
               </div>
             ))}
           </div>
@@ -75,7 +76,7 @@ function SeccionEditorial({ destino }) {
 
       {/* ¿Noronha es caro? */}
       {c.caro && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
           <div className={c.caro.video ? 'grid md:grid-cols-2 gap-8 md:gap-12 items-start' : ''}>
             <div>
               <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
@@ -104,7 +105,7 @@ function SeccionEditorial({ destino }) {
 
       {/* Ingreso y tasas */}
       {c.tasas?.items?.length > 0 && (
-        <section className="py-14 md:py-16" style={{ backgroundColor: 'rgba(136,209,244,0.18)' }}>
+        <section className="py-14 md:py-20" style={{ backgroundColor: 'rgba(136,209,244,0.18)' }}>
           <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Ingreso y tasas</h2>
             <div className="grid sm:grid-cols-2 gap-6 mb-8">
@@ -117,9 +118,9 @@ function SeccionEditorial({ destino }) {
             </div>
             {c.tasas.boton && (
               <a href={c.tasas.boton.url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-hero-navy text-white font-label-lg text-label-lg uppercase px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
+                className={BTN_SECUNDARIO}>
                 {c.tasas.boton.texto}
-                <span className="material-symbols-outlined text-hero-yellow text-[20px]">arrow_forward</span>
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </a>
             )}
           </div>
@@ -128,7 +129,7 @@ function SeccionEditorial({ destino }) {
 
       {/* Foto de apoyo secundaria (llegada, actividad extra, etc.) */}
       {c.fotoSecundaria && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>
               <h2 className={`${tituloSeccion} mb-4`} style={tituloEstilo}>{c.fotoSecundaria.titulo}</h2>
@@ -143,13 +144,13 @@ function SeccionEditorial({ destino }) {
 
       {/* Mejor época para viajar */}
       {c.epoca?.temporadas?.length > 0 && (
-        <section className="bg-hero-cream py-14 md:py-16">
+        <section className="bg-hero-cream py-14 md:py-20">
           <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>¿Cuál es la mejor época para viajar a {destino.nombre}?</h2>
             <div className="grid sm:grid-cols-2 gap-6">
               {c.epoca.temporadas.map((t) => (
                 <div key={t.titulo} className="bg-white rounded-2xl p-6 md:p-8">
-                  <p className="font-label-lg text-label-sm uppercase text-hero-navy/60 mb-1">{t.subtitulo}</p>
+                  <p className="font-label-lg text-label-sm uppercase text-hero-navy/75 mb-1">{t.subtitulo}</p>
                   <h3 className="font-display-hero uppercase text-hero-navy text-xl mb-3">{t.titulo}</h3>
                   <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{t.texto}</p>
                 </div>
@@ -161,7 +162,7 @@ function SeccionEditorial({ destino }) {
 
       {/* Actividad principal del destino (buceo, piscinas naturales, etc.) */}
       {c.actividad && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             {/* Columna de media: foto + videos agrupados como una misma galería */}
             <div className="order-2 md:order-1">
@@ -220,7 +221,7 @@ function SeccionEditorial({ destino }) {
 
       {/* Playas */}
       {(c.playasDestacadas?.length > 0 || c.playasMas?.length > 0) && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-16">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
           <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Las playas que no te podés perder</h2>
 
           {c.playasDestacadas?.length > 0 && (
@@ -256,7 +257,7 @@ function SeccionEditorial({ destino }) {
           "Destinos Favoritos" en Home. Pensada para ir sumando más fotos
           reales de la agencia con el tiempo (sin límite de cantidad). */}
       {c.galeria?.length > 0 && (
-        <section className="pb-14 md:pb-16 overflow-hidden">
+        <section className="pb-14 md:pb-20 overflow-hidden">
           <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a {destino.nombre}</h2>
           </div>
@@ -281,12 +282,12 @@ function SeccionEditorial({ destino }) {
               <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8 flex flex-col">
                 <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{item.icono}</span>
                 <h3 className="font-display-hero uppercase text-hero-navy text-lg mb-2">{item.titulo}</h3>
-                <p className="font-body-md text-body-md text-hero-navy/70 leading-relaxed mb-4">{item.texto}</p>
+                <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed mb-4">{item.texto}</p>
                 {item.boton && item.whatsappMensaje && (
                   <a href={waHref(item.whatsappMensaje)} target="_blank" rel="noopener noreferrer"
-                    className="mt-auto self-start inline-flex items-center gap-2 bg-hero-navy text-white font-label-lg text-label-sm uppercase px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity">
+                    className={`${BTN_PRINCIPAL} mt-auto self-start`}>
                     {item.boton}
-                    <span className="material-symbols-outlined text-hero-yellow text-[16px]">arrow_forward</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </a>
                 )}
               </div>
@@ -296,7 +297,7 @@ function SeccionEditorial({ destino }) {
       )}
 
       {c.cierreTexto && (
-        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-16 text-center">
+        <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-14 md:pb-20 text-center">
           <p className="font-display-hero uppercase text-hero-navy leading-snug max-w-2xl mx-auto"
             style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.4rem)', letterSpacing: '0.01em' }}>
             {c.cierreTexto}
@@ -409,12 +410,12 @@ export default function DestinoDetalle() {
           <div className="flex gap-4 flex-wrap">
             {hayContenido && (
               <a href="#contenido"
-                className="border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors hover:bg-hero-yellow hover:text-hero-navy">
+                className={BTN_SECUNDARIO_OSCURO}>
                 Ver paquetes
               </a>
             )}
             <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
-              className="bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-2">
+              className={BTN_PRINCIPAL}>
               Consultar disponibilidad
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </a>
@@ -477,9 +478,9 @@ export default function DestinoDetalle() {
                   Estamos armando paquetes y hospedajes para este destino. Escribinos y te ayudamos a organizar tu viaje a medida.
                 </p>
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-hero-navy text-white font-label-lg text-label-lg uppercase px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
+                  className={BTN_PRINCIPAL}>
                   Consultá disponibilidad
-                  <span className="material-symbols-outlined text-hero-yellow text-[20px]">flight</span>
+                  <span className="material-symbols-outlined text-[20px]">flight</span>
                 </a>
               </div>
             )}
@@ -489,15 +490,15 @@ export default function DestinoDetalle() {
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
       <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:min-h-[360px]">
-        <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-0 flex flex-col justify-center">
+        <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-20 flex flex-col justify-center">
           <h2 className="font-display-hero uppercase text-white mb-8"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
             ¿Querés armar tu viaje a {destino.nombre} a medida?
           </h2>
           <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
-            className="self-start inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-xl px-8 py-4 rounded-full hover:opacity-90 transition-opacity">
+            className={`${BTN_PRINCIPAL} self-start`}>
             Hablar por WhatsApp
-            <span className="material-symbols-outlined text-hero-yellow text-2xl">flight</span>
+            <span className="material-symbols-outlined text-[20px]">flight</span>
           </a>
         </div>
         <div className="relative h-56 md:h-full overflow-hidden">

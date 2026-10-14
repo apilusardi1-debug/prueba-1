@@ -4,6 +4,7 @@ import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
+import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
@@ -281,18 +282,18 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-3">
                   {c.principal.formulario ? (
                     <button type="button" onClick={() => setFormPaquete(true)}
-                      className="bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+                      className={BTN_PRINCIPAL}>
                       {c.principal.label}
                     </button>
                   ) : (
                     <Link to={c.principal.to}
-                      className="bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+                      className={BTN_PRINCIPAL}>
                       {c.principal.label}
                     </Link>
                   )}
                   {c.secundarios.map(s => (
                     <Link key={s.to} to={s.to}
-                      className="border-2 border-hero-cream/40 text-hero-cream font-label-lg text-label-sm uppercase px-5 py-2.5 rounded-full hover:border-hero-yellow hover:text-hero-yellow transition-colors">
+                      className={BTN_SECUNDARIO_OSCURO}>
                       {s.label}
                     </Link>
                   ))}
@@ -321,7 +322,7 @@ export default function Home() {
       </section>
 
       {/* ── DESTINOS FAVORITOS ────────────────────────────────────────── */}
-      <section className="py-16 overflow-hidden">
+      <section className="py-16 md:py-24 overflow-hidden">
         <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-display-hero uppercase text-hero-navy mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>Destinos Favoritos</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">Los lugares más elegidos por nuestros viajeros</p>
@@ -346,7 +347,7 @@ export default function Home() {
           </div>
         </div>
         <div className="mt-8 text-center px-margin-mobile">
-          <Link to="/destinos" className="inline-flex items-center gap-2 font-label-lg text-label-lg text-deep-ocean bg-surface-container py-3 px-6 rounded-full group">
+          <Link to="/destinos" className={`${BTN_SECUNDARIO} group`}>
             Ver todos los destinos
             <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">arrow_forward</span>
           </Link>
@@ -354,7 +355,7 @@ export default function Home() {
       </section>
 
       {/* ── EXCURSIONES DESTACADAS ───────────────────────────── */}
-      <section className="py-16 md:py-20 bg-hero-cream">
+      <section className="py-16 md:py-24 bg-hero-cream">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-display-hero uppercase text-hero-navy text-center mb-10 md:mb-14"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.02em' }}>
@@ -374,7 +375,7 @@ export default function Home() {
                     {e.nombre}
                   </h3>
                   <div className="text-right flex-shrink-0">
-                    <div className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">Desde</div>
+                    <div className="font-label-sm text-[12px] uppercase text-hero-cream/90 whitespace-nowrap">Desde</div>
                     <div className="font-label-sm text-[13px] uppercase text-hero-yellow font-bold whitespace-nowrap">
                       {formatPrecio(e.precio, e.moneda)}
                     </div>
@@ -384,7 +385,7 @@ export default function Home() {
             ))}
           </CarruselPaseos>
           <div className="mt-10 text-center">
-            <Link to="/excursiones" className="border-2 border-deep-ocean text-deep-ocean font-label-lg text-label-lg px-8 py-3 rounded hover:bg-deep-ocean hover:text-white transition-colors inline-block">
+            <Link to="/excursiones" className={BTN_SECUNDARIO}>
               Ver Todos los Paseos
             </Link>
           </div>
@@ -392,7 +393,7 @@ export default function Home() {
       </section>
 
       {/* ── RESEÑAS ──────────────────────────────────────────── */}
-      <section className="py-16 md:py-20 bg-white rounded-t-3xl">
+      <section className="py-16 md:py-24 bg-white rounded-t-3xl">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-display-hero uppercase text-hero-navy mb-10 md:mb-14"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
@@ -414,11 +415,11 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="font-label-lg text-[14px] text-hero-navy">{r.nombre}</div>
-                    <div className="font-label-sm text-[12px] text-on-surface-variant">Viajó en {r.fecha}</div>
+                    <div className="font-label-sm text-[13px] text-on-surface-variant">Viajó en {r.fecha}</div>
                   </div>
                 </div>
                 <a href={r.url} target="_blank" rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center justify-center gap-1.5 border-2 border-hero-navy text-hero-navy font-label-lg text-label-sm uppercase px-5 py-2.5 rounded-full hover:bg-hero-navy hover:text-hero-cream transition-colors">
+                  className={`${BTN_SECUNDARIO} mt-6`}>
                   Leer en TripAdvisor
                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
@@ -428,7 +429,7 @@ export default function Home() {
           <div className="flex flex-col items-center gap-4 mt-12">
             <img alt="TripAdvisor" className="h-9 w-auto" src="https://static.tacdn.com/assets/s/2651d377.svg" />
             <a href={TRIPADVISOR_URL} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-hero-navy text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
+              className={BTN_SECUNDARIO}>
               Ver todas las opiniones
               <span className="material-symbols-outlined text-[18px]">open_in_new</span>
             </a>
@@ -472,9 +473,9 @@ export default function Home() {
 
           <div className="bg-hero-cream rounded-3xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center max-w-5xl mx-auto">
             <div>
-              <span className="font-label-lg text-label-sm uppercase tracking-wider text-hero-navy/60 block mb-1">Información Útil</span>
+              <span className="font-label-lg text-label-sm uppercase tracking-wider text-hero-navy/75 block mb-1">Información Útil</span>
               <h3 className="font-display-hero uppercase text-hero-navy text-2xl md:text-3xl mb-3">Tabla de Marea</h3>
-              <p className="font-body-md text-body-md text-hero-navy/70">
+              <p className="font-body-md text-body-md text-hero-navy/80">
                 Consultá el estado de las mareas para planificar tus paseos a las piscinas naturales.
               </p>
             </div>
@@ -495,7 +496,7 @@ export default function Home() {
                       </div>
                       <div className="text-right text-hero-navy">
                         <span className="font-label-lg text-[14px]">{m.hora}</span>
-                        <span className="font-label-sm text-[12px] text-hero-navy/60 ml-2">{formatoAltura(m.altura)}</span>
+                        <span className="font-label-sm text-[13px] text-hero-navy/75 ml-2">{formatoAltura(m.altura)}</span>
                       </div>
                     </div>
                   ))}
@@ -550,7 +551,7 @@ export default function Home() {
             </div>
 
             <Link to="/nosotros"
-              className="inline-block bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3.5 rounded-full hover:opacity-90 transition-opacity">
+              className={BTN_SECUNDARIO}>
               Conocé nuestra historia y nuestro equipo
             </Link>
           </div>
@@ -564,7 +565,7 @@ export default function Home() {
 
       {/* ── CTA WHATSAPP ─────────────────────────────────────── */}
       <section className="grid grid-cols-1 md:grid-cols-[3fr_2fr] md:min-h-[420px]">
-        <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-16 flex flex-col justify-center">
+        <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-20 flex flex-col justify-center">
           <h2 className="font-display-hero uppercase text-white mb-8"
             style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)', letterSpacing: '0.01em' }}>
             ¿Querés armar tu viaje a medida?
@@ -574,9 +575,9 @@ export default function Home() {
               Completá el formulario y nuestro equipo se va a contactar para diseñar un viaje 100% personalizado según tus intereses, tiempos y presupuesto.
             </p>
             <button type="button" onClick={() => setFormPaquete(true)}
-              className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-xl px-8 py-4 rounded-full hover:opacity-90 transition-opacity">
+              className={BTN_PRINCIPAL}>
               Armá tu viaje
-              <span className="material-symbols-outlined text-hero-yellow text-2xl">flight</span>
+              <span className="material-symbols-outlined text-[20px]">flight</span>
             </button>
           </div>
         </div>
@@ -587,12 +588,12 @@ export default function Home() {
 
       {/* ── VIDEOS DE LA AGENCIA ──────────────────────────────── */}
       {videosAgencia.length > 0 && (
-        <section className="py-16 md:py-20 bg-hero-navy overflow-hidden">
+        <section className="py-16 md:py-24 bg-hero-navy overflow-hidden">
           <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className="font-display-hero uppercase text-hero-cream mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
               Viví Nuestros Viajes
             </h2>
-            <p className="font-body-md text-body-md text-hero-cream/70">Momentos reales de nuestros pasajeros en el Nordeste Brasilero</p>
+            <p className="font-body-md text-body-md text-hero-cream/80">Momentos reales de nuestros pasajeros en el Nordeste Brasilero</p>
           </div>
           <div className="no-scrollbar overflow-x-auto px-margin-mobile md:px-margin-desktop">
             <div className="flex items-start gap-4" style={{ width: 'max-content' }}>
@@ -623,7 +624,7 @@ export default function Home() {
           {config?.instagram_url && (
             <div className="mt-8 text-center px-margin-mobile">
               <a href={config.instagram_url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 border-2 border-hero-cream text-hero-cream font-label-lg text-label-lg px-8 py-3 rounded-full hover:bg-hero-cream hover:text-hero-navy transition-colors">
+                className={BTN_SECUNDARIO_OSCURO}>
                 Seguinos en Instagram
               </a>
             </div>

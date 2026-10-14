@@ -86,7 +86,7 @@ export default function Hoteles() {
       </section>
 
       {/* ── LISTADO ──────────────────────────────────────────── */}
-      <section className="py-12 md:py-16">
+      <section className="py-14 md:py-20">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           {loading ? (
             <div className="flex justify-center py-24">
@@ -116,7 +116,7 @@ export default function Hoteles() {
                     <div className="p-5 flex flex-col flex-1 gap-1.5">
                       <h3 className="font-display-hero uppercase text-hero-navy text-lg leading-tight">{h.nombre}</h3>
                       <Estrellas n={h.estrellas} />
-                      <p className="font-label-lg text-label-sm uppercase text-deep-ocean/70">{h.destino}</p>
+                      <p className="font-label-lg text-label-sm uppercase text-deep-ocean/85">{h.destino}</p>
                       <p className="font-body-md text-body-md text-on-surface-variant flex-1 line-clamp-2 mt-1">{h.descripcion}</p>
                       <div className="mt-3 pt-3 border-t border-surface-variant flex items-center justify-end">
                         <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline">Ver más →</span>

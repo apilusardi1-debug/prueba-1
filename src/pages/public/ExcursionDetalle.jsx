@@ -75,7 +75,7 @@ export default function ExcursionDetalle() {
   return (
     <div className="bg-surface min-h-screen">
       <div className="pt-24 md:pt-28 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-        <Link to={backTo} className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/70 hover:text-hero-navy mb-6">
+        <Link to={backTo} className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/80 hover:text-hero-navy mb-6">
           {t('detail_back')}
         </Link>
 
@@ -116,7 +116,7 @@ export default function ExcursionDetalle() {
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {metaCards.map(({ label, value, icon, red }) => (
                   <div key={label} className="bg-white border-2 border-hero-navy/10 rounded-xl px-4 py-3 text-center">
-                    <p className="font-label-sm text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">{label}</p>
+                    <p className="font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">{label}</p>
                     <p className={`font-label-lg text-[14px] flex items-center justify-center gap-1.5 ${red ? 'text-red-600' : 'text-hero-navy'}`}>
                       <span className="material-symbols-outlined text-[16px]">{icon}</span>{value}
                     </p>
@@ -140,11 +140,11 @@ export default function ExcursionDetalle() {
 
             <div className="flex items-center justify-between border-t-2 border-hero-navy/10 pt-6">
               <div>
-                <p className="font-label-sm text-[11px] uppercase text-on-surface-variant mb-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad] || t('detail_per_person')}</p>
+                <p className="font-label-sm text-[12px] uppercase text-on-surface-variant mb-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad] || t('detail_per_person')}</p>
                 <p className="font-display-hero text-hero-navy leading-none" style={{ fontSize: '2rem' }}>{formatPrecio(ex.precio, ex.moneda)}</p>
               </div>
               {/* La reserva se cierra por WhatsApp desde "Mi selección", no en el sitio */}
-              {ex.categoria === 'excursiones' && <BotonAgregarPaseo ex={ex} className="px-7 py-3.5" />}
+              {ex.categoria === 'excursiones' && <BotonAgregarPaseo ex={ex} />}
             </div>
           </div>
         </div>

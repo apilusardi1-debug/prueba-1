@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
+import { BTN_SECUNDARIO } from '../../components/public/botones.js'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -84,7 +85,7 @@ export default function HotelDetalle() {
     <div className="bg-surface min-h-screen">
       <div className="pt-24 md:pt-28 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
         {!standalone && (
-          <Link to="/hoteles" className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/70 hover:text-hero-navy mb-6">
+          <Link to="/hoteles" className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/80 hover:text-hero-navy mb-6">
             ← Volver a hoteles
           </Link>
         )}
@@ -98,7 +99,7 @@ export default function HotelDetalle() {
                   Fotos: <span className="text-hero-navy">{habitacionActiva.nombre}</span>
                 </p>
                 <button onClick={() => setHabitacionActiva(null)}
-                  className="font-label-lg text-label-sm uppercase text-hero-navy border-2 border-hero-navy px-4 py-1.5 rounded-full hover:bg-hero-navy hover:text-white transition-colors">
+                  className={BTN_SECUNDARIO}>
                   ← Ver fotos del hotel
                 </button>
               </div>
@@ -139,7 +140,7 @@ export default function HotelDetalle() {
               {h.nombre}
             </h1>
             {habitacionActiva && (
-              <p className="font-label-lg text-label-md uppercase text-hero-navy/70 mb-1">{habitacionActiva.nombre}</p>
+              <p className="font-label-lg text-label-md uppercase text-hero-navy/80 mb-1">{habitacionActiva.nombre}</p>
             )}
             <Estrellas n={h.estrellas} />
             {direccionCompleta && (
@@ -197,7 +198,7 @@ export default function HotelDetalle() {
                         <video src={`${hab.video}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
                       ) : null}
                       {totalFotos > 1 && (
-                        <span className="absolute bottom-0.5 right-0.5 bg-hero-navy/80 text-white text-[10px] font-semibold px-1.5 rounded">
+                        <span className="absolute bottom-0.5 right-0.5 bg-hero-navy/80 text-white text-[11px] font-semibold px-1.5 rounded">
                           {totalFotos} fotos
                         </span>
                       )}
@@ -211,7 +212,7 @@ export default function HotelDetalle() {
                           hab.camas || null,
                         ].filter(Boolean).join(' · ')}
                       </p>
-                      {hab.vista && <p className="font-body-md text-body-md text-on-surface-variant/70 text-sm">{hab.vista}</p>}
+                      {hab.vista && <p className="font-body-md text-body-md text-on-surface-variant text-sm">{hab.vista}</p>}
                     </div>
                   </button>
                 )

@@ -66,7 +66,7 @@ export default function Catalogo({ categoria }) {
           {/* Buscador + filtro de destino */}
           <div className="flex flex-col md:flex-row gap-3 md:items-center">
             <div className="relative w-full md:w-72">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[20px] pointer-events-none">search</span>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
               <input
                 type="text"
                 value={busqueda}
@@ -98,7 +98,7 @@ export default function Catalogo({ categoria }) {
       </section>
 
       {/* ── LISTADO ──────────────────────────────────────────── */}
-      <section className="py-12 md:py-16">
+      <section className="py-14 md:py-20">
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           {loading ? (
             <div className="flex justify-center py-24">
@@ -127,13 +127,13 @@ export default function Catalogo({ categoria }) {
                         onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       {ex.destino && (
-                        <span className="absolute top-3 left-3 bg-hero-navy/80 backdrop-blur-sm text-hero-cream font-label-sm text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full">
+                        <span className="absolute top-3 left-3 bg-hero-navy/80 backdrop-blur-sm text-hero-cream font-label-sm text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full">
                           {ex.destino}
                         </span>
                       )}
                       {/* Los paseos (categoria "excursiones") no muestran cupos — pedido explícito */}
                       {ex.categoria !== 'excursiones' && ex.cuposDisponibles <= 3 && (
-                        <span className="absolute top-3 right-3 bg-red-600 text-white font-label-sm text-[10px] uppercase px-3 py-1.5 rounded-full">
+                        <span className="absolute top-3 right-3 bg-red-600 text-white font-label-sm text-[11px] uppercase px-3 py-1.5 rounded-full">
                           ¡Últimos {ex.cuposDisponibles}!
                         </span>
                       )}
@@ -141,7 +141,7 @@ export default function Catalogo({ categoria }) {
                     <div className="p-5 flex flex-col flex-1 gap-2 bg-white">
                       <h3 className="font-display-hero uppercase text-hero-navy text-lg leading-tight">{ex.nombre}</h3>
                       <p className="font-body-md text-body-md text-on-surface-variant line-clamp-2 flex-1">{ex.descripcion}</p>
-                      <div className="flex items-center gap-4 font-label-sm text-label-sm uppercase text-deep-ocean/70 pt-1">
+                      <div className="flex items-center gap-4 font-label-sm text-label-sm uppercase text-deep-ocean/85 pt-1">
                         {ex.duracion && (
                           <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-[15px]">schedule</span>{ex.duracion}
@@ -157,16 +157,16 @@ export default function Catalogo({ categoria }) {
                     </Link>
                     {ex.categoria === 'excursiones' && (
                       <div className="bg-white px-5 pb-5">
-                        <BotonAgregarPaseo ex={ex} className="w-full py-3" />
+                        <BotonAgregarPaseo ex={ex} className="w-full" />
                       </div>
                     )}
                     <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
                       <div>
-                        <span className="font-label-sm text-[10px] uppercase text-hero-cream/70 block leading-none mb-1">Desde</span>
+                        <span className="font-label-sm text-[11px] uppercase text-hero-cream/80 block leading-none mb-1">Desde</span>
                         <span className="font-display-hero text-hero-yellow text-xl leading-none">
                           {formatPrecio(ex.precio, ex.moneda)}
                           {UNIDAD_PRECIO_LABEL[ex.precioUnidad] && (
-                            <span className="text-[11px] normal-case font-label-sm text-hero-cream/70 ml-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad]}</span>
+                            <span className="text-[12px] normal-case font-label-sm text-hero-cream/80 ml-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad]}</span>
                           )}
                         </span>
                       </div>

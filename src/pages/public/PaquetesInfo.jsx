@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { destinos } from '../../data/mockData.js'
 import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
+import { BTN_PRINCIPAL } from '../../components/public/botones.js'
 
 // Página que explica cómo funcionan los paquetes. Antes /paquetes era el
 // catálogo filtrado con paquetes armados de antemano; los paquetes se arman a
@@ -38,7 +39,7 @@ export default function PaquetesInfo() {
 
   const Boton = () => (
     <button type="button" onClick={() => setFormAbierto(true)}
-      className="inline-flex items-center justify-center gap-2 bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
+      className={BTN_PRINCIPAL}>
       <span className="material-symbols-outlined text-[20px]">edit_note</span>
       Armar mi paquete
     </button>
@@ -65,7 +66,7 @@ export default function PaquetesInfo() {
         </div>
       </section>
 
-      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-12 md:py-16">
+      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
         {/* Qué incluye */}
         <h2 className={TITULO} style={TITULO_ESTILO}>Qué incluye tu paquete</h2>
         <div className="grid md:grid-cols-3 gap-4 md:gap-gutter mb-14">
@@ -93,7 +94,7 @@ export default function PaquetesInfo() {
               <div className="absolute inset-0 bg-gradient-to-t from-hero-navy/90 via-hero-navy/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4">
                 <p className="font-display-hero uppercase text-hero-yellow text-xl md:text-2xl leading-none">{d.nombre}</p>
-                <p className="font-label-sm text-[12px] text-hero-cream/80 mt-1">{d.estado}</p>
+                <p className="font-label-sm text-[13px] text-hero-cream/80 mt-1">{d.estado}</p>
               </div>
             </Link>
           ))}

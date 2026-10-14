@@ -4,6 +4,7 @@ import { useSeleccionPaseos } from '../../context/SeleccionPaseosContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { formatPrecio } from '../../data/mockData.js'
 import { armarMensajePedidoWeb } from '../../../supabase/functions/_shared/pedidoWebPaseos.ts'
+import { BTN_PRINCIPAL, BTN_ELEGIDO } from './botones.js'
 
 // Panel "Mi selección" + botón flotante que lo abre. La reserva de paseos no
 // se cierra en el sitio: el cliente elige paseos, fechas de estadía y
@@ -93,7 +94,7 @@ export default function SeleccionPaseos() {
           className="fixed z-40 right-4 bottom-20 md:bottom-6 md:right-6 flex items-center gap-3 bg-hero-navy text-hero-cream pl-3 pr-5 py-2.5 rounded-full shadow-[0_8px_24px_rgba(7,46,64,0.35)] hover:bg-deep-ocean transition-colors">
           <span className="relative w-9 h-9 rounded-full bg-hero-yellow text-hero-navy flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">beach_access</span>
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center">{cantidad}</span>
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[12px] font-bold flex items-center justify-center">{cantidad}</span>
           </span>
           <span className="font-label-lg text-label-sm uppercase">Mi selección</span>
         </button>
@@ -106,10 +107,10 @@ export default function SeleccionPaseos() {
             onClick={e => e.stopPropagation()}>
             <div className="bg-hero-navy px-6 py-5 flex items-start justify-between gap-4">
               <div>
-                <p className="font-label-sm text-[11px] uppercase tracking-widest text-hero-yellow mb-1">Tu viaje</p>
+                <p className="font-label-sm text-[12px] uppercase tracking-widest text-hero-yellow mb-1">Tu viaje</p>
                 <h2 className="font-display-hero uppercase text-hero-cream text-2xl leading-none">Mi selección</h2>
               </div>
-              <button onClick={cerrar} aria-label="Cerrar" className="text-hero-cream/60 hover:text-hero-cream text-2xl leading-none">✕</button>
+              <button onClick={cerrar} aria-label="Cerrar" className="text-hero-cream/75 hover:text-hero-cream text-2xl leading-none">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
@@ -125,7 +126,7 @@ export default function SeleccionPaseos() {
                         {p.imagen && <img src={p.imagen} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />}
                         <div className="min-w-0 flex-1">
                           <p className="font-label-lg text-[14px] text-hero-navy leading-tight truncate">{p.nombre}</p>
-                          <p className="font-body-md text-[12px] text-on-surface-variant">
+                          <p className="font-body-md text-[13px] text-on-surface-variant">
                             {formatPrecio(p.precio, p.moneda)} {UNIDAD_PRECIO_LABEL[p.precioUnidad] || ''}
                           </p>
                         </div>
@@ -139,13 +140,13 @@ export default function SeleccionPaseos() {
                     <p className={LABEL}>Fechas de tu estadía</p>
                     <div className="grid grid-cols-2 gap-2.5">
                       <label className="block">
-                        <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Llegada</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Llegada</span>
                         <input type="date" min={hoy()} value={desde}
                           onChange={e => { setDesde(e.target.value); if (hasta && e.target.value > hasta) setHasta('') }}
                           className={CAMPO} />
                       </label>
                       <label className="block">
-                        <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Salida</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Salida</span>
                         <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
                       </label>
                     </div>
@@ -159,7 +160,7 @@ export default function SeleccionPaseos() {
                     </div>
                     {edades.length > 0 && (
                       <div className="mt-3">
-                        <span className="block font-body-md text-[12px] text-on-surface-variant mb-1.5">Edad de cada menor</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1.5">Edad de cada menor</span>
                         <div className="grid grid-cols-4 gap-2">
                           {edades.map((edad, i) => (
                             <select key={i} value={edad} aria-label={`Edad del menor ${i + 1}`}
@@ -176,7 +177,7 @@ export default function SeleccionPaseos() {
 
                   <div>
                     <label className={LABEL}>
-                      Código de vendedor <span className="normal-case font-normal text-on-surface-variant/70 text-[11px]">(opcional)</span>
+                      Código de vendedor <span className="normal-case font-normal text-on-surface-variant text-[12px]">(opcional)</span>
                     </label>
                     <input type="text" value={codigo} maxLength={20} placeholder="Ej: JUAN01"
                       onChange={e => setCodigo(e.target.value.toUpperCase())}
@@ -190,11 +191,11 @@ export default function SeleccionPaseos() {
               <div className="border-t-2 border-hero-navy/10 px-6 py-4 bg-white">
                 {error && <p className="bg-red-50 text-red-600 font-body-md text-[13px] px-3.5 py-2.5 rounded-lg mb-3">{error}</p>}
                 <button onClick={enviar}
-                  className="w-full flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#1ebe5a] text-white font-label-lg text-label-lg uppercase py-3.5 rounded-full transition-colors">
+                  className={`${BTN_PRINCIPAL} w-full`}>
                   <span className="material-symbols-outlined text-[20px]">chat</span>
                   Enviar por WhatsApp
                 </button>
-                <p className="font-body-md text-[12px] text-on-surface-variant text-center mt-2.5">
+                <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
                   Te respondemos por WhatsApp con disponibilidad y precio final.
                 </p>
               </div>
@@ -212,9 +213,7 @@ export function BotonAgregarPaseo({ ex, className = '' }) {
   const agregado = tiene(ex.id)
   return (
     <button type="button" onClick={() => agregado ? quitar(ex.id) : agregar(ex)} aria-pressed={agregado}
-      className={`inline-flex items-center justify-center gap-1.5 font-label-lg text-label-sm uppercase rounded-full transition-colors ${
-        agregado ? 'bg-hero-yellow text-hero-navy hover:opacity-90' : 'bg-hero-navy text-hero-cream hover:bg-deep-ocean'
-      } ${className}`}>
+      className={`${agregado ? BTN_ELEGIDO : BTN_PRINCIPAL} ${className}`}>
       <span className="material-symbols-outlined text-[18px]">{agregado ? 'check' : 'add'}</span>
       {agregado ? 'Agregado' : 'Agregar a mi selección'}
     </button>

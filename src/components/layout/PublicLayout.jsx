@@ -253,21 +253,21 @@ export default function PublicLayout() {
           <div className="flex justify-around items-center h-16 px-2">
             <Link to="/" className="flex flex-col items-center justify-center w-full h-full text-deep-ocean">
               <span className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
-              <span className="text-[10px] font-semibold">Inicio</span>
+              <span className="text-[11px] font-semibold">Inicio</span>
             </Link>
             <Link to="/destinos" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
-              <span className="text-[10px]">Destinos</span>
+              <span className="text-[11px]">Destinos</span>
             </Link>
             <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
-              <span className="text-[10px]">Paseos</span>
+              <span className="text-[11px]">Paseos</span>
             </Link>
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
-              <span className="text-[10px]">Contacto</span>
+              <span className="text-[11px]">Contacto</span>
             </a>
           </div>
         </nav>

@@ -1,5 +1,6 @@
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import { BTN_PRINCIPAL, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 
 // Los textos están en src/lib/i18n.js (claves about_*), en español, portugués e inglés
 const VALORES = [
@@ -29,7 +30,7 @@ export default function Nosotros() {
         </div>
       </section>
 
-      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-12 md:py-16">
+      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
         {/* Valores */}
         <div className="grid md:grid-cols-3 gap-4 md:gap-gutter mb-12">
           {VALORES.map(({ icono, n }) => (
@@ -64,7 +65,7 @@ export default function Nosotros() {
             style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', letterSpacing: '0.01em' }}>
             {t('about_cta_title')}
           </h2>
-          <p className="font-body-md text-body-md text-hero-cream/70 mb-8">
+          <p className="font-body-md text-body-md text-hero-cream/80 mb-8">
             {t('about_cta_text')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -72,7 +73,7 @@ export default function Nosotros() {
               href={`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(t('about_wa_message'))}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity"
+              className={BTN_PRINCIPAL}
             >
               <span className="material-symbols-outlined text-[20px]">chat</span>
               WhatsApp
@@ -81,7 +82,7 @@ export default function Nosotros() {
               href={config?.instagram_url || 'https://www.instagram.com/dreamtours_esp/'}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:bg-hero-yellow hover:text-hero-navy transition-colors"
+              className={BTN_SECUNDARIO_OSCURO}
             >
               <span className="material-symbols-outlined text-[20px]">photo_camera</span>
               Instagram

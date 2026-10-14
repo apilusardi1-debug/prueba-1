@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { Contador } from './SeleccionPaseos.jsx'
+import { BTN_PRINCIPAL } from './botones.js'
 import {
   DESTINOS_PAQUETE, HOSPEDAJES_PAQUETE, PAISES_PAQUETE, armarMensajePedidoPaquete, nochesEntre,
 } from '../../../supabase/functions/_shared/pedidoWebPaquete.ts'
@@ -96,10 +97,10 @@ export default function FormularioPaquete({ onClose }) {
         onClick={e => e.stopPropagation()}>
         <div className="bg-hero-navy px-6 py-5 flex items-start justify-between gap-4">
           <div>
-            <p className="font-label-sm text-[11px] uppercase tracking-widest text-hero-yellow mb-1">Paquete a medida</p>
+            <p className="font-label-sm text-[12px] uppercase tracking-widest text-hero-yellow mb-1">Paquete a medida</p>
             <h2 className="font-display-hero uppercase text-hero-cream text-2xl leading-none">Contanos tu viaje</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-hero-cream/60 hover:text-hero-cream text-2xl leading-none">✕</button>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-hero-cream/75 hover:text-hero-cream text-2xl leading-none">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
@@ -109,7 +110,7 @@ export default function FormularioPaquete({ onClose }) {
           </label>
 
           <div>
-            <p className={LABEL}>Destinos <span className="normal-case font-normal text-on-surface-variant/70 text-[11px]">(podés elegir varios)</span></p>
+            <p className={LABEL}>Destinos <span className="normal-case font-normal text-on-surface-variant text-[12px]">(podés elegir varios)</span></p>
             <Opciones opciones={DESTINOS_PAQUETE} elegidas={destinos} onChange={setDestinos} />
           </div>
 
@@ -136,7 +137,7 @@ export default function FormularioPaquete({ onClose }) {
             </div>
             {edades.length > 0 && (
               <div className="mt-3">
-                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1.5">Edad de cada menor</span>
+                <span className="block font-body-md text-[13px] text-on-surface-variant mb-1.5">Edad de cada menor</span>
                 <div className="grid grid-cols-4 gap-2">
                   {edades.map((edad, i) => (
                     <select key={i} value={edad} aria-label={`Edad del menor ${i + 1}`}
@@ -152,7 +153,7 @@ export default function FormularioPaquete({ onClose }) {
           </div>
 
           <div>
-            <p className={LABEL}>Hospedaje <span className="normal-case font-normal text-on-surface-variant/70 text-[11px]">(podés elegir varios)</span></p>
+            <p className={LABEL}>Hospedaje <span className="normal-case font-normal text-on-surface-variant text-[12px]">(podés elegir varios)</span></p>
             <Opciones opciones={HOSPEDAJES_PAQUETE} elegidas={hospedajes} onChange={setHospedajes} />
           </div>
 
@@ -164,16 +165,16 @@ export default function FormularioPaquete({ onClose }) {
 
           <div>
             <p className={LABEL}>¿Cuándo podés viajar?</p>
-            <span className="block font-body-md text-[12px] text-on-surface-variant mb-2">El período en el que te gustaría viajar: buscamos la mejor opción dentro de esas fechas.</span>
+            <span className="block font-body-md text-[13px] text-on-surface-variant mb-2">El período en el que te gustaría viajar: buscamos la mejor opción dentro de esas fechas.</span>
             <div className="grid grid-cols-2 gap-2.5">
               <label className="block">
-                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Desde</span>
+                <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Desde</span>
                 <input type="date" min={hoy()} value={desde}
                   onChange={e => { setDesde(e.target.value); if (hasta && e.target.value >= hasta) setHasta('') }}
                   className={CAMPO} />
               </label>
               <label className="block">
-                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Hasta</span>
+                <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Hasta</span>
                 <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
               </label>
             </div>
@@ -186,11 +187,11 @@ export default function FormularioPaquete({ onClose }) {
         <div className="border-t-2 border-hero-navy/10 px-6 py-4 bg-white">
           {error && <p className="bg-red-50 text-red-600 font-body-md text-[13px] px-3.5 py-2.5 rounded-lg mb-3">{error}</p>}
           <button type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#1ebe5a] text-white font-label-lg text-label-lg uppercase py-3.5 rounded-full transition-colors">
+            className={`${BTN_PRINCIPAL} w-full`}>
             <span className="material-symbols-outlined text-[20px]">chat</span>
             Enviar por WhatsApp
           </button>
-          <p className="font-body-md text-[12px] text-on-surface-variant text-center mt-2.5">
+          <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
             Te respondemos por WhatsApp con tu propuesta a medida.
           </p>
         </div>

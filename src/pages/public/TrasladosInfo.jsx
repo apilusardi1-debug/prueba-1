@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import { BTN_PRINCIPAL } from '../../components/public/botones.js'
 
 // Página que explica cómo funcionan los traslados. Antes /traslados era el
 // catálogo de paseos filtrado (buscador, "1 resultado encontrado", cupos),
@@ -52,10 +53,9 @@ export default function TrasladosInfo() {
 
   const waHref = `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(MENSAJE_WA)}`
 
-  const Boton = ({ claro }) => (
+  const Boton = () => (
     <a href={waHref} target="_blank" rel="noopener noreferrer"
-      className={`inline-flex items-center justify-center gap-2 font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors ${
-        claro ? 'bg-hero-yellow text-hero-navy hover:opacity-90' : 'bg-hero-navy text-white hover:opacity-90'}`}>
+      className={BTN_PRINCIPAL}>
       <span className="material-symbols-outlined text-[20px]">chat</span>
       Cotizar mi traslado
     </a>
@@ -88,7 +88,7 @@ export default function TrasladosInfo() {
         </div>
       </section>
 
-      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-12 md:py-16">
+      <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
         {/* Qué traslados hacemos */}
         <h2 className="font-display-hero uppercase text-hero-navy mb-6"
           style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
@@ -130,7 +130,7 @@ export default function TrasladosInfo() {
               style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
               Para cotizar, tené a mano
             </h2>
-            <p className="font-body-md text-body-md text-hero-cream/70 mb-6">
+            <p className="font-body-md text-body-md text-hero-cream/80 mb-6">
               Con estos datos te pasamos el precio y dejamos tu traslado coordinado.
             </p>
             {/* En el celular el botón va debajo de la lista */}

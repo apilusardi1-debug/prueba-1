@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { hoyEnDestino, proximosDias, proximaVentana, formatoAltura, ULTIMO_DIA } from '../../data/mareas.js'
+import { BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -13,13 +14,13 @@ function partesFecha(fechaISO) {
 const ESTILO_ESTADO = {
   ideal:   'bg-hero-sky text-hero-navy',
   posible: 'bg-hero-yellow text-hero-navy',
-  no:      'bg-white/10 text-hero-cream/50',
+  no:      'bg-white/10 text-hero-cream/75',
 }
 
 // Horas y alturas de un tipo de marea. En el celular, la altura va debajo de la
 // hora; la marea baja que sirve para las piscinas se resalta en celeste.
 function Mareas({ lista, destacada }) {
-  if (!lista.length) return <span className="text-hero-cream/30">—</span>
+  if (!lista.length) return <span className="text-hero-cream/75">—</span>
   return (
     <div className="flex flex-col gap-2 md:gap-1">
       {lista.map(m => {
@@ -27,7 +28,7 @@ function Mareas({ lista, destacada }) {
         return (
           <div key={m.hora} className="flex flex-col md:flex-row md:items-baseline md:gap-2 leading-tight">
             <span className={`font-label-lg text-[15px] ${resaltar ? 'text-hero-sky' : 'text-white'}`}>{m.hora}</span>
-            <span className={`font-label-sm text-[12px] ${resaltar ? 'text-hero-sky/80' : 'text-hero-cream/60'}`}>{formatoAltura(m.altura)}</span>
+            <span className={`font-label-sm text-[13px] ${resaltar ? 'text-hero-sky/80' : 'text-hero-cream/75'}`}>{formatoAltura(m.altura)}</span>
           </div>
         )
       })}
@@ -52,7 +53,7 @@ export default function Marea() {
           style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
           Porto de Galinhas y Maragogi
         </p>
-        <p className="font-body-md text-body-md text-hero-cream/70 max-w-2xl mb-10">
+        <p className="font-body-md text-body-md text-hero-cream/80 max-w-2xl mb-10">
           Las piscinas naturales aparecen con la marea baja. Las mejores salidas son de día, con la marea en 0,60 m o menos; cuanto más baja, mejor.
         </p>
 
@@ -61,7 +62,7 @@ export default function Marea() {
             <p className="font-body-md text-body-md text-hero-cream/80 mb-6">
               Estamos actualizando la tabla de mareas. Escribinos y te pasamos los mejores días para tu viaje.
             </p>
-            <Link to="/" className="inline-block border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:bg-hero-yellow hover:text-hero-navy transition-colors">
+            <Link to="/" className={BTN_SECUNDARIO_OSCURO}>
               Volver al inicio
             </Link>
           </div>
@@ -73,7 +74,7 @@ export default function Marea() {
               return (
                 <div className="rounded-2xl bg-hero-sky/10 border border-hero-sky/25 p-6 md:p-7 mb-4 flex flex-wrap items-center justify-between gap-6">
                   <div>
-                    <p className="font-label-lg text-[11px] uppercase tracking-[0.2em] text-hero-sky mb-2">
+                    <p className="font-label-lg text-[12px] uppercase tracking-[0.2em] text-hero-sky mb-2">
                       {ventana.fecha === hoy ? 'Hoy se puede ir a las piscinas' : 'Próximo día para las piscinas'}
                     </p>
                     <p className="font-display-hero uppercase text-white leading-none" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
@@ -81,7 +82,7 @@ export default function Marea() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-label-lg text-[11px] uppercase tracking-[0.16em] text-hero-cream/50 mb-2">Marea baja</p>
+                    <p className="font-label-lg text-[12px] uppercase tracking-[0.16em] text-hero-cream/75 mb-2">Marea baja</p>
                     <p className="font-display-hero text-hero-sky leading-none text-[2rem]">{formatoAltura(ventana.mejor.altura)}</p>
                   </div>
                 </div>
@@ -92,7 +93,7 @@ export default function Marea() {
             <div className="rounded-2xl border border-white/10 overflow-hidden">
               <div className="grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-3 border-b border-white/10">
                 {['Día', 'Marea baja', 'Marea alta', 'Piscinas'].map((h, i) => (
-                  <p key={h} className={`font-label-lg text-[10px] uppercase tracking-[0.16em] text-hero-cream/50 ${i === 3 ? 'text-right' : ''}`}>{h}</p>
+                  <p key={h} className={`font-label-lg text-[11px] uppercase tracking-[0.16em] text-hero-cream/75 ${i === 3 ? 'text-right' : ''}`}>{h}</p>
                 ))}
               </div>
               {dias.map((d, i) => {
@@ -102,12 +103,12 @@ export default function Marea() {
                     className={`grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-4 items-center ${i < dias.length - 1 ? 'border-b border-white/[0.07]' : ''} ${d.fecha === hoy ? 'bg-hero-sky/[0.06]' : ''}`}>
                     <div className="flex items-baseline gap-2">
                       <span className="font-display-hero text-white text-[1.6rem] leading-none">{f.dia}</span>
-                      <span className="font-label-lg text-[11px] uppercase text-hero-cream/50">{d.fecha === hoy ? 'Hoy' : f.semana}</span>
+                      <span className="font-label-lg text-[12px] uppercase text-hero-cream/75">{d.fecha === hoy ? 'Hoy' : f.semana}</span>
                     </div>
                     <Mareas lista={d.mareas.filter(m => m.tipo === 'baja')} destacada={d.mejor} />
                     <Mareas lista={d.mareas.filter(m => m.tipo === 'alta')} />
                     <div className="flex justify-end">
-                      <span className={`inline-block px-3 py-1 rounded-full font-label-lg text-[10px] uppercase tracking-wider whitespace-nowrap ${ESTILO_ESTADO[d.estado.id]}`}>
+                      <span className={`inline-block px-3 py-1 rounded-full font-label-lg text-[11px] uppercase tracking-wider whitespace-nowrap ${ESTILO_ESTADO[d.estado.id]}`}>
                         {d.estado.label}
                       </span>
                     </div>
@@ -116,7 +117,7 @@ export default function Marea() {
               })}
             </div>
 
-            <p className="font-body-md text-[12px] text-hero-cream/40 text-center mt-6">
+            <p className="font-body-md text-[13px] text-hero-cream/75 text-center mt-6">
               Previsión de mareas de referencia, cargada hasta el {fin.dia} de {fin.mes}. Confirmá con tu guía antes del paseo.
             </p>
           </>

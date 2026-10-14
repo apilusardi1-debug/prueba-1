@@ -1,7 +1,7 @@
 # DreamsTour — Contexto del Proyecto
 
 ## Quiénes somos
-Cristian y Abril desarrollan una plataforma web completa para **DreamsTour**, agencia de turismo con base en Salvador, Bahia (Brasil). El proyecto está en producción activa.
+Cristian y Abril desarrollan una plataforma web completa para **DreamsTour**, agencia de turismo con base en Porto de Galinhas, Ipojuca, Pernambuco (Brasil). El proyecto está en producción activa.
 
 ## Stack tecnológico
 - **Frontend**: React 18 + Vite + TailwindCSS + React Router v6

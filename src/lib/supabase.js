@@ -284,6 +284,25 @@ export const clientesSaldosApi = {
 }
 
 // ── Anfitriona: hospedajes de cada lead y saldos cargados a mano ───────────────
+// Saldos de la ficha única: una persona tiene un solo listado, ligado a su lead, a su
+// ficha de cliente o a las dos. Se leen los de ambos y se juntan sin repetir.
+export const saldosApi = {
+  listar: async (leadId, clienteId) => {
+    const pedidos = []
+    if (leadId) pedidos.push(invocarCatalogoInterno('saldos', 'list', { filtros: { lead_id: leadId } }))
+    if (clienteId) pedidos.push(invocarCatalogoInterno('saldos', 'list', { filtros: { cliente_id: clienteId } }))
+    const respuestas = await Promise.all(pedidos)
+    const error = respuestas.find(r => r.error)?.error || null
+    const porId = new Map()
+    for (const r of respuestas) for (const s of r.data || []) porId.set(s.id, s)
+    const data = [...porId.values()].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    return { data, error }
+  },
+  create: (data) => invocarCatalogoInterno('saldos', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('saldos', 'update', { id, data }),
+  delete: (id) => invocarCatalogoInterno('saldos', 'delete', { id }),
+}
+
 export const anfitrionaApi = {
   getHospedajes: () => invocarCatalogoInterno('anfitriona_hospedajes', 'list'),
   createHospedaje: (data) => invocarCatalogoInterno('anfitriona_hospedajes', 'create', { data }),

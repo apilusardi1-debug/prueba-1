@@ -9,6 +9,10 @@ import ModalRegistrarPago from '../../components/ui/ModalRegistrarPago.jsx'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { SeccionSaldos } from '../../components/leads/AnfitrionaDatos.jsx'
 import { normalizarWhatsapp } from '../../lib/telefono.js'
+import FichaPersona from '../../components/ficha/FichaPersona.jsx'
+
+// Ficha única (lead + cliente, 2026-10-14). En false vuelve a la ficha anterior del cliente.
+const FICHA_UNICA = true
 import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, EMBUDOS, NOTAS_TAREA_ANFITRIONA, hoyISO } from '../../lib/embudo.js'
 
 /* ─── helpers ─── */
@@ -405,7 +409,14 @@ export default function Clientes() {
       </div>
 
       {/* Perfil */}
-      {perfil && (
+      {perfil && FICHA_UNICA && (
+        <FichaPersona
+          cliente={perfil}
+          onCerrar={() => setPerfil(null)}
+          onClienteActualizado={c => setClientes(prev => prev.map(x => x.id === c.id ? c : x))}
+        />
+      )}
+      {perfil && !FICHA_UNICA && (
         <PerfilCliente
           cliente={perfil}
           onCerrar={() => setPerfil(null)}

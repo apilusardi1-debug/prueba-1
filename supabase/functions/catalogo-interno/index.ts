@@ -59,6 +59,9 @@ const TABLAS: Record<string, TablaCfg> = {
   hospedajes_propietarios: { pk: 'id', orderBy: 'id' },
   anfitriona_hospedajes: { pk: 'id', orderBy: 'created_at' },
   anfitriona_saldos: { pk: 'id', orderBy: 'created_at' },
+  // Saldos de la ficha única (lead y/o cliente): reemplaza a anfitriona_saldos y
+  // cliente_saldos (ver migración 20261014120000_saldos_unificados.sql)
+  saldos: { pk: 'id', orderBy: 'created_at' },
   // Lectura pública aparte (RLS): la usa el catálogo del sitio. El UPDATE de
   // cupos_disponibles que dispara una reserva pública no pasa por acá, es la función
   // ajustar_cupos_excursion (ver migración del trío excursiones/reservas/clientes).

@@ -48,7 +48,7 @@ export default function AnfitrionaDatos({ lead, hospedajes, setHospedajes }) {
   )
 }
 
-function SeccionHospedajes({ leadId, propios, setHospedajes }) {
+export function SeccionHospedajes({ leadId, propios, setHospedajes }) {
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [catalogo, setCatalogo] = useState([])

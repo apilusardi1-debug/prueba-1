@@ -485,7 +485,7 @@ export default function Home() {
                   <div className="flex justify-between items-center pb-3 border-b border-hero-navy/15">
                     <span className="font-label-lg text-label-sm uppercase text-hero-navy">Hoy</span>
                     <span className="font-label-lg text-label-sm uppercase text-hero-navy">
-                      Piscinas: {mareaHoy.mejor ? `${mareaHoy.estado.label} a las ${mareaHoy.mejor.hora}` : mareaHoy.estado.label}
+                      {mareaHoy.mejor ? `Piscinas: ${mareaHoy.estado.label} a las ${mareaHoy.mejor.hora}` : 'Hoy: ideal para otros paseos'}
                     </span>
                   </div>
                   {mareaHoy.mareas.map(m => (

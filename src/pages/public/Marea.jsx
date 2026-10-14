@@ -14,7 +14,7 @@ function partesFecha(fechaISO) {
 const ESTILO_ESTADO = {
   ideal:   'bg-hero-sky text-hero-navy',
   posible: 'bg-hero-yellow text-hero-navy',
-  no:      'bg-white/10 text-hero-cream/75',
+  no:      'bg-white/10 text-hero-cream',
 }
 
 // Horas y alturas de un tipo de marea. En el celular, la altura va debajo de la
@@ -54,7 +54,7 @@ export default function Marea() {
           Porto de Galinhas y Maragogi
         </p>
         <p className="font-body-md text-body-md text-hero-cream/80 max-w-2xl mb-10">
-          Las piscinas naturales aparecen con la marea baja. Las mejores salidas son de día, con la marea en 0,60 m o menos; cuanto más baja, mejor.
+          Las piscinas naturales aparecen con la marea baja. Las mejores salidas son de día, con la marea en 0,60 m o menos; cuanto más baja, mejor. Los días sin marea baja son ideales para el resto de los paseos: Maragogi, Carneiros, buggy y más.
         </p>
 
         {dias.length === 0 ? (

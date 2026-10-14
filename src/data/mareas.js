@@ -112,7 +112,9 @@ const ALTURA_IDEAL = 0.4
 export const ESTADOS_PISCINAS = {
   ideal:   { id: 'ideal',   label: 'Ideal' },
   posible: { id: 'posible', label: 'Posible' },
-  no:      { id: 'no',      label: 'No apta' },
+  // Sin marea baja de día no hay piscinas naturales, pero sí todos los demás paseos:
+  // el texto invita a esos paseos en vez de decir "no apta" (pedido de Abril, 2026-10-14).
+  no:      { id: 'no',      label: 'Otros paseos' },
 }
 
 const FECHAS = Object.keys(MAREAS).sort()

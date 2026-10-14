@@ -39,7 +39,7 @@ const RESENAS = [
 const FAQS = [
   {
     q: '¿Cuál es la mejor época para viajar?',
-    a: 'La mejor época es entre septiembre y marzo, cuando llueve menos y las aguas son más cristalinas. Evitá junio y julio, que es temporada de lluvias en Pernambuco y Alagoas.',
+    a: 'La mejor época es entre septiembre y marzo, cuando llueve menos y las aguas son más cristalinas.',
   },
   {
     q: '¿Cómo funcionan las piscinas naturales?',

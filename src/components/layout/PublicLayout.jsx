@@ -7,12 +7,12 @@ import { SeleccionPaseosProvider } from '../../context/SeleccionPaseosContext.js
 import SeleccionPaseos from '../public/SeleccionPaseos.jsx'
 
 const NAV_LINKS = [
-  { to: '/paquetes',    label: 'Paquetes Aéreos',  icon: 'flight' },
+  { to: '/paquetes',    label: 'Paquetes aéreos',  icon: 'flight' },
   { to: '/excursiones', label: 'Paseos',            icon: 'explore' },
   { to: '/hoteles',     label: 'Hoteles & Posadas', icon: 'hotel' },
   { to: '/traslados',   label: 'Traslados',         icon: 'directions_car' },
   { to: '/destinos',    label: 'Destinos',          icon: 'map' },
-  { to: '/marea',       label: 'Tabla de Marea',    icon: 'waves' },
+  { to: '/marea',       label: 'Tabla de marea',    icon: 'waves' },
   { to: '/nosotros',    label: 'Nosotros',          icon: 'group' },
 ]
 
@@ -208,7 +208,7 @@ export default function PublicLayout() {
           <div className="flex flex-col items-center text-center">
             <h2 className="font-display-hero uppercase text-white leading-none"
               style={{ fontSize: 'clamp(1.5rem, 3.2vw, 2.25rem)', letterSpacing: '0.01em' }}>
-              Hace realidad el viaje
+              Hacé realidad el viaje
             </h2>
             <p className="font-script-hero text-hero-sky"
               style={{ fontSize: 'clamp(2rem, 4.5vw, 3rem)', lineHeight: 1, marginTop: '-0.05em' }}>

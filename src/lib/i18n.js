@@ -7,7 +7,7 @@ export const translations = {
     nav_destinations: 'Destinos',
     nav_excursions:   'Paseos',
     nav_hotels:       'Hoteles & Posadas',
-    nav_tides:        'Tabla de Marea',
+    nav_tides:        'Tabla de marea',
     nav_about:        'Sobre nosotros',
     nav_transfers:    'Traslados',
     nav_my_bookings:  'Mis reservas',
@@ -23,7 +23,7 @@ export const translations = {
     cat_destinations: 'Destinos',
     cat_excursions:   'Paseos',
     cat_hotels:       'Hoteles & Posadas',
-    cat_tides:        'Tabla de Marea',
+    cat_tides:        'Tabla de marea',
     cat_about:        'Sobre nosotros',
     cat_transfers:    'Traslados',
 
@@ -114,7 +114,7 @@ export const translations = {
     about_wa_message:  'Hola! Quiero armar un viaje al Nordeste Brasilero',
 
     // Tabla de marea
-    tides_title:    'Tabla de Marea',
+    tides_title:    'Tabla de marea',
     tides_subtitle: 'Consultá los horarios de marea para planificar tus paseos acuáticos.',
   },
 

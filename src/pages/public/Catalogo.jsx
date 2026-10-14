@@ -41,7 +41,7 @@ export default function Catalogo({ categoria }) {
 
   const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))].sort()
 
-  const tituloLabel = categoria === 'paquetes' ? 'Paquetes Aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
+  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
   // Los paseos (ex "Excursiones") siempre incluyen guía en español y traslado
   // privado — dato importante para el cliente, se aclara acá en vez del
   // subtítulo genérico que comparten las demás categorías.

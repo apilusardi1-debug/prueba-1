@@ -156,10 +156,10 @@ const CAMINOS = [
 ]
 
 const SERVICIOS = [
-  { label: 'Paquetes Aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
-  { label: 'Hoteles y Posadas',  icono: '/icons/hoteles-posadas.svg',    to: '/hoteles' },
-  { label: 'Transfers Privados', icono: '/icons/transfers-privados.svg', to: '/traslados' },
-  { label: 'Paseos en Español',  icono: '/icons/paseos-espanol.svg',     to: '/excursiones' },
+  { label: 'Paquetes aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
+  { label: 'Hoteles y posadas',  icono: '/icons/hoteles-posadas.svg',    to: '/hoteles' },
+  { label: 'Traslados privados', icono: '/icons/transfers-privados.svg', to: '/traslados' },
+  { label: 'Paseos en español',  icono: '/icons/paseos-espanol.svg',     to: '/excursiones' },
 ]
 
 const STATS_NOSOTROS = [
@@ -260,7 +260,7 @@ export default function Home() {
           {/* Titular principal */}
           <h1 className="font-display-hero uppercase text-hero-cream"
             style={{ fontSize: 'clamp(2.75rem, 6.8vw, 5.25rem)', lineHeight: 0.95, letterSpacing: '0.01em' }}>
-            Hace realidad el viaje
+            Hacé realidad el viaje
           </h1>
           <p className="font-script-hero text-hero-sky"
             style={{ fontSize: 'clamp(3.5rem, 9vw, 6.5rem)', lineHeight: 1, marginTop: '-0.1em' }}>
@@ -324,7 +324,7 @@ export default function Home() {
       {/* ── DESTINOS FAVORITOS ────────────────────────────────────────── */}
       <section className="py-16 md:py-24 overflow-hidden">
         <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-          <h2 className="font-display-hero uppercase text-hero-navy mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>Destinos Favoritos</h2>
+          <h2 className="font-display-hero uppercase text-hero-navy mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>Destinos favoritos</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">Los lugares más elegidos por nuestros viajeros</p>
         </div>
         {/* Carousel infinito con fade en bordes */}
@@ -359,7 +359,7 @@ export default function Home() {
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-display-hero uppercase text-hero-navy text-center mb-10 md:mb-14"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.02em' }}>
-            Reserva tu Paseo
+            Reservá tu paseo
           </h2>
           {/* Carrusel que se mueve solo con las flechas (o deslizando): en el celular una
               tarjeta y un poco de la siguiente, desde md tres por vista */}
@@ -386,7 +386,7 @@ export default function Home() {
           </CarruselPaseos>
           <div className="mt-10 text-center">
             <Link to="/excursiones" className={BTN_SECUNDARIO}>
-              Ver Todos los Paseos
+              Ver todos los paseos
             </Link>
           </div>
         </div>
@@ -449,7 +449,7 @@ export default function Home() {
         <div className="relative z-10 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h2 className="font-display-hero uppercase text-hero-navy text-center mb-10 md:mb-14"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
-            Preguntas Frecuentes
+            Preguntas frecuentes
           </h2>
 
           <div className="space-y-4 max-w-4xl mx-auto mb-14 md:mb-20">
@@ -474,7 +474,7 @@ export default function Home() {
           <div className="bg-hero-cream rounded-3xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center max-w-5xl mx-auto">
             <div>
               <span className="font-label-lg text-label-sm uppercase tracking-wider text-hero-navy/75 block mb-1">Información Útil</span>
-              <h3 className="font-display-hero uppercase text-hero-navy text-2xl md:text-3xl mb-3">Tabla de Marea</h3>
+              <h3 className="font-display-hero uppercase text-hero-navy text-2xl md:text-3xl mb-3">Tabla de marea</h3>
               <p className="font-body-md text-body-md text-hero-navy/80">
                 Consultá el estado de las mareas para planificar tus paseos a las piscinas naturales.
               </p>
@@ -591,7 +591,7 @@ export default function Home() {
         <section className="py-16 md:py-24 bg-hero-navy overflow-hidden">
           <div className="mb-8 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
             <h2 className="font-display-hero uppercase text-hero-cream mb-2" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
-              Viví Nuestros Viajes
+              Viví nuestros viajes
             </h2>
             <p className="font-body-md text-body-md text-hero-cream/80">Momentos reales de nuestros pasajeros en el Nordeste Brasilero</p>
           </div>

@@ -47,7 +47,7 @@ export default function Hoteles() {
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
             style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
-            Hoteles y Posadas
+            Hoteles y posadas
           </h1>
           <p className="font-display-hero uppercase text-hero-cream mb-8"
             style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>

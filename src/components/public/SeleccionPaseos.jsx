@@ -22,7 +22,7 @@ const TEXTOS = {
     unidad: { persona: '/ persona', paseo: '/ paseo', sesion: '/ sesión', sesión: '/ sesión', traslado: '/ traslado' },
     restar: l => `Restar ${l.toLowerCase()}`, sumar: l => `Sumar ${l.toLowerCase()}`,
     faltanFechas: 'Indicá las fechas de tu estadía.', fechasAlReves: 'La fecha de salida tiene que ser posterior a la de llegada.',
-    faltanEdades: 'Indicá la edad de cada menor.', fechaPasada: 'Las fechas no pueden ser anteriores a hoy.',
+    faltanEdades: 'Indicá la edad de cada menor.', fechaPasada: 'La fecha de salida tiene que ser hoy o posterior.',
     faltaHospedaje: 'Indicá dónde te hospedás, o marcá "Todavía no lo sé".',
     hospedaje: '¿Dónde te hospedás?', hospedajeAyuda: 'Barrio o playa, para saber desde dónde te buscamos.', ejemploHospedaje: 'Ej: Muro Alto, Porto de Galinhas',
     noSe: 'Todavía no lo sé',
@@ -39,7 +39,7 @@ const TEXTOS = {
     unidad: { persona: '/ pessoa', paseo: '/ passeio', sesion: '/ sessão', sesión: '/ sessão', traslado: '/ traslado' },
     restar: l => `Diminuir ${l.toLowerCase()}`, sumar: l => `Aumentar ${l.toLowerCase()}`,
     faltanFechas: 'Informe as datas da sua estadia.', fechasAlReves: 'A data de saída tem que ser depois da chegada.',
-    faltanEdades: 'Informe a idade de cada menor.', fechaPasada: 'As datas não podem ser anteriores a hoje.',
+    faltanEdades: 'Informe a idade de cada menor.', fechaPasada: 'A data de saída tem que ser hoje ou depois.',
     faltaHospedaje: 'Informe onde você vai se hospedar, ou marque "Ainda não sei".',
     hospedaje: 'Onde você vai se hospedar?', hospedajeAyuda: 'Bairro ou praia, para sabermos de onde te buscar.', ejemploHospedaje: 'Ex.: Muro Alto, Porto de Galinhas',
     noSe: 'Ainda não sei',
@@ -56,7 +56,7 @@ const TEXTOS = {
     unidad: { persona: '/ person', paseo: '/ tour', sesion: '/ session', sesión: '/ session', traslado: '/ transfer' },
     restar: l => `Fewer ${l.toLowerCase()}`, sumar: l => `More ${l.toLowerCase()}`,
     faltanFechas: 'Enter the dates of your stay.', fechasAlReves: 'The departure date must be after the arrival date.',
-    faltanEdades: 'Enter the age of each child.', fechaPasada: 'Dates can’t be earlier than today.',
+    faltanEdades: 'Enter the age of each child.', fechaPasada: 'The departure date must be today or later.',
     faltaHospedaje: 'Tell us where you’re staying, or tick "I don’t know yet".',
     hospedaje: 'Where are you staying?', hospedajeAyuda: 'Neighborhood or beach, so we know where to pick you up.', ejemploHospedaje: 'E.g. Muro Alto, Porto de Galinhas',
     noSe: 'I don’t know yet',
@@ -130,8 +130,9 @@ export default function SeleccionPaseos() {
 
   function enviar() {
     if (!desde || !hasta) { setError(tx.faltanFechas); return }
-    // Las fechas escritas a mano pueden saltear el mínimo del calendario
-    if (desde < hoy() || hasta < hoy()) { setError(tx.fechaPasada); return }
+    // La llegada puede ser pasada (quien ya está de viaje suma paseos), la salida no.
+    // Se valida también acá porque una fecha escrita a mano saltea el mínimo del calendario.
+    if (hasta < hoy()) { setError(tx.fechaPasada); return }
     if (hasta < desde) { setError(tx.fechasAlReves); return }
     if (edades.some(e => e === '')) { setError(tx.faltanEdades); return }
     if (!hospedaje.trim() && !hospedajeNoSe) { setError(tx.faltaHospedaje); return }
@@ -197,13 +198,13 @@ export default function SeleccionPaseos() {
                     <div className="grid grid-cols-2 gap-2.5">
                       <label className="block">
                         <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">{tx.llegada}</span>
-                        <input type="date" min={hoy()} value={desde}
+                        <input type="date" value={desde}
                           onChange={e => { setDesde(e.target.value); if (hasta && e.target.value > hasta) setHasta('') }}
                           className={CAMPO} />
                       </label>
                       <label className="block">
                         <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">{tx.salida}</span>
-                        <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
+                        <input type="date" min={desde > hoy() ? desde : hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
                       </label>
                     </div>
                   </div>

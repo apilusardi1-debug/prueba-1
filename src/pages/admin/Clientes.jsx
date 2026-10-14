@@ -34,6 +34,7 @@ const soloDigitos = (valor) => String(valor || '').replace(/\D/g, '')
 const CONCEPTOS_SALDO_CLIENTE = [
   { id: 'paquetes', label: 'Paquete' },
   { id: 'paseos', label: 'Paseos' },
+  { id: 'aereo', label: 'Aéreo' },
   { id: 'traslados', label: 'Traslados' },
   { id: 'hospedaje', label: 'Hospedaje' },
   { id: 'restaurante', label: 'Restaurante' },

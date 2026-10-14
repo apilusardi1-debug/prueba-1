@@ -1,13 +1,47 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { destinos, formatPrecio } from '../../data/mockData.js'
+import { formatPrecio } from '../../data/mockData.js'
+import { destinosEn } from '../../data/destinosTraducciones.js'
 import { excursionesApi, normalizarExcursion, hospedajesApi } from '../../lib/supabase.js'
-import { useLang } from '../../context/LanguageContext.jsx'
+import { useLang, useTextos } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 import { useSeo } from '../../lib/seo.js'
 
 const HOSPEDAJES_PREVIEW = 6
+
+const TEXTOS = {
+  es: {
+    desde: 'Desde', esCaro: n => `¿${n} es caro?`, porQue: '¿Por qué los costos son más altos?', tasas: 'Ingreso y tasas',
+    epoca: n => `¿Cuál es la mejor época para viajar a ${n}?`, verVideo: 'Ver video', playas: 'Las playas que no te podés perder',
+    vistazo: n => `Un vistazo a ${n}`, cerrarVideo: 'Cerrar video', sinFoto: 'Sin foto', tipos: { Pousada: 'Posada' },
+    noEncontrado: 'Destino no encontrado', volver: '← Volver a destinos', waConsulta: n => `Hola! Quiero consultar por un viaje a ${n}`,
+    brasil: 'Brasil', verPaquetes: 'Ver paquetes', consultar: 'Consultar disponibilidad',
+    hospedajesEn: n => `Hospedajes en ${n}`, verLos: n => `Ver los ${n} hospedajes`, pronto: n => `Muy pronto en ${n}`,
+    prontoTexto: 'Estamos armando paquetes y hospedajes para este destino. Escribinos y te ayudamos a organizar tu viaje a medida.',
+    consulta: 'Consultá disponibilidad', aMedida: n => `¿Querés armar tu viaje a ${n} a medida?`, hablar: 'Hablar por WhatsApp',
+  },
+  pt: {
+    desde: 'A partir de', esCaro: n => `${n} é caro?`, porQue: 'Por que os custos são mais altos?', tasas: 'Ingresso e taxas',
+    epoca: n => `Qual é a melhor época para viajar a ${n}?`, verVideo: 'Ver vídeo', playas: 'As praias que você não pode perder',
+    vistazo: n => `Um olhar sobre ${n}`, cerrarVideo: 'Fechar vídeo', sinFoto: 'Sem foto', tipos: { Departamento: 'Apartamento' },
+    noEncontrado: 'Destino não encontrado', volver: '← Voltar aos destinos', waConsulta: n => `Olá! Quero consultar sobre uma viagem a ${n}`,
+    brasil: 'Brasil', verPaquetes: 'Ver pacotes', consultar: 'Consultar disponibilidade',
+    hospedajesEn: n => `Hospedagens em ${n}`, verLos: n => `Ver as ${n} hospedagens`, pronto: n => `Em breve em ${n}`,
+    prontoTexto: 'Estamos preparando pacotes e hospedagens para este destino. Escreva para nós e ajudamos a organizar sua viagem sob medida.',
+    consulta: 'Consulte a disponibilidade', aMedida: n => `Quer montar sua viagem a ${n} sob medida?`, hablar: 'Falar pelo WhatsApp',
+  },
+  en: {
+    desde: 'From', esCaro: n => `Is ${n} expensive?`, porQue: 'Why are costs higher?', tasas: 'Entry and fees',
+    epoca: n => `When is the best time to visit ${n}?`, verVideo: 'Watch video', playas: 'Beaches you can’t miss',
+    vistazo: n => `A glimpse of ${n}`, cerrarVideo: 'Close video', sinFoto: 'No photo', tipos: { Departamento: 'Apartment', Pousada: 'Inn' },
+    noEncontrado: 'Destination not found', volver: '← Back to destinations', waConsulta: n => `Hi! I'd like to ask about a trip to ${n}`,
+    brasil: 'Brazil', verPaquetes: 'See packages', consultar: 'Check availability',
+    hospedajesEn: n => `Places to stay in ${n}`, verLos: n => `See all ${n} places`, pronto: n => `Coming soon to ${n}`,
+    prontoTexto: 'We’re putting together packages and accommodation for this destination. Write to us and we’ll help you plan a tailor-made trip.',
+    consulta: 'Check availability', aMedida: n => `Want a tailor-made trip to ${n}?`, hablar: 'Chat on WhatsApp',
+  },
+}
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -19,6 +53,7 @@ function Estrellas({ n }) {
 }
 
 function CardPaquete({ ex }) {
+  const tx = useTextos(TEXTOS)
   return (
     <Link to={`/excursiones/${ex.id}`}
       className="group block rounded-3xl overflow-hidden border-2 border-hero-navy shadow-[0_8px_24px_rgba(7,46,64,0.12)] hover:shadow-[0_12px_32px_rgba(7,46,64,0.2)] transition-shadow">
@@ -29,7 +64,7 @@ function CardPaquete({ ex }) {
         <h3 className="font-display-hero uppercase text-hero-cream text-lg leading-tight mb-2 line-clamp-2">{ex.nombre}</h3>
         <div className="flex items-center justify-between gap-3">
           <span className="font-label-sm text-[12px] uppercase text-hero-cream/90 whitespace-nowrap">
-            Desde {formatPrecio(ex.precio, ex.moneda)}
+            {tx.desde} {formatPrecio(ex.precio, ex.moneda)}
           </span>
           {ex.duracion && (
             <span className="font-label-sm text-[12px] uppercase text-hero-yellow font-bold whitespace-nowrap">{ex.duracion}</span>
@@ -44,6 +79,7 @@ function SeccionEditorial({ destino }) {
   const c = destino.contenido
   const { config } = useSiteConfig()
   const [videoActivo, setVideoActivo] = useState(null)
+  const tx = useTextos(TEXTOS)
   if (!c) return null
   const waHref = (mensaje) => `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(mensaje)}`
   const tituloSeccion = 'font-display-hero uppercase text-hero-navy'
@@ -80,12 +116,12 @@ function SeccionEditorial({ destino }) {
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
           <div className={c.caro.video ? 'grid md:grid-cols-2 gap-8 md:gap-12 items-start' : ''}>
             <div>
-              <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>¿{destino.nombre} es caro?</h2>
+              <h2 className={`${tituloSeccion} mb-6`} style={tituloEstilo}>{tx.esCaro(destino.nombre)}</h2>
               <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed mb-8">
                 {c.caro.intro}
               </p>
               <div className="bg-hero-cream rounded-2xl p-6 md:p-8 mb-6">
-                <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">¿Por qué los costos son más altos?</h3>
+                <h3 className="font-display-hero uppercase text-hero-navy text-base mb-3">{tx.porQue}</h3>
                 <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed">{c.caro.porQue}</p>
               </div>
               {c.caro.cierre && (
@@ -108,7 +144,7 @@ function SeccionEditorial({ destino }) {
       {c.tasas?.items?.length > 0 && (
         <section className="py-14 md:py-20" style={{ backgroundColor: 'rgba(136,209,244,0.18)' }}>
           <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Ingreso y tasas</h2>
+            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>{tx.tasas}</h2>
             <div className="grid sm:grid-cols-2 gap-6 mb-8">
               {c.tasas.items.map((item) => (
                 <div key={item.titulo} className="bg-white rounded-2xl p-6 md:p-8">
@@ -147,7 +183,7 @@ function SeccionEditorial({ destino }) {
       {c.epoca?.temporadas?.length > 0 && (
         <section className="bg-hero-cream py-14 md:py-20">
           <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>¿Cuál es la mejor época para viajar a {destino.nombre}?</h2>
+            <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>{tx.epoca(destino.nombre)}</h2>
             <div className="grid sm:grid-cols-2 gap-6">
               {c.epoca.temporadas.map((t) => (
                 <div key={t.titulo} className="bg-white rounded-2xl p-6 md:p-8">
@@ -173,7 +209,7 @@ function SeccionEditorial({ destino }) {
               {c.videos?.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
                   {c.videos.map((v, i) => (
-                    <button key={i} onClick={() => setVideoActivo(v)} aria-label={`Ver video${v.titulo ? `: ${v.titulo}` : ''}`}
+                    <button key={i} onClick={() => setVideoActivo(v)} aria-label={`${tx.verVideo}${v.titulo ? `: ${v.titulo}` : ''}`}
                       className="group relative rounded-xl overflow-hidden text-left" style={{ aspectRatio: '9/16' }}>
                       <video src={v.video} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
@@ -223,7 +259,7 @@ function SeccionEditorial({ destino }) {
       {/* Playas */}
       {(c.playasDestacadas?.length > 0 || c.playasMas?.length > 0) && (
         <section className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto py-14 md:py-20">
-          <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>Las playas que no te podés perder</h2>
+          <h2 className={`${tituloSeccion} mb-10`} style={tituloEstilo}>{tx.playas}</h2>
 
           {c.playasDestacadas?.length > 0 && (
             <div className="space-y-10 mb-10">
@@ -260,7 +296,7 @@ function SeccionEditorial({ destino }) {
       {c.galeria?.length > 0 && (
         <section className="pb-14 md:pb-20 overflow-hidden">
           <div className="mb-6 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-            <h2 className={tituloSeccion} style={tituloEstilo}>Un vistazo a {destino.nombre}</h2>
+            <h2 className={tituloSeccion} style={tituloEstilo}>{tx.vistazo(destino.nombre)}</h2>
           </div>
           <div style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)' }}>
             <div className="destinos-track" style={{ display: 'flex', gap: '16px', width: 'max-content', padding: '8px 0 16px' }}>
@@ -309,7 +345,7 @@ function SeccionEditorial({ destino }) {
       {/* Lightbox de video */}
       {videoActivo && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setVideoActivo(null)}>
-          <button onClick={() => setVideoActivo(null)} aria-label="Cerrar video"
+          <button onClick={() => setVideoActivo(null)} aria-label={tx.cerrarVideo}
             className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-xl">
             ×
           </button>
@@ -323,6 +359,7 @@ function SeccionEditorial({ destino }) {
 }
 
 function CardHospedaje({ h }) {
+  const tx = useTextos(TEXTOS)
   return (
     <Link to={`/hoteles/${h.id}`}
       className="group block rounded-2xl overflow-hidden bg-white border border-hero-navy/10 hover:border-hero-navy/40 hover:shadow-[0_10px_30px_rgba(7,46,64,0.08)] transition-all">
@@ -330,13 +367,13 @@ function CardHospedaje({ h }) {
         {h.imagen ? (
           <img src={h.imagen} alt={h.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-body-md text-body-md">Sin foto</div>
+          <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-body-md text-body-md">{tx.sinFoto}</div>
         )}
       </div>
       <div className="p-4">
         {h.tipo && (
           <span className="inline-block font-label-lg text-label-sm uppercase bg-hero-cream text-hero-navy px-2.5 py-0.5 rounded-full mb-2">
-            {h.tipo}
+            {tx.tipos[h.tipo] || h.tipo}
           </span>
         )}
         <h3 className="font-display-hero uppercase text-hero-navy text-base leading-tight mb-1">{h.nombre}</h3>
@@ -348,9 +385,10 @@ function CardHospedaje({ h }) {
 
 export default function DestinoDetalle() {
   const { id } = useParams()
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const tx = useTextos(TEXTOS)
   const { config } = useSiteConfig()
-  const destino = destinos.find((d) => d.id === id)
+  const destino = destinosEn(lang).find((d) => d.id === id)
   useSeo({ titulo: destino?.nombre, descripcion: destino?.descripcion, imagen: destino?.imagen })
 
   const [excursiones, setExcursiones] = useState([])
@@ -374,8 +412,8 @@ export default function DestinoDetalle() {
     return (
       <div className="bg-surface min-h-screen pt-32 px-margin-mobile text-center">
         <p className="text-5xl mb-4">📍</p>
-        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">Destino no encontrado</p>
-        <Link to="/destinos" className="font-label-lg text-label-lg uppercase text-hero-navy underline">← Volver a destinos</Link>
+        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">{tx.noEncontrado}</p>
+        <Link to="/destinos" className="font-label-lg text-label-lg uppercase text-hero-navy underline">{tx.volver}</Link>
       </div>
     )
   }
@@ -383,7 +421,7 @@ export default function DestinoDetalle() {
   const paquetesDestino = excursiones.filter((e) => e.categoria === 'paquetes')
   const excursionesDestino = excursiones.filter((e) => e.categoria === 'excursiones')
   const hayContenido = paquetesDestino.length > 0 || excursionesDestino.length > 0 || hospedajes.length > 0
-  const whatsappHref = `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(`Hola! Quiero consultar por un viaje a ${destino.nombre}`)}`
+  const whatsappHref = `https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(tx.waConsulta(destino.nombre))}`
 
   return (
     <div className="bg-surface">
@@ -400,7 +438,7 @@ export default function DestinoDetalle() {
           </Link>
           <div className="flex items-center gap-3 mb-3">
             {destino.icono && <span className="text-3xl md:text-4xl leading-none">{destino.icono}</span>}
-            <span className="font-label-lg text-label-sm uppercase text-hero-cream/80 tracking-wide">{destino.estado} · Brasil</span>
+            <span className="font-label-lg text-label-sm uppercase text-hero-cream/80 tracking-wide">{destino.estado} · {tx.brasil}</span>
           </div>
           <h1 className="font-display-hero uppercase text-hero-yellow leading-none mb-5"
             style={{ fontSize: 'clamp(2.5rem, 7vw, 5rem)', letterSpacing: '0.01em' }}>
@@ -413,12 +451,12 @@ export default function DestinoDetalle() {
             {hayContenido && (
               <a href="#contenido"
                 className={BTN_SECUNDARIO_OSCURO}>
-                Ver paquetes
+                {tx.verPaquetes}
               </a>
             )}
             <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
               className={BTN_PRINCIPAL}>
-              Consultar disponibilidad
+              {tx.consultar}
               <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </a>
           </div>
@@ -455,12 +493,12 @@ export default function DestinoDetalle() {
                 <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
                   <h2 className="font-display-hero uppercase text-hero-navy"
                     style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }}>
-                    Hospedajes en {destino.nombre}
+                    {tx.hospedajesEn(destino.nombre)}
                   </h2>
                   {hospedajes.length > HOSPEDAJES_PREVIEW && (
                     <Link to={`/hoteles?destino=${encodeURIComponent(destino.nombre)}`}
                       className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy hover:opacity-70 transition-opacity">
-                      Ver los {hospedajes.length} hospedajes
+                      {tx.verLos(hospedajes.length)}
                       <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                     </Link>
                   )}
@@ -475,13 +513,13 @@ export default function DestinoDetalle() {
             {!hayContenido && !destino.contenido && (
               <div className="text-center py-16">
                 <p className="text-5xl mb-4">🏖️</p>
-                <p className="font-display-hero uppercase text-hero-navy text-2xl mb-3">Muy pronto en {destino.nombre}</p>
+                <p className="font-display-hero uppercase text-hero-navy text-2xl mb-3">{tx.pronto(destino.nombre)}</p>
                 <p className="font-body-md text-body-md text-on-surface-variant mb-8 max-w-md mx-auto">
-                  Estamos armando paquetes y hospedajes para este destino. Escribinos y te ayudamos a organizar tu viaje a medida.
+                  {tx.prontoTexto}
                 </p>
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
                   className={BTN_PRINCIPAL}>
-                  Consultá disponibilidad
+                  {tx.consulta}
                   <span aria-hidden="true" className="material-symbols-outlined text-[20px]">flight</span>
                 </a>
               </div>
@@ -495,11 +533,11 @@ export default function DestinoDetalle() {
         <div className="bg-hero-sky px-margin-mobile md:px-20 py-14 md:py-20 flex flex-col justify-center">
           <h2 className="font-display-hero uppercase text-white mb-8"
             style={{ fontSize: 'clamp(2rem, 4.5vw, 3.25rem)', letterSpacing: '0.01em' }}>
-            ¿Querés armar tu viaje a {destino.nombre} a medida?
+            {tx.aMedida(destino.nombre)}
           </h2>
           <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
             className={`${BTN_PRINCIPAL} self-start`}>
-            Hablar por WhatsApp
+            {tx.hablar}
             <span aria-hidden="true" className="material-symbols-outlined text-[20px]">flight</span>
           </a>
         </div>

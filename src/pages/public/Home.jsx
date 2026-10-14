@@ -288,7 +288,7 @@ function StatPill({ valor, label, tall, className = '' }) {
 export default function Home() {
   useSeo()
   const tx = useTextos(TEXTOS)
-  const { locale } = useLang()
+  const { locale, lang } = useLang()
   const mesAnio = ([anio, mes]) => new Date(anio, mes - 1, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
   const { config } = useSiteConfig()
   const [faqOpen, setFaqOpen] = useState(null)
@@ -559,7 +559,7 @@ export default function Home() {
                       </div>
                       <div className="text-right text-hero-navy">
                         <span className="font-label-lg text-[14px]">{m.hora}</span>
-                        <span className="font-label-sm text-[13px] text-hero-navy/75 ml-2">{formatoAltura(m.altura)}</span>
+                        <span className="font-label-sm text-[13px] text-hero-navy/75 ml-2">{formatoAltura(m.altura, lang)}</span>
                       </div>
                     </div>
                   ))}

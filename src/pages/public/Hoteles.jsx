@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { hospedajesApi } from '../../lib/supabase.js'
 import { useSeo } from '../../lib/seo.js'
+import { useTextos } from '../../context/LanguageContext.jsx'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -12,8 +13,33 @@ function Estrellas({ n }) {
   )
 }
 
+const TEXTOS = {
+  es: {
+    titulo: 'Hoteles y posadas', bajada: 'Los mejores alojamientos del Nordeste Brasileño',
+    seoDescripcion: 'Hoteles, posadas y departamentos en el Nordeste de Brasil, elegidos por DreamTours. Consultá disponibilidad y armá tu paquete.',
+    buscar: 'Buscar por nombre...', todos: 'Todos', sinResultados: 'No encontramos hospedajes con esos filtros.',
+    resultados: n => `${n} hospedaje${n !== 1 ? 's' : ''} encontrado${n !== 1 ? 's' : ''}`, verMas: 'Ver más →',
+    tipos: { Pousada: 'Posada' },
+  },
+  pt: {
+    titulo: 'Hotéis e pousadas', bajada: 'As melhores hospedagens do Nordeste brasileiro',
+    seoDescripcion: 'Hotéis, pousadas e apartamentos no Nordeste do Brasil, escolhidos pela DreamTours. Consulte a disponibilidade e monte seu pacote.',
+    buscar: 'Buscar por nome...', todos: 'Todos', sinResultados: 'Não encontramos hospedagens com esses filtros.',
+    resultados: n => `${n} hospedage${n !== 1 ? 'ns' : 'm'} encontrada${n !== 1 ? 's' : ''}`, verMas: 'Ver mais →',
+    tipos: { Departamento: 'Apartamento' },
+  },
+  en: {
+    titulo: 'Hotels and inns', bajada: 'The best places to stay in Northeast Brazil',
+    seoDescripcion: 'Hotels, inns and apartments in Northeast Brazil, hand-picked by DreamTours. Check availability and build your package.',
+    buscar: 'Search by name...', todos: 'All', sinResultados: 'No accommodation matches those filters.',
+    resultados: n => `${n} place${n !== 1 ? 's' : ''} found`, verMas: 'See more →',
+    tipos: { Departamento: 'Apartment', Pousada: 'Inn' },
+  },
+}
+
 export default function Hoteles() {
-  useSeo({ titulo: 'Hoteles y posadas', descripcion: 'Hoteles, posadas y departamentos en el Nordeste de Brasil, elegidos por DreamTours. Consultá disponibilidad y armá tu paquete.' })
+  const tx = useTextos(TEXTOS)
+  useSeo({ titulo: tx.titulo, descripcion: tx.seoDescripcion })
   const [searchParams] = useSearchParams()
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,11 +75,11 @@ export default function Hoteles() {
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           <h1 className="font-display-hero uppercase text-hero-yellow leading-none"
             style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', letterSpacing: '0.01em' }}>
-            Hoteles y posadas
+            {tx.titulo}
           </h1>
           <p className="font-display-hero uppercase text-hero-cream mb-8"
             style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
-            Los mejores alojamientos del Nordeste Brasileño
+            {tx.bajada}
           </p>
 
           {/* Buscador + filtro de destino */}
@@ -62,7 +88,7 @@ export default function Hoteles() {
               type="text"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre..."
+              placeholder={tx.buscar} aria-label={tx.buscar}
               className="w-full md:w-72 px-5 py-3 rounded-full border-2 border-hero-navy/0 bg-white text-deep-ocean font-body-md text-body-md placeholder-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-hero-yellow"
             />
             {destinos.length > 0 && (
@@ -71,7 +97,7 @@ export default function Hoteles() {
                   className={`font-label-lg text-label-sm uppercase px-4 py-2 rounded-full border-2 transition-colors ${
                     destino === '' ? 'bg-hero-yellow border-hero-yellow text-hero-navy' : 'border-hero-cream/40 text-hero-cream hover:border-hero-cream'
                   }`}>
-                  Todos
+                  {tx.todos}
                 </button>
                 {destinos.map(d => (
                   <button key={d} onClick={() => setDestino(d)}
@@ -96,12 +122,12 @@ export default function Hoteles() {
             </div>
           ) : filtrados.length === 0 ? (
             <p className="text-center font-body-md text-body-md text-on-surface-variant py-24">
-              No encontramos hospedajes con esos filtros.
+              {tx.sinResultados}
             </p>
           ) : (
             <>
               <p className="font-body-md text-body-md text-on-surface-variant mb-6">
-                {filtrados.length} hospedaje{filtrados.length !== 1 ? 's' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+                {tx.resultados(filtrados.length)}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filtrados.map(h => (
@@ -112,7 +138,7 @@ export default function Hoteles() {
                         <img src={h.imagen} alt={h.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : null}
                       <span className="absolute top-3 left-3 bg-white/90 text-hero-navy font-label-lg text-label-sm uppercase px-3 py-1 rounded-full">
-                        {h.tipo}
+                        {tx.tipos[h.tipo] || h.tipo}
                       </span>
                     </div>
                     <div className="p-5 flex flex-col flex-1 gap-1.5">
@@ -121,7 +147,7 @@ export default function Hoteles() {
                       <p className="font-label-lg text-label-sm uppercase text-deep-ocean/85">{h.destino}</p>
                       <p className="font-body-md text-body-md text-on-surface-variant flex-1 line-clamp-2 mt-1">{h.descripcion}</p>
                       <div className="mt-3 pt-3 border-t border-surface-variant flex items-center justify-end">
-                        <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline">Ver más →</span>
+                        <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline">{tx.verMas}</span>
                       </div>
                     </div>
                   </Link>

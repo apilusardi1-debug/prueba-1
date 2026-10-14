@@ -1,13 +1,31 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { destinos, formatPrecio } from '../../data/mockData.js'
+import { formatPrecio } from '../../data/mockData.js'
+import { destinosEn } from '../../data/destinosTraducciones.js'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
-import { useLang } from '../../context/LanguageContext.jsx'
+import { useLang, useTextos } from '../../context/LanguageContext.jsx'
 import { useSeo } from '../../lib/seo.js'
 
+const TEXTOS = {
+  es: {
+    seoDescripcion: 'Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha: qué ver, cuándo ir y cómo armar tu viaje con DreamTours.',
+    bajada: 'Nordeste brasileño — los mejores destinos de playa de Brasil', desde: 'Desde', consulta: 'Consultá disponibilidad', explorar: 'Explorar →',
+  },
+  pt: {
+    seoDescripcion: 'Porto de Galinhas, Maragogi, Maceió, Pipa e Fernando de Noronha: o que ver, quando ir e como montar sua viagem com a DreamTours.',
+    bajada: 'Nordeste brasileiro — os melhores destinos de praia do Brasil', desde: 'A partir de', consulta: 'Consulte a disponibilidade', explorar: 'Explorar →',
+  },
+  en: {
+    seoDescripcion: 'Porto de Galinhas, Maragogi, Maceió, Pipa and Fernando de Noronha: what to see, when to go and how to plan your trip with DreamTours.',
+    bajada: 'Northeast Brazil — the best beach destinations in Brazil', desde: 'From', consulta: 'Check availability', explorar: 'Explore →',
+  },
+}
+
 export default function Destinos() {
-  useSeo({ titulo: 'Destinos', descripcion: 'Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha: qué ver, cuándo ir y cómo armar tu viaje con DreamTours.' })
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const tx = useTextos(TEXTOS)
+  const destinos = destinosEn(lang)
+  useSeo({ titulo: t('nav_destinations'), descripcion: tx.seoDescripcion })
   const [excursiones, setExcursiones] = useState([])
 
   useEffect(() => {
@@ -42,7 +60,7 @@ export default function Destinos() {
           </h1>
           <p className="font-display-hero uppercase text-hero-cream"
             style={{ fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)', letterSpacing: '0.03em' }}>
-            Nordeste brasileño — los mejores destinos de playa de Brasil
+            {tx.bajada}
           </p>
         </div>
       </section>
@@ -72,12 +90,12 @@ export default function Destinos() {
                     <div className="pt-3 border-t border-surface-variant flex items-center justify-between gap-3">
                       {desde ? (
                         <span className="font-label-lg text-label-sm uppercase text-hero-navy font-bold whitespace-nowrap">
-                          Desde {formatPrecio(desde.precio, desde.moneda)}
+                          {tx.desde} {formatPrecio(desde.precio, desde.moneda)}
                         </span>
                       ) : (
-                        <span className="font-body-md text-body-md text-on-surface-variant">Consultá disponibilidad</span>
+                        <span className="font-body-md text-body-md text-on-surface-variant">{tx.consulta}</span>
                       )}
-                      <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline whitespace-nowrap">Explorar →</span>
+                      <span className="font-label-lg text-label-sm uppercase text-hero-navy group-hover:underline whitespace-nowrap">{tx.explorar}</span>
                     </div>
                   </div>
                 </Link>

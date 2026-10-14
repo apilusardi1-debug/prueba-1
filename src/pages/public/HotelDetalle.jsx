@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
 import { BTN_SECUNDARIO } from '../../components/public/botones.js'
 import { useSeo } from '../../lib/seo.js'
+import { useTextos } from '../../context/LanguageContext.jsx'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -21,6 +22,30 @@ function IconoCheck() {
   )
 }
 
+const TEXTOS = {
+  es: {
+    noEncontrado: 'Hospedaje no encontrado', volverListado: '← Volver al listado', volverHoteles: '← Volver a hoteles',
+    fotos: 'Fotos:', fotosHotel: '← Ver fotos del hotel', fotoDe: (i, n) => `foto ${i} de ${n}`, verFoto: (i, n) => `Ver foto ${i} de ${n}`,
+    sinFoto: 'Sin foto', verMapa: 'Ver mapa', hasta: n => `Hasta ${n} personas`, servicios: 'Servicios del hotel',
+    habitaciones: 'Tipos de habitación', nFotos: n => `${n} fotos`, huespedes: n => `hasta ${n} huéspedes`,
+    tipos: { Pousada: 'Posada' },
+  },
+  pt: {
+    noEncontrado: 'Hospedagem não encontrada', volverListado: '← Voltar à lista', volverHoteles: '← Voltar aos hotéis',
+    fotos: 'Fotos:', fotosHotel: '← Ver fotos do hotel', fotoDe: (i, n) => `foto ${i} de ${n}`, verFoto: (i, n) => `Ver foto ${i} de ${n}`,
+    sinFoto: 'Sem foto', verMapa: 'Ver mapa', hasta: n => `Até ${n} pessoas`, servicios: 'Serviços do hotel',
+    habitaciones: 'Tipos de quarto', nFotos: n => `${n} fotos`, huespedes: n => `até ${n} hóspedes`,
+    tipos: { Departamento: 'Apartamento' },
+  },
+  en: {
+    noEncontrado: 'Accommodation not found', volverListado: '← Back to list', volverHoteles: '← Back to hotels',
+    fotos: 'Photos:', fotosHotel: '← See hotel photos', fotoDe: (i, n) => `photo ${i} of ${n}`, verFoto: (i, n) => `See photo ${i} of ${n}`,
+    sinFoto: 'No photo', verMapa: 'See map', hasta: n => `Up to ${n} people`, servicios: 'Hotel amenities',
+    habitaciones: 'Room types', nFotos: n => `${n} photos`, huespedes: n => `up to ${n} guests`,
+    tipos: { Departamento: 'Apartment', Pousada: 'Inn' },
+  },
+}
+
 export default function HotelDetalle() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -30,6 +55,7 @@ export default function HotelDetalle() {
   // resto de la navegación se oculta acá y en PublicLayout.
   const standalone = searchParams.get('standalone') === '1'
   const [h, setH] = useState(null)
+  const tx = useTextos(TEXTOS)
   useSeo({ titulo: h?.nombre, descripcion: h?.descripcion, imagen: h?.imagen })
   const [habitaciones, setHabitaciones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -74,8 +100,8 @@ export default function HotelDetalle() {
   if (!h) {
     return (
       <div className="bg-surface min-h-screen pt-32 px-margin-mobile text-center">
-        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">Hospedaje no encontrado</p>
-        <Link to="/hoteles" className="font-label-lg text-label-lg uppercase text-hero-navy underline">← Volver al listado</Link>
+        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">{tx.noEncontrado}</p>
+        <Link to="/hoteles" className="font-label-lg text-label-lg uppercase text-hero-navy underline">{tx.volverListado}</Link>
       </div>
     )
   }
@@ -88,7 +114,7 @@ export default function HotelDetalle() {
       <div className="pt-24 md:pt-28 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
         {!standalone && (
           <Link to="/hoteles" className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy/80 hover:text-hero-navy mb-6">
-            ← Volver a hoteles
+            {tx.volverHoteles}
           </Link>
         )}
 
@@ -98,28 +124,28 @@ export default function HotelDetalle() {
             {habitacionActiva && (
               <div className="flex items-center justify-between mb-2">
                 <p className="font-label-lg text-label-sm uppercase text-on-surface-variant">
-                  Fotos: <span className="text-hero-navy">{habitacionActiva.nombre}</span>
+                  {tx.fotos} <span className="text-hero-navy">{habitacionActiva.nombre}</span>
                 </p>
                 <button onClick={() => setHabitacionActiva(null)}
                   className={BTN_SECUNDARIO}>
-                  ← Ver fotos del hotel
+                  {tx.fotosHotel}
                 </button>
               </div>
             )}
             <div className="rounded-2xl overflow-hidden mb-2 bg-surface-variant h-72 md:h-96">
               {fotoActiva ? (
-                <img src={fotoActiva} alt={`${h.nombre}, foto ${fotos.indexOf(fotoActiva) + 1} de ${fotos.length}`} className="w-full h-full object-cover" />
+                <img src={fotoActiva} alt={`${h.nombre}, ${tx.fotoDe(fotos.indexOf(fotoActiva) + 1, fotos.length)}`} className="w-full h-full object-cover" />
               ) : videoActivo ? (
                 <video key={videoActivo} src={videoActivo} controls playsInline className="w-full h-full object-cover bg-black" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-body-md text-body-md">Sin foto</div>
+                <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-body-md text-body-md">{tx.sinFoto}</div>
               )}
             </div>
             {fotos.length > 1 && (
               <div className="grid grid-cols-6 gap-1.5">
                 {fotos.map((f, i) => (
                   <button key={i} type="button" onClick={() => setFotoActiva(f)}
-                    aria-label={`Ver foto ${i + 1} de ${fotos.length}`} aria-pressed={fotoActiva === f}
+                    aria-label={tx.verFoto(i + 1, fotos.length)} aria-pressed={fotoActiva === f}
                     className={`rounded-lg overflow-hidden h-14 border-2 transition-colors ${fotoActiva === f ? 'border-hero-navy' : 'border-transparent opacity-80 hover:opacity-100'}`}>
                     <img src={f} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -136,7 +162,7 @@ export default function HotelDetalle() {
           {/* Info */}
           <div>
             <span className="inline-block font-label-lg text-label-sm uppercase bg-hero-cream text-hero-navy px-3 py-1 rounded-full mb-3">
-              {h.tipo}
+              {tx.tipos[h.tipo] || h.tipo}
             </span>
             <h1 className="font-display-hero uppercase text-hero-navy leading-none mb-2"
               style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', letterSpacing: '0.01em' }}>
@@ -151,7 +177,7 @@ export default function HotelDetalle() {
                 <span>📍 {direccionCompleta}</span>
                 {mapsUrl && (
                   <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-hero-navy underline font-medium">
-                    Ver mapa
+                    {tx.verMapa}
                   </a>
                 )}
               </p>
@@ -160,11 +186,11 @@ export default function HotelDetalle() {
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed whitespace-pre-line mb-5">{descripcionActiva}</p>
             )}
             {capacidadActiva > 0 && (
-              <p className="font-body-md text-body-md text-on-surface-variant mb-4">👥 Hasta {capacidadActiva} personas</p>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">👥 {tx.hasta(capacidadActiva)}</p>
             )}
             {amenitiesActivas.length > 0 && (
               <div className="mb-6">
-                <p className="font-label-lg text-label-sm uppercase text-on-surface-variant mb-3">Servicios del hotel</p>
+                <p className="font-label-lg text-label-sm uppercase text-on-surface-variant mb-3">{tx.servicios}</p>
                 <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
                   {amenitiesActivas.map((a, i) => (
                     <div key={i} className="flex items-center gap-2 font-body-md text-body-md text-deep-ocean">
@@ -183,7 +209,7 @@ export default function HotelDetalle() {
           <div className="mt-14 pt-10 border-t border-surface-variant">
             <h2 className="font-display-hero uppercase text-hero-navy mb-6"
               style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', letterSpacing: '0.01em' }}>
-              Tipos de habitación
+              {tx.habitaciones}
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {habitaciones.map(hab => {
@@ -202,7 +228,7 @@ export default function HotelDetalle() {
                       ) : null}
                       {totalFotos > 1 && (
                         <span className="absolute bottom-0.5 right-0.5 bg-hero-navy/80 text-white text-[11px] font-semibold px-1.5 rounded">
-                          {totalFotos} fotos
+                          {tx.nFotos(totalFotos)}
                         </span>
                       )}
                     </div>
@@ -211,7 +237,7 @@ export default function HotelDetalle() {
                       <p className="font-body-md text-body-md text-on-surface-variant text-sm">
                         {[
                           hab.superficie ? `${hab.superficie} m²` : null,
-                          hab.capacidad ? `hasta ${hab.capacidad} huéspedes` : null,
+                          hab.capacidad ? tx.huespedes(hab.capacidad) : null,
                           hab.camas || null,
                         ].filter(Boolean).join(' · ')}
                       </p>

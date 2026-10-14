@@ -121,7 +121,7 @@ export const translations = {
   pt: {
     nav_packages:     'Pacotes aéreos',
     nav_destinations: 'Destinos',
-    nav_excursions:   'Excursões',
+    nav_excursions:   'Passeios',
     nav_hotels:       'Hotéis & Pousadas',
     nav_tides:        'Tabela de Maré',
     nav_about:        'Sobre nós',
@@ -135,7 +135,7 @@ export const translations = {
 
     cat_packages:     'Pacotes aéreos',
     cat_destinations: 'Destinos',
-    cat_excursions:   'Excursões',
+    cat_excursions:   'Passeios',
     cat_hotels:       'Hotéis & Pousadas',
     cat_tides:        'Tabela de Maré',
     cat_about:        'Sobre nós',
@@ -226,7 +226,7 @@ export const translations = {
   en: {
     nav_packages:     'Air packages',
     nav_destinations: 'Destinations',
-    nav_excursions:   'Excursions',
+    nav_excursions:   'Tours',
     nav_hotels:       'Hotels & Inns',
     nav_tides:        'Tide Table',
     nav_about:        'About us',
@@ -240,7 +240,7 @@ export const translations = {
 
     cat_packages:     'Air packages',
     cat_destinations: 'Destinations',
-    cat_excursions:   'Excursions',
+    cat_excursions:   'Tours',
     cat_hotels:       'Hotels & Inns',
     cat_tides:        'Tide Table',
     cat_about:        'About us',

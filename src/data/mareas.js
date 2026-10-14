@@ -174,7 +174,8 @@ export function proximaVentana(desde) {
   return null
 }
 
-// "0,32 m"
-export function formatoAltura(altura) {
-  return `${altura.toFixed(2).replace('.', ',')} m`
+// "0,32 m" (en inglés, "0.32 m")
+export function formatoAltura(altura, lang = 'es') {
+  const n = altura.toFixed(2)
+  return `${lang === 'en' ? n : n.replace('.', ',')} m`
 }

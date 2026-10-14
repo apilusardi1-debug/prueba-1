@@ -217,7 +217,7 @@ const COLS_CSV = [
   ['Obs.', 'notas'], ['Contacto', 'cliente_whatsapp'], ['Vendedor', 'vendedor_texto'], ['Qué cambió', r => (r.cambios || []).join(', ')],
 ]
 const csv = [COLS_CSV.map(c => c[0]).join(';'),
-  ...unicas.map(r => COLS_CSV.map(([, k]) => csvCelda(typeof k === 'function' ? k(r) : r[k])).join(';'))].join('\n')
+  ...[...unicas].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.fila_excel - b.fila_excel).map(r => COLS_CSV.map(([, k]) => csvCelda(typeof k === 'function' ? k(r) : r[k])).join(';'))].join('\n')
 writeFileSync(join(carpeta, `vista-previa-${sello}.csv`), '﻿' + csv)
 
 const sql = (v) => v == null ? 'null' : typeof v === 'number' ? String(v) : typeof v === 'boolean' ? String(v) : `'${String(v).replace(/'/g, "''")}'`

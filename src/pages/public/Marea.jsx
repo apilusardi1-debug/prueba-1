@@ -11,12 +11,6 @@ function partesFecha(fechaISO) {
   return { semana: DIAS_SEMANA[d.getUTCDay()], dia: d.getUTCDate(), mes: MESES[d.getUTCMonth()] }
 }
 
-const ESTILO_ESTADO = {
-  ideal:   'bg-hero-sky text-hero-navy',
-  posible: 'bg-hero-yellow text-hero-navy',
-  no:      'bg-white/10 text-hero-cream',
-}
-
 // Horas y alturas de un tipo de marea. En el celular, la altura va debajo de la
 // hora; la marea baja que sirve para las piscinas se resalta en celeste.
 function Mareas({ lista, destacada }) {
@@ -91,27 +85,22 @@ export default function Marea() {
 
             {/* Tabla */}
             <div className="rounded-2xl border border-white/10 overflow-hidden">
-              <div className="grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-3 border-b border-white/10">
-                {['Día', 'Marea baja', 'Marea alta', 'Piscinas'].map((h, i) => (
-                  <p key={h} className={`font-label-lg text-[11px] uppercase tracking-[0.16em] text-hero-cream/75 ${i === 3 ? 'text-right' : ''}`}>{h}</p>
+              <div className="grid grid-cols-[0.8fr_1.2fr_1.2fr] gap-3 px-4 md:px-6 py-3 border-b border-white/10">
+                {['Día', 'Marea baja', 'Marea alta'].map(h => (
+                  <p key={h} className="font-label-lg text-[11px] uppercase tracking-[0.16em] text-hero-cream/75">{h}</p>
                 ))}
               </div>
               {dias.map((d, i) => {
                 const f = partesFecha(d.fecha)
                 return (
                   <div key={d.fecha}
-                    className={`grid grid-cols-[0.9fr_1.2fr_1.2fr_1fr] gap-3 px-4 md:px-6 py-4 items-center ${i < dias.length - 1 ? 'border-b border-white/[0.07]' : ''} ${d.fecha === hoy ? 'bg-hero-sky/[0.06]' : ''}`}>
+                    className={`grid grid-cols-[0.8fr_1.2fr_1.2fr] gap-3 px-4 md:px-6 py-4 items-center ${i < dias.length - 1 ? 'border-b border-white/[0.07]' : ''} ${d.fecha === hoy ? 'bg-hero-sky/[0.06]' : ''}`}>
                     <div className="flex items-baseline gap-2">
                       <span className="font-display-hero text-white text-[1.6rem] leading-none">{f.dia}</span>
                       <span className="font-label-lg text-[12px] uppercase text-hero-cream/75">{d.fecha === hoy ? 'Hoy' : f.semana}</span>
                     </div>
                     <Mareas lista={d.mareas.filter(m => m.tipo === 'baja')} destacada={d.mejor} />
                     <Mareas lista={d.mareas.filter(m => m.tipo === 'alta')} />
-                    <div className="flex justify-end">
-                      <span className={`inline-block px-3 py-1 rounded-full font-label-lg text-[11px] uppercase tracking-wider whitespace-nowrap ${ESTILO_ESTADO[d.estado.id]}`}>
-                        {d.estado.label}
-                      </span>
-                    </div>
                   </div>
                 )
               })}

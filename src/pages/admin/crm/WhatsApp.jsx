@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { Fragment, useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
@@ -49,6 +49,23 @@ function formatTiempo(ts) {
 function formatHora(ts) {
   if (!ts) return ''
   return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Día de un mensaje (en la hora de la computadora), para separar el chat por días
+// como WhatsApp: "Hoy", "Ayer" y después la fecha. El año solo si no es el actual.
+function claveDia(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+function etiquetaDia(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const hoy = new Date()
+  const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1)
+  if (claveDia(d) === claveDia(hoy)) return 'Hoy'
+  if (claveDia(d) === claveDia(ayer)) return 'Ayer'
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', ...(d.getFullYear() !== hoy.getFullYear() ? { year: 'numeric' } : {}) })
 }
 
 // Segundos a "mm:ss", para el cronómetro de grabación y el audio a revisar.
@@ -1325,9 +1342,16 @@ export default function WhatsAppCRM() {
             {mensajes.length === 0 && (
               <p className="text-center text-sm text-gray-400 dark:text-zinc-500 py-8">No hay mensajes aún</p>
             )}
-            {mensajes.map(msg => (
+            {mensajes.map((msg, i) => (
+              <Fragment key={msg.id}>
+              {(i === 0 || claveDia(msg.created_at) !== claveDia(mensajes[i - 1].created_at)) && (
+                <div className="sticky top-0 z-10 flex justify-center py-1">
+                  <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-gray-500 shadow-sm backdrop-blur dark:bg-zinc-800/90 dark:text-zinc-300">
+                    {etiquetaDia(msg.created_at)}
+                  </span>
+                </div>
+              )}
               <div
-                key={msg.id}
                 className={`flex ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
@@ -1353,6 +1377,7 @@ export default function WhatsAppCRM() {
                   </p>
                 </div>
               </div>
+              </Fragment>
             ))}
             <div ref={chatBottomRef} />
           </div>

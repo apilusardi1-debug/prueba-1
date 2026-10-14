@@ -19,10 +19,14 @@ export interface PedidoWebPaseos {
 
 const ENCABEZADO = '¡Hola DreamTours! Me interesan estos paseos:'
 
+// Dónde se hospeda el cliente (define desde dónde se lo busca). Va como texto para el equipo:
+// leerPedidoWebPaseos no lo usa, así que sumar la línea no cambia lo que lee el CRM.
+export const HOSPEDAJE_SIN_DEFINIR = 'Todavía no lo sé'
+
 const fechaLegible = (iso: string) => iso.split('-').reverse().join('/')
 
 export function armarMensajePedidoWeb(p: {
-  paseos: PaseoPedido[]; desde: string; hasta: string; adultos: number; edadesMenores: (number | string)[]; codigoVendedor?: string | null
+  paseos: PaseoPedido[]; desde: string; hasta: string; adultos: number; edadesMenores: (number | string)[]; hospedaje?: string | null; codigoVendedor?: string | null
 }): string {
   const menores = p.edadesMenores.length
   const pasajeros = `${p.adultos} adulto${p.adultos !== 1 ? 's' : ''}` + (menores
@@ -34,6 +38,7 @@ export function armarMensajePedidoWeb(p: {
     '',
     `Fechas de estadía: del ${fechaLegible(p.desde)} al ${fechaLegible(p.hasta)}`,
     `Pasajeros: ${pasajeros}`,
+    `Hospedaje en: ${p.hospedaje || HOSPEDAJE_SIN_DEFINIR}`,
   ]
   if (p.codigoVendedor) lineas.push(`Código de vendedor: ${p.codigoVendedor}`)
   return lineas.join('\n')

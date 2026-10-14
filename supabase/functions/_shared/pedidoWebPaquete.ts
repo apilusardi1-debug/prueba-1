@@ -12,6 +12,10 @@ export const PAISES_PAQUETE = ['Argentina', 'Uruguay', 'Chile', 'Paraguay', 'Per
 
 const ENCABEZADO = '¡Hola DreamTours! Quiero armar un paquete:'
 
+// Lo que se escribe cuando el cliente marca que todavía no sabe su presupuesto. datosViaje.ts
+// guarda el texto tal cual (sin número), así el asistente no vuelve a preguntarlo.
+export const PRESUPUESTO_SIN_DEFINIR = 'Todavía no lo sé'
+
 const fechaLegible = (iso: string) => iso.split('-').reverse().join('/')
 
 function formatoMonto(n: number): string {
@@ -24,7 +28,7 @@ export function nochesEntre(desde: string, hasta: string): number {
 
 export function armarMensajePedidoPaquete(p: {
   nombre: string; destinos: string[]; pais: string; origen: string; adultos: number
-  edadesMenores: (number | string)[]; hospedajes: string[]; presupuesto: number; desde: string; hasta: string; noches: number
+  edadesMenores: (number | string)[]; hospedajes: string[]; presupuesto: number | null; desde: string; hasta: string; noches: number
 }): string {
   const lineas = [
     ENCABEZADO,
@@ -38,7 +42,7 @@ export function armarMensajePedidoPaquete(p: {
   if (p.edadesMenores.length) lineas.push(`Edades: ${p.edadesMenores.join(', ')}`)
   lineas.push(
     `Hospedaje: ${p.hospedajes.join(', ')}`,
-    `Presupuesto: ${formatoMonto(p.presupuesto)} USD`,
+    `Presupuesto: ${p.presupuesto ? `${formatoMonto(p.presupuesto)} USD` : PRESUPUESTO_SIN_DEFINIR}`,
     // desde/hasta es el período en el que puede viajar (no la ida y la vuelta), y noches lo
     // que quiere quedarse. "Período del viaje:" lo lee datosViaje.ts como las fechas.
     `Período del viaje: entre el ${fechaLegible(p.desde)} y el ${fechaLegible(p.hasta)} · ${p.noches} noche${p.noches !== 1 ? 's' : ''}`,

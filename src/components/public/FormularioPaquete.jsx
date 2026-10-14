@@ -17,7 +17,8 @@ const TEXTOS = {
   es: {
     faltaNombre: 'Indicá tu nombre.', faltaDestino: 'Elegí al menos un destino.', faltaPais: 'Indicá desde qué país viajás.',
     faltaOrigen: 'Indicá tu ciudad de origen.', faltanEdades: 'Indicá la edad de cada menor.', faltaHospedaje: 'Elegí al menos un tipo de hospedaje.',
-    faltaPresupuesto: 'Indicá tu presupuesto.', faltanFechas: 'Indicá entre qué fechas podés viajar.',
+    faltaPresupuesto: 'Indicá tu presupuesto, o marcá "Todavía no lo sé".', noSe: 'Todavía no lo sé', fechaPasada: 'Las fechas no pueden ser anteriores a hoy.',
+    nochesMax: n => `Entre esas fechas entran hasta ${n} noche${n !== 1 ? 's' : ''}.`, faltanFechas: 'Indicá entre qué fechas podés viajar.',
     fechasAlReves: 'La fecha "hasta" tiene que ser posterior a la fecha "desde".',
     demasiadasNoches: n => `Entre esas fechas entran como máximo ${n} noches.`,
     armarPaquete: 'Armar mi paquete', aMedida: 'Paquete a medida', contanos: 'Contanos tu viaje', cerrar: 'Cerrar',
@@ -33,7 +34,8 @@ const TEXTOS = {
   pt: {
     faltaNombre: 'Informe seu nome.', faltaDestino: 'Escolha pelo menos um destino.', faltaPais: 'Informe de qual país você viaja.',
     faltaOrigen: 'Informe sua cidade de origem.', faltanEdades: 'Informe a idade de cada menor.', faltaHospedaje: 'Escolha pelo menos um tipo de hospedagem.',
-    faltaPresupuesto: 'Informe seu orçamento.', faltanFechas: 'Informe entre quais datas você pode viajar.',
+    faltaPresupuesto: 'Informe seu orçamento, ou marque "Ainda não sei".', noSe: 'Ainda não sei', fechaPasada: 'As datas não podem ser anteriores a hoje.',
+    nochesMax: n => `Entre essas datas cabem até ${n} noite${n !== 1 ? 's' : ''}.`, faltanFechas: 'Informe entre quais datas você pode viajar.',
     fechasAlReves: 'A data "até" tem que ser depois da data "de".',
     demasiadasNoches: n => `Entre essas datas cabem no máximo ${n} noites.`,
     armarPaquete: 'Montar meu pacote', aMedida: 'Pacote sob medida', contanos: 'Conte-nos sobre sua viagem', cerrar: 'Fechar',
@@ -50,7 +52,8 @@ const TEXTOS = {
   en: {
     faltaNombre: 'Enter your name.', faltaDestino: 'Choose at least one destination.', faltaPais: 'Tell us which country you’re traveling from.',
     faltaOrigen: 'Enter your home city.', faltanEdades: 'Enter the age of each child.', faltaHospedaje: 'Choose at least one type of accommodation.',
-    faltaPresupuesto: 'Enter your budget.', faltanFechas: 'Tell us between which dates you can travel.',
+    faltaPresupuesto: 'Enter your budget, or tick "I don’t know yet".', noSe: 'I don’t know yet', fechaPasada: 'Dates can’t be earlier than today.',
+    nochesMax: n => `Those dates fit up to ${n} night${n !== 1 ? 's' : ''}.`, faltanFechas: 'Tell us between which dates you can travel.',
     fechasAlReves: 'The "to" date must be after the "from" date.',
     demasiadasNoches: n => `Those dates fit at most ${n} nights.`,
     armarPaquete: 'Build my package', aMedida: 'Tailor-made package', contanos: 'Tell us about your trip', cerrar: 'Close',
@@ -70,6 +73,7 @@ const CAMPO = 'w-full border-2 border-hero-navy/15 focus:border-hero-navy rounde
 const LABEL = 'block font-label-lg text-label-sm uppercase text-hero-navy/80 mb-1.5'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
+const diaSiguiente = (iso) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10) }
 
 function Opciones({ opciones, elegidas, onChange, etiqueta = o => o }) {
   const alternar = (o) => onChange(elegidas.includes(o) ? elegidas.filter(x => x !== o) : [...elegidas, o])
@@ -104,7 +108,15 @@ export default function FormularioPaquete({ onClose }) {
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [noches, setNoches] = useState(7)
+  const [presupuestoNoSe, setPresupuestoNoSe] = useState(false)
   const [error, setError] = useState(null)
+  // Noches que entran entre las dos fechas; null mientras falte alguna
+  const nochesDisponibles = desde && hasta && hasta > desde ? nochesEntre(desde, hasta) : null
+
+  // Si las fechas se acortan, las noches bajan solas hasta lo que entra en el período
+  useEffect(() => {
+    if (nochesDisponibles && noches > nochesDisponibles) setNoches(nochesDisponibles)
+  }, [nochesDisponibles])
 
   // Escape cierra; mientras está abierto, la página de atrás no scrollea
   useEffect(() => {
@@ -119,7 +131,7 @@ export default function FormularioPaquete({ onClose }) {
   }, [])
 
   // El aviso de error se va apenas el cliente cambia algo
-  useEffect(() => { setError(null) }, [nombre, destinos, pais, origen, edades, hospedajes, presupuesto, desde, hasta, noches])
+  useEffect(() => { setError(null) }, [nombre, destinos, pais, origen, edades, hospedajes, presupuesto, presupuestoNoSe, desde, hasta, noches])
 
   function cambiarMenores(n) {
     setEdades(prev => n > prev.length ? [...prev, ...Array(n - prev.length).fill('')] : prev.slice(0, n))
@@ -135,14 +147,16 @@ export default function FormularioPaquete({ onClose }) {
       !origen.trim() ? tx.faltaOrigen :
       edades.some(x => x === '') ? tx.faltanEdades :
       !hospedajes.length ? tx.faltaHospedaje :
-      !(monto > 0) ? tx.faltaPresupuesto :
+      !presupuestoNoSe && !(monto > 0) ? tx.faltaPresupuesto :
       !desde || !hasta ? tx.faltanFechas :
+      // Las fechas escritas a mano pueden saltear el mínimo del calendario
+      desde < hoy() ? tx.fechaPasada :
       hasta <= desde ? tx.fechasAlReves :
       noches > nochesEntre(desde, hasta) ? tx.demasiadasNoches(nochesEntre(desde, hasta)) : null
     if (falta) { setError(falta); return }
     const texto = armarMensajePedidoPaquete({
       nombre: nombre.trim(), destinos, pais, origen: origen.trim(), adultos,
-      edadesMenores: edades, hospedajes, presupuesto: monto, desde, hasta, noches,
+      edadesMenores: edades, hospedajes, presupuesto: presupuestoNoSe ? null : monto, desde, hasta, noches,
     })
     window.open(`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
@@ -214,11 +228,17 @@ export default function FormularioPaquete({ onClose }) {
             <Opciones opciones={HOSPEDAJES_PAQUETE} elegidas={hospedajes} onChange={setHospedajes} etiqueta={o => tx.hospedajes[o] || o} />
           </div>
 
-          <label className="block">
-            <span className={LABEL}>{tx.presupuesto}</span>
-            <input type="number" inputMode="numeric" min="0" step="100" value={presupuesto} placeholder={tx.ejemploPresupuesto}
-              onChange={e => setPresupuesto(e.target.value)} className={CAMPO} />
-          </label>
+          <div>
+            <label className="block">
+              <span className={LABEL}>{tx.presupuesto}</span>
+              <input type="number" inputMode="numeric" min="0" step="100" value={presupuestoNoSe ? '' : presupuesto} placeholder={tx.ejemploPresupuesto}
+                disabled={presupuestoNoSe} onChange={e => setPresupuesto(e.target.value)} className={CAMPO + ' disabled:bg-surface disabled:opacity-60'} />
+            </label>
+            <label className="mt-2 flex items-center gap-2 font-body-md text-[13px] text-on-surface-variant cursor-pointer">
+              <input type="checkbox" checked={presupuestoNoSe} onChange={e => setPresupuestoNoSe(e.target.checked)} className="w-4 h-4 accent-hero-navy" />
+              {tx.noSe}
+            </label>
+          </div>
 
           <div>
             <p className={LABEL}>{tx.cuando}</p>
@@ -232,11 +252,14 @@ export default function FormularioPaquete({ onClose }) {
               </label>
               <label className="block">
                 <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">{tx.hasta}</span>
-                <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
+                <input type="date" min={desde ? diaSiguiente(desde) : hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
               </label>
             </div>
             <div className="mt-2.5">
-              <Contador label={tx.noches} valor={noches} min={1} onChange={setNoches} />
+              <Contador label={tx.noches} valor={noches} min={1} max={nochesDisponibles || 30} onChange={setNoches} />
+              {nochesDisponibles && (
+                <span className="block font-body-md text-[12px] text-on-surface-variant mt-1.5">{tx.nochesMax(nochesDisponibles)}</span>
+              )}
             </div>
           </div>
         </div>

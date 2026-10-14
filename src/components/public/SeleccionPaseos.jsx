@@ -22,7 +22,10 @@ const TEXTOS = {
     unidad: { persona: '/ persona', paseo: '/ paseo', sesion: '/ sesión', sesión: '/ sesión', traslado: '/ traslado' },
     restar: l => `Restar ${l.toLowerCase()}`, sumar: l => `Sumar ${l.toLowerCase()}`,
     faltanFechas: 'Indicá las fechas de tu estadía.', fechasAlReves: 'La fecha de salida tiene que ser posterior a la de llegada.',
-    faltanEdades: 'Indicá la edad de cada menor.',
+    faltanEdades: 'Indicá la edad de cada menor.', fechaPasada: 'Las fechas no pueden ser anteriores a hoy.',
+    faltaHospedaje: 'Indicá dónde te hospedás, o marcá "Todavía no lo sé".',
+    hospedaje: '¿Dónde te hospedás?', hospedajeAyuda: 'Barrio o playa, para saber desde dónde te buscamos.', ejemploHospedaje: 'Ej: Muro Alto, Porto de Galinhas',
+    noSe: 'Todavía no lo sé',
     miSeleccion: 'Mi selección', miSeleccionPaseos: 'Mi selección de paseos', tuViaje: 'Tu viaje', cerrar: 'Cerrar',
     vacia: 'Todavía no agregaste paseos. Elegí los que te interesan desde el catálogo.',
     quitar: n => `Quitar ${n}`, fechas: 'Fechas de tu estadía', llegada: 'Llegada', salida: 'Salida',
@@ -36,7 +39,10 @@ const TEXTOS = {
     unidad: { persona: '/ pessoa', paseo: '/ passeio', sesion: '/ sessão', sesión: '/ sessão', traslado: '/ traslado' },
     restar: l => `Diminuir ${l.toLowerCase()}`, sumar: l => `Aumentar ${l.toLowerCase()}`,
     faltanFechas: 'Informe as datas da sua estadia.', fechasAlReves: 'A data de saída tem que ser depois da chegada.',
-    faltanEdades: 'Informe a idade de cada menor.',
+    faltanEdades: 'Informe a idade de cada menor.', fechaPasada: 'As datas não podem ser anteriores a hoje.',
+    faltaHospedaje: 'Informe onde você vai se hospedar, ou marque "Ainda não sei".',
+    hospedaje: 'Onde você vai se hospedar?', hospedajeAyuda: 'Bairro ou praia, para sabermos de onde te buscar.', ejemploHospedaje: 'Ex.: Muro Alto, Porto de Galinhas',
+    noSe: 'Ainda não sei',
     miSeleccion: 'Minha seleção', miSeleccionPaseos: 'Minha seleção de passeios', tuViaje: 'Sua viagem', cerrar: 'Fechar',
     vacia: 'Você ainda não adicionou passeios. Escolha os que te interessam no catálogo.',
     quitar: n => `Remover ${n}`, fechas: 'Datas da sua estadia', llegada: 'Chegada', salida: 'Saída',
@@ -50,7 +56,10 @@ const TEXTOS = {
     unidad: { persona: '/ person', paseo: '/ tour', sesion: '/ session', sesión: '/ session', traslado: '/ transfer' },
     restar: l => `Fewer ${l.toLowerCase()}`, sumar: l => `More ${l.toLowerCase()}`,
     faltanFechas: 'Enter the dates of your stay.', fechasAlReves: 'The departure date must be after the arrival date.',
-    faltanEdades: 'Enter the age of each child.',
+    faltanEdades: 'Enter the age of each child.', fechaPasada: 'Dates can’t be earlier than today.',
+    faltaHospedaje: 'Tell us where you’re staying, or tick "I don’t know yet".',
+    hospedaje: 'Where are you staying?', hospedajeAyuda: 'Neighborhood or beach, so we know where to pick you up.', ejemploHospedaje: 'E.g. Muro Alto, Porto de Galinhas',
+    noSe: 'I don’t know yet',
     miSeleccion: 'My selection', miSeleccionPaseos: 'My tour selection', tuViaje: 'Your trip', cerrar: 'Close',
     vacia: 'You haven’t added any tours yet. Pick the ones you like from the catalog.',
     quitar: n => `Remove ${n}`, fechas: 'Dates of your stay', llegada: 'Arrival', salida: 'Departure',
@@ -67,17 +76,17 @@ const LABEL = 'block font-label-lg text-label-sm uppercase text-hero-navy/80 mb-
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export function Contador({ label, valor, min, onChange }) {
+export function Contador({ label, valor, min, max = 30, onChange }) {
   const tx = useTextos(TEXTOS)
   return (
     <div className="flex items-center justify-between bg-white border-2 border-hero-navy/15 rounded-xl px-3.5 py-2.5">
       <span className="font-body-md text-[13px] text-on-surface-variant font-medium">{label}</span>
       <div className="flex items-center gap-2.5">
-        <button type="button" aria-label={tx.restar(label)} onClick={() => onChange(Math.max(min, valor - 1))}
-          className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors">−</button>
+        <button type="button" aria-label={tx.restar(label)} disabled={valor <= min} onClick={() => onChange(Math.max(min, valor - 1))}
+          className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors disabled:opacity-30 disabled:hover:border-hero-navy/20">−</button>
         <span className="font-label-lg text-[14px] text-hero-navy min-w-[16px] text-center">{valor}</span>
-        <button type="button" aria-label={tx.sumar(label)} onClick={() => onChange(Math.min(30, valor + 1))}
-          className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors">+</button>
+        <button type="button" aria-label={tx.sumar(label)} disabled={valor >= max} onClick={() => onChange(Math.min(max, valor + 1))}
+          className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors disabled:opacity-30 disabled:hover:border-hero-navy/20">+</button>
       </div>
     </div>
   )
@@ -93,6 +102,8 @@ export default function SeleccionPaseos() {
   const [adultos, setAdultos] = useState(2)
   const [edades, setEdades] = useState([])
   const [codigo, setCodigo] = useState('')
+  const [hospedaje, setHospedaje] = useState('')
+  const [hospedajeNoSe, setHospedajeNoSe] = useState(false)
   const [error, setError] = useState(null)
 
   // Escape cierra el panel; mientras está abierto, la página de atrás no scrollea
@@ -111,7 +122,7 @@ export default function SeleccionPaseos() {
   useEffect(() => { cerrar() }, [pathname])
 
   // El aviso de error se va apenas el cliente corrige lo que faltaba
-  useEffect(() => { setError(null) }, [desde, hasta, edades])
+  useEffect(() => { setError(null) }, [desde, hasta, edades, hospedaje, hospedajeNoSe])
 
   function cambiarMenores(n) {
     setEdades(prev => n > prev.length ? [...prev, ...Array(n - prev.length).fill('')] : prev.slice(0, n))
@@ -119,10 +130,13 @@ export default function SeleccionPaseos() {
 
   function enviar() {
     if (!desde || !hasta) { setError(tx.faltanFechas); return }
+    // Las fechas escritas a mano pueden saltear el mínimo del calendario
+    if (desde < hoy() || hasta < hoy()) { setError(tx.fechaPasada); return }
     if (hasta < desde) { setError(tx.fechasAlReves); return }
     if (edades.some(e => e === '')) { setError(tx.faltanEdades); return }
+    if (!hospedaje.trim() && !hospedajeNoSe) { setError(tx.faltaHospedaje); return }
     setError(null)
-    const texto = armarMensajePedidoWeb({ paseos, desde, hasta, adultos, edadesMenores: edades, codigoVendedor: codigo.trim() })
+    const texto = armarMensajePedidoWeb({ paseos, desde, hasta, adultos, edadesMenores: edades, hospedaje: hospedajeNoSe ? null : hospedaje.trim(), codigoVendedor: codigo.trim() })
     window.open(`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -215,6 +229,18 @@ export default function SeleccionPaseos() {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="seleccion-hospedaje" className={LABEL}>{tx.hospedaje}</label>
+                    <span className="block font-body-md text-[13px] text-on-surface-variant mb-1.5">{tx.hospedajeAyuda}</span>
+                    <input id="seleccion-hospedaje" type="text" value={hospedajeNoSe ? '' : hospedaje} maxLength={80} disabled={hospedajeNoSe}
+                      placeholder={tx.ejemploHospedaje} onChange={e => setHospedaje(e.target.value)}
+                      className={CAMPO + ' disabled:bg-surface disabled:opacity-60'} />
+                    <label className="mt-2 flex items-center gap-2 font-body-md text-[13px] text-on-surface-variant cursor-pointer">
+                      <input type="checkbox" checked={hospedajeNoSe} onChange={e => setHospedajeNoSe(e.target.checked)} className="w-4 h-4 accent-hero-navy" />
+                      {tx.noSe}
+                    </label>
                   </div>
 
                   <div>

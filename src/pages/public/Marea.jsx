@@ -10,7 +10,7 @@ const TEXTOS = {
   es: {
     seoTitulo: 'Tabla de mareas', seoDescripcion: 'Horarios de marea baja y alta en Porto de Galinhas y Maragogi para planear tu visita a las piscinas naturales.',
     titulo: 'Tabla de marea', bajada: 'Porto de Galinhas y Maragogi',
-    intro: 'Las piscinas naturales aparecen con la marea baja. Las mejores salidas son de día, con la marea en 0,60 m o menos; cuanto más baja, mejor. Los días sin marea baja son ideales para el resto de los paseos: Maragogi, Carneiros, buggy y más.',
+    intro: 'Todos los días hay marea baja, pero no todas sirven para las piscinas naturales: tiene que ser de día (entre las 6 y las 17 h) y de 0,60 m o menos; cuanto más baja, mejor. En la tabla, la que sirve aparece en celeste.',
     actualizando: 'Estamos actualizando la tabla de mareas. Escribinos y te pasamos los mejores días para tu viaje.', volver: 'Volver al inicio',
     hoySePuede: 'Hoy se puede ir a las piscinas', proximo: 'Próximo día para las piscinas',
     dia: 'Día', baja: 'Marea baja', alta: 'Marea alta', hoy: 'Hoy',
@@ -19,7 +19,7 @@ const TEXTOS = {
   pt: {
     seoTitulo: 'Tábua de marés', seoDescripcion: 'Horários de maré baixa e alta em Porto de Galinhas e Maragogi para planejar sua visita às piscinas naturais.',
     titulo: 'Tábua de marés', bajada: 'Porto de Galinhas e Maragogi',
-    intro: 'As piscinas naturais aparecem com a maré baixa. Os melhores passeios são de dia, com a maré em 0,60 m ou menos; quanto mais baixa, melhor. Os dias sem maré baixa são ideais para os outros passeios: Maragogi, Carneiros, buggy e mais.',
+    intro: 'Todos os dias há maré baixa, mas nem todas servem para as piscinas naturais: tem que ser de dia (entre 6h e 17h) e de 0,60 m ou menos; quanto mais baixa, melhor. Na tábua, a que serve aparece em azul-claro.',
     actualizando: 'Estamos atualizando a tábua de marés. Escreva para nós e passamos os melhores dias para a sua viagem.', volver: 'Voltar ao início',
     hoySePuede: 'Hoje dá para ir às piscinas', proximo: 'Próximo dia para as piscinas',
     dia: 'Dia', baja: 'Maré baixa', alta: 'Maré alta', hoy: 'Hoje',
@@ -28,7 +28,7 @@ const TEXTOS = {
   en: {
     seoTitulo: 'Tide table', seoDescripcion: 'Low and high tide times in Porto de Galinhas and Maragogi to plan your visit to the natural pools.',
     titulo: 'Tide table', bajada: 'Porto de Galinhas and Maragogi',
-    intro: 'The natural pools appear at low tide. The best trips are during the day, with the tide at 0.60 m or less; the lower, the better. Days without a low tide are ideal for the other tours: Maragogi, Carneiros, buggy rides and more.',
+    intro: 'There is a low tide every day, but not all of them work for the natural pools: it has to be during the day (between 6 am and 5 pm) and 0.60 m or less; the lower, the better. In the table, the one that works is shown in light blue.',
     actualizando: 'We’re updating the tide table. Write to us and we’ll send you the best days for your trip.', volver: 'Back to home',
     hoySePuede: 'You can visit the pools today', proximo: 'Next day for the pools',
     dia: 'Day', baja: 'Low tide', alta: 'High tide', hoy: 'Today',

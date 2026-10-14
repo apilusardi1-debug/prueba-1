@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { destinos } from '../../data/mockData.js'
+import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
@@ -330,7 +330,7 @@ export default function Home() {
                   <div className="text-right flex-shrink-0">
                     <div className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">Desde</div>
                     <div className="font-label-sm text-[13px] uppercase text-hero-yellow font-bold whitespace-nowrap">
-                      {e.moneda === 'USD' ? 'US$' : 'R$'} {e.precio}
+                      {formatPrecio(e.precio, e.moneda)}
                     </div>
                   </div>
                 </div>

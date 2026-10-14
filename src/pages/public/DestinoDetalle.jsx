@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { destinos } from '../../data/mockData.js'
+import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, hospedajesApi } from '../../lib/supabase.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
@@ -27,7 +27,7 @@ function CardPaquete({ ex }) {
         <h3 className="font-display-hero uppercase text-hero-cream text-lg leading-tight mb-2 line-clamp-2">{ex.nombre}</h3>
         <div className="flex items-center justify-between gap-3">
           <span className="font-label-sm text-[11px] uppercase text-hero-cream/90 whitespace-nowrap">
-            Desde {ex.moneda === 'USD' ? 'US$' : 'R$'} {ex.precio}
+            Desde {formatPrecio(ex.precio, ex.moneda)}
           </span>
           {ex.duracion && (
             <span className="font-label-sm text-[11px] uppercase text-hero-yellow font-bold whitespace-nowrap">{ex.duracion}</span>

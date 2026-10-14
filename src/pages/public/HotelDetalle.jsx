@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { hospedajesApi, habitacionesApi } from '../../lib/supabase.js'
 import { BTN_SECUNDARIO } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -29,6 +30,7 @@ export default function HotelDetalle() {
   // resto de la navegación se oculta acá y en PublicLayout.
   const standalone = searchParams.get('standalone') === '1'
   const [h, setH] = useState(null)
+  useSeo({ titulo: h?.nombre, descripcion: h?.descripcion, imagen: h?.imagen })
   const [habitaciones, setHabitaciones] = useState([])
   const [loading, setLoading] = useState(true)
   const [habitacionActiva, setHabitacionActiva] = useState(null)
@@ -106,7 +108,7 @@ export default function HotelDetalle() {
             )}
             <div className="rounded-2xl overflow-hidden mb-2 bg-surface-variant h-72 md:h-96">
               {fotoActiva ? (
-                <img src={fotoActiva} alt={h.nombre} className="w-full h-full object-cover" />
+                <img src={fotoActiva} alt={`${h.nombre}, foto ${fotos.indexOf(fotoActiva) + 1} de ${fotos.length}`} className="w-full h-full object-cover" />
               ) : videoActivo ? (
                 <video key={videoActivo} src={videoActivo} controls playsInline className="w-full h-full object-cover bg-black" />
               ) : (
@@ -116,7 +118,8 @@ export default function HotelDetalle() {
             {fotos.length > 1 && (
               <div className="grid grid-cols-6 gap-1.5">
                 {fotos.map((f, i) => (
-                  <button key={i} onClick={() => setFotoActiva(f)}
+                  <button key={i} type="button" onClick={() => setFotoActiva(f)}
+                    aria-label={`Ver foto ${i + 1} de ${fotos.length}`} aria-pressed={fotoActiva === f}
                     className={`rounded-lg overflow-hidden h-14 border-2 transition-colors ${fotoActiva === f ? 'border-hero-navy' : 'border-transparent opacity-80 hover:opacity-100'}`}>
                     <img src={f} alt="" className="w-full h-full object-cover" />
                   </button>

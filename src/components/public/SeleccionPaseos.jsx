@@ -93,7 +93,7 @@ export default function SeleccionPaseos() {
         <button onClick={abrir}
           className="fixed z-40 right-4 bottom-20 md:bottom-6 md:right-6 flex items-center gap-3 bg-hero-navy text-hero-cream pl-3 pr-5 py-2.5 rounded-full shadow-[0_8px_24px_rgba(7,46,64,0.35)] hover:bg-deep-ocean transition-colors">
           <span className="relative w-9 h-9 rounded-full bg-hero-yellow text-hero-navy flex items-center justify-center">
-            <span className="material-symbols-outlined text-[20px]">beach_access</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[20px]">beach_access</span>
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[12px] font-bold flex items-center justify-center">{cantidad}</span>
           </span>
           <span className="font-label-lg text-label-sm uppercase">Mi selección</span>
@@ -192,7 +192,7 @@ export default function SeleccionPaseos() {
                 {error && <p className="bg-red-50 text-red-600 font-body-md text-[13px] px-3.5 py-2.5 rounded-lg mb-3">{error}</p>}
                 <button onClick={enviar}
                   className={`${BTN_PRINCIPAL} w-full`}>
-                  <span className="material-symbols-outlined text-[20px]">chat</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
                   Enviar por WhatsApp
                 </button>
                 <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
@@ -214,7 +214,7 @@ export function BotonAgregarPaseo({ ex, className = '' }) {
   return (
     <button type="button" onClick={() => agregado ? quitar(ex.id) : agregar(ex)} aria-pressed={agregado}
       className={`${agregado ? BTN_ELEGIDO : BTN_PRINCIPAL} ${className}`}>
-      <span className="material-symbols-outlined text-[18px]">{agregado ? 'check' : 'add'}</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{agregado ? 'check' : 'add'}</span>
       {agregado ? 'Agregado' : 'Agregar a mi selección'}
     </button>
   )

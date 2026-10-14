@@ -4,6 +4,7 @@ import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useLang } from '../../context/LanguageContext.jsx'
 import { BotonAgregarPaseo } from '../../components/public/SeleccionPaseos.jsx'
+import { useSeo } from '../../lib/seo.js'
 
 // `categoria` es el valor crudo de la base ('excursiones', 'paquetes',
 // 'traslados') — acá se traduce a lo que ve el cliente ("Excursiones" ahora
@@ -33,6 +34,7 @@ export default function ExcursionDetalle() {
   const { id } = useParams()
   const { t } = useLang()
   const [ex, setEx] = useState(null)
+  useSeo({ titulo: ex?.nombre, descripcion: ex?.descripcion, imagen: ex?.imagen })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function ExcursionDetalle() {
                   <div key={label} className="bg-white border-2 border-hero-navy/10 rounded-xl px-4 py-3 text-center">
                     <p className="font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">{label}</p>
                     <p className={`font-label-lg text-[14px] flex items-center justify-center gap-1.5 ${red ? 'text-red-600' : 'text-hero-navy'}`}>
-                      <span className="material-symbols-outlined text-[16px]">{icon}</span>{value}
+                      <span aria-hidden="true" className="material-symbols-outlined text-[16px]">{icon}</span>{value}
                     </p>
                   </div>
                 ))}

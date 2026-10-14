@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { useLang } from '../../context/LanguageContext.jsx'
+import { useSeo } from '../../lib/seo.js'
 
 export default function Destinos() {
+  useSeo({ titulo: 'Destinos', descripcion: 'Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha: qué ver, cuándo ir y cómo armar tu viaje con DreamTours.' })
   const { t } = useLang()
   const [excursiones, setExcursiones] = useState([])
 

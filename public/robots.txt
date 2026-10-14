@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /guia/
+Disallow: /chofer/
+Disallow: /reservar/
+
+Sitemap: https://prueba-1-rose.vercel.app/sitemap.xml

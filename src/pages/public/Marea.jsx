@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { hoyEnDestino, proximosDias, proximaVentana, formatoAltura, ULTIMO_DIA } from '../../data/mareas.js'
 import { BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -31,6 +32,7 @@ function Mareas({ lista, destacada }) {
 }
 
 export default function Marea() {
+  useSeo({ titulo: 'Tabla de mareas', descripcion: 'Horarios de marea baja y alta en Porto de Galinhas y Maragogi para planear tu visita a las piscinas naturales.' })
   const hoy = hoyEnDestino()
   const dias = proximosDias(hoy, DIAS_A_MOSTRAR)
   const ventana = proximaVentana(hoy)

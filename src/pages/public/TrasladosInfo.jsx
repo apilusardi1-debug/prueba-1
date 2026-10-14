@@ -3,6 +3,7 @@ import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { BTN_PRINCIPAL } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 // Página que explica cómo funcionan los traslados. Antes /traslados era el
 // catálogo de paseos filtrado (buscador, "1 resultado encontrado", cupos),
@@ -39,6 +40,7 @@ Personas:
 Equipaje:`
 
 export default function TrasladosInfo() {
+  useSeo({ titulo: 'Traslados privados', descripcion: 'Traslados privados desde el aeropuerto de Recife a Porto de Galinhas, Maragogi y más destinos del Nordeste, con atención en español.' })
   const { config } = useSiteConfig()
   const [desde, setDesde] = useState(null)
 
@@ -56,7 +58,7 @@ export default function TrasladosInfo() {
   const Boton = () => (
     <a href={waHref} target="_blank" rel="noopener noreferrer"
       className={BTN_PRINCIPAL}>
-      <span className="material-symbols-outlined text-[20px]">chat</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
       Cotizar mi traslado
     </a>
   )
@@ -98,7 +100,7 @@ export default function TrasladosInfo() {
           {TIPOS.map(({ icono, titulo, texto }) => (
             <div key={titulo} className="p-7 bg-white rounded-2xl border border-hero-navy/10">
               <div className="w-14 h-14 rounded-full bg-hero-cream flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-hero-navy text-[28px]">{icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-[28px]">{icono}</span>
               </div>
               <h3 className="font-display-hero uppercase text-hero-navy text-2xl tracking-wide mb-1">{titulo}</h3>
               <p className="font-body-md text-[15px] leading-relaxed text-on-surface-variant">{texto}</p>
@@ -139,7 +141,7 @@ export default function TrasladosInfo() {
           <ul className="flex flex-col gap-3">
             {DATOS.map(({ icono, texto }) => (
               <li key={texto} className="flex items-center gap-3 text-hero-cream">
-                <span className="material-symbols-outlined text-hero-sky text-[22px]">{icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-sky text-[22px]">{icono}</span>
                 <span className="font-body-md text-body-md">{texto}</span>
               </li>
             ))}

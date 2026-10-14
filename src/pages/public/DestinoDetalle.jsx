@@ -5,6 +5,7 @@ import { excursionesApi, normalizarExcursion, hospedajesApi } from '../../lib/su
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 const HOSPEDAJES_PREVIEW = 6
 
@@ -65,7 +66,7 @@ function SeccionEditorial({ destino }) {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {c.datos.map((d) => (
               <div key={d.titulo} className="bg-hero-cream rounded-2xl p-6">
-                <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{d.icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{d.icono}</span>
                 <h3 className="font-display-hero uppercase text-hero-navy text-base mb-2">{d.titulo}</h3>
                 <p className="font-body-md text-body-md text-hero-navy/80 leading-snug">{d.texto}</p>
               </div>
@@ -89,7 +90,7 @@ function SeccionEditorial({ destino }) {
               </div>
               {c.caro.cierre && (
                 <div className="flex items-start gap-3 bg-hero-navy rounded-2xl p-5 md:p-6">
-                  <span className="material-symbols-outlined text-hero-yellow text-2xl flex-shrink-0">tips_and_updates</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-hero-yellow text-2xl flex-shrink-0">tips_and_updates</span>
                   <p className="font-body-md text-body-md text-hero-cream leading-relaxed">{c.caro.cierre}</p>
                 </div>
               )}
@@ -120,7 +121,7 @@ function SeccionEditorial({ destino }) {
               <a href={c.tasas.boton.url} target="_blank" rel="noopener noreferrer"
                 className={BTN_SECUNDARIO}>
                 {c.tasas.boton.texto}
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </a>
             )}
           </div>
@@ -172,13 +173,13 @@ function SeccionEditorial({ destino }) {
               {c.videos?.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
                   {c.videos.map((v, i) => (
-                    <button key={i} onClick={() => setVideoActivo(v)}
+                    <button key={i} onClick={() => setVideoActivo(v)} aria-label={`Ver video${v.titulo ? `: ${v.titulo}` : ''}`}
                       className="group relative rounded-xl overflow-hidden text-left" style={{ aspectRatio: '9/16' }}>
                       <video src={v.video} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
                       <div className="absolute bottom-2 right-2">
                         <span className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined text-white text-[18px]">fullscreen</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-white text-[18px]">fullscreen</span>
                         </span>
                       </div>
                     </button>
@@ -194,7 +195,7 @@ function SeccionEditorial({ destino }) {
                 <ul className="space-y-2 mb-5">
                   {c.actividad.checklist.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                      <span className="material-symbols-outlined text-hero-navy text-[18px] mt-0.5 flex-shrink-0">check_circle</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-[18px] mt-0.5 flex-shrink-0">check_circle</span>
                       {item}
                     </li>
                   ))}
@@ -280,14 +281,14 @@ function SeccionEditorial({ destino }) {
           <div className="grid sm:grid-cols-2 gap-4">
             {c.cierre.map((item) => (
               <div key={item.titulo} className="bg-hero-cream rounded-2xl p-6 md:p-8 flex flex-col">
-                <span className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{item.icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-3xl mb-3 block">{item.icono}</span>
                 <h3 className="font-display-hero uppercase text-hero-navy text-lg mb-2">{item.titulo}</h3>
                 <p className="font-body-md text-body-md text-hero-navy/80 leading-relaxed mb-4">{item.texto}</p>
                 {item.boton && item.whatsappMensaje && (
                   <a href={waHref(item.whatsappMensaje)} target="_blank" rel="noopener noreferrer"
                     className={`${BTN_PRINCIPAL} mt-auto self-start`}>
                     {item.boton}
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </a>
                 )}
               </div>
@@ -308,7 +309,7 @@ function SeccionEditorial({ destino }) {
       {/* Lightbox de video */}
       {videoActivo && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setVideoActivo(null)}>
-          <button onClick={() => setVideoActivo(null)}
+          <button onClick={() => setVideoActivo(null)} aria-label="Cerrar video"
             className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-xl">
             ×
           </button>
@@ -350,6 +351,7 @@ export default function DestinoDetalle() {
   const { t } = useLang()
   const { config } = useSiteConfig()
   const destino = destinos.find((d) => d.id === id)
+  useSeo({ titulo: destino?.nombre, descripcion: destino?.descripcion, imagen: destino?.imagen })
 
   const [excursiones, setExcursiones] = useState([])
   const [hospedajes, setHospedajes] = useState([])
@@ -417,7 +419,7 @@ export default function DestinoDetalle() {
             <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
               className={BTN_PRINCIPAL}>
               Consultar disponibilidad
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </a>
           </div>
         </div>
@@ -459,7 +461,7 @@ export default function DestinoDetalle() {
                     <Link to={`/hoteles?destino=${encodeURIComponent(destino.nombre)}`}
                       className="inline-flex items-center gap-1.5 font-label-lg text-label-sm uppercase text-hero-navy hover:opacity-70 transition-opacity">
                       Ver los {hospedajes.length} hospedajes
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                     </Link>
                   )}
                 </div>
@@ -480,7 +482,7 @@ export default function DestinoDetalle() {
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
                   className={BTN_PRINCIPAL}>
                   Consultá disponibilidad
-                  <span className="material-symbols-outlined text-[20px]">flight</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">flight</span>
                 </a>
               </div>
             )}
@@ -498,7 +500,7 @@ export default function DestinoDetalle() {
           <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
             className={`${BTN_PRINCIPAL} self-start`}>
             Hablar por WhatsApp
-            <span className="material-symbols-outlined text-[20px]">flight</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[20px]">flight</span>
           </a>
         </div>
         <div className="relative h-56 md:h-full overflow-hidden">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { hospedajesApi } from '../../lib/supabase.js'
+import { useSeo } from '../../lib/seo.js'
 
 function Estrellas({ n }) {
   if (!n) return null
@@ -12,6 +13,7 @@ function Estrellas({ n }) {
 }
 
 export default function Hoteles() {
+  useSeo({ titulo: 'Hoteles y posadas', descripcion: 'Hoteles, posadas y departamentos en el Nordeste de Brasil, elegidos por DreamTours. Consultá disponibilidad y armá tu paquete.' })
   const [searchParams] = useSearchParams()
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)

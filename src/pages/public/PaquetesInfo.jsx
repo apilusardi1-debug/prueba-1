@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { destinos } from '../../data/mockData.js'
 import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
 import { BTN_PRINCIPAL } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 // Página que explica cómo funcionan los paquetes. Antes /paquetes era el
 // catálogo filtrado con paquetes armados de antemano; los paquetes se arman a
@@ -35,12 +36,13 @@ const TITULO = 'font-display-hero uppercase text-hero-navy mb-6'
 const TITULO_ESTILO = { fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '0.01em' }
 
 export default function PaquetesInfo() {
+  useSeo({ titulo: 'Paquetes a medida', descripcion: 'Vuelos, hospedaje y traslado privado en un solo paquete armado a tu medida, con el acompañamiento de nuestras anfitrionas durante todo el viaje.' })
   const [formAbierto, setFormAbierto] = useState(false)
 
   const Boton = () => (
     <button type="button" onClick={() => setFormAbierto(true)}
       className={BTN_PRINCIPAL}>
-      <span className="material-symbols-outlined text-[20px]">edit_note</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">edit_note</span>
       Armar mi paquete
     </button>
   )
@@ -73,7 +75,7 @@ export default function PaquetesInfo() {
           {INCLUYE.map(({ icono, titulo, texto }) => (
             <div key={titulo} className="p-7 bg-white rounded-2xl border border-hero-navy/10">
               <div className="w-14 h-14 rounded-full bg-hero-cream flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-hero-navy text-[28px]">{icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-[28px]">{icono}</span>
               </div>
               <h3 className="font-display-hero uppercase text-hero-navy text-2xl tracking-wide mb-1">{titulo}</h3>
               <p className="font-body-md text-[15px] leading-relaxed text-on-surface-variant">{texto}</p>
@@ -132,7 +134,7 @@ export default function PaquetesInfo() {
           <ul className="flex flex-col gap-3">
             {GESTIONES.map(g => (
               <li key={g} className="flex items-start gap-3 text-hero-cream">
-                <span className="material-symbols-outlined text-hero-sky text-[22px] flex-shrink-0">check_circle</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-sky text-[22px] flex-shrink-0">check_circle</span>
                 <span className="font-body-md text-body-md">{g}</span>
               </li>
             ))}

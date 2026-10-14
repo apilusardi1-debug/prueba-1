@@ -1,6 +1,7 @@
 import { useLang } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { BTN_PRINCIPAL, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
+import { useSeo } from '../../lib/seo.js'
 
 // Los textos están en src/lib/i18n.js (claves about_*), en español, portugués e inglés
 const VALORES = [
@@ -12,6 +13,7 @@ const VALORES = [
 const DESTINOS = ['Porto de Galinhas', 'Maragogi', 'Maceió', 'Pipa', 'Fernando de Noronha']
 
 export default function Nosotros() {
+  useSeo({ titulo: 'Quiénes somos', descripcion: 'DreamTours es una agencia especializada en viajes al Nordeste de Brasil, con atención en español de principio a fin.' })
   const { t } = useLang()
   const { config } = useSiteConfig()
 
@@ -36,7 +38,7 @@ export default function Nosotros() {
           {VALORES.map(({ icono, n }) => (
             <div key={n} className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-hero-navy/10">
               <div className="w-16 h-16 rounded-full bg-hero-cream flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-hero-navy text-[32px]">{icono}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-[32px]">{icono}</span>
               </div>
               <h3 className="font-display-hero uppercase text-hero-navy text-2xl tracking-wide mb-2">{t(`about_v${n}_title`)}</h3>
               <p className="font-body-md text-[15px] leading-relaxed text-on-surface-variant">{t(`about_v${n}_text`)}</p>
@@ -75,7 +77,7 @@ export default function Nosotros() {
               rel="noopener noreferrer"
               className={BTN_PRINCIPAL}
             >
-              <span className="material-symbols-outlined text-[20px]">chat</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
               WhatsApp
             </a>
             <a
@@ -84,7 +86,7 @@ export default function Nosotros() {
               rel="noopener noreferrer"
               className={BTN_SECUNDARIO_OSCURO}
             >
-              <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">photo_camera</span>
               Instagram
             </a>
           </div>

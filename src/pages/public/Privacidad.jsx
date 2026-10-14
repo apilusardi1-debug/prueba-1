@@ -1,4 +1,5 @@
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
+import { useSeo } from '../../lib/seo.js'
 
 const SECCIONES = [
   {
@@ -59,6 +60,7 @@ const SECCIONES = [
 ]
 
 export default function Privacidad() {
+  useSeo({ titulo: 'Política de privacidad' })
   const { config } = useSiteConfig()
   const whatsapp = config?.whatsapp
 

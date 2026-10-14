@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { BotonAgregarPaseo } from '../../components/public/SeleccionPaseos.jsx'
+import { useSeo } from '../../lib/seo.js'
 
 // No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
 // vehículo, con varias personas incluidas) — se aclara acá abajo del precio
@@ -15,6 +16,7 @@ const UNIDAD_PRECIO_LABEL = {
 }
 
 export default function Catalogo({ categoria }) {
+  useSeo({ titulo: 'Paseos en español', descripcion: 'Paseos en español por Porto de Galinhas, Maragogi, Carneiros, Santo Aleixo y más. Elegí los que te gustan y consultá disponibilidad por WhatsApp.' })
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -66,7 +68,7 @@ export default function Catalogo({ categoria }) {
           {/* Buscador + filtro de destino */}
           <div className="flex flex-col md:flex-row gap-3 md:items-center">
             <div className="relative w-full md:w-72">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+              <span aria-hidden="true" className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
               <input
                 type="text"
                 value={busqueda}
@@ -144,12 +146,12 @@ export default function Catalogo({ categoria }) {
                       <div className="flex items-center gap-4 font-label-sm text-label-sm uppercase text-deep-ocean/85 pt-1">
                         {ex.duracion && (
                           <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[15px]">schedule</span>{ex.duracion}
+                            <span aria-hidden="true" className="material-symbols-outlined text-[15px]">schedule</span>{ex.duracion}
                           </span>
                         )}
                         {ex.categoria !== 'excursiones' && (
                           <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
+                            <span aria-hidden="true" className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
                           </span>
                         )}
                       </div>

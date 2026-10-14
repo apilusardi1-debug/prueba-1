@@ -89,7 +89,7 @@ export default function PublicLayout() {
             )}
             {!standalone && (
               <button onClick={() => setDrawerOpen(true)} aria-label="Menú" style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
-                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
+                <span aria-hidden="true" className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
               </button>
             )}
           </div>
@@ -155,17 +155,17 @@ export default function PublicLayout() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-surface-variant">
               <img src="/logo.png" alt="DreamTours" className="h-14 w-auto object-contain"
                 onError={e => { e.target.style.display = 'none' }} />
-              <button onClick={() => setDrawerOpen(false)} className="p-1">
-                <span className="material-symbols-outlined text-on-surface-variant">close</span>
+              <button onClick={() => setDrawerOpen(false)} aria-label="Cerrar menú" className="p-1">
+                <span aria-hidden="true" className="material-symbols-outlined text-on-surface-variant">close</span>
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto py-2">
               {NAV_LINKS.map(({ to, label, icon }) => (
                 <Link key={to} to={to}
                   className={`flex items-center gap-4 px-6 py-4 transition-colors ${pathname === to ? 'text-deep-ocean bg-surface-container-low font-semibold' : 'text-on-surface-variant hover:text-deep-ocean hover:bg-surface-container-low'}`}>
-                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{icon}</span>
                   <span className="font-label-lg text-label-lg">{label}</span>
-                  <span className="material-symbols-outlined text-[16px] ml-auto opacity-40">chevron_right</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px] ml-auto opacity-40">chevron_right</span>
                 </Link>
               ))}
             </nav>
@@ -252,21 +252,21 @@ export default function PublicLayout() {
         <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-surface-variant/30 md:hidden">
           <div className="flex justify-around items-center h-16 px-2">
             <Link to="/" className="flex flex-col items-center justify-center w-full h-full text-deep-ocean">
-              <span className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
+              <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
               <span className="text-[11px] font-semibold">Inicio</span>
             </Link>
             <Link to="/destinos" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-              <span className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
+              <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
               <span className="text-[11px]">Destinos</span>
             </Link>
             <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-              <span className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
+              <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
               <span className="text-[11px]">Paseos</span>
             </Link>
             <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
-              <span className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
+              <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
               <span className="text-[11px]">Contacto</span>
             </a>
           </div>

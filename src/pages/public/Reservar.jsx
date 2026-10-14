@@ -317,7 +317,7 @@ export default function Reservar() {
         {/* ── PASO 3: Confirmado ── */}
         {paso === 3 && (
           <div className="text-center py-6">
-            <span className="material-symbols-outlined text-hero-navy text-[64px] mb-2" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-hero-navy text-[64px] mb-2" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
             <h2 className="font-display-hero uppercase text-hero-navy text-4xl tracking-wide mb-2">¡Reserva recibida!</h2>
             <p className="text-gray-500 mb-2">
               Gracias <strong>{form.nombre}</strong>. Registramos tu reserva para

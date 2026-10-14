@@ -188,7 +188,7 @@ export default function FormularioPaquete({ onClose }) {
           {error && <p className="bg-red-50 text-red-600 font-body-md text-[13px] px-3.5 py-2.5 rounded-lg mb-3">{error}</p>}
           <button type="submit"
             className={`${BTN_PRINCIPAL} w-full`}>
-            <span className="material-symbols-outlined text-[20px]">chat</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
             Enviar por WhatsApp
           </button>
           <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">

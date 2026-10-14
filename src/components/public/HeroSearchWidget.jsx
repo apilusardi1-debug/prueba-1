@@ -38,7 +38,7 @@ export default function HeroSearchWidget() {
       <div className="bg-hero-cream rounded-3xl md:rounded-full shadow-xl p-2 flex flex-col md:flex-row items-stretch md:items-center gap-1 overflow-hidden">
         {FIELDS.map((f, i) => (
           <div key={f.key} className="flex items-center gap-2 flex-1 min-w-0 px-4 py-2.5 md:border-r md:last-of-type:border-r-0 border-hero-navy/10">
-            <span className="material-symbols-outlined text-hero-navy/50 text-[18px] flex-shrink-0">{f.icon}</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-hero-navy/50 text-[18px] flex-shrink-0">{f.icon}</span>
             <div className="min-w-0">
               <div className="font-label-sm text-[10px] uppercase tracking-wide text-hero-navy/50">{f.label}</div>
               <div className="font-body-md text-[14px] text-hero-navy/80 truncate">{f.placeholder}</div>
@@ -49,7 +49,7 @@ export default function HeroSearchWidget() {
           type="button"
           className="flex items-center justify-center gap-2 bg-hero-sky text-hero-navy font-label-lg text-label-sm uppercase px-6 py-3 rounded-full hover:opacity-90 transition-opacity flex-shrink-0"
         >
-          <span className="material-symbols-outlined text-[18px]">search</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">search</span>
           Buscar
         </button>
       </div>

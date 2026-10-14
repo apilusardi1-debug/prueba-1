@@ -7,6 +7,7 @@ import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
 import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
+import { useSeo } from '../../lib/seo.js'
 
 // Reseñas reales de TripAdvisor (elegidas por Abril, 2026-10-14). Se muestra el título y un
 // fragmento corto, con el link a la reseña completa: el texto entero queda en TripAdvisor.
@@ -99,7 +100,7 @@ function FlechaCarrusel({ lado, onClick, deshabilitada }) {
     <button type="button" onClick={onClick} disabled={deshabilitada}
       aria-label={lado === 'izq' ? 'Paseos anteriores' : 'Paseos siguientes'}
       className={`absolute z-10 top-32 md:top-40 -translate-y-1/2 ${lado === 'izq' ? 'left-0 md:-left-6' : 'right-0 md:-right-6'} w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-hero-navy bg-white text-hero-navy flex items-center justify-center shadow-[0_4px_12px_rgba(7,46,64,0.15)] hover:bg-hero-navy hover:text-hero-cream transition-[opacity,background-color,color] disabled:opacity-0 disabled:pointer-events-none`}>
-      <span className="material-symbols-outlined text-[24px]">{lado === 'izq' ? 'chevron_left' : 'chevron_right'}</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-[24px]">{lado === 'izq' ? 'chevron_left' : 'chevron_right'}</span>
     </button>
   )
 }
@@ -211,6 +212,7 @@ function StatPill({ valor, label, tall, className = '' }) {
 }
 
 export default function Home() {
+  useSeo()
   const { config } = useSiteConfig()
   const [faqOpen, setFaqOpen] = useState(null)
   const mareaHoy = diaDeMarea(hoyEnDestino())
@@ -339,7 +341,7 @@ export default function Home() {
                 <div className="absolute bottom-0 left-0 p-6 w-full">
                   <h3 className="font-display-hero uppercase text-hero-yellow text-2xl md:text-3xl leading-[0.95] mb-1">{d.nombre}</h3>
                   <p className="font-label-sm text-label-sm text-sand-beige flex items-center gap-1 group-hover:underline">
-                    Explorar destino <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    Explorar destino <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                   </p>
                 </div>
               </Link>
@@ -349,7 +351,7 @@ export default function Home() {
         <div className="mt-8 text-center px-margin-mobile">
           <Link to="/destinos" className={`${BTN_SECUNDARIO} group`}>
             Ver todos los destinos
-            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">arrow_forward</span>
+            <span aria-hidden="true" className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">arrow_forward</span>
           </Link>
         </div>
       </section>
@@ -421,7 +423,7 @@ export default function Home() {
                 <a href={r.url} target="_blank" rel="noopener noreferrer"
                   className={`${BTN_SECUNDARIO} mt-6`}>
                   Leer en TripAdvisor
-                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               </div>
             ))}
@@ -431,7 +433,7 @@ export default function Home() {
             <a href={TRIPADVISOR_URL} target="_blank" rel="noopener noreferrer"
               className={BTN_SECUNDARIO}>
               Ver todas las opiniones
-              <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[18px]">open_in_new</span>
             </a>
           </div>
         </div>
@@ -491,7 +493,7 @@ export default function Home() {
                   {mareaHoy.mareas.map(m => (
                     <div key={m.hora} className="flex justify-between items-center pt-3">
                       <div className="flex items-center gap-2 text-hero-navy">
-                        <span className="material-symbols-outlined text-[18px]">{m.tipo === 'baja' ? 'arrow_downward' : 'arrow_upward'}</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{m.tipo === 'baja' ? 'arrow_downward' : 'arrow_upward'}</span>
                         <span className="font-label-lg text-label-sm uppercase">Marea {m.tipo}</span>
                       </div>
                       <div className="text-right text-hero-navy">
@@ -507,7 +509,7 @@ export default function Home() {
               <div className="mt-4 text-center">
                 <Link to="/marea" className="inline-flex items-center gap-1 font-label-lg text-label-sm uppercase text-hero-navy hover:opacity-70 transition-opacity">
                   Ver tabla completa
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
               </div>
             </div>
@@ -577,7 +579,7 @@ export default function Home() {
             <button type="button" onClick={() => setFormPaquete(true)}
               className={BTN_PRINCIPAL}>
               Armá tu viaje
-              <span className="material-symbols-outlined text-[20px]">flight</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">flight</span>
             </button>
           </div>
         </div>
@@ -600,7 +602,7 @@ export default function Home() {
               {videosAgencia.map(v => esLinkInstagram(v.video_url) ? (
                 <PosteoInstagram key={v.id} url={v.video_url} />
               ) : (
-                <button key={v.id} onClick={() => setVideoActivo(v)}
+                <button key={v.id} onClick={() => setVideoActivo(v)} aria-label={`Ver video${v.titulo ? `: ${v.titulo}` : ''}`}
                   className="group relative rounded-2xl overflow-hidden flex-shrink-0 text-left"
                   style={{ width: 'clamp(180px, 20vw, 240px)', aspectRatio: '9/16' }}>
                   {v.thumbnail_url ? (
@@ -635,7 +637,7 @@ export default function Home() {
       {/* ── LIGHTBOX DE VIDEO ─────────────────────────────────── */}
       {videoActivo && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setVideoActivo(null)}>
-          <button onClick={() => setVideoActivo(null)}
+          <button onClick={() => setVideoActivo(null)} aria-label="Cerrar video"
             className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-xl">
             ×
           </button>

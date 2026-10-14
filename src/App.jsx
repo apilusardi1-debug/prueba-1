@@ -1,16 +1,17 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AvisosPagina } from './components/ui/Avisos.jsx'
 
 // Layouts
 import PublicLayout from './components/layout/PublicLayout.jsx'
-import AdminLayout from './components/layout/AdminLayout.jsx'
+const AdminLayout = lazy(() => import('./components/layout/AdminLayout.jsx'))
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 
 // Páginas públicas
 import Home from './pages/public/Home.jsx'
 import Catalogo from './pages/public/Catalogo.jsx'
 import ExcursionDetalle from './pages/public/ExcursionDetalle.jsx'
-import Reservar from './pages/public/Reservar.jsx'
+const Reservar = lazy(() => import('./pages/public/Reservar.jsx'))
 import Destinos from './pages/public/Destinos.jsx'
 import DestinoDetalle from './pages/public/DestinoDetalle.jsx'
 import Hoteles from './pages/public/Hoteles.jsx'
@@ -20,35 +21,36 @@ import Nosotros from './pages/public/Nosotros.jsx'
 import Privacidad from './pages/public/Privacidad.jsx'
 
 // Link personal de guía/chofer (chat interno de operaciones): pública, sin sesión de admin
-import PanelOperativo from './pages/public/PanelOperativo.jsx'
+const PanelOperativo = lazy(() => import('./pages/public/PanelOperativo.jsx'))
 
-// Páginas admin
-import Login from './pages/admin/Login.jsx'
-import Dashboard from './pages/admin/Dashboard.jsx'
-import Leads from './pages/admin/Leads.jsx'
-import Clientes from './pages/admin/Clientes.jsx'
-import Reservas from './pages/admin/Reservas.jsx'
-import Excursiones from './pages/admin/Excursiones.jsx'
-import Agenda from './pages/admin/Agenda.jsx'
-import ChatInterno from './pages/admin/ChatInterno.jsx'
-import SiteConfig from './pages/admin/SiteConfig.jsx'
-import AsistenteEntrenamiento from './pages/admin/AsistenteEntrenamiento.jsx'
-import Equipo from './pages/admin/Equipo.jsx'
-import Hospedajes from './pages/admin/Hospedajes.jsx'
-import Videos from './pages/admin/Videos.jsx'
-import NuevoHospedaje from './pages/admin/hospedajes/NuevoHospedaje.jsx'
-import EditarHospedaje from './pages/admin/hospedajes/EditarHospedaje.jsx'
-import WhatsAppCRM from './pages/admin/crm/WhatsApp.jsx'
-import Finanzas from './pages/admin/Finanzas.jsx'
-import ClientesPaquetes from './pages/admin/paquetes/ClientesPaquetes.jsx'
-import GeneradorPropuesta from './pages/admin/paquetes/GeneradorPropuesta.jsx'
-import PropuestasLista from './pages/admin/paquetes/PropuestasLista.jsx'
-import Traslados from './pages/admin/Traslados.jsx'
+// Páginas admin: se descargan recién cuando alguien entra al panel (lazy), así el visitante
+// del sitio no baja el código del admin (PDF, gráficos, CRM). Ídem el link de guía/chofer.
+const Login = lazy(() => import('./pages/admin/Login.jsx'))
+const Dashboard = lazy(() => import('./pages/admin/Dashboard.jsx'))
+const Leads = lazy(() => import('./pages/admin/Leads.jsx'))
+const Clientes = lazy(() => import('./pages/admin/Clientes.jsx'))
+const Reservas = lazy(() => import('./pages/admin/Reservas.jsx'))
+const Excursiones = lazy(() => import('./pages/admin/Excursiones.jsx'))
+const Agenda = lazy(() => import('./pages/admin/Agenda.jsx'))
+const ChatInterno = lazy(() => import('./pages/admin/ChatInterno.jsx'))
+const SiteConfig = lazy(() => import('./pages/admin/SiteConfig.jsx'))
+const AsistenteEntrenamiento = lazy(() => import('./pages/admin/AsistenteEntrenamiento.jsx'))
+const Equipo = lazy(() => import('./pages/admin/Equipo.jsx'))
+const Hospedajes = lazy(() => import('./pages/admin/Hospedajes.jsx'))
+const Videos = lazy(() => import('./pages/admin/Videos.jsx'))
+const NuevoHospedaje = lazy(() => import('./pages/admin/hospedajes/NuevoHospedaje.jsx'))
+const EditarHospedaje = lazy(() => import('./pages/admin/hospedajes/EditarHospedaje.jsx'))
+const WhatsAppCRM = lazy(() => import('./pages/admin/crm/WhatsApp.jsx'))
+const Finanzas = lazy(() => import('./pages/admin/Finanzas.jsx'))
+const ClientesPaquetes = lazy(() => import('./pages/admin/paquetes/ClientesPaquetes.jsx'))
+const GeneradorPropuesta = lazy(() => import('./pages/admin/paquetes/GeneradorPropuesta.jsx'))
+const PropuestasLista = lazy(() => import('./pages/admin/paquetes/PropuestasLista.jsx'))
+const Traslados = lazy(() => import('./pages/admin/Traslados.jsx'))
 import TrasladosInfo from './pages/public/TrasladosInfo.jsx'
 import PaquetesInfo from './pages/public/PaquetesInfo.jsx'
-import Superadmin from './pages/admin/Superadmin.jsx'
-import OperacionesEnCurso from './pages/admin/OperacionesEnCurso.jsx'
-import Mensajes from './pages/admin/Mensajes.jsx'
+const Superadmin = lazy(() => import('./pages/admin/Superadmin.jsx'))
+const OperacionesEnCurso = lazy(() => import('./pages/admin/OperacionesEnCurso.jsx'))
+const Mensajes = lazy(() => import('./pages/admin/Mensajes.jsx'))
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -117,7 +119,9 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <>
-      <RouterProvider router={router} />
+      <Suspense fallback={<div className="min-h-screen" />}>
+        <RouterProvider router={router} />
+      </Suspense>
       <AvisosPagina />
     </>
   )

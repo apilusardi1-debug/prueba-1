@@ -265,20 +265,20 @@ export default function Home() {
 
           {/* Dos caminos según en qué punto del viaje está el visitante: dos botones grandes,
               cada uno lleva a su recorrido (paquetes y hospedajes / paseos y traslados) */}
-          <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mt-8 max-w-3xl">
+          <div className="flex flex-wrap gap-3 mt-8">
             {CAMINOS.map(c => {
-              const clases = `group flex items-center justify-between gap-4 text-left rounded-2xl px-6 py-5 md:px-7 md:py-6 transition-colors ${
+              const clases = `group inline-flex items-center gap-3 text-left rounded-xl px-5 py-2.5 transition-colors ${
                 c.principal
-                  ? 'bg-hero-yellow text-hero-navy hover:bg-[#ffe92e] shadow-[0_6px_24px_rgba(7,46,64,0.25)]'
-                  : 'border-2 border-hero-cream/80 text-hero-cream bg-hero-navy/30 backdrop-blur-sm hover:bg-hero-navy/50 hover:border-hero-cream'
+                  ? 'bg-hero-yellow text-hero-navy hover:bg-[#ffe92e] shadow-[0_4px_14px_rgba(7,46,64,0.2)]'
+                  : 'border border-hero-cream/80 text-hero-cream bg-hero-navy/30 backdrop-blur-sm hover:bg-hero-navy/50 hover:border-hero-cream'
               }`
               const contenido = (
                 <>
                   <span>
-                    <span className={`block font-body-md text-[15px] mb-1.5 ${c.principal ? 'text-hero-navy/80' : 'text-hero-cream/85'}`}>{c.etapa}</span>
-                    <span className="block font-display-hero uppercase text-[26px] md:text-[30px] leading-none">{c.titulo}</span>
+                    <span className={`block font-body-md text-[12px] mb-0.5 ${c.principal ? 'text-hero-navy/80' : 'text-hero-cream/85'}`}>{c.etapa}</span>
+                    <span className="block font-display-hero uppercase text-[19px] md:text-[21px] leading-none">{c.titulo}</span>
                   </span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-[30px] flex-shrink-0 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px] flex-shrink-0 group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </>
               )
               return c.formulario ? (

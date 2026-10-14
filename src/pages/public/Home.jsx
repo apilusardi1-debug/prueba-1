@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
-import HeroSearchWidget from '../../components/public/HeroSearchWidget.jsx'
+import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
@@ -132,6 +132,25 @@ function CarruselPaseos({ children }) {
   )
 }
 
+// Las dos formas de llegar a DreamTours: el que todavía arma el viaje y el que ya lo tiene.
+// Cada una lleva a un recorrido distinto (paquetes/hospedajes o paseos/traslados).
+const CAMINOS = [
+  {
+    clave: 'organizando',
+    titulo: 'Estoy organizando mi viaje',
+    texto: 'Vuelos, hospedaje y traslado en un solo paquete, armado a tu medida.',
+    principal: { label: 'Armar mi paquete', formulario: true },
+    secundarios: [{ label: 'Ver paquetes', to: '/paquetes' }, { label: 'Hospedajes', to: '/hoteles' }],
+  },
+  {
+    clave: 'ya-tengo',
+    titulo: 'Ya tengo mi viaje',
+    texto: 'Sumá paseos en español y traslados privados para tu estadía.',
+    principal: { label: 'Ver paseos', to: '/excursiones' },
+    secundarios: [{ label: 'Traslados', to: '/traslados' }],
+  },
+]
+
 const SERVICIOS = [
   { label: 'Paquetes Aéreos',    icono: '/icons/paquetes-aereos.svg',    to: '/paquetes' },
   { label: 'Hoteles y Posadas',  icono: '/icons/hoteles-posadas.svg',    to: '/hoteles' },
@@ -194,6 +213,7 @@ export default function Home() {
   const [excursionesDestacadas, setExcursionesDestacadas] = useState([])
   const [videosAgencia, setVideosAgencia] = useState([])
   const [videoActivo, setVideoActivo] = useState(null)
+  const [formPaquete, setFormPaquete] = useState(false)
 
   useEffect(() => {
     async function cargarExcursiones() {
@@ -218,6 +238,7 @@ export default function Home() {
 
   return (
     <div className="bg-surface">
+      {formPaquete && <FormularioPaquete onClose={() => setFormPaquete(false)} />}
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative w-full min-h-[760px] md:min-h-[820px] flex flex-col justify-center pt-32 pb-20 md:pb-28 overflow-hidden">
@@ -242,18 +263,40 @@ export default function Home() {
             de tus sueños
           </p>
 
-          <div className="flex gap-4 flex-wrap mt-8 mb-16 md:mb-20">
-            <Link to="/paquetes"
-              className="border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors hover:bg-hero-yellow hover:text-hero-navy">
-              Ver Paquetes
-            </Link>
-            <Link to="/paquetes"
-              className="border-2 border-hero-yellow text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full transition-colors hover:bg-hero-yellow hover:text-hero-navy">
-              Planear mi viaje
-            </Link>
-          </div>
+          {/* Qué vende DreamTours, en una línea */}
+          <p className="font-body-md text-body-lg text-hero-cream max-w-2xl mt-6"
+            style={{ textShadow: '0 1px 12px rgba(7,46,64,0.6)' }}>
+            Paquetes, hospedajes, paseos y traslados en Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha, con atención en español antes y durante todo tu viaje.
+          </p>
 
-          <HeroSearchWidget />
+          {/* Dos caminos según en qué punto del viaje está el visitante */}
+          <div className="grid md:grid-cols-2 gap-4 mt-8 max-w-4xl">
+            {CAMINOS.map(c => (
+              <div key={c.clave} className="bg-hero-navy/80 backdrop-blur-sm border border-hero-cream/15 rounded-2xl p-6 flex flex-col">
+                <h2 className="font-display-hero uppercase text-hero-yellow text-2xl md:text-[28px] leading-none mb-2">{c.titulo}</h2>
+                <p className="font-body-md text-[15px] text-hero-cream/85 mb-5 flex-1">{c.texto}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {c.principal.formulario ? (
+                    <button type="button" onClick={() => setFormPaquete(true)}
+                      className="bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+                      {c.principal.label}
+                    </button>
+                  ) : (
+                    <Link to={c.principal.to}
+                      className="bg-hero-yellow text-hero-navy font-label-lg text-label-lg uppercase px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+                      {c.principal.label}
+                    </Link>
+                  )}
+                  {c.secundarios.map(s => (
+                    <Link key={s.to} to={s.to}
+                      className="border-2 border-hero-cream/40 text-hero-cream font-label-lg text-label-sm uppercase px-5 py-2.5 rounded-full hover:border-hero-yellow hover:text-hero-yellow transition-colors">
+                      {s.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -517,12 +560,11 @@ export default function Home() {
             <p className="font-body-md text-body-lg text-hero-navy mb-8">
               Completá el formulario y nuestro equipo se va a contactar para diseñar un viaje 100% personalizado según tus intereses, tiempos y presupuesto.
             </p>
-            <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20armar%20mi%20viaje%20al%20Nordeste%20Brasilero`}
-              target="_blank" rel="noopener noreferrer"
+            <button type="button" onClick={() => setFormPaquete(true)}
               className="inline-flex items-center gap-2 bg-hero-navy text-white font-display-hero uppercase text-xl px-8 py-4 rounded-full hover:opacity-90 transition-opacity">
               Armá tu viaje
               <span className="material-symbols-outlined text-hero-yellow text-2xl">flight</span>
-            </a>
+            </button>
           </div>
         </div>
         <div className="relative h-64 md:h-full overflow-hidden">

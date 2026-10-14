@@ -6,6 +6,7 @@ import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
 import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
+import { nombrePaseo, claveTexto } from '../../lib/reservasPlanilla.js'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -80,7 +81,11 @@ function normalizarReserva(r) {
   return {
     id: r.id,
     excursionId: r.excursion_id,
-    excursionNombre: r.excursiones?.nombre || '—',
+    // Traslados y paseos fuera del catálogo no tienen excursion_id, solo el texto del
+    // paseo: se agrupan por ese texto (grupoId) para que no queden todos juntos.
+    grupoId: r.excursion_id || `paseo:${claveTexto(nombrePaseo(r))}`,
+    excursionNombre: nombrePaseo(r),
+    sinTraslado: !!r.sin_traslado,
     excursionCategoria: r.excursiones?.categoria || '',
     excursionCupos: r.excursiones?.cupos || 0,
     clienteNombre: r.cliente_nombre,
@@ -100,11 +105,11 @@ function buildSalidas(reservasNorm) {
   const map = {}
   for (const r of reservasNorm) {
     if (r.estado === 'cancelada') continue
-    const key = `${r.excursionId}-${r.fecha}`
+    const key = `${r.grupoId}-${r.fecha}`
     if (!map[key]) {
       map[key] = {
         fecha: r.fecha,
-        excursion: { id: r.excursionId, nombre: r.excursionNombre, cupos: r.excursionCupos, categoria: r.excursionCategoria },
+        excursion: { id: r.grupoId, excursionId: r.excursionId, nombre: r.excursionNombre, cupos: r.excursionCupos, categoria: r.excursionCategoria },
         reservas: [],
       }
     }
@@ -195,7 +200,7 @@ export default function Agenda() {
         for (const r of norm) {
           if (r.chofer_id) initAsig[r.id] = r.chofer_id
           if (r.guia_id) {
-            const key = `${r.excursionId}-${r.fecha}`
+            const key = `${r.grupoId}-${r.fecha}`
             if (!initGuia[key]) initGuia[key] = r.guia_id
           }
         }
@@ -228,7 +233,7 @@ export default function Agenda() {
 
   async function handleAsignarGuia(opKey, guiaId) {
     setGuiaAsignaciones((p) => ({ ...p, [opKey]: guiaId }))
-    const reservasDeOp = reservasNorm.filter((r) => `${r.excursionId}-${r.fecha}` === opKey)
+    const reservasDeOp = reservasNorm.filter((r) => `${r.grupoId}-${r.fecha}` === opKey)
     await Promise.all(reservasDeOp.map((r) => reservasApi.updateAsignacion(r.id, { guia_id: guiaId || null })))
     await Promise.all(reservasDeOp.map((r) => recalcularCosto(r.id, { guia_id: guiaId || null })))
   }
@@ -318,7 +323,7 @@ function VistaTabla({ reservasNorm, cargando }) {
     else { setOrdenPor(campo); setOrdenDir('asc') }
   }
 
-  const excursionesUnicas = [...new Map(reservasNorm.map((r) => [r.excursionId, r.excursionNombre])).entries()]
+  const excursionesUnicas = [...new Map(reservasNorm.map((r) => [r.grupoId, r.excursionNombre])).entries()]
     .filter(([id]) => id)
     .map(([id, nombre]) => ({ id, nombre }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -326,7 +331,7 @@ function VistaTabla({ reservasNorm, cargando }) {
 
   const filasFiltradas = reservasNorm.filter((r) => {
     if (tabActiva !== 'todas' && r.estado !== tabActiva) return false
-    if (filtroExcursion && r.excursionId !== filtroExcursion) return false
+    if (filtroExcursion && r.grupoId !== filtroExcursion) return false
     if (filtroFechaDesde && (!r.fecha || r.fecha < filtroFechaDesde)) return false
     if (filtroFechaHasta && (!r.fecha || r.fecha > filtroFechaHasta)) return false
     return true
@@ -465,6 +470,7 @@ function VistaTabla({ reservasNorm, cargando }) {
                   </td>
                   <td className="py-3.5 px-4">
                     <p className="font-semibold text-gray-900 dark:text-zinc-100 leading-snug">{reserva.excursionNombre}</p>
+                    {reserva.sinTraslado && <span className="inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">Sin traslado</span>}
                     <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{reserva.clienteNombre}</p>
                   </td>
                   <td className="py-3.5 px-4 text-gray-600 dark:text-zinc-400">{getExcursionTipo(reserva)}</td>
@@ -744,7 +750,8 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   const paxReservados = pasajeros.reduce((a, r) => a + r.personas, 0)
   const conChofer = pasajeros.filter((r) => asignaciones[r.id])
   const guiaAsignado = guias.find((g) => g.id === guiaAsignaciones[opKey])
-  const listoParaCerrar = guiaAsignaciones[opKey] && conChofer.length > 0
+  // Solo los paseos del catálogo se cierran como operación (la operación guarda el paseo)
+  const listoParaCerrar = !!excursion.excursionId && guiaAsignaciones[opKey] && conChofer.length > 0
   const [enviando, setEnviando] = useState(false)
   const [resultados, setResultados] = useState(null)
   const [previewAbierto, setPreviewAbierto] = useState(null) // id del pasajero cuya vista previa está abierta
@@ -850,7 +857,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       }
 
       const cerradaPor = JSON.parse(localStorage.getItem('admin_session') || '{}').nombre || null
-      const { error: errorAvisos } = await operacionesApi.cerrar({ excursionId: excursion.id, fecha, guiaId: guiaAsignado.id, cerradaPor, avisos })
+      const { error: errorAvisos } = await operacionesApi.cerrar({ excursionId: excursion.excursionId, fecha, guiaId: guiaAsignado.id, cerradaPor, avisos })
       if (errorAvisos) {
         logs.push({ destino: `Guía y choferes (${avisos.length} avisos)`, interno: true, ok: false, error: errorAvisos.message || 'No se pudieron guardar los avisos internos' })
       } else {
@@ -893,9 +900,10 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   // cerrado antes) y se actualiza sola mientras el modal está abierto.
   const [estadoAvisos, setEstadoAvisos] = useState(null)
   const cargarEstadoAvisos = useCallback(async () => {
-    const { data } = await operacionesApi.getAvisos(excursion.id, fecha)
+    if (!excursion.excursionId) { setEstadoAvisos([]); return }
+    const { data } = await operacionesApi.getAvisos(excursion.excursionId, fecha)
     setEstadoAvisos(data?.operaciones_avisos || [])
-  }, [excursion.id, fecha])
+  }, [excursion.excursionId, fecha])
   useEffect(() => { cargarEstadoAvisos() }, [cargarEstadoAvisos])
   useSincronizado(cargarEstadoAvisos, ['operaciones_avisos'])
 
@@ -963,7 +971,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">{r.clienteNombre}</p>
                         <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="phone" />+{r.clienteWhatsapp}</p>
-                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="hotel" />{r.hospedaje || '—'}</p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="hotel" />{r.sinTraslado ? 'Sin traslado' : (r.hospedaje || '—')}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-xs font-semibold text-brand-600 dark:text-zinc-300">{r.personas} pax</p>

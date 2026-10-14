@@ -81,6 +81,13 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 - **Costos de Meta** (desde jul-2025 se cobra por mensaje entregado; tabla `tarifas_mensaje`, editable desde el Dashboard): utilidad R$0,035, marketing R$0,34, autenticación R$0,17. Responder con texto libre dentro de las 24 hs es gratis
 - **Pendiente**: responder pasadas las 24 hs necesita una plantilla aprobada (a consultar con Florencia); migrar el número real desde Kommo
 
+## Reservas = planilla del equipo de paseos (2026-10-13)
+`/admin/reservas` tiene las columnas y filtros del Excel con el que trabajaba el equipo de paseos ("NUEVA PLANILLA"): fecha de venta, cliente, cantidad, paseo, fecha del paseo, valor venta, saldo cliente, chofer del día, comisión chofer, hospedaje, obs., seña (= comisión del vendedor), contacto, vendedor, más "Sin traslado" y moneda (R$ o US$). La comisión de la agencia ("COMISION DREAM") se carga **por día** en "Comisión diaria" (tabla `comisiones_agencia_diarias`, por `catalogo-interno`).
+- Columnas nuevas de `reservas` y tabla de comisión: migración `20261014100000_reservas_planilla_paseos.sql`. Helpers compartidos: `src/lib/reservasPlanilla.js`; formulario: `src/components/admin/ModalReservaPlanilla.jsx`.
+- Paseo, chofer y vendedor son texto libre (`paseo`, `chofer_texto`, `vendedor_texto`); si el paseo es del catálogo además queda `excursion_id`. Los traslados ("Traslado Porto → Aeropuerto Recife") y paseos fuera de la web ("Jangada") solo tienen el texto: la Agenda los agrupa por ese texto (`grupoId`) y no permite "Cerrar operación" para ellos.
+- **Los paseos no tienen cupo**: reservar no descuenta `cupos_disponibles` (pedido de Abril).
+- **Importación desde el Excel** mientras el equipo siga usándolo: `scripts/importar-planilla-reservas.mjs` (sin datos; los archivos de clientes quedan fuera del repo, en `~/Desktop/reservas-paseos/` de Abril). Genera vista previa CSV + SQL para el SQL Editor + foto JSON para comparar la próxima actualización. Cada fila se reconoce por `clave_planilla` (fecha de venta + cliente + paseo + fecha del paseo). Solo entran paseos de hoy en adelante. Las equivalencias de nombres están en el script.
+
 ## VPS Hostinger
 - **IP**: `76.13.224.231`
 - **SSH**: `ssh root@76.13.224.231`

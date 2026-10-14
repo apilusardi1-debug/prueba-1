@@ -86,10 +86,8 @@ export const reservasApi = {
   create: async (data) => {
     const result = await invocarCatalogoInterno('reservas', 'create', { data })
     const r = result?.data
-    if (r) {
-      await ajustarCantidadReservas(r.cliente_id, 1)
-      if (r.estado !== 'cancelada') await ajustarCuposDisponibles(r.excursion_id, -(r.personas || 0))
-    }
+    // Los paseos no tienen cupo (pedido de Abril, 2026-10-13): reservar no descuenta nada
+    if (r) await ajustarCantidadReservas(r.cliente_id, 1)
     return result
   },
   crearPublica: async (data) => {
@@ -100,16 +98,9 @@ export const reservasApi = {
     }
     return { error }
   },
-  updateEstado: async (id, estado) => {
-    const { data: lista } = await invocarCatalogoInterno('reservas', 'list', { filtros: { id } })
-    const antes = lista?.[0]
-    const result = await invocarCatalogoInterno('reservas', 'update', { id, data: { estado } })
-    if (antes && antes.estado !== estado) {
-      if (estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
-      else if (antes.estado === 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, -(antes.personas || 0))
-    }
-    return result
-  },
+  updateEstado: (id, estado) => invocarCatalogoInterno('reservas', 'update', { id, data: { estado } }),
+  // Edición completa desde Reservas (la planilla del equipo de paseos)
+  update: (id, data) => invocarCatalogoInterno('reservas', 'update', { id, data }),
   updatePago: (id, pagado) => invocarCatalogoInterno('reservas', 'update', { id, data: { pagado } }),
   updateCostoOperativo: (id, { costo_operativo, costo_operativo_moneda, costo_operativo_detalle }) =>
     invocarCatalogoInterno('reservas', 'update', { id, data: { costo_operativo, costo_operativo_moneda, costo_operativo_detalle } }),
@@ -118,12 +109,16 @@ export const reservasApi = {
     const { data: lista } = await invocarCatalogoInterno('reservas', 'list', { filtros: { id } })
     const antes = lista?.[0]
     const result = await invocarCatalogoInterno('reservas', 'delete', { id })
-    if (antes) {
-      await ajustarCantidadReservas(antes.cliente_id, -1)
-      if (antes.estado !== 'cancelada') await ajustarCuposDisponibles(antes.excursion_id, antes.personas || 0)
-    }
+    if (antes) await ajustarCantidadReservas(antes.cliente_id, -1)
     return result
   },
+}
+
+// Comisión de la agencia por día ("COMISION DREAM" de la planilla de paseos)
+export const comisionesAgenciaApi = {
+  getAll: () => invocarCatalogoInterno('comisiones_agencia_diarias', 'list'),
+  guardar: (data) => invocarCatalogoInterno('comisiones_agencia_diarias', 'upsert', { data }),
+  delete: (id) => invocarCatalogoInterno('comisiones_agencia_diarias', 'delete', { id }),
 }
 
 // ── Leads ──────────────────────────────────────────────────────────────────────

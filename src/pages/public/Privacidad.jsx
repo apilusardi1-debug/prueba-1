@@ -18,7 +18,7 @@ const TEXTOS = {
       {
         titulo: 'Quiénes somos',
         parrafos: [
-          'DreamTours es una agencia de turismo con base en Porto de Galinhas, Ipojuca, Pernambuco (Brasil), especializada en viajes, paseos, traslados y paquetes por el Nordeste brasileño. Esta política explica qué datos personales tratamos cuando nos escribís o contratás un servicio, para qué los usamos y qué derechos tenés sobre ellos.',
+          'DreamTours es una agencia de turismo con domicilio legal en Jaboatão dos Guararapes y operación en Porto de Galinhas, Ipojuca, ambos en Pernambuco (Brasil), especializada en viajes, paseos, traslados y paquetes por el Nordeste brasileño. Esta política explica qué datos personales tratamos cuando nos escribís o contratás un servicio, para qué los usamos y qué derechos tenés sobre ellos.',
         ],
       },
       {
@@ -78,7 +78,7 @@ const TEXTOS = {
     escribir: 'Escrever pelo WhatsApp',
     responsable: (r, c) => `Controlador dos dados: ${r}, CNPJ ${c}.`, numero: 'WhatsApp:',
     secciones: [
-      { titulo: 'Quem somos', parrafos: ['A DreamTours é uma agência de turismo com sede em Porto de Galinhas, Ipojuca, Pernambuco (Brasil), especializada em viagens, passeios, traslados e pacotes pelo Nordeste brasileiro. Esta política explica quais dados pessoais tratamos quando você nos escreve ou contrata um serviço, para que os usamos e quais direitos você tem sobre eles.'] },
+      { titulo: 'Quem somos', parrafos: ['A DreamTours é uma agência de turismo com sede legal em Jaboatão dos Guararapes e operação em Porto de Galinhas, Ipojuca, ambos em Pernambuco (Brasil), especializada em viagens, passeios, traslados e pacotes pelo Nordeste brasileiro. Esta política explica quais dados pessoais tratamos quando você nos escreve ou contrata um serviço, para que os usamos e quais direitos você tem sobre eles.'] },
       { titulo: 'Quais dados coletamos', lista: [
         'Dados de contato: nome, número de WhatsApp e, se você nos informar, e-mail, país e cidade.',
         'Dados da viagem: datas, número de passageiros, idades dos menores, passeios e hospedagens que te interessam ou que você contrata.',
@@ -107,7 +107,7 @@ const TEXTOS = {
     escribir: 'Write on WhatsApp',
     responsable: (r, c) => `Data controller: ${r}, CNPJ ${c}.`, numero: 'WhatsApp:',
     secciones: [
-      { titulo: 'Who we are', parrafos: ['DreamTours is a travel agency based in Porto de Galinhas, Ipojuca, Pernambuco (Brazil), specializing in trips, tours, transfers and packages across Northeast Brazil. This policy explains what personal data we process when you write to us or book a service, what we use it for and what rights you have over it.'] },
+      { titulo: 'Who we are', parrafos: ['DreamTours is a travel agency legally registered in Jaboatão dos Guararapes and operating in Porto de Galinhas, Ipojuca, both in Pernambuco (Brazil), specializing in trips, tours, transfers and packages across Northeast Brazil. This policy explains what personal data we process when you write to us or book a service, what we use it for and what rights you have over it.'] },
       { titulo: 'What data we collect', lista: [
         'Contact details: name, WhatsApp number and, if you give them to us, email, country and city.',
         'Trip details: dates, number of travelers, children’s ages, and the tours and accommodation you’re interested in or book.',

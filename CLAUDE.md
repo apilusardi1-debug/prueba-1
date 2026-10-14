@@ -1,7 +1,7 @@
 # DreamsTour — Contexto del Proyecto
 
 ## Quiénes somos
-Cristian y Abril desarrollan una plataforma web completa para **DreamsTour**, agencia de turismo con base en Porto de Galinhas, Ipojuca, Pernambuco (Brasil). El proyecto está en producción activa.
+Cristian y Abril desarrollan una plataforma web completa para **DreamsTour**, agencia de turismo con domicilio legal en Jaboatão dos Guararapes (PE) y operación en Porto de Galinhas, Ipojuca (PE), Brasil. Razón social DREAM TOURS AGENCIA DE TURISMO E SERVICOS LTDA, CNPJ 57.371.792/0001-28. El proyecto está en producción activa.
 
 ## Stack tecnológico
 - **Frontend**: React 18 + Vite + TailwindCSS + React Router v6
@@ -154,6 +154,7 @@ El número real va a pasar de Kommo a **360dialog** (proveedor oficial, plan Reg
 - El webhook acepta avisos con firma de Meta **o** con la credencial de 360dialog. Lo que el equipo mande desde el celular entra como mensaje saliente con `origen = 'celular'`. El historial que sincroniza Meta al conectar se guarda crudo en el bucket `whatsapp-media/historial-360dialog/` (falta el importador).
 - Si el Flow no se puede enviar, el asistente manda las preguntas por texto en vez de quedarse callado.
 - **Migración pendiente de correr** (recién hace falta el día del corte): `20261013100000_mensajes_desde_celular.sql`, para que los mensajes del celular no cuenten como gasto.
+- **El día del corte, cambiar el número del sitio**: `site_config.whatsapp` (Admin > Configuración del sitio) hoy es el número de prueba del CRM (5581997199422). Hay que poner el número oficial: lo usan todos los botones de WhatsApp de la web, los pedidos de "Mi selección" y "Armar mi paquete", y el contacto de la política de privacidad (`/privacidad`, que lo muestra escrito). Pedido de Abril, 2026-10-14.
 - **Al desplegar `webhook-whatsapp` o `send-whatsapp`**: hacer `git pull` antes, siempre. Se despliega lo que hay en la computadora, y una versión vieja borra todo esto.
 
 ## Pendientes actuales

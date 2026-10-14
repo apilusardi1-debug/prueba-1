@@ -7,27 +7,30 @@ import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
+// Reseñas reales de TripAdvisor (elegidas por Abril, 2026-10-14). Se muestra el título y un
+// fragmento corto, con el link a la reseña completa: el texto entero queda en TripAdvisor.
+const TRIPADVISOR_URL = 'https://www.tripadvisor.es/Attraction_Review-g303461-d33088974-Reviews-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html'
 const RESENAS = [
   {
-    nombre: 'María González',
-    inicial: 'M',
-    titulo: '"El mejor viaje de nuestra vida"',
-    texto: 'La organización fue impecable. Los guías nos llevaron a las mejores playas y nos recomendaron lugares increíbles para comer. Totalmente recomendado.',
-    fecha: 'Enero 2024',
+    nombre: 'Virginia N.',
+    titulo: 'Experiencia imperdible',
+    texto: 'Tener una guía como Mey, predispuesta, atenta y amorosa…',
+    fecha: 'Octubre 2026',
+    url: 'https://www.tripadvisor.es/ShowUserReviews-g303461-d33088974-r1081725008-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
   },
   {
-    nombre: 'Carlos y Familia',
-    inicial: 'C',
-    titulo: '"Atención personalizada al 100%"',
-    texto: 'Se encargaron de todo, desde los traslados hasta los paseos. Solo nos dedicamos a disfrutar de Maragogi. Un servicio de 10 puntos.',
-    fecha: 'Noviembre 2023',
+    nombre: 'Estefanía O.',
+    titulo: '¡No lo dudes!',
+    texto: 'Viajamos con los niños y es super atenta con ellos. Super recomendable!',
+    fecha: 'Septiembre 2026',
+    url: 'https://www.tripadvisor.es/ShowUserReviews-g303461-d33088974-r1079751345-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
   },
   {
-    nombre: 'Laura Martínez',
-    inicial: 'L',
-    titulo: '"Lugares mágicos"',
-    texto: 'Conocer las piscinas naturales fue increíble. El equipo de DreamTours hizo que toda la experiencia fuera segura y muy divertida. Volveremos.',
-    fecha: 'Octubre 2023',
+    nombre: 'Viajera de TripAdvisor',
+    titulo: 'Primer viaje sola, ¡espectacular!',
+    texto: 'Para los que viajen solos se los recomiendo, ya que están siempre a disposición…',
+    fecha: 'Agosto 2026',
+    url: 'https://www.tripadvisor.es/ShowUserReviews-g303461-d33088974-r1075679018-Dream_Tours-Porto_de_Galinhas_Ipojuca_State_of_Pernambuco.html',
   },
 ]
 
@@ -397,28 +400,38 @@ export default function Home() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {RESENAS.map((r, i) => (
-              <div key={i} className="bg-white border-2 border-hero-navy rounded-2xl p-8">
+              <div key={i} className="bg-white border-2 border-hero-navy rounded-2xl p-8 flex flex-col">
                 <div className="flex gap-1 text-hero-yellow mb-4">
                   {[...Array(5)].map((_, s) => (
                     <span key={s} className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: '"FILL" 1' }}>star</span>
                   ))}
                 </div>
-                <h3 className="font-label-lg text-[16px] text-hero-navy mb-3">{r.titulo}</h3>
-                <p className="font-body-md text-body-md text-on-surface-variant mb-6 italic">"{r.texto}"</p>
+                <h3 className="font-label-lg text-[16px] text-hero-navy mb-3">"{r.titulo}"</h3>
+                <p className="font-body-md text-body-md text-on-surface-variant mb-6 italic flex-1">"{r.texto}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-label-lg text-hero-navy font-bold">
-                    {r.inicial}
+                    {r.nombre[0]}
                   </div>
                   <div>
                     <div className="font-label-lg text-[14px] text-hero-navy">{r.nombre}</div>
                     <div className="font-label-sm text-[12px] text-on-surface-variant">Viajó en {r.fecha}</div>
                   </div>
                 </div>
+                <a href={r.url} target="_blank" rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center justify-center gap-1.5 border-2 border-hero-navy text-hero-navy font-label-lg text-label-sm uppercase px-5 py-2.5 rounded-full hover:bg-hero-navy hover:text-hero-cream transition-colors">
+                  Leer en TripAdvisor
+                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                </a>
               </div>
             ))}
           </div>
-          <div className="flex justify-center mt-12">
+          <div className="flex flex-col items-center gap-4 mt-12">
             <img alt="TripAdvisor" className="h-9 w-auto" src="https://static.tacdn.com/assets/s/2651d377.svg" />
+            <a href={TRIPADVISOR_URL} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-hero-navy text-hero-cream font-label-lg text-label-lg uppercase px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
+              Ver todas las opiniones
+              <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+            </a>
           </div>
         </div>
       </section>

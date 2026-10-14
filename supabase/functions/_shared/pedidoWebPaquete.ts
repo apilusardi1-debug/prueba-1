@@ -24,9 +24,8 @@ export function nochesEntre(desde: string, hasta: string): number {
 
 export function armarMensajePedidoPaquete(p: {
   nombre: string; destinos: string[]; pais: string; origen: string; adultos: number
-  edadesMenores: (number | string)[]; hospedajes: string[]; presupuesto: number; desde: string; hasta: string
+  edadesMenores: (number | string)[]; hospedajes: string[]; presupuesto: number; desde: string; hasta: string; noches: number
 }): string {
-  const noches = nochesEntre(p.desde, p.hasta)
   const lineas = [
     ENCABEZADO,
     `Nombre: ${p.nombre}`,
@@ -40,7 +39,9 @@ export function armarMensajePedidoPaquete(p: {
   lineas.push(
     `Hospedaje: ${p.hospedajes.join(', ')}`,
     `Presupuesto: ${formatoMonto(p.presupuesto)} USD`,
-    `Fecha: ${fechaLegible(p.desde)} al ${fechaLegible(p.hasta)}${noches > 0 ? ` · ${noches} noches` : ''}`,
+    // desde/hasta es el período en el que puede viajar (no la ida y la vuelta), y noches lo
+    // que quiere quedarse. "Período del viaje:" lo lee datosViaje.ts como las fechas.
+    `Período del viaje: entre el ${fechaLegible(p.desde)} y el ${fechaLegible(p.hasta)} · ${p.noches} noche${p.noches !== 1 ? 's' : ''}`,
   )
   return lineas.join('\n')
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { Contador } from './SeleccionPaseos.jsx'
 import {
-  DESTINOS_PAQUETE, HOSPEDAJES_PAQUETE, PAISES_PAQUETE, armarMensajePedidoPaquete,
+  DESTINOS_PAQUETE, HOSPEDAJES_PAQUETE, PAISES_PAQUETE, armarMensajePedidoPaquete, nochesEntre,
 } from '../../../supabase/functions/_shared/pedidoWebPaquete.ts'
 
 // "Armar mi paquete": los mismos datos que pide el formulario del asistente por
@@ -45,6 +45,7 @@ export default function FormularioPaquete({ onClose }) {
   const [presupuesto, setPresupuesto] = useState('')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  const [noches, setNoches] = useState(7)
   const [error, setError] = useState(null)
 
   // Escape cierra; mientras está abierto, la página de atrás no scrollea
@@ -60,7 +61,7 @@ export default function FormularioPaquete({ onClose }) {
   }, [])
 
   // El aviso de error se va apenas el cliente cambia algo
-  useEffect(() => { setError(null) }, [nombre, destinos, pais, origen, edades, hospedajes, presupuesto, desde, hasta])
+  useEffect(() => { setError(null) }, [nombre, destinos, pais, origen, edades, hospedajes, presupuesto, desde, hasta, noches])
 
   function cambiarMenores(n) {
     setEdades(prev => n > prev.length ? [...prev, ...Array(n - prev.length).fill('')] : prev.slice(0, n))
@@ -77,12 +78,13 @@ export default function FormularioPaquete({ onClose }) {
       edades.some(x => x === '') ? 'Indicá la edad de cada menor.' :
       !hospedajes.length ? 'Elegí al menos un tipo de hospedaje.' :
       !(monto > 0) ? 'Indicá tu presupuesto.' :
-      !desde || !hasta ? 'Indicá las fechas de tu viaje.' :
-      hasta <= desde ? 'La fecha de vuelta tiene que ser posterior a la de ida.' : null
+      !desde || !hasta ? 'Indicá entre qué fechas podés viajar.' :
+      hasta <= desde ? 'La fecha "hasta" tiene que ser posterior a la fecha "desde".' :
+      noches > nochesEntre(desde, hasta) ? `Entre esas fechas entran como máximo ${nochesEntre(desde, hasta)} noches.` : null
     if (falta) { setError(falta); return }
     const texto = armarMensajePedidoPaquete({
       nombre: nombre.trim(), destinos, pais, origen: origen.trim(), adultos,
-      edadesMenores: edades, hospedajes, presupuesto: monto, desde, hasta,
+      edadesMenores: edades, hospedajes, presupuesto: monto, desde, hasta, noches,
     })
     window.open(`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
@@ -161,18 +163,22 @@ export default function FormularioPaquete({ onClose }) {
           </label>
 
           <div>
-            <p className={LABEL}>Fechas del viaje</p>
+            <p className={LABEL}>¿Cuándo podés viajar?</p>
+            <span className="block font-body-md text-[12px] text-on-surface-variant mb-2">El período en el que te gustaría viajar: buscamos la mejor opción dentro de esas fechas.</span>
             <div className="grid grid-cols-2 gap-2.5">
               <label className="block">
-                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Ida</span>
+                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Desde</span>
                 <input type="date" min={hoy()} value={desde}
                   onChange={e => { setDesde(e.target.value); if (hasta && e.target.value >= hasta) setHasta('') }}
                   className={CAMPO} />
               </label>
               <label className="block">
-                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Vuelta</span>
+                <span className="block font-body-md text-[12px] text-on-surface-variant mb-1">Hasta</span>
                 <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
               </label>
+            </div>
+            <div className="mt-2.5">
+              <Contador label="Noches que querés quedarte" valor={noches} min={1} onChange={setNoches} />
             </div>
           </div>
         </div>

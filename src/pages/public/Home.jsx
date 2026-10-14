@@ -160,11 +160,10 @@ const TEXTOS = {
       { q: '¿Necesito visa para entrar a Brasil?', a: 'Ciudadanos de Argentina y la mayoría de países latinoamericanos no necesitan visa para estadías turísticas menores a 90 días.' },
     ],
     infoUtil: 'Información útil', mareaTitulo: 'Tabla de marea',
-    mareaTexto: 'Consultá el estado de las mareas para planificar tus paseos a las piscinas naturales.',
-    hoy: 'Hoy', piscinas: (estado, hora) => `Piscinas: ${estado} a las ${hora}`, hoyOtros: 'Hoy, mejor otros paseos que piscinas',
-    estados: { ideal: 'Ideal', posible: 'Posible', no: 'Otros paseos' },
+    mareaTexto: 'Horarios y alturas de la marea de hoy en Porto de Galinhas y Maragogi.',
+    hoy: 'Hoy',
     mareaTipo: { baja: 'Marea baja', alta: 'Marea alta' },
-    mareaSinDatos: 'Consultá los mejores días para las piscinas naturales.', verTabla: 'Ver tabla completa',
+    mareaSinDatos: 'Consultá la tabla de mareas completa.', verTabla: 'Ver tabla completa',
     quienesSomos: '¿Quiénes somos?', creadores: 'Creadores de sueños',
     statAnios: 'Años de experiencia', statPasajeros: 'De pasajeros', statSeguidores: 'Seguidores en nuestra comunidad',
     conocenos: 'Conocé nuestra historia y nuestro equipo', fotoEquipo: 'Flor y Marcos, equipo DreamTours',
@@ -193,11 +192,10 @@ const TEXTOS = {
       { q: 'Preciso de visto para entrar no Brasil?', a: 'Cidadãos da Argentina e da maioria dos países latino-americanos não precisam de visto para estadias turísticas de até 90 dias.' },
     ],
     infoUtil: 'Informação útil', mareaTitulo: 'Tábua de marés',
-    mareaTexto: 'Consulte as marés para planejar seus passeios às piscinas naturais.',
-    hoy: 'Hoje', piscinas: (estado, hora) => `Piscinas: ${estado} às ${hora}`, hoyOtros: 'Hoje, melhor outros passeios que piscinas',
-    estados: { ideal: 'Ideal', posible: 'Possível', no: 'Outros passeios' },
+    mareaTexto: 'Horários e alturas da maré de hoje em Porto de Galinhas e Maragogi.',
+    hoy: 'Hoje',
     mareaTipo: { baja: 'Maré baixa', alta: 'Maré alta' },
-    mareaSinDatos: 'Consulte os melhores dias para as piscinas naturais.', verTabla: 'Ver tábua completa',
+    mareaSinDatos: 'Consulte a tábua de marés completa.', verTabla: 'Ver tábua completa',
     quienesSomos: 'Quem somos?', creadores: 'Criadores de sonhos',
     statAnios: 'Anos de experiência', statPasajeros: 'Passageiros', statSeguidores: 'Seguidores na nossa comunidade',
     conocenos: 'Conheça nossa história e nossa equipe', fotoEquipo: 'Flor e Marcos, equipe DreamTours',
@@ -226,11 +224,10 @@ const TEXTOS = {
       { q: 'Do I need a visa to enter Brazil?', a: 'Citizens of Argentina and most Latin American countries don’t need a visa for tourist stays of up to 90 days. Citizens of the United States, Canada and Australia need an electronic visa (e-Visa).' },
     ],
     infoUtil: 'Useful information', mareaTitulo: 'Tide table',
-    mareaTexto: 'Check the tides to plan your trips to the natural pools.',
-    hoy: 'Today', piscinas: (estado, hora) => `Pools: ${estado} at ${hora}`, hoyOtros: 'Today, other tours beat the pools',
-    estados: { ideal: 'Ideal', posible: 'Possible', no: 'Other tours' },
+    mareaTexto: 'Today’s tide times and heights in Porto de Galinhas and Maragogi.',
+    hoy: 'Today',
     mareaTipo: { baja: 'Low tide', alta: 'High tide' },
-    mareaSinDatos: 'Check the best days for the natural pools.', verTabla: 'See full table',
+    mareaSinDatos: 'See the full tide table.', verTabla: 'See full table',
     quienesSomos: 'Who are we?', creadores: 'Dream makers',
     statAnios: 'Years of experience', statPasajeros: 'Travelers', statSeguidores: 'Followers in our community',
     conocenos: 'Meet our story and our team', fotoEquipo: 'Flor and Marcos, DreamTours team',
@@ -548,7 +545,7 @@ export default function Home() {
                   <div className="flex justify-between items-center pb-3 border-b border-hero-navy/15">
                     <span className="font-label-lg text-label-sm uppercase text-hero-navy">{tx.hoy}</span>
                     <span className="font-label-lg text-label-sm uppercase text-hero-navy">
-                      {mareaHoy.mejor ? tx.piscinas(tx.estados[mareaHoy.estado.id], mareaHoy.mejor.hora) : tx.hoyOtros}
+                      {new Date(`${mareaHoy.fecha}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
                     </span>
                   </div>
                   {mareaHoy.mareas.map(m => (

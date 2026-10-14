@@ -182,7 +182,9 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
             <div className="p-5">
               {nodoAbierto === 'saludo' && <EditorSaludo cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
               {nodoAbierto === 'filtro' && <FiltroPaquetes cfg={cfg} setCfg={setCfg} onGuardado={registrarCambio} />}
-              {nodoAbierto === 'derivacion_paquetes' && <EditorTexto campo="mensaje_derivacion" titulo="Mensaje al derivar (Paquetes)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
+              {nodoAbierto === 'derivacion_paquetes' && (<><EditorTexto campo="mensaje_derivacion" titulo="Mensaje al derivar (Paquetes)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
+                <EditorBoton cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
+              </>)}
               {nodoAbierto === 'derivacion_paseos' && <EditorTexto campo="mensaje_derivacion_paseos" titulo="Mensaje al derivar (Paseos/Traslados)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
               {nodoAbierto === 'sin_asignar' && <EditorTexto campo="mensaje_sin_asignar" titulo="Mensaje cuando no hay nadie disponible" cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
             </div>
@@ -212,6 +214,46 @@ function EditorSaludo({ cfg, setCfg, registrarCambio }) {
       <textarea rows={3} value={valor} onChange={e => setValor(e.target.value)} className={CLASE_CAMPO} />
       <button onClick={guardar} disabled={guardando || !valor.trim()} className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
         {guardando ? 'Guardando...' : 'Guardar'}
+      </button>
+    </div>
+  )
+}
+
+// Botón con enlace del mensaje final de Paquetes (por ejemplo, al Linktree de la agencia).
+// WhatsApp permite un solo botón de enlace por mensaje y hasta 20 caracteres de texto.
+function EditorBoton({ cfg, setCfg, registrarCambio }) {
+  const [texto, setTexto] = useState(cfg.boton_derivacion_texto || '')
+  const [url, setUrl] = useState(cfg.boton_derivacion_url || '')
+  const [guardando, setGuardando] = useState(false)
+  const urlValida = !url.trim() || /^https?:\/\/\S+$/i.test(url.trim())
+  const completo = !!texto.trim() === !!url.trim()
+  async function guardar() {
+    setGuardando(true)
+    const cambios = { boton_derivacion_texto: texto.trim() || null, boton_derivacion_url: url.trim() || null }
+    const { data } = await botApi.saveConfig(cambios)
+    if (data) {
+      setCfg(data)
+      registrarCambio('Cambió: Botón del mensaje al derivar (Paquetes)', { campo: 'boton_derivacion', antes: { texto: cfg.boton_derivacion_texto, url: cfg.boton_derivacion_url }, despues: cambios })
+    }
+    setGuardando(false)
+  }
+  return (
+    <div className="space-y-3 border-t border-gray-100 pt-4 dark:border-zinc-800">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Botón con enlace</p>
+      <p className="text-xs text-gray-500 dark:text-zinc-400">Va debajo del mensaje. Dejá los dos campos vacíos para mandar el mensaje sin botón.</p>
+      <div>
+        <label htmlFor="boton-texto" className="mb-1 block text-xs text-gray-500 dark:text-zinc-400">Texto del botón (hasta 20 caracteres)</label>
+        <input id="boton-texto" maxLength={20} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Conocenos" className={CLASE_CAMPO} />
+      </div>
+      <div>
+        <label htmlFor="boton-url" className="mb-1 block text-xs text-gray-500 dark:text-zinc-400">Link</label>
+        <input id="boton-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://linktr.ee/..." className={CLASE_CAMPO} />
+        {!urlValida && <p className="mt-1 text-xs text-red-500">El link tiene que empezar con https://</p>}
+        {urlValida && !completo && <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">Completá el texto y el link, o dejá los dos vacíos.</p>}
+      </div>
+      <button onClick={guardar} disabled={guardando || !urlValida || !completo}
+        className="w-full rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500">
+        {guardando ? 'Guardando...' : 'Guardar botón'}
       </button>
     </div>
   )

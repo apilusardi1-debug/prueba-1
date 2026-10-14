@@ -283,16 +283,44 @@ async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: str
   await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes/Hospedajes / Paseos/Traslados]`, wamid)
 }
 
-async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto: string, convId: string, phone: string, grupo: string | null) {
+// Botón con enlace del mensaje final de Paquetes (Configuración > Asistente). WhatsApp
+// permite un solo botón de enlace por mensaje (sin plantilla) y hasta 20 caracteres.
+interface BotonEnlace { texto: string; url: string }
+// deno-lint-ignore no-explicit-any
+function botonDerivacion(cfg: any): BotonEnlace | null {
+  const texto = String(cfg?.boton_derivacion_texto || '').trim()
+  const url = String(cfg?.boton_derivacion_url || '').trim()
+  return texto && /^https?:\/\//i.test(url) ? { texto: Array.from(texto).slice(0, 20).join(''), url } : null
+}
+
+// Manda el texto con el botón; si WhatsApp lo rechaza, lo manda igual como texto común
+// para que el contacto nunca se quede sin respuesta. Devuelve el wamid y el texto guardado.
+async function enviarConBoton(phone: string, texto: string, boton: BotonEnlace | null): Promise<{ wamid: string | null; guardado: string }> {
+  if (boton) {
+    try {
+      const wamid = await enviarMeta({
+        to: phone, type: 'interactive',
+        interactive: { type: 'cta_url', body: { text: Array.from(texto).slice(0, 1024).join('') }, action: { name: 'cta_url', parameters: { display_text: boton.texto, url: boton.url } } },
+      })
+      return { wamid, guardado: `${texto}\n\n[Botón: ${boton.texto}]` }
+    } catch (err) {
+      console.error('webhook-whatsapp: no salió el botón, va como texto:', err)
+    }
+  }
   const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
-  await guardarMensajeBot(supabase, convId, phone, texto, wamid)
+  return { wamid, guardado: texto }
+}
+
+async function cerrarSinAsignar(supabase: ReturnType<typeof createClient>, texto: string, convId: string, phone: string, grupo: string | null, boton: BotonEnlace | null = null) {
+  const { wamid, guardado } = await enviarConBoton(phone, texto, boton)
+  await guardarMensajeBot(supabase, convId, phone, guardado, wamid)
   await supabase.from('conversaciones').update({ bot_estado: 'sin_asignar', ...(grupo ? { grupo } : {}) }).eq('id', convId)
   await etiquetarLeadPorGrupo(supabase, phone, grupo)
   await enviarLeadAlEmbudoPorGrupo(supabase, phone, grupo)
 }
 
 // Elige a quien lleva más tiempo sin recibir una conversación del grupo.
-async function derivar(supabase: ReturnType<typeof createClient>, mensaje: string, convId: string, phone: string, grupo: string): Promise<boolean> {
+async function derivar(supabase: ReturnType<typeof createClient>, mensaje: string, convId: string, phone: string, grupo: string, boton: BotonEnlace | null = null): Promise<boolean> {
   const { data: reparto } = await supabase.from('bot_reparto').select('id, usuario_id, ultima_asignacion').eq('grupo', grupo)
   const ids = (reparto || []).map((m) => m.usuario_id)
   if (!ids.length) return false
@@ -310,8 +338,8 @@ async function derivar(supabase: ReturnType<typeof createClient>, mensaje: strin
   const texto = mensaje
     .replaceAll('{nombre}', String(usuario.nombre || '').split(' ')[0])
     .replaceAll('{grupo}', NOMBRE_GRUPO[grupo])
-  const wamid = await enviarMeta({ to: phone, type: 'text', text: { body: texto, preview_url: false } })
-  await guardarMensajeBot(supabase, convId, phone, texto, wamid)
+  const { wamid, guardado } = await enviarConBoton(phone, texto, boton)
+  await guardarMensajeBot(supabase, convId, phone, guardado, wamid)
   await etiquetarLeadPorGrupo(supabase, phone, grupo)
   await enviarLeadAlEmbudoPorGrupo(supabase, phone, grupo)
   return true
@@ -371,8 +399,10 @@ async function enviarTextoBot(supabase: Supabase, convId: string, phone: string,
 // deno-lint-ignore no-explicit-any
 async function derivarOCerrar(supabase: Supabase, cfg: any, convId: string, phone: string, grupo: string) {
   const mensaje = grupo === 'paseos' ? cfg.mensaje_derivacion_paseos : cfg.mensaje_derivacion
-  const derivada = await derivar(supabase, mensaje, convId, phone, grupo)
-  if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo)
+  // El botón con enlace solo va en el mensaje final de Paquetes
+  const boton = grupo === 'paquetes' ? botonDerivacion(cfg) : null
+  const derivada = await derivar(supabase, mensaje, convId, phone, grupo, boton)
+  if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo, boton)
 }
 
 // Si el contacto dijo cómo se llama y WhatsApp no traía un nombre, se guarda en la conversación y en su lead.

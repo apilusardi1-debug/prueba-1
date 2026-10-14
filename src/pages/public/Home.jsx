@@ -141,7 +141,7 @@ function CarruselPaseos({ children }) {
 // Cada una lleva a un recorrido distinto (paquetes/hospedajes o paseos/traslados).
 const CAMINOS = [
   { clave: 'organizando', titulo: 'Armar mi paquete', formulario: true, principal: true },
-  { clave: 'ya-tengo', titulo: 'Ver paseos y traslados', to: '/excursiones' },
+  { clave: 'ya-tengo', titulo: 'Ver paseos', to: '/excursiones' },
 ]
 
 const SERVICIOS = [
@@ -264,7 +264,7 @@ export default function Home() {
           </p>
 
           {/* Dos caminos según en qué punto del viaje está el visitante: armar el paquete
-              (formulario) o ver paseos y traslados. Mismos botones que el resto del sitio. */}
+              (formulario) o ver paseos. Mismos botones que el resto del sitio. */}
           <div className="flex flex-wrap items-center gap-3 mt-8">
             {CAMINOS.map(c => {
               const clases = c.principal ? BTN_PRINCIPAL : BTN_PAR_OSCURO

@@ -5,7 +5,7 @@ import { estadoDeMeta, filtroEstadosPrevios } from '../_shared/estadoEnvio.ts'
 import { etiquetarLeadPorGrupo, conEtiqueta } from '../_shared/etiquetas.ts'
 import { leerPedidoWebPaseos, destinosDelPedido, ETIQUETA_PEDIDO_WEB, etiquetaVendedor, type PedidoWebPaseos } from '../_shared/pedidoWebPaseos.ts'
 import { esPedidoWebPaquete } from '../_shared/pedidoWebPaquete.ts'
-import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado } from '../_shared/embudoEntrada.ts'
+import { enviarLeadAlEmbudoPorGrupo, moverAFiltrado, moverAEtapaAnfitriona } from '../_shared/embudoEntrada.ts'
 import { extraerDatosViaje } from '../_shared/datosViaje.ts'
 import { configFiltro, nombreValido, pasoInicial, pasoTrasRespuesta, mensajePreguntas, mensajeSeguimiento } from '../_shared/filtroPaquetes.ts'
 import { firmaMetaValida } from '../_shared/firmaMeta.ts'
@@ -671,6 +671,9 @@ async function procesarEcos(supabase: Supabase, ecos: any[]) {
       await supabase.from('conversaciones').update({ ultimo_mensaje: texto, ultimo_mensaje_at: cuando }).eq('id', conv.id)
       await supabase.from('conversaciones').update({ bot_estado: 'humano' }).eq('id', conv.id)
         .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
+      // Igual que un mensaje del CRM: el primero a un lead en "Anfitriona asignada" lo pasa a
+      // "En contacto con el cliente" (ver send-whatsapp).
+      await moverAEtapaAnfitriona(supabase, phone, 'anfitriona_contacto')
     } catch (err) {
       console.error('webhook-whatsapp eco error:', err)
     }

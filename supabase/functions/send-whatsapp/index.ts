@@ -338,11 +338,11 @@ serve(async (req) => {
       }
     }
 
-    // Un lead recién asignado a Anfitriona pasa a "En contacto con el cliente"
-    // en cuanto el equipo le manda un mensaje que menciona la palabra
-    // "anfitriona" (por ejemplo, para presentarla) — no importa si es texto o
-    // el epígrafe de una foto/archivo.
-    if (esCrm && /anfitriona/i.test(mensajeLegible)) {
+    // Un lead en "Anfitriona asignada" pasa a "En contacto con el cliente" con el primer
+    // mensaje que le manda el equipo, diga lo que diga (pedido de Cristian, 2026-10-14;
+    // antes hacía falta que el mensaje dijera "anfitriona"). Solo avanza: un lead que ya
+    // está más adelante en el embudo de Anfitriona, o en otro embudo, no se toca.
+    if (esCrm) {
       await moverAEtapaAnfitriona(supabase, phone, 'anfitriona_contacto')
     }
 

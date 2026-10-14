@@ -47,6 +47,7 @@ export default function Reservas() {
   const [editando, setEditando] = useState(null) // null | 'nueva' | reserva
   const [verComisiones, setVerComisiones] = useState(false)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
+  const [editandoSaldo, setEditandoSaldo] = useState(null) // { id, valor }
 
   useEffect(() => {
     async function cargar() {
@@ -138,6 +139,27 @@ export default function Reservas() {
     if (!await confirmar(`¿Eliminar la reserva de ${r.cliente_nombre || 'este cliente'} (${nombrePaseo(r)}, ${fechaCorta(r.fecha)})? No se puede deshacer.`)) return
     await reservasApi.delete(r.id)
     setReservas(prev => prev.filter(x => x.id !== r.id))
+  }
+
+  // Los clientes pagan el saldo al terminar el paseo: se marca desde la tabla, sin abrir la reserva
+  async function guardarSaldo(ids, saldo) {
+    setReservas(prev => prev.map(r => ids.includes(r.id) ? { ...r, saldo_cliente: saldo } : r))
+    const res = await Promise.all(ids.map(id => reservasApi.update(id, { saldo_cliente: saldo })))
+    const fallo = res.find(x => x?.error)
+    if (fallo) setErrorCarga('No se pudo guardar el saldo: ' + fallo.error.message)
+  }
+
+  function confirmarSaldoEditado() {
+    if (!editandoSaldo) return
+    const valor = Number(String(editandoSaldo.valor).replace(',', '.'))
+    if (String(editandoSaldo.valor).trim() !== '' && !Number.isNaN(valor) && valor >= 0) guardarSaldo([editandoSaldo.id], valor)
+    setEditandoSaldo(null)
+  }
+
+  async function cobrarSeleccionadas() {
+    const ids = [...seleccionadas].filter(id => saldoDe(reservas.find(r => r.id === id)) > 0)
+    setSeleccionadas(new Set())
+    if (ids.length) await guardarSaldo(ids, 0)
   }
 
   function toggleSeleccion(id) {
@@ -264,6 +286,10 @@ export default function Reservas() {
         <div className="flex flex-wrap items-center gap-3 mb-4 bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-900 rounded-xl px-4 py-2.5">
           <span className="text-sm font-medium text-brand-700 dark:text-brand-400">{seleccionadas.size} seleccionada{seleccionadas.size !== 1 ? 's' : ''}</span>
           <div className="flex-1" />
+          <button onClick={cobrarSeleccionadas}
+            className="text-xs font-semibold px-3 py-1 rounded-full bg-green-600 text-white hover:bg-green-700">
+            Marcar saldo cobrado
+          </button>
           <span className="text-xs text-gray-500 dark:text-zinc-400">Cambiar estado:</span>
           {Object.entries(ESTADOS).map(([k, v]) => (
             <button key={k} onClick={() => cambiarEstadoSeleccionadas(k)} className={`text-xs font-medium px-2.5 py-1 rounded-full hover:opacity-80 ${v.color}`}>{v.label}</button>
@@ -325,7 +351,28 @@ export default function Reservas() {
                     </td>
                     <td className={td + ' whitespace-nowrap font-medium'}>{fechaCorta(r.fecha)}</td>
                     <td className={td + ' whitespace-nowrap'}>{formatMonto(r.total, r.moneda)}</td>
-                    <td className={td + ` whitespace-nowrap font-medium ${saldoDe(r) > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{formatMonto(saldoDe(r), r.moneda)}</td>
+                    <td className={td + ' whitespace-nowrap'}>
+                      {editandoSaldo?.id === r.id ? (
+                        <input autoFocus inputMode="decimal" value={editandoSaldo.valor}
+                          onChange={e => setEditandoSaldo({ id: r.id, valor: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Enter') confirmarSaldoEditado(); if (e.key === 'Escape') setEditandoSaldo(null) }}
+                          onBlur={confirmarSaldoEditado}
+                          className="w-20 border border-brand-300 rounded-md px-1.5 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400 dark:bg-zinc-800 dark:text-zinc-100" />
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button title="Cambiar el saldo" onClick={() => setEditandoSaldo({ id: r.id, valor: String(saldoDe(r) ?? '') })}
+                            className={`font-medium hover:underline decoration-dotted ${saldoDe(r) > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {formatMonto(saldoDe(r), r.moneda)}
+                          </button>
+                          {saldoDe(r) > 0 && (
+                            <button onClick={() => guardarSaldo([r.id], 0)} title="El cliente pagó el saldo"
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40">
+                              Cobrado
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className={td}>{r.chofer_texto || r.choferes?.nombre || '—'}</td>
                     <td className={td + ' whitespace-nowrap'}>{r.comision_chofer != null ? formatMonto(r.comision_chofer) : '—'}</td>
                     <td className={td + ' min-w-[120px]'}>{r.hospedaje || '—'}</td>

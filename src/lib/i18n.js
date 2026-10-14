@@ -101,6 +101,17 @@ export const translations = {
     // Sobre nosotros
     about_title:    'Sobre nosotros',
     about_text:     'DREAMTOURS es una agencia especializada en viajes al Nordeste Brasilero. Ofrecemos paquetes completos con aéreos, traslados y paseos para que vivas una experiencia única en las playas más hermosas de Brasil.',
+    about_heading:     'Quiénes somos',
+    about_v1_title:    'Especialistas en Nordeste',
+    about_v1_text:     'Conocemos cada rincón del Nordeste Brasilero. Nuestro equipo viaja regularmente para brindarte la mejor experiencia.',
+    about_v2_title:    'Paquetes completos',
+    about_v2_text:     'Nos encargamos de todo: vuelos, traslados, hospedaje y paseos. Vos solo pensá en disfrutar.',
+    about_v3_title:    'Atención personalizada',
+    about_v3_text:     'Te acompañamos desde la consulta hasta que volvés a casa. Siempre disponibles por WhatsApp.',
+    about_destinations: 'Nuestros destinos',
+    about_cta_title:   '¿Listo para tu próximo viaje?',
+    about_cta_text:    'Hablá con nosotros y armamos el paquete perfecto para vos.',
+    about_wa_message:  'Hola! Quiero armar un viaje al Nordeste Brasilero',
 
     // Tabla de marea
     tides_title:    'Tabla de Marea',
@@ -196,6 +207,17 @@ export const translations = {
 
     about_title:    'Sobre nós',
     about_text:     'A DREAMTOURS é uma agência especializada em viagens ao Nordeste Brasileiro. Oferecemos pacotes completos com aéreos, traslados e excursões para que você viva uma experiência única nas praias mais bonitas do Brasil.',
+    about_heading:     'Quem somos',
+    about_v1_title:    'Especialistas no Nordeste',
+    about_v1_text:     'Conhecemos cada canto do Nordeste Brasileiro. Nossa equipe viaja com frequência para oferecer a você a melhor experiência.',
+    about_v2_title:    'Pacotes completos',
+    about_v2_text:     'Cuidamos de tudo: voos, traslados, hospedagem e passeios. Você só precisa pensar em aproveitar.',
+    about_v3_title:    'Atendimento personalizado',
+    about_v3_text:     'Acompanhamos você desde a consulta até a volta para casa. Sempre disponíveis pelo WhatsApp.',
+    about_destinations: 'Nossos destinos',
+    about_cta_title:   'Pronto para sua próxima viagem?',
+    about_cta_text:    'Fale com a gente e montamos o pacote perfeito para você.',
+    about_wa_message:  'Olá! Quero montar uma viagem ao Nordeste Brasileiro',
 
     tides_title:    'Tabela de Maré',
     tides_subtitle: 'Consulte os horários de maré para planejar suas excursões aquáticas.',
@@ -290,6 +312,17 @@ export const translations = {
 
     about_title:    'About us',
     about_text:     'DREAMTOURS is an agency specialized in travel to Brazil\'s Northeast. We offer complete packages with flights, transfers and excursions so you can live a unique experience on the most beautiful beaches in Brazil.',
+    about_heading:     'About us',
+    about_v1_title:    'Northeast specialists',
+    about_v1_text:     "We know every corner of Brazil's Northeast. Our team travels there regularly to give you the best experience.",
+    about_v2_title:    'Complete packages',
+    about_v2_text:     'We take care of everything: flights, transfers, lodging and tours. You just think about enjoying.',
+    about_v3_title:    'Personalized service',
+    about_v3_text:     'We are with you from your first question until you get back home. Always available on WhatsApp.',
+    about_destinations: 'Our destinations',
+    about_cta_title:   'Ready for your next trip?',
+    about_cta_text:    "Talk to us and we'll put together the perfect package for you.",
+    about_wa_message:  "Hi! I want to plan a trip to Brazil's Northeast",
 
     tides_title:    'Tide Table',
     tides_subtitle: 'Check tide schedules to plan your water excursions.',

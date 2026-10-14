@@ -140,20 +140,8 @@ function CarruselPaseos({ children }) {
 // Las dos formas de llegar a DreamTours: el que todavía arma el viaje y el que ya lo tiene.
 // Cada una lleva a un recorrido distinto (paquetes/hospedajes o paseos/traslados).
 const CAMINOS = [
-  {
-    clave: 'organizando',
-    titulo: 'Estoy organizando mi viaje',
-    texto: 'Vuelos, hospedaje y traslado en un solo paquete, armado a tu medida.',
-    principal: { label: 'Armar mi paquete', formulario: true },
-    secundarios: [{ label: 'Ver paquetes', to: '/paquetes' }, { label: 'Hospedajes', to: '/hoteles' }],
-  },
-  {
-    clave: 'ya-tengo',
-    titulo: 'Ya tengo mi viaje',
-    texto: 'Sumá paseos en español y traslados privados para tu estadía.',
-    principal: { label: 'Ver paseos', to: '/excursiones' },
-    secundarios: [{ label: 'Traslados', to: '/traslados' }],
-  },
+  { clave: 'organizando', etapa: 'Estoy organizando mi viaje', titulo: 'Armar mi paquete', formulario: true, principal: true },
+  { clave: 'ya-tengo', etapa: 'Ya tengo mi viaje', titulo: 'Ver paseos y traslados', to: '/excursiones' },
 ]
 
 const SERVICIOS = [
@@ -275,33 +263,30 @@ export default function Home() {
             Paquetes, hospedajes, paseos y traslados en Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha, con atención en español antes y durante todo tu viaje.
           </p>
 
-          {/* Dos caminos según en qué punto del viaje está el visitante */}
-          <div className="grid md:grid-cols-2 gap-4 mt-8 max-w-4xl">
-            {CAMINOS.map(c => (
-              <div key={c.clave} className="bg-hero-navy/80 backdrop-blur-sm border border-hero-cream/15 rounded-2xl p-6 flex flex-col">
-                <h2 className="font-display-hero uppercase text-hero-yellow text-2xl md:text-[28px] leading-none mb-2">{c.titulo}</h2>
-                <p className="font-body-md text-[15px] text-hero-cream/85 mb-5 flex-1">{c.texto}</p>
-                <div className="flex flex-wrap items-center gap-3">
-                  {c.principal.formulario ? (
-                    <button type="button" onClick={() => setFormPaquete(true)}
-                      className={BTN_PRINCIPAL}>
-                      {c.principal.label}
-                    </button>
-                  ) : (
-                    <Link to={c.principal.to}
-                      className={BTN_PRINCIPAL}>
-                      {c.principal.label}
-                    </Link>
-                  )}
-                  {c.secundarios.map(s => (
-                    <Link key={s.to} to={s.to}
-                      className={BTN_SECUNDARIO_OSCURO}>
-                      {s.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
+          {/* Dos caminos según en qué punto del viaje está el visitante: dos botones grandes,
+              cada uno lleva a su recorrido (paquetes y hospedajes / paseos y traslados) */}
+          <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mt-8 max-w-3xl">
+            {CAMINOS.map(c => {
+              const clases = `group flex items-center justify-between gap-4 text-left rounded-2xl px-6 py-5 md:px-7 md:py-6 transition-colors ${
+                c.principal
+                  ? 'bg-hero-yellow text-hero-navy hover:bg-[#ffe92e] shadow-[0_6px_24px_rgba(7,46,64,0.25)]'
+                  : 'border-2 border-hero-cream/80 text-hero-cream bg-hero-navy/30 backdrop-blur-sm hover:bg-hero-navy/50 hover:border-hero-cream'
+              }`
+              const contenido = (
+                <>
+                  <span>
+                    <span className={`block font-body-md text-[15px] mb-1.5 ${c.principal ? 'text-hero-navy/80' : 'text-hero-cream/85'}`}>{c.etapa}</span>
+                    <span className="block font-display-hero uppercase text-[26px] md:text-[30px] leading-none">{c.titulo}</span>
+                  </span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[30px] flex-shrink-0 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </>
+              )
+              return c.formulario ? (
+                <button key={c.clave} type="button" onClick={() => setFormPaquete(true)} className={clases}>{contenido}</button>
+              ) : (
+                <Link key={c.clave} to={c.to} className={clases}>{contenido}</Link>
+              )
+            })}
           </div>
         </div>
       </section>

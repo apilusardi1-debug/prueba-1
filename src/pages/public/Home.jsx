@@ -46,8 +46,8 @@ const FAQS = [
     a: 'Las piscinas se forman solo con marea baja (0,60 metros o menos). Nuestros guías conocen los horarios exactos de cada día para que no te pierdas el momento ideal.',
   },
   {
-    q: '¿Qué moneda usan? ¿Puedo pagar con tarjeta?',
-    a: 'La moneda es el Real brasileño (R$). En la mayoría de los hoteles y restaurantes aceptan tarjeta internacional. Te recomendamos llevar algo de efectivo para playas y mercados.',
+    q: '¿Qué moneda usan? ¿Cómo se paga?',
+    a: 'La moneda es el Real brasileño (R$). Hoy en Brasil casi todo se paga con PIX, el sistema de pago con código QR: restaurantes, playas, mercados y hasta vendedores ambulantes. Antes de viajar, consultanos y te contamos cómo pagar con PIX desde tu país. La tarjeta internacional también se acepta en la mayoría de los hoteles y restaurantes.',
   },
   {
     q: '¿Necesito visa para entrar a Brasil?',

@@ -100,6 +100,7 @@ Inbox propio con reparto de conversaciones entre el equipo. Número de prueba **
 |---------|-------------|
 | `src/pages/admin/Agenda.jsx` | Calendario con chips de excursiones; "Cerrar operación" crea los avisos del chat interno |
 | `src/pages/public/PanelOperativo.jsx` | Chat interno: link personal de guía/chofer (`/guia/:token`, `/chofer/:token`), sin sesión de admin |
+| `src/components/ficha/FichaPersona.jsx` | **Ficha única** (2026-10-14): la misma ficha se abre desde el embudo de Leads y desde Clientes. Junta lead (etapa, vuelos, hospedajes, recordatorios) y cliente (reservas, pagos, propuestas, notas) con un solo listado de saldos (tabla `saldos`, por `lead_id` y/o `cliente_id`, vía `catalogo-interno`). Las fichas viejas siguen en el código detrás de `FICHA_UNICA` en `Leads.jsx` y `Clientes.jsx`; las tablas `anfitriona_saldos` y `cliente_saldos` quedan solo como respaldo |
 | `src/pages/admin/Finanzas.jsx` | Control manual de caja, costos operativos y conceptos — sin ningún método de pago conectado |
 | `src/pages/admin/crm/WhatsApp.jsx` | CRM WhatsApp (lista/chat/ficha en una sola columna por debajo de 1024px, con flecha de volver) |
 | `src/lib/ultramsg.js` | Helper para llamar a `send-whatsapp` Edge Function |

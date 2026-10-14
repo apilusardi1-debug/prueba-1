@@ -3,7 +3,7 @@
 // cuando se cargan o se desactivan. Solo lee tablas con lectura pública (clave anon).
 import { destinos } from '../src/data/mockData.js'
 
-const SITIO = 'https://prueba-1-rose.vercel.app'
+const SITIO = (process.env.VITE_SITIO_URL || 'https://prueba-1-rose.vercel.app').replace(/\/$/, '')
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://przvftnhwwistmcbkeon.supabase.co'
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY
 

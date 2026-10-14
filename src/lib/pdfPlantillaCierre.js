@@ -18,7 +18,7 @@ const CREMA_TXT = rgb(0xf0 / 255, 0xec / 255, 0xe7 / 255)
 // Dorado — solo para diferenciar el equipaje OPCIONAL del incluido (pedido
 // explícito: que no se confundan). Mismo tono que usa pdfPlantillaAereos.js.
 const DORADO_TXT = rgb(0xb0 / 255, 0x74 / 255, 0x20 / 255)
-const SITIO_URL = 'https://prueba-1-rose.vercel.app'
+const SITIO_URL = import.meta.env.VITE_SITIO_URL
 
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
 // parentesis) — antes solo existia "cantidad de pasajeros" como si todos

@@ -5,7 +5,8 @@ import { useLocation } from 'react-router-dom'
 // index.html trae los valores de la Home (lo que ven los buscadores y redes que no
 // ejecutan JavaScript); al navegar, cada página los reemplaza con los suyos.
 
-export const SITIO_URL = 'https://prueba-1-rose.vercel.app'
+// Viene de VITE_SITIO_URL (ver vite.config.js): cambiar de dominio no requiere tocar código
+export const SITIO_URL = import.meta.env.VITE_SITIO_URL
 const MARCA = 'DreamTours'
 export const DESCRIPCION_SITIO = 'Paquetes, hospedajes, paseos y traslados en Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha, con atención en español antes y durante todo tu viaje.'
 

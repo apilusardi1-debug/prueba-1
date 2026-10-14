@@ -31,7 +31,7 @@ function agregarLink(page, doc, { x, y, width, height }, url) {
   page.node.set(PDFName.of('Annots'), annots)
 }
 
-export const SITIO_URL = 'https://prueba-1-rose.vercel.app'
+export const SITIO_URL = import.meta.env.VITE_SITIO_URL
 
 // Dibuja la imagen manteniendo su proporcion real, recortando lo que sobre para
 // llenar la caja completa (equivalente a object-fit:cover en CSS) — sin esto,

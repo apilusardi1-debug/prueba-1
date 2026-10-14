@@ -764,7 +764,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
     const horario = getHorario(excursion)
     const hora = new Date().getHours()
     const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
-    const linkOpcionales = excursion.opcionales_imagen || 'https://prueba-1-rose.vercel.app'
+    const linkOpcionales = excursion.opcionales_imagen || import.meta.env.VITE_SITIO_URL
     return renderTemplate('aviso_cliente', [
       saludo, excursion.nombre, guiaAsignado?.nombre || 'A confirmar', choferR ? choferR.nombre : 'por confirmar',
       choferR?.auto_modelo || 'A confirmar', choferR?.auto_patente || 'A confirmar',
@@ -869,7 +869,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       }
 
       // Mensaje al CLIENTE: sigue por WhatsApp (Meta), sin cambios
-      const linkOpcionales = excursion.opcionales_imagen || 'https://prueba-1-rose.vercel.app'
+      const linkOpcionales = excursion.opcionales_imagen || import.meta.env.VITE_SITIO_URL
       for (const r of pasajeros) {
         const choferR = choferes.find((c) => c.id === asignaciones[r.id])
         await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp, 'aviso_cliente', [

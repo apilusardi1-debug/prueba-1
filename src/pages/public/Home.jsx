@@ -140,8 +140,8 @@ function CarruselPaseos({ children }) {
 // Las dos formas de llegar a DreamTours: el que todavía arma el viaje y el que ya lo tiene.
 // Cada una lleva a un recorrido distinto (paquetes/hospedajes o paseos/traslados).
 const CAMINOS = [
-  { clave: 'organizando', etapa: 'Estoy organizando mi viaje', titulo: 'Armar mi paquete', formulario: true, principal: true },
-  { clave: 'ya-tengo', etapa: 'Ya tengo mi viaje', titulo: 'Ver paseos y traslados', to: '/excursiones' },
+  { clave: 'organizando', titulo: 'Armar mi paquete', formulario: true, principal: true },
+  { clave: 'ya-tengo', titulo: 'Ver paseos y traslados', to: '/excursiones' },
 ]
 
 const SERVICIOS = [
@@ -263,28 +263,15 @@ export default function Home() {
             Paquetes, hospedajes, paseos y traslados en Porto de Galinhas, Maragogi, Maceió, Pipa y Fernando de Noronha, con atención en español antes y durante todo tu viaje.
           </p>
 
-          {/* Dos caminos según en qué punto del viaje está el visitante: dos botones grandes,
-              cada uno lleva a su recorrido (paquetes y hospedajes / paseos y traslados) */}
-          <div className="flex flex-wrap gap-3 mt-8">
+          {/* Dos caminos según en qué punto del viaje está el visitante: armar el paquete
+              (formulario) o ver paseos y traslados. Mismos botones que el resto del sitio. */}
+          <div className="flex flex-wrap items-center gap-3 mt-8">
             {CAMINOS.map(c => {
-              const clases = `group inline-flex items-center gap-3 text-left rounded-xl px-5 py-2.5 transition-colors ${
-                c.principal
-                  ? 'bg-hero-yellow text-hero-navy hover:bg-[#ffe92e] shadow-[0_4px_14px_rgba(7,46,64,0.2)]'
-                  : 'border border-hero-cream/80 text-hero-cream bg-hero-navy/30 backdrop-blur-sm hover:bg-hero-navy/50 hover:border-hero-cream'
-              }`
-              const contenido = (
-                <>
-                  <span>
-                    <span className={`block font-body-md text-[12px] mb-0.5 ${c.principal ? 'text-hero-navy/80' : 'text-hero-cream/85'}`}>{c.etapa}</span>
-                    <span className="block font-display-hero uppercase text-[19px] md:text-[21px] leading-none">{c.titulo}</span>
-                  </span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-[20px] flex-shrink-0 group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </>
-              )
+              const clases = c.principal ? BTN_PRINCIPAL : BTN_SECUNDARIO_OSCURO
               return c.formulario ? (
-                <button key={c.clave} type="button" onClick={() => setFormPaquete(true)} className={clases}>{contenido}</button>
+                <button key={c.clave} type="button" onClick={() => setFormPaquete(true)} className={clases}>{c.titulo}</button>
               ) : (
-                <Link key={c.clave} to={c.to} className={clases}>{contenido}</Link>
+                <Link key={c.clave} to={c.to} className={clases}>{c.titulo}</Link>
               )
             })}
           </div>

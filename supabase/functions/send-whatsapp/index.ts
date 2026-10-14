@@ -279,9 +279,13 @@ serve(async (req) => {
     // Si la conversación la tiene asignada alguien que no respondió al último
     // mensaje del contacto, y ahora responde otro usuario del equipo, la
     // conversación pasa a quien respondió. Si el asignado ya respondió, no se toca.
+    // Una conversación sin asignar (por ejemplo, un cliente que viene del historial de
+    // Kommo y vuelve a escribir) queda asignada a quien la responde primero.
     if (esCrm && convId && usuarioId) {
       const { data: conv } = await supabase.from('conversaciones').select('asignado_a').eq('id', convId).maybeSingle()
-      if (conv?.asignado_a && conv.asignado_a !== usuarioId) {
+      if (conv && !conv.asignado_a) {
+        await supabase.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', convId).is('asignado_a', null)
+      } else if (conv?.asignado_a && conv.asignado_a !== usuarioId) {
         const { data: ultimoEntrante } = await supabase.from('mensajes')
           .select('created_at').eq('conversacion_id', convId).eq('direccion', 'entrante')
           .order('created_at', { ascending: false }).limit(1).maybeSingle()

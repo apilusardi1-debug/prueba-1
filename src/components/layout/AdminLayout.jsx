@@ -256,20 +256,26 @@ function Sidebar() {
 
   // Conversaciones sin leer del CRM — visible en el menú aunque no estés en esa página
   useEffect(() => {
-    function contar(convs) {
-      setPendientesWhatsapp((convs || []).filter(c => c.no_leidos > 0).length)
+    // Se pide solo el número, y como mucho una vez cada 2 segundos: cuando entran muchos
+    // cambios seguidos (por ejemplo, al importar el historial de Kommo) no se repite la
+    // consulta por cada uno.
+    let espera = null
+    function contar() {
+      if (espera) return
+      espera = setTimeout(() => {
+        espera = null
+        conversacionesApi.contarNoLeidas()?.then(({ count }) => setPendientesWhatsapp(count || 0))
+      }, 2000)
     }
-    conversacionesApi.getAll().then(({ data }) => contar(data))
+    conversacionesApi.contarNoLeidas()?.then(({ count }) => setPendientesWhatsapp(count || 0))
 
     if (!supabase) return
     const channel = supabase
       .channel('nav-conversaciones-pendientes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, () => {
-        conversacionesApi.getAll().then(({ data }) => contar(data))
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, contar)
       .subscribe()
 
-    return () => channel.unsubscribe()
+    return () => { clearTimeout(espera); channel.unsubscribe() }
   }, [])
 
   // Cantidad de conversaciones sin leer en el título de la pestaña: se ve aunque

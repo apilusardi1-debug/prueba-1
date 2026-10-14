@@ -14,6 +14,9 @@ import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { avisar } from '../../../components/ui/Avisos.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
+// Conversaciones que se dibujan por tanda en la lista (ver alBajarEnLista)
+const TANDA_LISTA = 100
+
 // Mover un lead a mano a otro embudo (el chat detectó mal, o el contacto cambió de idea):
 // entra a la primera etapa de ese embudo, igual que cuando el asistente lo clasifica solo.
 const NOMBRE_GRUPO = { paquetes: 'Paquetes', paseos: 'Paseos' }
@@ -115,6 +118,7 @@ export default function WhatsAppCRM() {
   const [tiempoReproduccion, setTiempoReproduccion] = useState(0)
   const [esperandoDesde, setEsperandoDesde] = useState({}) // conversacion_id -> desde cuándo espera respuesta
   const [busqueda, setBusqueda] = useState('')
+  const [cantidadVisible, setCantidadVisible] = useState(TANDA_LISTA)
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
   const [etiquetando, setEtiquetando] = useState(false)
@@ -915,10 +919,17 @@ export default function WhatsAppCRM() {
     return nivel ? { nivel, horas: Math.floor(horas) } : null
   }
 
+  // Al buscar o cambiar de filtro, la lista vuelve a empezar desde arriba
+  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion])
+
+  // El buscador mira todas las conversaciones; un teléfono se busca solo por sus dígitos,
+  // así encuentra "+55 81 9..." escrito con espacios, guiones o el signo +.
+  const busquedaDigitos = busqueda.replace(/D/g, '')
   const convsFiltradas = conversaciones
     .filter(c =>
       c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.whatsapp?.includes(busqueda)
+      c.whatsapp?.includes(busqueda) ||
+      (busquedaDigitos.length >= 4 && c.whatsapp?.includes(busquedaDigitos))
     )
     .filter(c => {
       if (filtroAsignacion === 'sin_asignar') return !c.asignado_a
@@ -926,6 +937,15 @@ export default function WhatsAppCRM() {
       if (filtroAsignacion.startsWith('u:')) return c.asignado_a === filtroAsignacion.slice(2)
       return true
     })
+  // Con el historial importado de Kommo hay miles de conversaciones: se dibujan de a
+  // tandas y se suman más al bajar en la lista.
+  const convsVisibles = convsFiltradas.slice(0, cantidadVisible)
+  function alBajarEnLista(e) {
+    const el = e.currentTarget
+    if (cantidadVisible < convsFiltradas.length && el.scrollTop + el.clientHeight > el.scrollHeight - 400) {
+      setCantidadVisible(n => n + TANDA_LISTA)
+    }
+  }
 
   return (
     <div className="flex h-full gap-3 bg-gray-100 dark:bg-zinc-950 lg:p-3">
@@ -988,7 +1008,7 @@ export default function WhatsAppCRM() {
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" onScroll={alBajarEnLista}>
           {loading && (
             <p className="text-sm text-gray-400 dark:text-zinc-500 text-center py-10">Cargando...</p>
           )}
@@ -1002,7 +1022,7 @@ export default function WhatsAppCRM() {
             </div>
           )}
 
-          {convsFiltradas.map(conv => {
+          {convsVisibles.map(conv => {
             const alerta = alertaDeEspera(conv.id)
             const claseAlerta = !alerta ? '' : alerta.nivel === 'roja'
               ? 'ring-2 ring-inset ring-red-500 bg-red-50 dark:bg-red-950/30'

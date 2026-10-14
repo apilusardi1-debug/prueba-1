@@ -123,7 +123,7 @@ export const comisionesAgenciaApi = {
 
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export const leadsApi = {
-  getAll: () => supabase?.from('leads').select('*').order('created_at', { ascending: false }),
+  getAll: () => traerTodo(() => supabase.from('leads').select('*').order('created_at', { ascending: false }).order('id')),
   getById: (id) => supabase?.from('leads').select('*').eq('id', id).single(),
   getByWhatsapp: (whatsapp) => supabase?.from('leads').select('*').eq('whatsapp', whatsapp).maybeSingle(),
   create: (data) => supabase?.from('leads').insert(data).select().single(),
@@ -421,8 +421,27 @@ export const notasClienteApi = {
 }
 
 // ── Conversaciones ─────────────────────────────────────────────────────────────
+// Supabase entrega como máximo 1.000 filas por consulta. Las listas que pueden pasar ese
+// número (conversaciones y mensajes, con el historial importado de Kommo, y leads) se piden
+// de a tandas hasta traer todo. El orden tiene que ser estable (con id al final) para que
+// ninguna fila se repita ni se saltee entre una tanda y la siguiente.
+async function traerTodo(armarConsulta, tanda = 1000) {
+  if (!supabase) return { data: null, error: null }
+  const filas = []
+  for (let desde = 0; ; desde += tanda) {
+    const { data, error } = await armarConsulta().range(desde, desde + tanda - 1)
+    if (error) return { data: filas.length ? filas : null, error }
+    filas.push(...(data || []))
+    if (!data || data.length < tanda) break
+  }
+  return { data: filas, error: null }
+}
+
 export const conversacionesApi = {
-  getAll: () => supabase?.from('conversaciones').select('*').order('ultimo_mensaje_at', { ascending: false }),
+  getAll: () => traerTodo(() => supabase.from('conversaciones').select('*').order('ultimo_mensaje_at', { ascending: false }).order('id')),
+  // Solo cuántas conversaciones tienen mensajes sin leer (para el número del menú): no baja
+  // las filas, así no se descargan miles de conversaciones cada vez que cambia una.
+  contarNoLeidas: () => supabase?.from('conversaciones').select('id', { count: 'exact', head: true }).gt('no_leidos', 0),
   marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
   updateEtiqueta: (id, etiqueta) => supabase?.from('conversaciones').update({ etiqueta }).eq('id', id),
   asignar: (id, usuarioId) => supabase?.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', id),
@@ -440,7 +459,7 @@ export const conversacionesApi = {
 
 // ── Mensajes ───────────────────────────────────────────────────────────────────
 export const mensajesApi = {
-  getByConversacion: (id) => supabase?.from('mensajes').select('*').eq('conversacion_id', id).order('created_at'),
+  getByConversacion: (id) => traerTodo(() => supabase.from('mensajes').select('*').eq('conversacion_id', id).order('created_at').order('id')),
 }
 
 // ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────

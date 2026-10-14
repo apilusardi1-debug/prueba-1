@@ -4,7 +4,7 @@ import { destinos, formatPrecio } from '../../data/mockData.js'
 import { excursionesApi, normalizarExcursion, agenciaVideosApi } from '../../lib/supabase.js'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import FormularioPaquete from '../../components/public/FormularioPaquete.jsx'
-import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO } from '../../components/public/botones.js'
+import { BTN_PRINCIPAL, BTN_SECUNDARIO, BTN_SECUNDARIO_OSCURO, BTN_PAR_OSCURO } from '../../components/public/botones.js'
 import { diaDeMarea, hoyEnDestino, formatoAltura } from '../../data/mareas.js'
 import { esLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 import { useSeo } from '../../lib/seo.js'
@@ -267,7 +267,7 @@ export default function Home() {
               (formulario) o ver paseos y traslados. Mismos botones que el resto del sitio. */}
           <div className="flex flex-wrap items-center gap-3 mt-8">
             {CAMINOS.map(c => {
-              const clases = c.principal ? BTN_PRINCIPAL : BTN_SECUNDARIO_OSCURO
+              const clases = c.principal ? BTN_PRINCIPAL : BTN_PAR_OSCURO
               return c.formulario ? (
                 <button key={c.clave} type="button" onClick={() => setFormPaquete(true)} className={clases}>{c.titulo}</button>
               ) : (

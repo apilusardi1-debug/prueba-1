@@ -18,3 +18,7 @@ export const BTN_SECUNDARIO_OSCURO = `${BASE} border-[1.5px] border-hero-cream/5
 // Estado "ya elegido" de una acción principal (ej. paseo agregado a la selección):
 // mismo tamaño que el principal, pero sin el amarillo.
 export const BTN_ELEGIDO = `${BASE} border-[1.5px] border-hero-navy bg-hero-cream text-hero-navy text-label-lg px-7 py-3.5 hover:bg-hero-cream/70`
+
+// Par del principal sobre fondo oscuro (ej. los dos caminos de la portada): contorno
+// claro, mismo tamaño y letra que el principal. El py compensa el borde para igualar la altura.
+export const BTN_PAR_OSCURO = `${BASE} border-[1.5px] border-hero-cream/55 text-hero-cream text-label-lg px-7 py-[12.5px] hover:border-hero-cream hover:bg-white/10`

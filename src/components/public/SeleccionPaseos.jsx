@@ -30,6 +30,7 @@ const TEXTOS = {
     codigo: 'Código de vendedor', opcional: '(opcional)', ejemploCodigo: 'Ej: JUAN01',
     enviar: 'Enviar por WhatsApp', respuesta: 'Te respondemos por WhatsApp con disponibilidad y precio final.',
     agregado: 'Agregado', agregar: 'Agregar a mi selección',
+    datos: 'Usamos tus datos solo para responder tu consulta.', privacidad: 'Política de privacidad',
   },
   pt: {
     unidad: { persona: '/ pessoa', paseo: '/ passeio', sesion: '/ sessão', sesión: '/ sessão', traslado: '/ traslado' },
@@ -43,6 +44,7 @@ const TEXTOS = {
     codigo: 'Código do vendedor', opcional: '(opcional)', ejemploCodigo: 'Ex.: JUAN01',
     enviar: 'Enviar pelo WhatsApp', respuesta: 'Respondemos pelo WhatsApp com disponibilidade e preço final.',
     agregado: 'Adicionado', agregar: 'Adicionar à minha seleção',
+    datos: 'Usamos seus dados apenas para responder à sua consulta.', privacidad: 'Política de privacidade',
   },
   en: {
     unidad: { persona: '/ person', paseo: '/ tour', sesion: '/ session', sesión: '/ session', traslado: '/ transfer' },
@@ -56,6 +58,7 @@ const TEXTOS = {
     codigo: 'Seller code', opcional: '(optional)', ejemploCodigo: 'E.g. JUAN01',
     enviar: 'Send via WhatsApp', respuesta: 'We’ll reply on WhatsApp with availability and final price.',
     agregado: 'Added', agregar: 'Add to my selection',
+    datos: 'We only use your details to answer your inquiry.', privacidad: 'Privacy policy',
   },
 }
 
@@ -236,6 +239,10 @@ export default function SeleccionPaseos() {
                 </button>
                 <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
                   {tx.respuesta}
+                </p>
+                <p className="font-body-md text-[12px] text-on-surface-variant text-center mt-1">
+                  {tx.datos}
+                  {' '}<a href="/privacidad" target="_blank" rel="noopener" className="underline underline-offset-2 text-hero-navy">{tx.privacidad}</a>
                 </p>
               </div>
             )}

@@ -30,7 +30,7 @@ const TEXTOS = {
     inicio: 'Inicio', quienesSomos: '¿Quiénes somos?', contacto: 'Contacto', contactanos: 'Contactanos',
     menu: 'Menú', cerrarMenu: 'Cerrar menú', idioma: 'Idioma',
     lema1: 'Hacé realidad el viaje', lema2: 'de tus sueños',
-    pie: 'Tu agencia especializada en el Nordeste de Brasil.',
+    pie: 'Tu agencia especializada en el Nordeste de Brasil.', privacidad: 'Política de privacidad',
     waContacto: '¡Hola! Me interesa viajar al Nordeste Brasilero', waInfo: '¡Hola! Quiero info',
   },
   pt: {
@@ -39,7 +39,7 @@ const TEXTOS = {
     inicio: 'Início', quienesSomos: 'Quem somos?', contacto: 'Contato', contactanos: 'Fale conosco',
     menu: 'Menu', cerrarMenu: 'Fechar menu', idioma: 'Idioma',
     lema1: 'Realize a viagem', lema2: 'dos seus sonhos',
-    pie: 'Sua agência especializada no Nordeste do Brasil.',
+    pie: 'Sua agência especializada no Nordeste do Brasil.', privacidad: 'Política de privacidade',
     waContacto: 'Olá! Tenho interesse em viajar para o Nordeste brasileiro', waInfo: 'Olá! Quero informações',
   },
   en: {
@@ -48,7 +48,7 @@ const TEXTOS = {
     inicio: 'Home', quienesSomos: 'Who are we?', contacto: 'Contact', contactanos: 'Contact us',
     menu: 'Menu', cerrarMenu: 'Close menu', idioma: 'Language',
     lema1: 'Make the trip', lema2: 'of your dreams',
-    pie: 'Your agency specialized in Northeast Brazil.',
+    pie: 'Your agency specialized in Northeast Brazil.', privacidad: 'Privacy policy',
     waContacto: "Hi! I'm interested in traveling to Northeast Brazil", waInfo: "Hi! I'd like some info",
   },
 }
@@ -275,6 +275,9 @@ export default function PublicLayout() {
         </div>
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mt-12 pt-6 border-t border-surface-variant/20">
           <p className="text-sm text-sand-beige/60 text-center">© {new Date().getFullYear()} DreamTours. {tx.pie}</p>
+          <p className="text-sm text-center mt-2">
+            <Link to="/privacidad" className="text-sand-beige/80 underline underline-offset-2 hover:text-white">{tx.privacidad}</Link>
+          </p>
         </div>
       </footer>
 

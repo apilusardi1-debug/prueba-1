@@ -28,6 +28,7 @@ const TEXTOS = {
     cuando: '¿Cuándo podés viajar?', cuandoAyuda: 'El período en el que te gustaría viajar: buscamos la mejor opción dentro de esas fechas.',
     desde: 'Desde', hasta: 'Hasta', noches: 'Noches que querés quedarte',
     enviar: 'Enviar por WhatsApp', respuesta: 'Te respondemos por WhatsApp con tu propuesta a medida.',
+    datos: 'Usamos tus datos solo para responder tu consulta.', privacidad: 'Política de privacidad',
   },
   pt: {
     faltaNombre: 'Informe seu nome.', faltaDestino: 'Escolha pelo menos um destino.', faltaPais: 'Informe de qual país você viaja.',
@@ -44,6 +45,7 @@ const TEXTOS = {
     cuando: 'Quando você pode viajar?', cuandoAyuda: 'O período em que você gostaria de viajar: buscamos a melhor opção dentro dessas datas.',
     desde: 'De', hasta: 'Até', noches: 'Noites que você quer ficar',
     enviar: 'Enviar pelo WhatsApp', respuesta: 'Respondemos pelo WhatsApp com sua proposta sob medida.',
+    datos: 'Usamos seus dados apenas para responder à sua consulta.', privacidad: 'Política de privacidade',
   },
   en: {
     faltaNombre: 'Enter your name.', faltaDestino: 'Choose at least one destination.', faltaPais: 'Tell us which country you’re traveling from.',
@@ -60,6 +62,7 @@ const TEXTOS = {
     cuando: 'When can you travel?', cuandoAyuda: 'The period when you’d like to travel: we’ll find the best option within those dates.',
     desde: 'From', hasta: 'To', noches: 'Nights you want to stay',
     enviar: 'Send via WhatsApp', respuesta: 'We’ll reply on WhatsApp with your tailor-made proposal.',
+    datos: 'We only use your details to answer your inquiry.', privacidad: 'Privacy policy',
   },
 }
 
@@ -247,6 +250,10 @@ export default function FormularioPaquete({ onClose }) {
           </button>
           <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
             {tx.respuesta}
+          </p>
+          <p className="font-body-md text-[12px] text-on-surface-variant text-center mt-1">
+            {tx.datos}
+            {' '}<a href="/privacidad" target="_blank" rel="noopener" className="underline underline-offset-2 text-hero-navy">{tx.privacidad}</a>
           </p>
         </div>
       </form>

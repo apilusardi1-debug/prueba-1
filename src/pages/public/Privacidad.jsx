@@ -2,9 +2,8 @@ import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { useSeo } from '../../lib/seo.js'
 import { useTextos } from '../../context/LanguageContext.jsx'
 
-// Responsable del tratamiento de los datos (LGPD). Mientras falten la razón social y
-// el CNPJ, la página no muestra esa línea: completarlos acá.
-const RESPONSABLE = { razonSocial: '', cnpj: '' }
+// Responsable del tratamiento de los datos (LGPD), tal como figura en la Receita Federal
+const RESPONSABLE = { razonSocial: 'DREAM TOURS AGENCIA DE TURISMO E SERVICOS LTDA', cnpj: '57.371.792/0001-28' }
 
 // "5581997199422" -> "+55 81 99719-9422"
 const telefonoLegible = (n) => n?.length === 13 ? `+${n.slice(0, 2)} ${n.slice(2, 4)} ${n.slice(4, 9)}-${n.slice(9)}` : n

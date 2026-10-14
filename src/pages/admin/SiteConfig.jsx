@@ -526,7 +526,7 @@ function TabAsistente() {
   const [reparto, setReparto] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
-  const [textos, setTextos] = useState({ saludo: '', mensaje_derivacion: '', mensaje_sin_asignar: '' })
+  const [textos, setTextos] = useState({ saludo: '', mensaje_derivacion: '', mensaje_sin_asignar: '', boton_derivacion_texto: '', boton_derivacion_url: '' })
   const [guardando, setGuardando] = useState(false)
   const [estado, setEstado] = useState(null) // 'ok' | 'error'
 
@@ -534,7 +534,7 @@ function TabAsistente() {
     Promise.all([botApi.getConfig(), botApi.getReparto(), usuariosAdminApi.getAll()]).then(([c, r, u]) => {
       const datos = c?.data || null
       setCfg(datos)
-      if (datos) setTextos({ saludo: datos.saludo, mensaje_derivacion: datos.mensaje_derivacion, mensaje_sin_asignar: datos.mensaje_sin_asignar })
+      if (datos) setTextos({ saludo: datos.saludo, mensaje_derivacion: datos.mensaje_derivacion, mensaje_sin_asignar: datos.mensaje_sin_asignar, boton_derivacion_texto: datos.boton_derivacion_texto || '', boton_derivacion_url: datos.boton_derivacion_url || '' })
       setReparto(r?.data || [])
       setUsuarios(u?.ok ? (u.usuarios || []).filter(x => x.activo !== false) : [])
       setLoading(false)
@@ -552,6 +552,8 @@ function TabAsistente() {
       saludo: textos.saludo.trim(),
       mensaje_derivacion: textos.mensaje_derivacion.trim(),
       mensaje_sin_asignar: textos.mensaje_sin_asignar.trim(),
+      boton_derivacion_texto: textos.boton_derivacion_texto.trim() || null,
+      boton_derivacion_url: textos.boton_derivacion_url.trim() || null,
     })
     if (data) setCfg(data)
     setEstado(error ? 'error' : 'ok')
@@ -581,6 +583,11 @@ function TabAsistente() {
   }
 
   const sinPersonas = GRUPOS_BOT.filter(g => !reparto.some(m => m.grupo === g.id))
+  // El botón va completo (texto y link) o no va
+  const botonTexto = textos.boton_derivacion_texto.trim()
+  const botonUrl = textos.boton_derivacion_url.trim()
+  const botonInvalido = botonUrl && !/^https?:\/\/\S+$/i.test(botonUrl) ? 'El link tiene que empezar con https://'
+    : !!botonTexto !== !!botonUrl ? 'Completá el texto y el link del botón, o dejá los dos vacíos.' : ''
 
   return (
     <div className="max-w-xl space-y-5">
@@ -650,13 +657,27 @@ function TabAsistente() {
           <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje al derivar (usa {'{nombre}'} y {'{grupo}'})</label>
           <textarea rows={2} value={textos.mensaje_derivacion} onChange={e => setTextos(t => ({ ...t, mensaje_derivacion: e.target.value }))} className={CLASE_CAMPO} />
         </div>
+        <div className="rounded-xl border border-gray-100 p-3 space-y-2 dark:border-zinc-800">
+          <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">Botón con enlace debajo del mensaje al derivar de Paquetes (por ejemplo, al Linktree). WhatsApp permite uno solo. Dejá los dos campos vacíos para mandar el mensaje sin botón.</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
+            <div>
+              <label htmlFor="boton-derivacion-texto" className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">Texto (hasta 20 caracteres)</label>
+              <input id="boton-derivacion-texto" maxLength={20} value={textos.boton_derivacion_texto} onChange={e => setTextos(t => ({ ...t, boton_derivacion_texto: e.target.value }))} placeholder="Conocenos" className={CLASE_CAMPO} />
+            </div>
+            <div>
+              <label htmlFor="boton-derivacion-url" className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">Link</label>
+              <input id="boton-derivacion-url" value={textos.boton_derivacion_url} onChange={e => setTextos(t => ({ ...t, boton_derivacion_url: e.target.value }))} placeholder="https://linktr.ee/..." className={CLASE_CAMPO} />
+            </div>
+          </div>
+          {botonInvalido && <p className="text-xs text-red-500">{botonInvalido}</p>}
+        </div>
         <div>
           <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Mensaje cuando no se pudo derivar</label>
           <textarea rows={2} value={textos.mensaje_sin_asignar} onChange={e => setTextos(t => ({ ...t, mensaje_sin_asignar: e.target.value }))} className={CLASE_CAMPO} />
         </div>
         <button
           onClick={guardarTextos}
-          disabled={guardando || !textos.saludo.trim() || !textos.mensaje_derivacion.trim() || !textos.mensaje_sin_asignar.trim()}
+          disabled={guardando || !!botonInvalido || !textos.saludo.trim() || !textos.mensaje_derivacion.trim() || !textos.mensaje_sin_asignar.trim()}
           className="w-full bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           {guardando ? 'Guardando...' : estado === 'ok' ? 'Guardado' : estado === 'error' ? 'No se pudo guardar' : 'Guardar textos'}

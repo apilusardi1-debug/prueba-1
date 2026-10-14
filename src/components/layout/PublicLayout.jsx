@@ -1,30 +1,61 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom'
-import { useLang } from '../../context/LanguageContext.jsx'
+import { useLang, useTextos } from '../../context/LanguageContext.jsx'
 import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { languages } from '../../lib/i18n.js'
 import { SeleccionPaseosProvider } from '../../context/SeleccionPaseosContext.jsx'
 import SeleccionPaseos from '../public/SeleccionPaseos.jsx'
 
 const NAV_LINKS = [
-  { to: '/paquetes',    label: 'Paquetes aéreos',  icon: 'flight' },
-  { to: '/excursiones', label: 'Paseos',            icon: 'explore' },
-  { to: '/hoteles',     label: 'Hoteles & Posadas', icon: 'hotel' },
-  { to: '/traslados',   label: 'Traslados',         icon: 'directions_car' },
-  { to: '/destinos',    label: 'Destinos',          icon: 'map' },
-  { to: '/marea',       label: 'Tabla de marea',    icon: 'waves' },
-  { to: '/nosotros',    label: 'Nosotros',          icon: 'group' },
+  { to: '/paquetes',    clave: 'paquetes',  icon: 'flight' },
+  { to: '/excursiones', clave: 'paseos',    icon: 'explore' },
+  { to: '/hoteles',     clave: 'hoteles',   icon: 'hotel' },
+  { to: '/traslados',   clave: 'traslados', icon: 'directions_car' },
+  { to: '/destinos',    clave: 'destinos',  icon: 'map' },
+  { to: '/marea',       clave: 'marea',     icon: 'waves' },
+  { to: '/nosotros',    clave: 'nosotros',  icon: 'group' },
 ]
 
 const FOOTER_LINKS = [
-  { to: '/',            label: 'Inicio' },
-  { to: '/paquetes',    label: 'Paquetes' },
-  { to: '/excursiones', label: 'Paseos' },
-  { to: '/nosotros',    label: 'Quiénes somos?' },
+  { to: '/',            clave: 'inicio' },
+  { to: '/paquetes',    clave: 'paquetesCorto' },
+  { to: '/excursiones', clave: 'paseos' },
+  { to: '/nosotros',    clave: 'quienesSomos' },
 ]
+
+const TEXTOS = {
+  es: {
+    paquetes: 'Paquetes aéreos', paquetesCorto: 'Paquetes', paseos: 'Paseos', hoteles: 'Hoteles & Posadas',
+    traslados: 'Traslados', destinos: 'Destinos', marea: 'Tabla de marea', nosotros: 'Nosotros',
+    inicio: 'Inicio', quienesSomos: '¿Quiénes somos?', contacto: 'Contacto', contactanos: 'Contactanos',
+    menu: 'Menú', cerrarMenu: 'Cerrar menú', idioma: 'Idioma',
+    lema1: 'Hacé realidad el viaje', lema2: 'de tus sueños',
+    pie: 'Tu agencia especializada en el Nordeste de Brasil.',
+    waContacto: '¡Hola! Me interesa viajar al Nordeste Brasilero', waInfo: '¡Hola! Quiero info',
+  },
+  pt: {
+    paquetes: 'Pacotes aéreos', paquetesCorto: 'Pacotes', paseos: 'Passeios', hoteles: 'Hotéis & Pousadas',
+    traslados: 'Traslados', destinos: 'Destinos', marea: 'Tábua de marés', nosotros: 'Sobre nós',
+    inicio: 'Início', quienesSomos: 'Quem somos?', contacto: 'Contato', contactanos: 'Fale conosco',
+    menu: 'Menu', cerrarMenu: 'Fechar menu', idioma: 'Idioma',
+    lema1: 'Realize a viagem', lema2: 'dos seus sonhos',
+    pie: 'Sua agência especializada no Nordeste do Brasil.',
+    waContacto: 'Olá! Tenho interesse em viajar para o Nordeste brasileiro', waInfo: 'Olá! Quero informações',
+  },
+  en: {
+    paquetes: 'Flight packages', paquetesCorto: 'Packages', paseos: 'Tours', hoteles: 'Hotels & Inns',
+    traslados: 'Transfers', destinos: 'Destinations', marea: 'Tide table', nosotros: 'About us',
+    inicio: 'Home', quienesSomos: 'Who are we?', contacto: 'Contact', contactanos: 'Contact us',
+    menu: 'Menu', cerrarMenu: 'Close menu', idioma: 'Language',
+    lema1: 'Make the trip', lema2: 'of your dreams',
+    pie: 'Your agency specialized in Northeast Brazil.',
+    waContacto: "Hi! I'm interested in traveling to Northeast Brazil", waInfo: "Hi! I'd like some info",
+  },
+}
 
 export default function PublicLayout() {
   const { lang, changeLang } = useLang()
+  const tx = useTextos(TEXTOS)
   const { config } = useSiteConfig()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolledPorScroll, setScrolledPorScroll] = useState(false)
@@ -80,7 +111,7 @@ export default function PublicLayout() {
                 </svg>
               </span>
             ) : (
-              <Link to="/" aria-label="Inicio" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
+              <Link to="/" aria-label={tx.inicio} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", lineHeight: 0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
                   <path d="M9 21V12h6v9"/>
@@ -88,7 +119,7 @@ export default function PublicLayout() {
               </Link>
             )}
             {!standalone && (
-              <button onClick={() => setDrawerOpen(true)} aria-label="Menú" style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
+              <button onClick={() => setDrawerOpen(true)} aria-label={tx.menu} style={{ display: "flex", alignItems: "center", padding: "4px", background: "none", border: "none", cursor: "pointer" }}>
                 <span aria-hidden="true" className="material-symbols-outlined" style={{ color: iconColor, fontSize: "22px", lineHeight: 1 }}>menu</span>
               </button>
             )}
@@ -103,7 +134,7 @@ export default function PublicLayout() {
               </span>
             </span>
           ) : (
-            <Link to="/" aria-label="Inicio" className="flex-shrink-0">
+            <Link to="/" aria-label={tx.inicio} className="flex-shrink-0">
               <img src="/logo.png" alt="DreamTours" className="h-16 w-auto object-contain"
                 style={{ filter: scrolled ? 'none' : 'brightness(0) invert(1)' }}
                 onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />
@@ -116,7 +147,7 @@ export default function PublicLayout() {
             {/* Language selector */}
             <div className="relative" ref={langDropdownRef}>
               <button
-                onClick={() => setLangDropdownOpen(v => !v)}
+                onClick={() => setLangDropdownOpen(v => !v)} aria-label={tx.idioma} aria-expanded={langDropdownOpen}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full font-label-lg text-label-lg text-white transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(26, 56, 90, 0.85)' }}
               >
@@ -137,11 +168,11 @@ export default function PublicLayout() {
               )}
             </div>
             {/* Contactanos */}
-            <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Me%20interesa%20viajar%20al%20Nordeste%20Brasilero`}
+            <a href={`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(tx.waContacto)}`}
               target="_blank" rel="noopener noreferrer"
               className="hidden md:flex items-center px-4 py-2 rounded-full font-label-lg text-label-lg text-white whitespace-nowrap transition-all duration-200 hover:opacity-90"
               style={{ backgroundColor: scrolled ? '#072e40' : 'rgba(32, 67, 97, 0.9)' }}>
-              Contactanos
+              {tx.contactanos}
             </a>
           </div>
         </div>
@@ -155,22 +186,22 @@ export default function PublicLayout() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-surface-variant">
               <img src="/logo.png" alt="DreamTours" className="h-14 w-auto object-contain"
                 onError={e => { e.target.style.display = 'none' }} />
-              <button onClick={() => setDrawerOpen(false)} aria-label="Cerrar menú" className="p-1">
+              <button onClick={() => setDrawerOpen(false)} aria-label={tx.cerrarMenu} className="p-1">
                 <span aria-hidden="true" className="material-symbols-outlined text-on-surface-variant">close</span>
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto py-2">
-              {NAV_LINKS.map(({ to, label, icon }) => (
+              {NAV_LINKS.map(({ to, clave, icon }) => (
                 <Link key={to} to={to}
                   className={`flex items-center gap-4 px-6 py-4 transition-colors ${pathname === to ? 'text-deep-ocean bg-surface-container-low font-semibold' : 'text-on-surface-variant hover:text-deep-ocean hover:bg-surface-container-low'}`}>
                   <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{icon}</span>
-                  <span className="font-label-lg text-label-lg">{label}</span>
+                  <span className="font-label-lg text-label-lg">{tx[clave]}</span>
                   <span aria-hidden="true" className="material-symbols-outlined text-[16px] ml-auto opacity-40">chevron_right</span>
                 </Link>
               ))}
             </nav>
             <div className="px-6 py-5 border-t border-surface-variant">
-              <select value={lang} onChange={e => changeLang(e.target.value)}
+              <select value={lang} onChange={e => changeLang(e.target.value)} aria-label={tx.idioma}
                 className="w-full border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface-variant bg-white">
                 {languages.map(l => (
                   <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
@@ -193,12 +224,12 @@ export default function PublicLayout() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
           {/* Nav links */}
           <nav className="flex flex-col items-center md:items-start gap-4">
-            {!standalone && FOOTER_LINKS.map(({ to, label }) => {
+            {!standalone && FOOTER_LINKS.map(({ to, clave }) => {
               const active = pathname === to
               return (
                 <Link key={to} to={to}
                   className={`font-label-lg text-label-lg uppercase tracking-wide pb-1 border-b-2 transition-colors ${active ? 'text-white border-hero-yellow' : 'text-sand-beige/80 border-transparent hover:text-white'}`}>
-                  {label}
+                  {tx[clave]}
                 </Link>
               )
             })}
@@ -208,11 +239,11 @@ export default function PublicLayout() {
           <div className="flex flex-col items-center text-center">
             <h2 className="font-display-hero uppercase text-white leading-none"
               style={{ fontSize: 'clamp(1.5rem, 3.2vw, 2.25rem)', letterSpacing: '0.01em' }}>
-              Hacé realidad el viaje
+              {tx.lema1}
             </h2>
             <p className="font-script-hero text-hero-sky"
               style={{ fontSize: 'clamp(2rem, 4.5vw, 3rem)', lineHeight: 1, marginTop: '-0.05em' }}>
-              de tus sueños
+              {tx.lema2}
             </p>
           </div>
 
@@ -243,7 +274,7 @@ export default function PublicLayout() {
           </div>
         </div>
         <div className="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mt-12 pt-6 border-t border-surface-variant/20">
-          <p className="text-sm text-sand-beige/60 text-center">© {new Date().getFullYear()} DreamTours. Tu agencia especializada en el Nordeste de Brasil.</p>
+          <p className="text-sm text-sand-beige/60 text-center">© {new Date().getFullYear()} DreamTours. {tx.pie}</p>
         </div>
       </footer>
 
@@ -253,21 +284,21 @@ export default function PublicLayout() {
           <div className="flex justify-around items-center h-16 px-2">
             <Link to="/" className="flex flex-col items-center justify-center w-full h-full text-deep-ocean">
               <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>home</span>
-              <span className="text-[11px] font-semibold">Inicio</span>
+              <span className="text-[11px] font-semibold">{tx.inicio}</span>
             </Link>
             <Link to="/destinos" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">explore</span>
-              <span className="text-[11px]">Destinos</span>
+              <span className="text-[11px]">{tx.destinos}</span>
             </Link>
             <Link to="/excursiones" className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">directions_boat</span>
-              <span className="text-[11px]">Paseos</span>
+              <span className="text-[11px]">{tx.paseos}</span>
             </Link>
-            <a href={`https://wa.me/${config?.whatsapp || ''}?text=Hola!%20Quiero%20info`}
+            <a href={`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(tx.waInfo)}`}
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-deep-ocean">
               <span aria-hidden="true" className="material-symbols-outlined mb-0.5 text-[22px]">chat</span>
-              <span className="text-[11px]">Contacto</span>
+              <span className="text-[11px]">{tx.contacto}</span>
             </a>
           </div>
         </nav>

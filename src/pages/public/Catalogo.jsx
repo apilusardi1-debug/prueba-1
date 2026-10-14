@@ -4,19 +4,53 @@ import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { BotonAgregarPaseo } from '../../components/public/SeleccionPaseos.jsx'
 import { useSeo } from '../../lib/seo.js'
+import { useTextos } from '../../context/LanguageContext.jsx'
 
 // No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
 // vehículo, con varias personas incluidas) — se aclara acá abajo del precio
 // para no repetir el error de mostrar "por persona" cuando no corresponde.
-const UNIDAD_PRECIO_LABEL = {
-  paseo:    '/ paseo',
-  sesion:   '/ sesión',
-  sesión:   '/ sesión',
-  traslado: '/ traslado',
+const TEXTOS = {
+  es: {
+    seoTitulo: 'Paseos en español',
+    seoDescripcion: 'Paseos en español por Porto de Galinhas, Maragogi, Carneiros, Santo Aleixo y más. Elegí los que te gustan y consultá disponibilidad por WhatsApp.',
+    titulos: { paquetes: 'Paquetes aéreos', excursiones: 'Paseos', traslados: 'Traslados' }, catalogo: 'Catálogo',
+    subPaseos: 'Todos nuestros paseos incluyen guía en español y traslado privado',
+    subGeneral: 'Encontrá tu próximo viaje al Nordeste Brasilero',
+    buscar: 'Buscar por destino o nombre...', todos: 'Todos',
+    sinResultados: { excursiones: 'No encontramos paseos con esos filtros.', traslados: 'No encontramos traslados con esos filtros.', paquetes: 'No encontramos paquetes con esos filtros.' },
+    resultados: n => `${n} resultado${n !== 1 ? 's' : ''} encontrado${n !== 1 ? 's' : ''}`,
+    ultimos: n => `¡Últimos ${n}!`, cupos: n => `${n} cupos`, desde: 'Desde', verDetalle: 'Ver detalle',
+    unidad: { paseo: '/ paseo', sesion: '/ sesión', sesión: '/ sesión', traslado: '/ traslado' },
+  },
+  pt: {
+    seoTitulo: 'Passeios em espanhol',
+    seoDescripcion: 'Passeios em espanhol por Porto de Galinhas, Maragogi, Carneiros, Santo Aleixo e mais. Escolha os que você gosta e consulte a disponibilidade pelo WhatsApp.',
+    titulos: { paquetes: 'Pacotes aéreos', excursiones: 'Passeios', traslados: 'Traslados' }, catalogo: 'Catálogo',
+    subPaseos: 'Todos os nossos passeios incluem guia em espanhol e traslado privativo',
+    subGeneral: 'Encontre sua próxima viagem ao Nordeste brasileiro',
+    buscar: 'Buscar por destino ou nome...', todos: 'Todos',
+    sinResultados: { excursiones: 'Não encontramos passeios com esses filtros.', traslados: 'Não encontramos traslados com esses filtros.', paquetes: 'Não encontramos pacotes com esses filtros.' },
+    resultados: n => `${n} resultado${n !== 1 ? 's' : ''} encontrado${n !== 1 ? 's' : ''}`,
+    ultimos: n => `Últimas ${n} vagas!`, cupos: n => `${n} vagas`, desde: 'A partir de', verDetalle: 'Ver detalhes',
+    unidad: { paseo: '/ passeio', sesion: '/ sessão', sesión: '/ sessão', traslado: '/ traslado' },
+  },
+  en: {
+    seoTitulo: 'Tours in Spanish',
+    seoDescripcion: 'Spanish-speaking tours in Porto de Galinhas, Maragogi, Carneiros, Santo Aleixo and more. Pick the ones you like and check availability on WhatsApp.',
+    titulos: { paquetes: 'Flight packages', excursiones: 'Tours', traslados: 'Transfers' }, catalogo: 'Catalog',
+    subPaseos: 'All our tours include a Spanish-speaking guide and private transfer',
+    subGeneral: 'Find your next trip to Northeast Brazil',
+    buscar: 'Search by destination or name...', todos: 'All',
+    sinResultados: { excursiones: 'No tours match those filters.', traslados: 'No transfers match those filters.', paquetes: 'No packages match those filters.' },
+    resultados: n => `${n} result${n !== 1 ? 's' : ''} found`,
+    ultimos: n => `Last ${n} spots!`, cupos: n => `${n} spots`, desde: 'From', verDetalle: 'See details',
+    unidad: { paseo: '/ tour', sesion: '/ session', sesión: '/ session', traslado: '/ transfer' },
+  },
 }
 
 export default function Catalogo({ categoria }) {
-  useSeo({ titulo: 'Paseos en español', descripcion: 'Paseos en español por Porto de Galinhas, Maragogi, Carneiros, Santo Aleixo y más. Elegí los que te gustan y consultá disponibilidad por WhatsApp.' })
+  const tx = useTextos(TEXTOS)
+  useSeo({ titulo: tx.seoTitulo, descripcion: tx.seoDescripcion })
   const [excursiones, setExcursiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -43,13 +77,11 @@ export default function Catalogo({ categoria }) {
 
   const destinosUnicos = [...new Set(excursiones.filter(e => !categoria || e.categoria === categoria).map(e => e.destino).filter(Boolean))].sort()
 
-  const tituloLabel = categoria === 'paquetes' ? 'Paquetes aéreos' : categoria === 'excursiones' ? 'Paseos' : categoria === 'traslados' ? 'Traslados' : 'Catálogo'
+  const tituloLabel = tx.titulos[categoria] || tx.catalogo
   // Los paseos (ex "Excursiones") siempre incluyen guía en español y traslado
   // privado — dato importante para el cliente, se aclara acá en vez del
   // subtítulo genérico que comparten las demás categorías.
-  const subtituloLabel = categoria === 'excursiones'
-    ? 'Todos nuestros paseos incluyen guía en español y traslado privado'
-    : 'Encontrá tu próximo viaje al Nordeste Brasilero'
+  const subtituloLabel = categoria === 'excursiones' ? tx.subPaseos : tx.subGeneral
 
   return (
     <div className="bg-surface min-h-screen">
@@ -73,7 +105,7 @@ export default function Catalogo({ categoria }) {
                 type="text"
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                placeholder="Buscar por destino o nombre..."
+                placeholder={tx.buscar} aria-label={tx.buscar}
                 className="w-full pl-11 pr-5 py-3 rounded-full border-2 border-transparent bg-white text-deep-ocean font-body-md text-body-md placeholder-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-hero-yellow"
               />
             </div>
@@ -83,7 +115,7 @@ export default function Catalogo({ categoria }) {
                   className={`font-label-lg text-label-sm uppercase px-4 py-2 rounded-full border-2 transition-colors ${
                     destinoFiltro === '' ? 'bg-hero-yellow border-hero-yellow text-hero-navy' : 'border-hero-cream/40 text-hero-cream hover:border-hero-cream'
                   }`}>
-                  Todos
+                  {tx.todos}
                 </button>
                 {destinosUnicos.map(d => (
                   <button key={d} onClick={() => setDestinoFiltro(d)}
@@ -108,12 +140,12 @@ export default function Catalogo({ categoria }) {
             </div>
           ) : filtrados.length === 0 ? (
             <p className="text-center font-body-md text-body-md text-on-surface-variant py-24">
-              No encontramos {categoria === 'excursiones' ? 'paseos' : categoria === 'traslados' ? 'traslados' : 'paquetes'} con esos filtros.
+              {tx.sinResultados[categoria] || tx.sinResultados.paquetes}
             </p>
           ) : (
             <>
               <p className="font-body-md text-body-md text-on-surface-variant mb-6">
-                {filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+                {tx.resultados(filtrados.length)}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {filtrados.map(ex => (
@@ -136,7 +168,7 @@ export default function Catalogo({ categoria }) {
                       {/* Los paseos (categoria "excursiones") no muestran cupos — pedido explícito */}
                       {ex.categoria !== 'excursiones' && ex.cuposDisponibles <= 3 && (
                         <span className="absolute top-3 right-3 bg-red-600 text-white font-label-sm text-[11px] uppercase px-3 py-1.5 rounded-full">
-                          ¡Últimos {ex.cuposDisponibles}!
+                          {tx.ultimos(ex.cuposDisponibles)}
                         </span>
                       )}
                     </div>
@@ -151,7 +183,7 @@ export default function Catalogo({ categoria }) {
                         )}
                         {ex.categoria !== 'excursiones' && (
                           <span className="flex items-center gap-1">
-                            <span aria-hidden="true" className="material-symbols-outlined text-[15px]">group</span>{ex.cuposDisponibles} cupos
+                            <span aria-hidden="true" className="material-symbols-outlined text-[15px]">group</span>{tx.cupos(ex.cuposDisponibles)}
                           </span>
                         )}
                       </div>
@@ -164,15 +196,15 @@ export default function Catalogo({ categoria }) {
                     )}
                     <div className="bg-hero-navy px-5 py-4 flex items-center justify-between gap-3">
                       <div>
-                        <span className="font-label-sm text-[11px] uppercase text-hero-cream/80 block leading-none mb-1">Desde</span>
+                        <span className="font-label-sm text-[11px] uppercase text-hero-cream/80 block leading-none mb-1">{tx.desde}</span>
                         <span className="font-display-hero text-hero-yellow text-xl leading-none">
                           {formatPrecio(ex.precio, ex.moneda)}
-                          {UNIDAD_PRECIO_LABEL[ex.precioUnidad] && (
-                            <span className="text-[12px] normal-case font-label-sm text-hero-cream/80 ml-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad]}</span>
+                          {tx.unidad[ex.precioUnidad] && (
+                            <span className="text-[12px] normal-case font-label-sm text-hero-cream/80 ml-1">{tx.unidad[ex.precioUnidad]}</span>
                           )}
                         </span>
                       </div>
-                      <Link to={`/excursiones/${ex.id}`} className="font-label-lg text-label-sm uppercase text-hero-cream hover:underline whitespace-nowrap">Ver detalle</Link>
+                      <Link to={`/excursiones/${ex.id}`} className="font-label-lg text-label-sm uppercase text-hero-cream hover:underline whitespace-nowrap">{tx.verDetalle}</Link>
                     </div>
                   </div>
                 ))}

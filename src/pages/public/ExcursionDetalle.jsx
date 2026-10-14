@@ -2,24 +2,33 @@ import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { excursionesApi, normalizarExcursion } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
-import { useLang } from '../../context/LanguageContext.jsx'
+import { useLang, useTextos } from '../../context/LanguageContext.jsx'
 import { BotonAgregarPaseo } from '../../components/public/SeleccionPaseos.jsx'
 import { useSeo } from '../../lib/seo.js'
 
 // `categoria` es el valor crudo de la base ('excursiones', 'paquetes',
 // 'traslados') — acá se traduce a lo que ve el cliente ("Excursiones" ahora
 // se llama "Paseos" en todo el sitio).
-const CATEGORIA_LABEL = { excursiones: 'Paseos', paquetes: 'Paquetes', traslados: 'Traslados' }
 
 // No todos los paseos se cobran por persona (ej. Buggy/Jet Ski/Quad son por
 // vehículo, con varias personas incluidas) — `precioUnidad` viene de la base
 // y se traduce acá a la leyenda que va arriba del precio.
-const UNIDAD_PRECIO_LABEL = {
-  persona: 'Precio por persona',
-  paseo:   'Precio por paseo',
-  sesion:  'Precio por sesión',
-  sesión:  'Precio por sesión',
-  traslado: 'Precio por traslado',
+const TEXTOS = {
+  es: {
+    categorias: { excursiones: 'Paseos', paquetes: 'Paquetes', traslados: 'Traslados' },
+    unidad: { persona: 'Precio por persona', paseo: 'Precio por paseo', sesion: 'Precio por sesión', sesión: 'Precio por sesión', traslado: 'Precio por traslado' },
+    noEncontrado: 'Paseo no encontrado',
+  },
+  pt: {
+    categorias: { excursiones: 'Passeios', paquetes: 'Pacotes', traslados: 'Traslados' },
+    unidad: { persona: 'Preço por pessoa', paseo: 'Preço por passeio', sesion: 'Preço por sessão', sesión: 'Preço por sessão', traslado: 'Preço por traslado' },
+    noEncontrado: 'Passeio não encontrado',
+  },
+  en: {
+    categorias: { excursiones: 'Tours', paquetes: 'Packages', traslados: 'Transfers' },
+    unidad: { persona: 'Price per person', paseo: 'Price per tour', sesion: 'Price per session', sesión: 'Price per session', traslado: 'Price per transfer' },
+    noEncontrado: 'Tour not found',
+  },
 }
 
 function IconoCheck() {
@@ -32,7 +41,8 @@ function IconoCheck() {
 
 export default function ExcursionDetalle() {
   const { id } = useParams()
-  const { t } = useLang()
+  const { t, locale } = useLang()
+  const tx = useTextos(TEXTOS)
   const [ex, setEx] = useState(null)
   useSeo({ titulo: ex?.nombre, descripcion: ex?.descripcion, imagen: ex?.imagen })
   const [loading, setLoading] = useState(true)
@@ -59,7 +69,7 @@ export default function ExcursionDetalle() {
   if (!ex) {
     return (
       <div className="bg-surface min-h-screen pt-32 px-margin-mobile text-center">
-        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">Paseo no encontrado</p>
+        <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">{tx.noEncontrado}</p>
         <Link to="/excursiones" className="font-label-lg text-label-sm uppercase text-hero-navy underline">{t('detail_back')}</Link>
       </div>
     )
@@ -71,7 +81,7 @@ export default function ExcursionDetalle() {
     { label: t('detail_difficulty'), value: ex.dificultad, icon: 'flag' },
     // Los paseos (categoria "excursiones") no muestran cupos — pedido explícito
     ...(ex.categoria !== 'excursiones' ? [{ label: t('detail_spots'), value: `${ex.cuposDisponibles} / ${ex.cupos}`, icon: 'group', red: ex.cuposDisponibles <= 3 }] : []),
-    { label: t('detail_category'), value: CATEGORIA_LABEL[ex.categoria] || ex.categoria, icon: 'sell' },
+    { label: t('detail_category'), value: tx.categorias[ex.categoria] || ex.categoria, icon: 'sell' },
   ].filter(m => m.value)
 
   return (
@@ -133,7 +143,7 @@ export default function ExcursionDetalle() {
                 <div className="flex flex-wrap gap-2">
                   {ex.fechas.map(f => (
                     <span key={f} className="bg-hero-cream text-hero-navy font-label-lg text-[13px] font-semibold px-3.5 py-1.5 rounded-lg">
-                      {new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {new Date(f + 'T12:00:00').toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   ))}
                 </div>
@@ -142,7 +152,7 @@ export default function ExcursionDetalle() {
 
             <div className="flex items-center justify-between border-t-2 border-hero-navy/10 pt-6">
               <div>
-                <p className="font-label-sm text-[12px] uppercase text-on-surface-variant mb-1">{UNIDAD_PRECIO_LABEL[ex.precioUnidad] || t('detail_per_person')}</p>
+                <p className="font-label-sm text-[12px] uppercase text-on-surface-variant mb-1">{tx.unidad[ex.precioUnidad] || t('detail_per_person')}</p>
                 <p className="font-display-hero text-hero-navy leading-none" style={{ fontSize: '2rem' }}>{formatPrecio(ex.precio, ex.moneda)}</p>
               </div>
               {/* La reserva se cierra por WhatsApp desde "Mi selección", no en el sitio */}

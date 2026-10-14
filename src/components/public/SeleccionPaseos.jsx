@@ -5,6 +5,7 @@ import { useSiteConfig } from '../../context/SiteConfigContext.jsx'
 import { formatPrecio } from '../../data/mockData.js'
 import { armarMensajePedidoWeb } from '../../../supabase/functions/_shared/pedidoWebPaseos.ts'
 import { BTN_PRINCIPAL, BTN_ELEGIDO } from './botones.js'
+import { useTextos } from '../../context/LanguageContext.jsx'
 
 // Panel "Mi selección" + botón flotante que lo abre. La reserva de paseos no
 // se cierra en el sitio: el cliente elige paseos, fechas de estadía y
@@ -13,13 +14,49 @@ import { BTN_PRINCIPAL, BTN_ELEGIDO } from './botones.js'
 // y completa el lead solo (paseos, destino, vendedor).
 // No hay total: algunos paseos se cobran por persona y otros por vehículo o
 // sesión, y el precio de los menores varía — un total estimado saldría mal.
+// El mensaje de WhatsApp sale siempre en español, en cualquier idioma del sitio:
+// webhook-whatsapp lo reconoce por su encabezado en español (pedidoWebPaseos.ts).
 
-const UNIDAD_PRECIO_LABEL = {
-  persona:  '/ persona',
-  paseo:    '/ paseo',
-  sesion:   '/ sesión',
-  sesión:   '/ sesión',
-  traslado: '/ traslado',
+const TEXTOS = {
+  es: {
+    unidad: { persona: '/ persona', paseo: '/ paseo', sesion: '/ sesión', sesión: '/ sesión', traslado: '/ traslado' },
+    restar: l => `Restar ${l.toLowerCase()}`, sumar: l => `Sumar ${l.toLowerCase()}`,
+    faltanFechas: 'Indicá las fechas de tu estadía.', fechasAlReves: 'La fecha de salida tiene que ser posterior a la de llegada.',
+    faltanEdades: 'Indicá la edad de cada menor.',
+    miSeleccion: 'Mi selección', miSeleccionPaseos: 'Mi selección de paseos', tuViaje: 'Tu viaje', cerrar: 'Cerrar',
+    vacia: 'Todavía no agregaste paseos. Elegí los que te interesan desde el catálogo.',
+    quitar: n => `Quitar ${n}`, fechas: 'Fechas de tu estadía', llegada: 'Llegada', salida: 'Salida',
+    pasajeros: 'Pasajeros', adultos: 'Adultos', menores: 'Menores', edadCadaMenor: 'Edad de cada menor', edadMenor: i => `Edad del menor ${i}`,
+    codigo: 'Código de vendedor', opcional: '(opcional)', ejemploCodigo: 'Ej: JUAN01',
+    enviar: 'Enviar por WhatsApp', respuesta: 'Te respondemos por WhatsApp con disponibilidad y precio final.',
+    agregado: 'Agregado', agregar: 'Agregar a mi selección',
+  },
+  pt: {
+    unidad: { persona: '/ pessoa', paseo: '/ passeio', sesion: '/ sessão', sesión: '/ sessão', traslado: '/ traslado' },
+    restar: l => `Diminuir ${l.toLowerCase()}`, sumar: l => `Aumentar ${l.toLowerCase()}`,
+    faltanFechas: 'Informe as datas da sua estadia.', fechasAlReves: 'A data de saída tem que ser depois da chegada.',
+    faltanEdades: 'Informe a idade de cada menor.',
+    miSeleccion: 'Minha seleção', miSeleccionPaseos: 'Minha seleção de passeios', tuViaje: 'Sua viagem', cerrar: 'Fechar',
+    vacia: 'Você ainda não adicionou passeios. Escolha os que te interessam no catálogo.',
+    quitar: n => `Remover ${n}`, fechas: 'Datas da sua estadia', llegada: 'Chegada', salida: 'Saída',
+    pasajeros: 'Passageiros', adultos: 'Adultos', menores: 'Menores', edadCadaMenor: 'Idade de cada menor', edadMenor: i => `Idade do menor ${i}`,
+    codigo: 'Código do vendedor', opcional: '(opcional)', ejemploCodigo: 'Ex.: JUAN01',
+    enviar: 'Enviar pelo WhatsApp', respuesta: 'Respondemos pelo WhatsApp com disponibilidade e preço final.',
+    agregado: 'Adicionado', agregar: 'Adicionar à minha seleção',
+  },
+  en: {
+    unidad: { persona: '/ person', paseo: '/ tour', sesion: '/ session', sesión: '/ session', traslado: '/ transfer' },
+    restar: l => `Fewer ${l.toLowerCase()}`, sumar: l => `More ${l.toLowerCase()}`,
+    faltanFechas: 'Enter the dates of your stay.', fechasAlReves: 'The departure date must be after the arrival date.',
+    faltanEdades: 'Enter the age of each child.',
+    miSeleccion: 'My selection', miSeleccionPaseos: 'My tour selection', tuViaje: 'Your trip', cerrar: 'Close',
+    vacia: 'You haven’t added any tours yet. Pick the ones you like from the catalog.',
+    quitar: n => `Remove ${n}`, fechas: 'Dates of your stay', llegada: 'Arrival', salida: 'Departure',
+    pasajeros: 'Travelers', adultos: 'Adults', menores: 'Children', edadCadaMenor: 'Age of each child', edadMenor: i => `Age of child ${i}`,
+    codigo: 'Seller code', opcional: '(optional)', ejemploCodigo: 'E.g. JUAN01',
+    enviar: 'Send via WhatsApp', respuesta: 'We’ll reply on WhatsApp with availability and final price.',
+    agregado: 'Added', agregar: 'Add to my selection',
+  },
 }
 
 const CAMPO = 'w-full border-2 border-hero-navy/15 focus:border-hero-navy rounded-xl px-3 py-2.5 font-body-md text-body-md text-hero-navy bg-white outline-none transition-colors'
@@ -28,14 +65,15 @@ const LABEL = 'block font-label-lg text-label-sm uppercase text-hero-navy/80 mb-
 const hoy = () => new Date().toISOString().slice(0, 10)
 
 export function Contador({ label, valor, min, onChange }) {
+  const tx = useTextos(TEXTOS)
   return (
     <div className="flex items-center justify-between bg-white border-2 border-hero-navy/15 rounded-xl px-3.5 py-2.5">
       <span className="font-body-md text-[13px] text-on-surface-variant font-medium">{label}</span>
       <div className="flex items-center gap-2.5">
-        <button type="button" aria-label={`Restar ${label.toLowerCase()}`} onClick={() => onChange(Math.max(min, valor - 1))}
+        <button type="button" aria-label={tx.restar(label)} onClick={() => onChange(Math.max(min, valor - 1))}
           className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors">−</button>
         <span className="font-label-lg text-[14px] text-hero-navy min-w-[16px] text-center">{valor}</span>
-        <button type="button" aria-label={`Sumar ${label.toLowerCase()}`} onClick={() => onChange(Math.min(30, valor + 1))}
+        <button type="button" aria-label={tx.sumar(label)} onClick={() => onChange(Math.min(30, valor + 1))}
           className="w-7 h-7 rounded-full border-2 border-hero-navy/20 text-hero-navy font-bold flex items-center justify-center hover:border-hero-navy transition-colors">+</button>
       </div>
     </div>
@@ -46,6 +84,7 @@ export default function SeleccionPaseos() {
   const { paseos, quitar, abierta, abrir, cerrar } = useSeleccionPaseos()
   const { config } = useSiteConfig()
   const { pathname } = useLocation()
+  const tx = useTextos(TEXTOS)
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [adultos, setAdultos] = useState(2)
@@ -76,9 +115,9 @@ export default function SeleccionPaseos() {
   }
 
   function enviar() {
-    if (!desde || !hasta) { setError('Indicá las fechas de tu estadía.'); return }
-    if (hasta < desde) { setError('La fecha de salida tiene que ser posterior a la de llegada.'); return }
-    if (edades.some(e => e === '')) { setError('Indicá la edad de cada menor.'); return }
+    if (!desde || !hasta) { setError(tx.faltanFechas); return }
+    if (hasta < desde) { setError(tx.fechasAlReves); return }
+    if (edades.some(e => e === '')) { setError(tx.faltanEdades); return }
     setError(null)
     const texto = armarMensajePedidoWeb({ paseos, desde, hasta, adultos, edadesMenores: edades, codigoVendedor: codigo.trim() })
     window.open(`https://wa.me/${config?.whatsapp || ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
@@ -96,27 +135,27 @@ export default function SeleccionPaseos() {
             <span aria-hidden="true" className="material-symbols-outlined text-[20px]">beach_access</span>
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[12px] font-bold flex items-center justify-center">{cantidad}</span>
           </span>
-          <span className="font-label-lg text-label-sm uppercase">Mi selección</span>
+          <span className="font-label-lg text-label-sm uppercase">{tx.miSeleccion}</span>
         </button>
       )}
 
       {abierta && (
         <div className="fixed inset-0 z-[60] flex justify-end bg-hero-navy/60 backdrop-blur-sm" onClick={cerrar}>
-          <aside role="dialog" aria-modal="true" aria-label="Mi selección de paseos"
+          <aside role="dialog" aria-modal="true" aria-label={tx.miSeleccionPaseos}
             className="w-full max-w-md h-full bg-surface flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}>
             <div className="bg-hero-navy px-6 py-5 flex items-start justify-between gap-4">
               <div>
-                <p className="font-label-sm text-[12px] uppercase tracking-widest text-hero-yellow mb-1">Tu viaje</p>
-                <h2 className="font-display-hero uppercase text-hero-cream text-2xl leading-none">Mi selección</h2>
+                <p className="font-label-sm text-[12px] uppercase tracking-widest text-hero-yellow mb-1">{tx.tuViaje}</p>
+                <h2 className="font-display-hero uppercase text-hero-cream text-2xl leading-none">{tx.miSeleccion}</h2>
               </div>
-              <button onClick={cerrar} aria-label="Cerrar" className="text-hero-cream/75 hover:text-hero-cream text-2xl leading-none">✕</button>
+              <button onClick={cerrar} aria-label={tx.cerrar} className="text-hero-cream/75 hover:text-hero-cream text-2xl leading-none">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
               {cantidad === 0 ? (
                 <p className="font-body-md text-body-md text-on-surface-variant text-center py-10">
-                  Todavía no agregaste paseos. Elegí los que te interesan desde el catálogo.
+                  {tx.vacia}
                 </p>
               ) : (
                 <>
@@ -127,43 +166,43 @@ export default function SeleccionPaseos() {
                         <div className="min-w-0 flex-1">
                           <p className="font-label-lg text-[14px] text-hero-navy leading-tight truncate">{p.nombre}</p>
                           <p className="font-body-md text-[13px] text-on-surface-variant">
-                            {formatPrecio(p.precio, p.moneda)} {UNIDAD_PRECIO_LABEL[p.precioUnidad] || ''}
+                            {formatPrecio(p.precio, p.moneda)} {tx.unidad[p.precioUnidad] || ''}
                           </p>
                         </div>
-                        <button onClick={() => quitar(p.id)} aria-label={`Quitar ${p.nombre}`}
+                        <button onClick={() => quitar(p.id)} aria-label={tx.quitar(p.nombre)}
                           className="w-8 h-8 rounded-full text-red-500 hover:bg-red-50 flex items-center justify-center flex-shrink-0">✕</button>
                       </li>
                     ))}
                   </ul>
 
                   <div>
-                    <p className={LABEL}>Fechas de tu estadía</p>
+                    <p className={LABEL}>{tx.fechas}</p>
                     <div className="grid grid-cols-2 gap-2.5">
                       <label className="block">
-                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Llegada</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">{tx.llegada}</span>
                         <input type="date" min={hoy()} value={desde}
                           onChange={e => { setDesde(e.target.value); if (hasta && e.target.value > hasta) setHasta('') }}
                           className={CAMPO} />
                       </label>
                       <label className="block">
-                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">Salida</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1">{tx.salida}</span>
                         <input type="date" min={desde || hoy()} value={hasta} onChange={e => setHasta(e.target.value)} className={CAMPO} />
                       </label>
                     </div>
                   </div>
 
                   <div>
-                    <p className={LABEL}>Pasajeros</p>
+                    <p className={LABEL}>{tx.pasajeros}</p>
                     <div className="flex flex-col gap-2.5">
-                      <Contador label="Adultos" valor={adultos} min={1} onChange={setAdultos} />
-                      <Contador label="Menores" valor={edades.length} min={0} onChange={cambiarMenores} />
+                      <Contador label={tx.adultos} valor={adultos} min={1} onChange={setAdultos} />
+                      <Contador label={tx.menores} valor={edades.length} min={0} onChange={cambiarMenores} />
                     </div>
                     {edades.length > 0 && (
                       <div className="mt-3">
-                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1.5">Edad de cada menor</span>
+                        <span className="block font-body-md text-[13px] text-on-surface-variant mb-1.5">{tx.edadCadaMenor}</span>
                         <div className="grid grid-cols-4 gap-2">
                           {edades.map((edad, i) => (
-                            <select key={i} value={edad} aria-label={`Edad del menor ${i + 1}`}
+                            <select key={i} value={edad} aria-label={tx.edadMenor(i + 1)}
                               onChange={e => setEdades(prev => prev.map((x, j) => j === i ? e.target.value : x))}
                               className={CAMPO + ' px-2'}>
                               <option value="">—</option>
@@ -177,9 +216,9 @@ export default function SeleccionPaseos() {
 
                   <div>
                     <label className={LABEL}>
-                      Código de vendedor <span className="normal-case font-normal text-on-surface-variant text-[12px]">(opcional)</span>
+                      {tx.codigo} <span className="normal-case font-normal text-on-surface-variant text-[12px]">{tx.opcional}</span>
                     </label>
-                    <input type="text" value={codigo} maxLength={20} placeholder="Ej: JUAN01"
+                    <input type="text" value={codigo} maxLength={20} placeholder={tx.ejemploCodigo}
                       onChange={e => setCodigo(e.target.value.toUpperCase())}
                       className={CAMPO + ' font-mono tracking-wider uppercase'} />
                   </div>
@@ -193,10 +232,10 @@ export default function SeleccionPaseos() {
                 <button onClick={enviar}
                   className={`${BTN_PRINCIPAL} w-full`}>
                   <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
-                  Enviar por WhatsApp
+                  {tx.enviar}
                 </button>
                 <p className="font-body-md text-[13px] text-on-surface-variant text-center mt-2.5">
-                  Te respondemos por WhatsApp con disponibilidad y precio final.
+                  {tx.respuesta}
                 </p>
               </div>
             )}
@@ -211,11 +250,12 @@ export default function SeleccionPaseos() {
 export function BotonAgregarPaseo({ ex, className = '' }) {
   const { tiene, agregar, quitar } = useSeleccionPaseos()
   const agregado = tiene(ex.id)
+  const tx = useTextos(TEXTOS)
   return (
     <button type="button" onClick={() => agregado ? quitar(ex.id) : agregar(ex)} aria-pressed={agregado}
       className={`${agregado ? BTN_ELEGIDO : BTN_PRINCIPAL} ${className}`}>
       <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{agregado ? 'check' : 'add'}</span>
-      {agregado ? 'Agregado' : 'Agregar a mi selección'}
+      {agregado ? tx.agregado : tx.agregar}
     </button>
   )
 }

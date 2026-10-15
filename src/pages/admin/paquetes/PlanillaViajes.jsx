@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { viajesPaquetesApi, leadsApi, clientesApi } from '../../../lib/supabase.js'
 import FichaPersona from '../../../components/ficha/FichaPersona.jsx'
 import { confirmar } from '../../../components/ui/Avisos.jsx'
@@ -27,13 +28,13 @@ const INPUT = 'w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-8
 const LABEL = 'block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1'
 const aNumero = (v) => (String(v ?? '').trim() === '' ? null : Number(String(v).replace(',', '.')))
 
-// Link de WhatsApp de un contacto escrito a mano ("+54 9 11 6978-5885"); con más de un
-// número ("Carolina: +54… | Julieta: +34…") o sin número, se muestra como texto
-function linkWhatsapp(t) {
+// Número de un contacto escrito a mano ("+54 9 11 6978-5885"); con más de un número
+// ("Carolina: +54… | Julieta: +34…") o sin número, null
+function numeroContacto(t) {
   const partes = String(t || '').split(/[|/]/)
   if (partes.length !== 1) return null
   const n = String(t).replace(/\D/g, '')
-  return n.length >= 10 && n.length <= 15 ? `https://wa.me/${n}` : null
+  return n.length >= 10 && n.length <= 15 ? n : null
 }
 
 export default function PlanillaViajes() {
@@ -45,6 +46,18 @@ export default function PlanillaViajes() {
   const [soloSaldo, setSoloSaldo] = useState(false)
   const [editando, setEditando] = useState(null) // null | 'nuevo' | viaje
   const [ficha, setFicha] = useState(null) // { lead } | { cliente }
+  const navigate = useNavigate()
+
+  // El contacto abre el chat del cliente en el CRM (no WhatsApp). Si el viaje está unido a
+  // un lead o cliente se usa su número tal como está en el CRM (el de la planilla puede
+  // venir escrito distinto, ej. con o sin el 9 de los celulares argentinos).
+  async function abrirChat(v) {
+    let numero = null
+    if (v.lead_id) numero = (await leadsApi.getById(v.lead_id))?.data?.whatsapp
+    if (!numero && v.cliente_id) numero = (await clientesApi.getById(v.cliente_id))?.data?.whatsapp
+    numero = numero || numeroContacto(v.cliente_contacto)
+    if (numero) navigate(`/admin/crm/whatsapp?phone=${String(numero).replace(/\D/g, '')}`)
+  }
 
   function cargar() {
     return viajesPaquetesApi.getAll().then(({ data, error }) => {
@@ -186,7 +199,7 @@ export default function PlanillaViajes() {
             <tbody className="divide-y divide-gray-50 dark:divide-zinc-800 text-gray-700 dark:text-zinc-300">
               {filtrados.map(v => {
                 const saldo = Number(v.saldo)
-                const wa = linkWhatsapp(v.cliente_contacto)
+                const conChat = !!(v.lead_id || v.cliente_id || numeroContacto(v.cliente_contacto))
                 const enViaje = v.fecha_llegada && v.fecha_llegada <= hoy() && !yaSeFue(v)
                 return (
                   <tr key={v.id} onDoubleClick={() => setEditando(v)} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
@@ -226,7 +239,9 @@ export default function PlanillaViajes() {
                         : (v.detalles_texto || '—')}
                     </td>
                     <td className={td + ' whitespace-nowrap'}>
-                      {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-600 dark:text-green-400 hover:underline">{v.cliente_contacto}</a> : (v.cliente_contacto || '—')}
+                      {conChat && v.cliente_contacto
+                        ? <button onClick={() => abrirChat(v)} title="Abrir el chat en el CRM" className="text-left text-green-600 dark:text-green-400 hover:underline">{v.cliente_contacto}</button>
+                        : (v.cliente_contacto || '—')}
                     </td>
                     <td className={td + ' min-w-[100px]'}>{v.info_extra || '—'}</td>
                     <td className={td + ' whitespace-nowrap'}>

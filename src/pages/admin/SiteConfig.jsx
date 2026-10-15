@@ -69,6 +69,7 @@ export function TabAccesos() {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(FORM_USUARIO_VACIO)
   const [guardando, setGuardando] = useState(false)
+  const [verPassword, setVerPassword] = useState(false)
   const [error, setError] = useState('')
   const [eliminandoId, setEliminandoId] = useState(null)
 
@@ -85,6 +86,7 @@ export function TabAccesos() {
     setForm(FORM_USUARIO_VACIO)
     setEditando(null)
     setError('')
+    setVerPassword(false)
     setMostrarForm(true)
   }
 
@@ -92,6 +94,7 @@ export function TabAccesos() {
     setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol, activo: u.activo })
     setEditando(u.id)
     setError('')
+    setVerPassword(false)
     setMostrarForm(true)
   }
 
@@ -246,9 +249,18 @@ export function TabAccesos() {
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">
                   Contraseña {editando && <span className="text-gray-400 dark:text-zinc-500 font-normal">(dejar en blanco para no cambiarla)</span>}
                 </label>
-                <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                  placeholder="••••••••" />
+                {/* La contraseña guardada no se puede mostrar (solo se guarda cifrada): el ojo muestra lo que se escribe */}
+                <div className="relative">
+                  <input type={verPassword ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    autoComplete="new-password"
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    placeholder={editando ? 'Nueva contraseña' : 'Contraseña'} />
+                  <button type="button" onClick={() => setVerPassword(v => !v)}
+                    aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300">
+                    <Ic n={verPassword ? 'eyeoff' : 'eye'} className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Rol</label>

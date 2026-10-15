@@ -193,16 +193,17 @@ const NAV = [
       { path: '/admin/crm/whatsapp', label: 'WhatsApp',  icon: Icon.WhatsApp },
     ],
   },
-  { path: '/admin/reservas',    label: 'Reservas',    icon: Icon.Reservas },
+  // Operaciones (pedido de Cristian, 2026-10-15): lo del día a día de los paseos en un solo
+  // grupo. Lo que antes era la pantalla "Operaciones" ahora es la vista "En curso" de Agenda.
   {
-    label: 'Traslados', icon: Icon.Traslados,
+    label: 'Operaciones', icon: Icon.Agenda,
     sub: [
-      { path: '/admin/traslados', label: 'Planilla', icon: Icon.Planilla, exact: true },
+      { path: '/admin/reservas',    label: 'Reservas',  icon: Icon.Reservas },
+      { path: '/admin/traslados',   label: 'Traslados', icon: Icon.Traslados },
+      { path: '/admin/excursiones', label: 'Paseos',    icon: Icon.Excursiones },
+      { path: '/admin/agenda',      label: 'Agenda',    icon: Icon.Agenda },
     ],
   },
-  { path: '/admin/excursiones', label: 'Paseos',       icon: Icon.Excursiones },
-  { path: '/admin/agenda',      label: 'Agenda',      icon: Icon.Agenda },
-  { path: '/admin/operaciones/en-curso', label: 'Operaciones', icon: Icon.Agenda },
   { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
   { path: '/admin/mensajes', label: 'Mensajes', icon: Icon.Generador },
   {

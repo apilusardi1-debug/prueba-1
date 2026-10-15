@@ -7,6 +7,7 @@ import { useSincronizado } from '../../lib/useSincronizado.js'
 import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { nombrePaseo, claveTexto } from '../../lib/reservasPlanilla.js'
+import OperacionesDelDia from '../../components/admin/OperacionesDelDia.jsx'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -172,7 +173,8 @@ function IconCalendario() {
 export default function Agenda() {
   const [searchParams] = useSearchParams()
   const fechaParam = searchParams.get('fecha')
-  const [vista, setVista] = useState(fechaParam ? 'calendario' : 'tabla')
+  // ?vista=en-curso abre directo "En curso" (las actividades de hoy, cerradas o no)
+  const [vista, setVista] = useState(fechaParam ? 'calendario' : searchParams.get('vista') === 'en-curso' ? 'en_curso' : 'tabla')
   const [choferes, setChoferes] = useState([])
   const [guias, setGuias] = useState([])
   const [costos, setCostos] = useState([])
@@ -246,7 +248,7 @@ export default function Agenda() {
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Agenda</h1>
           <p className="text-gray-400 dark:text-zinc-500 text-sm mt-0.5">Reservas y salidas · DreamTours</p>
@@ -273,6 +275,16 @@ export default function Agenda() {
             >
               <IconCalendario /> Calendario
             </button>
+            <button
+              onClick={() => setVista('en_curso')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold uppercase tracking-wide transition-colors ${
+                vista === 'en_curso'
+                  ? 'bg-white dark:bg-zinc-800 text-gray-800 dark:text-zinc-100 shadow-sm'
+                  : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'
+              }`}
+            >
+              <Ic n="car" className="h-4 w-4" /> En curso
+            </button>
           </div>
 
           {vista === 'tabla' && (
@@ -284,7 +296,9 @@ export default function Agenda() {
         </div>
       </div>
 
-      {vista === 'tabla' ? (
+      {vista === 'en_curso' ? (
+        <OperacionesDelDia />
+      ) : vista === 'tabla' ? (
         <VistaTabla reservasNorm={reservasVigentes} cargando={cargando} />
       ) : (
         <VistaCalendario

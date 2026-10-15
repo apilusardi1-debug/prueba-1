@@ -16,6 +16,10 @@ import {
   TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
 } from '../../components/admin/dashboard/CRMCards.jsx'
 
+// Tarjeta "Costos operativos" oculta hasta que estén bien cargados los costos por reserva
+// (pedido de Cristian, 2026-10-15: con datos a medio cargar confundía). Volver a true para mostrarla.
+const MOSTRAR_COSTOS_OPERATIVOS = false
+
 const ESTADOS_PROPUESTA = [
   { key: 'enviada',   label: 'Enviadas',   color: '#f59e0b' },
   { key: 'cerrada',   label: 'Cerradas',   color: '#22c55e' },
@@ -262,13 +266,13 @@ export default function Dashboard() {
       )}
 
       {/* Indicadores */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className={`grid grid-cols-2 gap-4 lg:grid-cols-3 ${MOSTRAR_COSTOS_OPERATIVOS ? '2xl:grid-cols-6' : '2xl:grid-cols-5'}`}>
         <StatCard icon="wallet" label="Ingresos totales" value={formatPrecio(ingresosTotales)} hint="Movimientos confirmados" to="/admin/finanzas" />
         <StatCard icon="cash" label="Salidas totales" value={formatPrecio(salidasTotales)} hint="Movimientos confirmados" to="/admin/finanzas" />
         <StatCard icon="target" label="Leads nuevos" value={leadsNuevos} hint="Sin contactar" to="/admin/leads" />
         <StatCard icon="cal" label="Reservas pendientes" value={reservasPendientes} hint="Sin confirmar" to="/admin/reservas" />
         <StatCard icon="users" label="Clientes" value={clientes.length} hint="Registrados" to="/admin/clientes" />
-        <StatCard icon="gear" label="Costos operativos" value={formatPrecio(costosOperativosMes)} hint="Del mes, según chofer por reserva" to="/admin/reservas" />
+        {MOSTRAR_COSTOS_OPERATIVOS && <StatCard icon="gear" label="Costos operativos" value={formatPrecio(costosOperativosMes)} hint="Del mes, según chofer por reserva" to="/admin/reservas" />}
       </div>
 
       {/* Atención al cliente: espera, tiempo de respuesta, propuestas */}

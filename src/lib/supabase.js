@@ -121,6 +121,14 @@ export const comisionesAgenciaApi = {
   delete: (id) => invocarCatalogoInterno('comisiones_agencia_diarias', 'delete', { id }),
 }
 
+// Viajes de paquetes (Paquetes > Planilla), como el Excel "PLANILLA VIAJES" del equipo
+export const viajesPaquetesApi = {
+  getAll: () => invocarCatalogoInterno('viajes_paquetes', 'list'),
+  create: (data) => invocarCatalogoInterno('viajes_paquetes', 'create', { data }),
+  update: (id, data) => invocarCatalogoInterno('viajes_paquetes', 'update', { id, data: { ...data, updated_at: new Date().toISOString() } }),
+  delete: (id) => invocarCatalogoInterno('viajes_paquetes', 'delete', { id }),
+}
+
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export const leadsApi = {
   getAll: () => traerTodo(() => supabase.from('leads').select('*').order('created_at', { ascending: false }).order('id')),

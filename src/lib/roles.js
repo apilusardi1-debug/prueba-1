@@ -33,6 +33,7 @@ export const SECCIONES = [
   { clave: 'hospedajes', nombre: 'Hospedajes', ruta: '/admin/hospedajes' },
   { clave: 'videos', nombre: 'Videos', ruta: '/admin/videos' },
   { clave: 'paquetes_clientes', nombre: 'Paquetes: clientes', ruta: '/admin/paquetes/clientes' },
+  { clave: 'paquetes_planilla', nombre: 'Paquetes: planilla', ruta: '/admin/paquetes/planilla' },
   { clave: 'paquetes_generador', nombre: 'Paquetes: generador', ruta: '/admin/paquetes/generador' },
   { clave: 'paquetes_enviadas', nombre: 'Paquetes: enviadas', ruta: '/admin/paquetes/enviadas' },
   { clave: 'paquetes_cerradas', nombre: 'Paquetes: cerradas', ruta: '/admin/paquetes/cerradas' },

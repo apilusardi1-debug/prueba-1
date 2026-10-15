@@ -72,6 +72,8 @@ const TABLAS: Record<string, TablaCfg> = {
   clientes: { pk: 'id', orderBy: 'nombre', onConflict: 'whatsapp' },
   // Comisión de la agencia por día (la carga el equipo de paseos desde Reservas)
   comisiones_agencia_diarias: { pk: 'id', orderBy: '-fecha', onConflict: 'fecha' },
+  // Viajes de paquetes (Paquetes > Planilla), como el Excel "PLANILLA VIAJES" del equipo
+  viajes_paquetes: { pk: 'id', orderBy: ['fecha_llegada', 'cliente_nombre'] },
   // Solo lectura desde el frontend (lo escribe el trigger de la base, ver
   // migración 20261011100000) -- comprobante de "se mandó el PDF de cierre",
   // se muestra como tarjeta fantasma 24hs en el tablero de Paquetes.

@@ -219,6 +219,7 @@ const NAV = [
     label: 'Paquetes', icon: Icon.Paquetes,
     sub: [
       { path: '/admin/paquetes/clientes',  label: 'Clientes',            icon: Icon.Clientes },
+      { path: '/admin/paquetes/planilla',  label: 'Planilla',            icon: Icon.Planilla },
       { path: '/admin/paquetes/generador', label: 'Generador propuesta', icon: Icon.Generador },
       { path: '/admin/paquetes/enviadas',  label: 'Propuestas enviadas', icon: Icon.Enviadas },
       { path: '/admin/paquetes/cerradas',  label: 'Propuestas cerradas', icon: Icon.Cerradas },
@@ -505,6 +506,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/hospedajes')) return 'Hospedajes'
     if (pathname.startsWith('/admin/videos')) return 'Videos'
     if (pathname.startsWith('/admin/paquetes/clientes')) return 'Clientes de Paquetes'
+    if (pathname.startsWith('/admin/paquetes/planilla')) return 'Planilla de viajes'
     if (pathname.startsWith('/admin/paquetes/generador')) return 'Generador de Propuesta'
     if (pathname.startsWith('/admin/paquetes/enviadas')) return 'Propuestas Enviadas'
     if (pathname.startsWith('/admin/paquetes/cerradas')) return 'Propuestas Cerradas'

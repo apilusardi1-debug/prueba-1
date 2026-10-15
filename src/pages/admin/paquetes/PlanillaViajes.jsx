@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { viajesPaquetesApi } from '../../../lib/supabase.js'
+import { viajesPaquetesApi, leadsApi, clientesApi } from '../../../lib/supabase.js'
+import FichaPersona from '../../../components/ficha/FichaPersona.jsx'
 import { confirmar } from '../../../components/ui/Avisos.jsx'
 import { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { formatMonto, fechaCorta, claveTexto } from '../../../lib/reservasPlanilla.js'
@@ -8,7 +9,9 @@ import { formatMonto, fechaCorta, claveTexto } from '../../../lib/reservasPlanil
 // paquetes ("PLANILLA VIAJES"), para que carguen acá en vez de en el Excel. Las dos
 // pestañas del Excel (VIAJES y YA SE FUERON) son acá dos vistas de la misma lista: un
 // viaje "ya se fue" cuando pasó su fecha de regreso. Columnas: migración
-// 20261015100000_viajes_paquetes_planilla.sql.
+// 20261015100000_viajes_paquetes_planilla.sql. Cada viaje se une solo a su lead y cliente
+// por el teléfono, y su saldo, hospedaje y vuelos quedan en la ficha (ver
+// 20261015120000_viajes_paquetes_vinculos.sql): el nombre abre esa ficha.
 
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Recife' })
 const yaSeFue = (v) => (v.fecha_regreso || v.fecha_llegada || '9999') < hoy()
@@ -41,14 +44,27 @@ export default function PlanillaViajes() {
   const [busqueda, setBusqueda] = useState('')
   const [soloSaldo, setSoloSaldo] = useState(false)
   const [editando, setEditando] = useState(null) // null | 'nuevo' | viaje
+  const [ficha, setFicha] = useState(null) // { lead } | { cliente }
 
-  useEffect(() => {
-    viajesPaquetesApi.getAll().then(({ data, error }) => {
+  function cargar() {
+    return viajesPaquetesApi.getAll().then(({ data, error }) => {
       if (error) setErrorCarga(error.message)
       setViajes(data || [])
       setLoading(false)
     })
-  }, [])
+  }
+  useEffect(() => { cargar() }, [])
+
+  async function abrirFicha(v) {
+    if (v.lead_id) {
+      const { data } = await leadsApi.getById(v.lead_id)
+      if (data) return setFicha({ lead: data })
+    }
+    if (v.cliente_id) {
+      const { data } = await clientesApi.getById(v.cliente_id)
+      if (data) setFicha({ cliente: data })
+    }
+  }
 
   const filtrados = useMemo(() => {
     const q = claveTexto(busqueda)
@@ -69,14 +85,12 @@ export default function PlanillaViajes() {
   const saldoPendiente = filtrados.reduce((a, v) => a + (Number(v.saldo) > 0 ? Number(v.saldo) : 0), 0)
 
   async function guardar(datos) {
-    const { data, error } = editando === 'nuevo'
+    const { error } = editando === 'nuevo'
       ? await viajesPaquetesApi.create(datos)
       : await viajesPaquetesApi.update(editando.id, datos)
     if (error) return error.message
-    setViajes(prev => {
-      const resto = editando === 'nuevo' ? prev : prev.filter(v => v.id !== editando.id)
-      return [...resto, data].sort((a, b) => String(a.fecha_llegada).localeCompare(String(b.fecha_llegada)))
-    })
+    // Se relee todo: al guardar, la base lo une a su ficha por el teléfono
+    await cargar()
     setEditando(null)
     return null
   }
@@ -181,7 +195,11 @@ export default function PlanillaViajes() {
                       {fechaCorta(v.fecha_llegada)}
                       {enViaje && <span className="ml-1.5 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">De viaje</span>}
                     </td>
-                    <td className={td + ' font-medium text-gray-900 dark:text-zinc-100 min-w-[140px]'}>{v.cliente_nombre}</td>
+                    <td className={td + ' font-medium text-gray-900 dark:text-zinc-100 min-w-[140px]'}>
+                      {v.lead_id || v.cliente_id
+                        ? <button onClick={() => abrirFicha(v)} title="Abrir la ficha del cliente" className="text-left font-medium hover:underline">{v.cliente_nombre}</button>
+                        : <>{v.cliente_nombre} <span title="No hay ningún lead ni cliente con este teléfono" className="ml-1 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400 whitespace-nowrap">Sin ficha</span></>}
+                    </td>
                     <td className={td + ' text-center'}>{v.personas ?? '—'}</td>
                     <td className={td + ' min-w-[180px] max-w-[280px]'}>{v.hospedaje || '—'}</td>
                     <td className={td + ' whitespace-nowrap'}>{fechaCorta(v.fecha_regreso)}</td>
@@ -221,6 +239,10 @@ export default function PlanillaViajes() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {ficha && (
+        <FichaPersona {...ficha} onCerrar={() => { setFicha(null); cargar() }} />
       )}
 
       {editando && (

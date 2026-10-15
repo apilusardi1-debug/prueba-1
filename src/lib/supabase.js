@@ -124,6 +124,11 @@ export const comisionesAgenciaApi = {
 // Viajes de paquetes (Paquetes > Planilla), como el Excel "PLANILLA VIAJES" del equipo
 export const viajesPaquetesApi = {
   getAll: () => invocarCatalogoInterno('viajes_paquetes', 'list'),
+  // Los viajes de una persona de la ficha única (lead y/o cliente)
+  getByPersona: (leadId, clienteId) => {
+    const o = [leadId && `lead_id.eq.${leadId}`, clienteId && `cliente_id.eq.${clienteId}`].filter(Boolean).join(',')
+    return o ? invocarCatalogoInterno('viajes_paquetes', 'list', { o }) : Promise.resolve({ data: [], error: null })
+  },
   create: (data) => invocarCatalogoInterno('viajes_paquetes', 'create', { data }),
   update: (id, data) => invocarCatalogoInterno('viajes_paquetes', 'update', { id, data: { ...data, updated_at: new Date().toISOString() } }),
   delete: (id) => invocarCatalogoInterno('viajes_paquetes', 'delete', { id }),

@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi, saldosApi,
-  reservasClienteApi, reservasApi, pagosApi, notasClienteApi, propuestasApi,
+  reservasClienteApi, reservasApi, pagosApi, notasClienteApi, propuestasApi, viajesPaquetesApi,
 } from '../../lib/supabase.js'
 import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, NOTAS_TAREA_ANFITRIONA, hoyISO, claveVisible } from '../../lib/embudo.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
@@ -20,6 +20,7 @@ import ModalRegistrarPago from '../ui/ModalRegistrarPago.jsx'
 import ModalReservaCliente from './ModalReservaCliente.jsx'
 import Ic, { IcTxt } from '../admin/dashboard/Ic.jsx'
 import { avisar, confirmar } from '../ui/Avisos.jsx'
+import { formatMonto, fechaCorta } from '../../lib/reservasPlanilla.js'
 
 // Un solo listado de conceptos para los saldos de la persona
 const CONCEPTOS_SALDO = [
@@ -115,6 +116,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
   const [recordatorios, setRecordatorios] = useState([])
   const [hospedajes, setHospedajes] = useState([])
   const [reservas, setReservas] = useState([])
+  const [viajes, setViajes] = useState([])
   const [pagos, setPagos] = useState([])
   const [notas, setNotas] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -176,11 +178,13 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
       cliente ? pagosApi.getByCliente(cliente.id) : null,
       cliente ? notasClienteApi.getByCliente(cliente.id) : null,
       whatsapp ? propuestasApi.getByWhatsapp(whatsapp) : null,
-    ]).then(([rec, hos, res, pag, not, pro]) => {
+      viajesPaquetesApi.getByPersona(lead?.id, cliente?.id),
+    ]).then(([rec, hos, res, pag, not, pro, via]) => {
       if (cancelado) return
       setRecordatorios(rec?.data || [])
       setHospedajes(hos?.data || [])
       setReservas(res?.data || [])
+      setViajes(via?.data || [])
       setPagos(pag?.data || [])
       setNotas(not?.data || [])
       setPropuestas((pro?.data || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))))
@@ -634,6 +638,26 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
               <div className="dash-card text-center text-sm text-gray-400 dark:text-zinc-600">Cargando...</div>
             ) : (
               <>
+                {viajes.length > 0 && (
+                  <section className="dash-card space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className={ETIQUETA}>Viaje de paquete{viajes.length > 1 ? ` · ${viajes.length}` : ''}</p>
+                      <button onClick={() => navigate('/admin/paquetes/planilla')} className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Ver en la Planilla</button>
+                    </div>
+                    {viajes.map(v => (
+                      <div key={v.id} className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+                        <div><p className="text-[11px] text-gray-400 dark:text-zinc-500">Llega</p><p className="font-medium text-gray-900 dark:text-zinc-100">{fechaCorta(v.fecha_llegada)}{v.hora_llegada ? ` · ${v.hora_llegada}` : ''}</p></div>
+                        <div><p className="text-[11px] text-gray-400 dark:text-zinc-500">Regresa</p><p className="font-medium text-gray-900 dark:text-zinc-100">{fechaCorta(v.fecha_regreso)}{v.hora_regreso ? ` · ${v.hora_regreso}` : ''}</p></div>
+                        <div><p className="text-[11px] text-gray-400 dark:text-zinc-500">Pasajeros</p><p className="font-medium text-gray-900 dark:text-zinc-100">{v.personas ?? '—'}</p></div>
+                        <div><p className="text-[11px] text-gray-400 dark:text-zinc-500">Saldo</p><p className={`font-medium ${Number(v.saldo) > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{formatMonto(v.saldo, v.moneda)}</p></div>
+                        <div className="col-span-2 sm:col-span-4"><p className="text-[11px] text-gray-400 dark:text-zinc-500">Hospedaje</p><p className="text-gray-700 dark:text-zinc-300">{v.hospedaje || '—'}</p></div>
+                        {v.observaciones && <div className="col-span-2 sm:col-span-4"><p className="text-[11px] text-gray-400 dark:text-zinc-500">Observaciones</p><p className="text-gray-700 dark:text-zinc-300">{v.observaciones}</p></div>}
+                        {v.detalles_url && <a href={v.detalles_url} target="_blank" rel="noopener noreferrer" className="col-span-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Detalles y servicios (Canva)</a>}
+                      </div>
+                    ))}
+                  </section>
+                )}
+
                 <section className="dash-card">
                   <SeccionSaldos
                     key={`${lead?.id || ''}-${cliente?.id || ''}`}

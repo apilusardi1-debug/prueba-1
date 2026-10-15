@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { viajesPaquetesApi, leadsApi, clientesApi } from '../../../lib/supabase.js'
 import FichaPersona from '../../../components/ficha/FichaPersona.jsx'
+import { rutaChatCrm } from '../../../lib/chatCrm.js'
 import { confirmar } from '../../../components/ui/Avisos.jsx'
 import { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { formatMonto, fechaCorta, claveTexto } from '../../../lib/reservasPlanilla.js'
@@ -48,15 +49,10 @@ export default function PlanillaViajes() {
   const [ficha, setFicha] = useState(null) // { lead } | { cliente }
   const navigate = useNavigate()
 
-  // El contacto abre el chat del cliente en el CRM (no WhatsApp). Si el viaje está unido a
-  // un lead o cliente se usa su número tal como está en el CRM (el de la planilla puede
-  // venir escrito distinto, ej. con o sin el 9 de los celulares argentinos).
+  // El contacto abre el chat del cliente en el CRM (no WhatsApp)
   async function abrirChat(v) {
-    let numero = null
-    if (v.lead_id) numero = (await leadsApi.getById(v.lead_id))?.data?.whatsapp
-    if (!numero && v.cliente_id) numero = (await clientesApi.getById(v.cliente_id))?.data?.whatsapp
-    numero = numero || numeroContacto(v.cliente_contacto)
-    if (numero) navigate(`/admin/crm/whatsapp?phone=${String(numero).replace(/\D/g, '')}`)
+    const ruta = await rutaChatCrm({ leadId: v.lead_id, clienteId: v.cliente_id, telefono: numeroContacto(v.cliente_contacto) })
+    if (ruta) navigate(ruta)
   }
 
   function cargar() {

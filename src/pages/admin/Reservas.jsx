@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { reservasApi, excursionesApi, choferesApi, comisionesAgenciaApi } from '../../lib/supabase.js'
+import { useNavigate } from 'react-router-dom'
+import { reservasApi, excursionesApi, choferesApi, comisionesAgenciaApi, leadsApi, clientesApi } from '../../lib/supabase.js'
+import FichaPersona from '../../components/ficha/FichaPersona.jsx'
+import { rutaChatCrm } from '../../lib/chatCrm.js'
 import ModalReservaPlanilla from '../../components/admin/ModalReservaPlanilla.jsx'
 import { confirmar } from '../../components/ui/Avisos.jsx'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
@@ -48,6 +51,25 @@ export default function Reservas() {
   const [verComisiones, setVerComisiones] = useState(false)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
   const [editandoSaldo, setEditandoSaldo] = useState(null) // { id, valor }
+  const [ficha, setFicha] = useState(null) // { lead } | { cliente }
+  const navigate = useNavigate()
+
+  // El nombre abre la ficha de la persona (la reserva se une sola a su lead por teléfono,
+  // ver 20261015140000_reservas_vinculo_lead.sql); el contacto, su chat en el CRM.
+  async function abrirFicha(r) {
+    if (r.lead_id) {
+      const { data } = await leadsApi.getById(r.lead_id)
+      if (data) return setFicha({ lead: data })
+    }
+    if (r.cliente_id) {
+      const { data } = await clientesApi.getById(r.cliente_id)
+      if (data) setFicha({ cliente: data })
+    }
+  }
+  async function abrirChat(r) {
+    const ruta = await rutaChatCrm({ leadId: r.lead_id, clienteId: r.cliente_id, telefono: r.cliente_whatsapp })
+    if (ruta) navigate(ruta)
+  }
 
   useEffect(() => {
     async function cargar() {
@@ -343,7 +365,11 @@ export default function Reservas() {
                         className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500 cursor-pointer" />
                     </td>
                     <td className={td + ' whitespace-nowrap text-gray-400'}>{fechaCorta(r.fecha_venta)}</td>
-                    <td className={td + ' font-medium text-gray-900 dark:text-zinc-100 min-w-[130px]'}>{r.cliente_nombre || '—'}</td>
+                    <td className={td + ' font-medium text-gray-900 dark:text-zinc-100 min-w-[130px]'}>
+                      {r.lead_id || r.cliente_id
+                        ? <button onClick={() => abrirFicha(r)} title="Abrir la ficha del cliente" className="text-left font-medium hover:underline">{r.cliente_nombre || '—'}</button>
+                        : (r.cliente_nombre || '—')}
+                    </td>
                     <td className={td + ' text-center'}>{r.personas}</td>
                     <td className={td + ' min-w-[150px]'}>
                       {nombrePaseo(r)}
@@ -380,7 +406,7 @@ export default function Reservas() {
                     <td className={td + ' whitespace-nowrap'}>{r.sena != null ? formatMonto(r.sena, r.moneda) : '—'}</td>
                     <td className={td + ' whitespace-nowrap'}>
                       {r.cliente_whatsapp
-                        ? <a href={`https://wa.me/${r.cliente_whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-green-600 dark:text-green-400 hover:underline">{r.cliente_whatsapp}</a>
+                        ? <button onClick={() => abrirChat(r)} title="Abrir el chat en el CRM" className="text-green-600 dark:text-green-400 hover:underline">{r.cliente_whatsapp}</button>
                         : '—'}
                     </td>
                     <td className={td}>{r.vendedor_texto || '—'}</td>
@@ -410,6 +436,10 @@ export default function Reservas() {
           onGuardar={guardarReserva}
           onCerrar={() => setEditando(null)}
         />
+      )}
+
+      {ficha && (
+        <FichaPersona {...ficha} onCerrar={() => setFicha(null)} />
       )}
 
       {verComisiones && (

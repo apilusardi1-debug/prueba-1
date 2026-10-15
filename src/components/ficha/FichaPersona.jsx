@@ -20,7 +20,7 @@ import ModalRegistrarPago from '../ui/ModalRegistrarPago.jsx'
 import ModalReservaCliente from './ModalReservaCliente.jsx'
 import Ic, { IcTxt } from '../admin/dashboard/Ic.jsx'
 import { avisar, confirmar } from '../ui/Avisos.jsx'
-import { formatMonto, fechaCorta } from '../../lib/reservasPlanilla.js'
+import { formatMonto, fechaCorta, nombrePaseo, saldoDe } from '../../lib/reservasPlanilla.js'
 
 // Un solo listado de conceptos para los saldos de la persona
 const CONCEPTOS_SALDO = [
@@ -174,7 +174,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
     Promise.all([
       lead ? recordatoriosApi.getByLead(lead.id) : null,
       lead ? anfitrionaApi.getHospedajes() : null,
-      cliente ? reservasClienteApi.getByCliente(cliente.id, cliente.whatsapp) : null,
+      reservasClienteApi.getByPersona(lead?.id, cliente?.id, cliente?.whatsapp || lead?.whatsapp),
       cliente ? pagosApi.getByCliente(cliente.id) : null,
       cliente ? notasClienteApi.getByCliente(cliente.id) : null,
       whatsapp ? propuestasApi.getByWhatsapp(whatsapp) : null,
@@ -407,7 +407,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
       notas: f.notas || null,
     })
     if (error) return avisar('No se pudo crear la reserva: ' + (error.message || 'error desconocido'))
-    const { data } = await reservasClienteApi.getByCliente(c.id, c.whatsapp)
+    const { data } = await reservasClienteApi.getByPersona(lead?.id, c.id, c.whatsapp)
     if (data) setReservas(data)
     setModalReserva(false)
   }
@@ -729,13 +729,14 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
                   ) : (
                     <div className="divide-y divide-gray-100 dark:divide-white/10">
                       {reservas.map(r => {
-                        const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
+                        // Las de la planilla de paseos tienen su saldo cargado (o venta − seña)
+                        const saldo = r.origen === 'planilla' ? (saldoDe(r) || 0) : Math.max((r.total || 0) - (r.pagado || 0), 0)
                         const estado = estadoEfectivo(r)
                         return (
                           <div key={r.id} className="py-3 first:pt-0 last:pb-0">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{r.excursiones?.nombre || 'Paseo'}</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{nombrePaseo(r)}</p>
                                 <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500">
                                   <IcTxt n="cal" />{fmtFecha(r.fecha)} · <IcTxt n="users" />{r.personas} {r.personas === 1 ? 'persona' : 'personas'}
                                 </p>
@@ -751,9 +752,9 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
                             {r.total > 0 && (
                               <div className="mt-2 flex items-center justify-between text-xs">
                                 {saldo > 0
-                                  ? <p className="text-gray-500 dark:text-zinc-500">Pendiente <span className="font-semibold text-amber-600 dark:text-amber-400">{fmtMonto(saldo, 'BRL')}</span></p>
+                                  ? <p className="text-gray-500 dark:text-zinc-500">Pendiente <span className="font-semibold text-amber-600 dark:text-amber-400">{fmtMonto(saldo, r.moneda || 'BRL')}</span></p>
                                   : <p className="font-semibold text-green-600 dark:text-green-400">Pagado por completo</p>}
-                                {saldo > 0 && cliente && <button onClick={() => setPagandoReserva(r)} className={ENLACE}>Registrar pago</button>}
+                                {saldo > 0 && cliente && r.origen !== 'planilla' && <button onClick={() => setPagandoReserva(r)} className={ENLACE}>Registrar pago</button>}
                               </div>
                             )}
                           </div>

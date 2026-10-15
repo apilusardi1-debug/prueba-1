@@ -421,8 +421,13 @@ export const reservasClienteApi = {
   // catalogo-interno siempre ordena "reservas" por fecha ascendente (lo que necesita Reservas.jsx);
   // acá hace falta al revés (la más reciente primero), así que se reordena del lado del
   // cliente — son pocas filas, las de un solo cliente, no hace falta pedirle otro orden a la función.
-  getByCliente: async (clienteId, whatsapp) => {
-    const res = await invocarCatalogoInterno('reservas', 'list', { o: `cliente_id.eq.${clienteId},cliente_whatsapp.eq.${whatsapp}` })
+  getByCliente: async (clienteId, whatsapp) => reservasClienteApi.getByPersona(null, clienteId, whatsapp),
+  // Las de una persona de la ficha única: por su cliente, su lead (las de la planilla de
+  // paseos se unen solas al lead por teléfono) o el whatsapp de reservas viejas sin unir
+  getByPersona: async (leadId, clienteId, whatsapp) => {
+    const o = [clienteId && `cliente_id.eq.${clienteId}`, leadId && `lead_id.eq.${leadId}`, whatsapp && `cliente_whatsapp.eq.${whatsapp}`].filter(Boolean).join(',')
+    if (!o) return { data: [], error: null }
+    const res = await invocarCatalogoInterno('reservas', 'list', { o })
     if (res.data) res.data = [...res.data].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
     return res
   },

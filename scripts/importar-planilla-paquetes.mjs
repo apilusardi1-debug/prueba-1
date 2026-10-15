@@ -7,7 +7,7 @@
 //   (la librería xlsx no es dependencia del proyecto: en la Mac de Abril está en
 //   ~/Desktop/reservas-paseos/.herramientas/node_modules/xlsx)
 //   XLSX_PATH=<carpeta>/node_modules/xlsx node scripts/importar-planilla-paquetes.mjs \
-//     "<carpeta privada>/archivo.xlsm" [--anterior <importacion-previa.json>]
+//     "<carpeta privada>/archivo.xlsm" [--desde AAAA-MM-DD] [--anterior <importacion-previa.json>]
 //
 // Escribe, junto al Excel:
 //   vista-previa-<fecha>.csv   una fila por viaje, con la columna "A revisar" (se abre en Excel)
@@ -15,6 +15,9 @@
 //                              actualiza lo que cambió)
 //   importacion-<fecha>.json   foto de lo importado, para comparar la próxima actualización
 //
+// Solo entran los viajes con fecha de viaje desde --desde (por defecto, hoy): pedido de Abril,
+// 2026-10-14. --borrar-anteriores además borra de la base los importados del Excel con fecha de
+// viaje anterior (se usó una vez, para sacar los de la primera carga que traía todo).
 // Columnas: ver supabase/migrations/20261015100000_viajes_paquetes_planilla.sql
 
 import { createRequire } from 'node:module'
@@ -29,6 +32,8 @@ const args = process.argv.slice(2)
 const archivo = args[0]
 const opcion = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
 const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Recife' })
+const desde = opcion('--desde') || hoy
+const borrarAnteriores = args.includes('--borrar-anteriores')
 const anterior = opcion('--anterior') ? JSON.parse(readFileSync(opcion('--anterior'), 'utf8')) : null
 if (!archivo) { console.error('Falta el archivo .xlsm'); process.exit(1) }
 
@@ -81,6 +86,7 @@ for (const nombreHoja of HOJAS) {
     const nombre = texto(celda(2))
     const fechaLlegada = iso(celda(1))
     if (!nombre && !fechaLlegada) continue
+    if (!fechaLlegada || fechaLlegada < desde) continue
     const revisar = []
     const obs = []
     if (texto(celda(9))) obs.push(texto(celda(9)))
@@ -147,7 +153,7 @@ for (const v of unicos) {
   v.situacion = !antes ? 'nuevo' : CAMPOS.some(c => JSON.stringify(antes[c]) !== JSON.stringify(v[c])) ? 'cambió' : 'igual'
   if (antes && v.situacion === 'cambió') v.cambios = CAMPOS.filter(c => JSON.stringify(antes[c]) !== JSON.stringify(v[c]))
 }
-const desaparecidos = anterior ? [...previos.values()].filter(v => !porClave.has(v.clave_planilla)) : []
+const desaparecidos = anterior ? [...previos.values()].filter(v => !porClave.has(v.clave_planilla) && v.fecha_llegada >= desde) : []
 
 // ── Salida ──────────────────────────────────────────────────────────────────
 
@@ -172,7 +178,10 @@ const sql = (x) => x == null ? 'null' : typeof x === 'number' ? String(x) : `'${
 const aCargar = unicos.filter(v => v.situacion !== 'igual')
 const COLS_SQL = ['clave_planilla', 'origen', ...CAMPOS]
 const valores = aCargar.map(v => `  (${COLS_SQL.map(c => sql(c === 'origen' ? 'planilla' : v[c])).join(', ')})`)
-const textoSql = aCargar.length ? `-- Importación de la planilla de paquetes (${sello}): ${aCargar.length} viajes (${aCargar.filter(v => v.situacion === 'nuevo').length} nuevos, ${aCargar.filter(v => v.situacion === 'cambió').length} con cambios).
+const borrar = borrarAnteriores ? `-- Se borran los viajes importados del Excel con fecha de viaje anterior al ${desde}
+delete from viajes_paquetes where origen = 'planilla' and fecha_llegada < '${desde}';
+` : ''
+const textoSql = borrar + (aCargar.length ? `-- Importación de la planilla de paquetes (${sello}): ${aCargar.length} viajes (${aCargar.filter(v => v.situacion === 'nuevo').length} nuevos, ${aCargar.filter(v => v.situacion === 'cambió').length} con cambios).
 -- Generado por scripts/importar-planilla-paquetes.mjs. Pegar entero en el SQL Editor de Supabase.
 -- Los que ya estaban (misma clave_planilla) se actualizan.
 begin;
@@ -183,14 +192,14 @@ on conflict (clave_planilla) where clave_planilla is not null do update set
 ${CAMPOS.map(c => `  ${c} = excluded.${c}`).join(',\n')},
   updated_at = now();
 commit;
-` : '-- No hay nada nuevo ni con cambios para cargar.\n'
+` : '-- No hay nada nuevo ni con cambios para cargar.\n')
 writeFileSync(join(carpeta, `importacion-${sello}.sql`), textoSql)
-writeFileSync(join(carpeta, `importacion-${sello}.json`), JSON.stringify({ fecha: sello, viajes: unicos }, null, 1))
+writeFileSync(join(carpeta, `importacion-${sello}.json`), JSON.stringify({ fecha: sello, desde, viajes: unicos }, null, 1))
 
 // Resumen (sin datos de clientes): para mostrar en la conversación
 const cuenta = (fn) => { const c = {}; unicos.forEach(v => { const k = fn(v); c[k] = (c[k] || 0) + 1 }); return c }
 console.log(JSON.stringify({
-  filas: viajes.length, viajes_unicos: unicos.length,
+  desde, filas: viajes.length, viajes_unicos: unicos.length,
   por_pestana: cuenta(v => v.hoja),
   ya_se_fueron: unicos.filter(v => (v.fecha_regreso || v.fecha_llegada || '') < hoy).length,
   situacion: cuenta(v => v.situacion), a_cargar: aCargar.length,

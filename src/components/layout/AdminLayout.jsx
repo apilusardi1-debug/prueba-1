@@ -205,7 +205,6 @@ const NAV = [
     ],
   },
   { path: '/admin/operaciones/chat', label: 'Chat interno', icon: Icon.ChatInterno },
-  { path: '/admin/mensajes', label: 'Mensajes', icon: Icon.Generador },
   {
     label: 'Hospedajes', icon: Icon.Hospedajes,
     sub: [
@@ -215,7 +214,6 @@ const NAV = [
       { path: '/admin/hospedajes/importar-laplaya', label: 'Importar desde La Playa', icon: Icon.Importar },
     ],
   },
-  { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
   {
     label: 'Paquetes', icon: Icon.Paquetes,
     sub: [
@@ -227,10 +225,18 @@ const NAV = [
     ],
   },
   { path: '/admin/finanzas',    label: 'Finanzas',    icon: Icon.Finanzas },
-  { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
-  { path: '/admin/configuracion', label: 'Configuración', icon: Icon.Config },
-  { path: '/admin/entrenar-asistente', label: 'Entrenar al asistente', icon: Icon.Entrenar, soloEmails: true },
-  { path: '/admin/superadmin', label: 'Superadmin', icon: Icon.Superadmin },
+  // Configuración (pedido de Cristian, 2026-10-15): lo administrativo en un solo desplegable
+  {
+    label: 'Configuración', icon: Icon.Config,
+    sub: [
+      { path: '/admin/configuracion', label: 'General', icon: Icon.Config },
+      { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
+      { path: '/admin/entrenar-asistente', label: 'Entrenar al asistente', icon: Icon.Entrenar, soloEmails: true },
+      { path: '/admin/mensajes',    label: 'Mensajes',    icon: Icon.Generador },
+      { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
+      { path: '/admin/superadmin',  label: 'Superadmin',  icon: Icon.Superadmin },
+    ],
+  },
 ]
 
 /* ─── Sidebar ───────────────────────────────────────────────────── */
@@ -294,7 +300,7 @@ function Sidebar() {
     .map(item => {
       if (item.soloEmails && !puedeEntrenar(sesionActual.email)) return null
       if (item.sub) {
-        const sub = item.sub.filter(s => tieneAcceso(rol, s.path))
+        const sub = item.sub.filter(s => tieneAcceso(rol, s.path) && (!s.soloEmails || puedeEntrenar(sesionActual.email)))
         return sub.length ? { ...item, sub } : null
       }
       return tieneAcceso(rol, item.path) ? item : null

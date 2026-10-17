@@ -1232,7 +1232,7 @@ export default function WhatsAppCRM() {
                   {seleccionada.grupo ? `${NOMBRE_GRUPO[seleccionada.grupo] || seleccionada.grupo} ▾` : '＋ Grupo'}
                 </button>
                 {menuGrupo && (
-                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[140px]">
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-30 min-w-[140px]">
                     {Object.entries(NOMBRE_GRUPO).map(([id, nombre]) => (
                       <button
                         key={id}
@@ -1264,7 +1264,7 @@ export default function WhatsAppCRM() {
                     : '＋ Asignar'}
                 </button>
                 {menuAsignar && (
-                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[160px] max-h-64 overflow-y-auto">
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-30 min-w-[160px] max-h-64 overflow-y-auto">
                     {usuarios.filter(u => u.activo).map(u => (
                       <button
                         key={u.id}
@@ -1299,7 +1299,7 @@ export default function WhatsAppCRM() {
                     : '＋ Etiquetar'}
                 </button>
                 {menuEtiqueta && (
-                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-10 min-w-[140px]">
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-30 min-w-[140px]">
                     {Object.entries(ETIQUETAS).map(([id, info]) => (
                       <button
                         key={id}

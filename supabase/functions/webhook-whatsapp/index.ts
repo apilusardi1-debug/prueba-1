@@ -881,6 +881,17 @@ serve(async (req) => {
     }
     if (pedidoPaquete) await recibirPedidoWebPaquete(supabase, phone, texto, !leadExistente)
 
+    // Respuesta del formulario "Datos del viaje": el lead ya dio todos los datos del filtro,
+    // así que pasa al embudo de Paquetes y a "Filtrado" aunque el formulario lo haya mandado
+    // una persona a mano desde el chat y el asistente no esté actuando (pedido de Cristian,
+    // 2026-10-17, caso de Oriana). Mismas guardas de siempre: solo avanza, y no mueve a un
+    // lead que el equipo ya está trabajando en otra etapa u otro embudo.
+    if (datosFlow) {
+      await etiquetarLeadPorGrupo(supabase, phone, 'paquetes')
+      await enviarLeadAlEmbudoPorGrupo(supabase, phone, 'paquetes')
+      await moverAFiltrado(supabase, phone)
+    }
+
     // Un interés de Traslado o de Hospedaje (detectado por palabra clave, sin pasar por el
     // menú de Paquetes/Paseos) manda igual al embudo correspondiente -- pedido de Cristian,
     // 2026-10-09: traslado entra a Paseos, hospedaje entra a Paquetes. Usa el mismo mecanismo

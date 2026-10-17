@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderTemplate } from '../_shared/plantillasWhatsapp.ts'
 import { moverAEtapaPaquetes, moverAEtapaAnfitriona } from '../_shared/embudoEntrada.ts'
 import { verificarSesion } from '../_shared/sesionPanel.ts'
-import { usa360dialog, destinoMensajesCrm } from '../_shared/proveedorWhatsapp.ts'
+import { usa360dialog, destinoMensajesCrm, plantillasAprobadas360 } from '../_shared/proveedorWhatsapp.ts'
 
 const PANEL_SESSION_SECRET = Deno.env.get('PANEL_SESSION_SECRET')
 
@@ -14,6 +14,12 @@ const META_PHONE_NUMBER_ID = Deno.env.get('META_PHONE_NUMBER_ID')
 const META_CRM_TOKEN = Deno.env.get('META_CRM_WHATSAPP_TOKEN')
 const META_CRM_PHONE_NUMBER_ID = Deno.env.get('META_CRM_PHONE_NUMBER_ID')
 const META_API_VERSION = 'v21.0'
+// Formulario "Datos del viaje" (WhatsApp Flow) de la cuenta del CRM: el mismo que manda el
+// asistente (webhook-whatsapp). Desde el CRM lo puede mandar una persona a mano.
+const FLOW_ID_PAQUETES = Deno.env.get('FLOW_ID_PAQUETES')
+const TEXTO_FLOW = 'Perfecto! Para armarte una propuesta a tu medida, completá estos datos:'
+// Categoría de Meta de una plantilla del CRM -> cómo se cobra (tabla tarifas_mensaje)
+const COBRO_CATEGORIA: Record<string, string> = { MARKETING: 'marketing', UTILITY: 'utilidad', AUTHENTICATION: 'autenticacion' }
 const MEDIA_BUCKET = 'whatsapp-media'
 const TIPOS_MEDIA_SALIENTE = ['image', 'video', 'audio', 'document']
 const ETIQUETA_MEDIA: Record<string, string> = { image: 'Imagen', video: 'Video', audio: 'Audio', document: 'Documento' }
@@ -52,7 +58,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla } = await req.json()
     const usuarioId: string | null = typeof usuario_id === 'string' && /^[0-9a-f-]{36}$/i.test(usuario_id) ? usuario_id : null
 
     const supabase = createClient(
@@ -94,6 +100,15 @@ serve(async (req) => {
       })
     }
 
+    // Plantillas aprobadas del número del CRM, para elegir una en el chat cuando pasaron
+    // las 24 hs (Meta no deja texto libre fuera de esa ventana).
+    if (accion === 'plantillas') {
+      const lista = await plantillasAprobadas360()
+      return new Response(JSON.stringify({ plantillas: lista }), {
+        headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
+
     let phoneClean = phone.replace(/\D/g, '')
     // Argentina: 54 + número sin 9 (12 dígitos) → agregar 9 → 5492352560810
     if (phoneClean.startsWith('54') && !phoneClean.startsWith('549') && phoneClean.length === 12) {
@@ -108,9 +123,25 @@ serve(async (req) => {
     // guía/cliente); "message" = respuesta de texto libre desde el inbox del
     // CRM (número de leads/clientes). Cada uno usa su propio número/token de
     // Meta — son apps y WABAs distintas.
-    const esMedia = !template && !!media
-    const esTexto = !template && !esMedia && !!message
-    const esCrm = esTexto || esMedia
+    // Desde el chat del CRM también se puede mandar, a mano, el formulario "Datos del viaje"
+    // (accion "formulario") o una plantilla aprobada del número del CRM ("plantilla", con
+    // nombre, idioma, categoría, texto y valores de sus variables).
+    const esFlow = accion === 'formulario'
+    const esPlantillaCrm = !esFlow && !template && !!plantilla && typeof plantilla === 'object'
+    const esMedia = !template && !esFlow && !esPlantillaCrm && !!media
+    const esTexto = !template && !esMedia && !esFlow && !esPlantillaCrm && !!message
+    const esCrm = esTexto || esMedia || esFlow || esPlantillaCrm
+    if (esFlow && !FLOW_ID_PAQUETES) {
+      return new Response(JSON.stringify({ error: 'Falta cargar el formulario (FLOW_ID_PAQUETES) en los secrets de Supabase.' }), {
+        status: 500, headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
+    const paramsPlantilla: string[] = esPlantillaCrm && Array.isArray(plantilla.params) ? plantilla.params.map((p: unknown) => String(p ?? '').trim()) : []
+    if (esPlantillaCrm && (!/^[a-z0-9_]+$/.test(String(plantilla.name || '')) || !/^[a-zA-Z_]+$/.test(String(plantilla.language || '')) || paramsPlantilla.some((p) => !p))) {
+      return new Response(JSON.stringify({ error: 'Plantilla inválida o con datos sin completar' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
+      })
+    }
     const metaToken = esCrm ? META_CRM_TOKEN : META_TOKEN
     const metaPhoneNumberId = esCrm ? META_CRM_PHONE_NUMBER_ID : META_PHONE_NUMBER_ID
 
@@ -159,6 +190,39 @@ serve(async (req) => {
         }
       : esTexto
       ? { messaging_product: 'whatsapp', to: phoneClean, type: 'text', text: { body: message, preview_url: false } }
+      : esFlow
+      ? {
+          messaging_product: 'whatsapp',
+          to: phoneClean,
+          type: 'interactive',
+          interactive: {
+            type: 'flow',
+            body: { text: TEXTO_FLOW },
+            action: {
+              name: 'flow',
+              parameters: {
+                flow_message_version: '3',
+                flow_id: FLOW_ID_PAQUETES,
+                flow_cta: 'Completar datos del viaje',
+                flow_action: 'navigate',
+                flow_action_payload: { screen: 'DATOS_VIAJE' },
+              },
+            },
+          },
+        }
+      : esPlantillaCrm
+      ? {
+          messaging_product: 'whatsapp',
+          to: phoneClean,
+          type: 'template',
+          template: {
+            name: plantilla.name,
+            language: { code: plantilla.language },
+            ...(paramsPlantilla.length ? {
+              components: [{ type: 'body', parameters: paramsPlantilla.map((text) => ({ type: 'text', text })) }],
+            } : {}),
+          },
+        }
       : {
           messaging_product: 'whatsapp',
           to: phoneClean,
@@ -175,7 +239,9 @@ serve(async (req) => {
           },
         }
 
-    console.log(esMedia ? `Enviando ${media.tipo} a ${phoneClean} (CRM)` : esTexto ? `Enviando texto libre a ${phoneClean} (CRM)` : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
+    console.log(esMedia ? `Enviando ${media.tipo} a ${phoneClean} (CRM)` : esTexto ? `Enviando texto libre a ${phoneClean} (CRM)`
+      : esFlow ? `Enviando formulario a ${phoneClean} (CRM)` : esPlantillaCrm ? `Enviando plantilla "${plantilla.name}" a ${phoneClean} (CRM)`
+      : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
 
     const metaController = new AbortController()
     const metaTimer = setTimeout(() => metaController.abort(), 15000)
@@ -206,7 +272,10 @@ serve(async (req) => {
 
     const mensajeLegible = esMedia
       ? (captionMedia || `${ETIQUETA_MEDIA[media.tipo]}${media.tipo === 'document' && media.nombre ? `: ${media.nombre}` : ''}`)
-      : esTexto ? message : renderTemplate(template, params || [])
+      : esTexto ? message
+      : esFlow ? `${TEXTO_FLOW} [formulario "Completar datos del viaje"]`
+      : esPlantillaCrm ? String(plantilla.texto || plantilla.name).replace(/\{\{(\d+)\}\}/g, (_: string, n: string) => paramsPlantilla[Number(n) - 1] ?? '')
+      : renderTemplate(template, params || [])
 
     let convId = conversacion_id
     if (convId) {
@@ -253,7 +322,8 @@ serve(async (req) => {
         estado_envio_at: waMessageId ? new Date().toISOString() : null,
         // Respuesta libre dentro de la ventana de 24 hs = servicio (sin costo);
         // una plantilla se cobra según su categoría.
-        cobro: template ? (COBRO_PLANTILLA[template] || 'utilidad') : 'servicio',
+        cobro: esPlantillaCrm ? (COBRO_CATEGORIA[String(plantilla.category || '').toUpperCase()] || 'marketing')
+          : template ? (COBRO_PLANTILLA[template] || 'utilidad') : 'servicio',
         // Qué número de Meta lo mandó: hace falta para el pozo de 1.000 gratis por mes de
         // CADA número (ver migración 20260925110000_costos_por_pais_whatsapp.sql)
         numero: esCrm ? 'crm' : 'operativo',

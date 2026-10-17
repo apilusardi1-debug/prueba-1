@@ -510,6 +510,35 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId, m
   return { data, error }
 }
 
+// Manda a mano, desde el chat del CRM, el formulario "Datos del viaje" (el mismo que
+// manda el asistente al elegir Paquetes).
+export async function enviarFormularioWhatsApp({ phone, nombre, conversacionId, usuarioId }) {
+  if (!supabase) return { error: 'Sin conexión' }
+  await asegurarSesionPanel()
+  return supabase.functions.invoke('send-whatsapp', {
+    body: { accion: 'formulario', phone, nombre, conversacion_id: conversacionId, usuario_id: usuarioId || null },
+    headers: cabeceraPanel(),
+  })
+}
+
+// Plantillas aprobadas del número del CRM (las crea el equipo en WhatsApp Manager)
+export async function plantillasWhatsAppCrm() {
+  if (!supabase) return { error: 'Sin conexión' }
+  await asegurarSesionPanel()
+  return supabase.functions.invoke('send-whatsapp', { body: { accion: 'plantillas' }, headers: cabeceraPanel() })
+}
+
+// Manda una plantilla aprobada: la única forma de escribirle a un contacto cuando pasaron
+// más de 24 hs desde su último mensaje. `plantilla` = { name, language, category, texto, params }
+export async function enviarPlantillaWhatsApp({ phone, nombre, conversacionId, usuarioId, plantilla }) {
+  if (!supabase) return { error: 'Sin conexión' }
+  await asegurarSesionPanel()
+  return supabase.functions.invoke('send-whatsapp', {
+    body: { phone, nombre, conversacion_id: conversacionId, usuario_id: usuarioId || null, plantilla },
+    headers: cabeceraPanel(),
+  })
+}
+
 // Sube un archivo del CRM al bucket privado: la función devuelve una URL de
 // subida firmada de un solo uso (la clave pública no tiene permiso de escritura).
 export async function subirAdjuntoCRM(conversacionId, file) {

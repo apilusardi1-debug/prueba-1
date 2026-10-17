@@ -54,6 +54,23 @@ export async function descargarMediaCrm(mediaId: string, metaToken: string | und
   return { bytes, mime }
 }
 
+// Plantillas APROBADAS del número del CRM en 360dialog (las crea el equipo en WhatsApp
+// Manager; así aparecen solas en el CRM sin tocar el código). Devuelve el texto del
+// cuerpo y cuántas variables {{n}} tiene, para completarlas antes de enviar.
+export async function plantillasAprobadas360(): Promise<{ name: string; language: string; category: string; texto: string; variables: number }[]> {
+  if (!usa360dialog) throw new Error('El número del CRM no está conectado a 360dialog')
+  const res = await fetch(`${D360_BASE_URL}/v1/configs/templates?limit=200`, { headers: { 'D360-API-KEY': D360_API_KEY! } })
+  if (!res.ok) throw new Error(`360dialog ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  const data = await res.json()
+  // deno-lint-ignore no-explicit-any
+  return (data?.waba_templates || []).filter((t: any) => String(t.status).toLowerCase() === 'approved').map((t: any) => {
+    // deno-lint-ignore no-explicit-any
+    const cuerpo = String((t.components || []).find((c: any) => c.type === 'BODY')?.text || '')
+    const variables = new Set(cuerpo.match(/\{\{\d+\}\}/g) || []).size
+    return { name: t.name, language: t.language, category: String(t.category || '').toUpperCase(), texto: cuerpo, variables }
+  })
+}
+
 // ¿El aviso trae la credencial que se le configuró a 360dialog para este webhook?
 export function autorizacion360Valida(cabecera: string | null): boolean {
   if (!D360_WEBHOOK_AUTH || !cabecera) return false

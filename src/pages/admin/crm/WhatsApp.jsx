@@ -12,6 +12,7 @@ import { nivelEspera } from '../../../lib/alertasEspera.js'
 import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { avisar } from '../../../components/ui/Avisos.jsx'
+import { BotonFormulario, PanelPlantillas } from '../../../components/crm/EnviosEspeciales.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
 // Conversaciones que se dibujan por tanda en la lista (ver alBajarEnLista)
@@ -1387,8 +1388,9 @@ export default function WhatsAppCRM() {
             <div className="bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-900 px-6 py-4">
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Pasaron más de 24 horas desde el último mensaje de este contacto</p>
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                Meta solo permite responder con texto libre dentro de las 24 horas. Cuando el contacto vuelva a escribir se habilita de nuevo; para retomarlo antes hace falta una plantilla aprobada.
+                Meta solo permite responder con texto libre dentro de las 24 horas. Cuando el contacto vuelva a escribir se habilita de nuevo; para retomarlo antes hace falta una plantilla aprobada. También se le puede escribir desde el celular de la agencia o WhatsApp Web (gratis, aparece acá igual).
               </p>
+              <PanelPlantillas conversacion={seleccionada} usuarioId={miUsuarioId} />
             </div>
           ) : (
           <>
@@ -1494,6 +1496,7 @@ export default function WhatsAppCRM() {
             <>
             {/* En el celular el campo de texto ya viene justo de ancho — este botón
                 se saca ahí porque escribir "/" en el mensaje hace lo mismo. */}
+            <BotonFormulario conversacion={seleccionada} usuarioId={miUsuarioId} />
             <div className="relative shrink-0 hidden sm:block" ref={menuRespuestasRef}>
               <button
                 onClick={alternarMenuRespuestas}

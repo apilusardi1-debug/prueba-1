@@ -122,11 +122,19 @@ function interpretarGrupo(message: any, permitirNumeros: boolean): string | null
 // avisos de entregado / leído / fallido.
 async function enviarMeta(cuerpo: Record<string, unknown>): Promise<string | null> {
   const destino = destinoMensajesCrm(META_CRM_TOKEN, META_CRM_PHONE_NUMBER_ID)
-  const res = await fetch(destino.url, {
+  const pedir = () => fetch(destino.url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...destino.headers },
     body: JSON.stringify({ messaging_product: 'whatsapp', ...cuerpo }),
   })
+  let res = await pedir()
+  // 360dialog frena dos envíos casi juntos al mismo contacto ("Too many requests for one
+  // number", 429; pasó el 17/10 cuando falló el formulario y salió el texto de respaldo en
+  // el mismo segundo): se espera un poco y se reintenta una vez.
+  if (res.status === 429) {
+    await new Promise((r) => setTimeout(r, 2500))
+    res = await pedir()
+  }
   if (!res.ok) throw new Error(`Meta ${res.status}: ${await res.text()}`)
   const data = await res.json().catch(() => null)
   return data?.messages?.[0]?.id ?? null

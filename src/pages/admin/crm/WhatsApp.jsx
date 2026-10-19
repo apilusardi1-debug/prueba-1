@@ -160,6 +160,8 @@ export default function WhatsAppCRM() {
   const [parceros, setParceros] = useState([])
   const [parceroPorWhatsapp, setParceroPorWhatsapp] = useState({})
   const [filtroParcero, setFiltroParcero] = useState('')
+  // Chats reabiertos con una plantilla de Meta: '' (sin filtro), 'todas', 'contestaron' o 'sin_respuesta'
+  const [filtroPlantilla, setFiltroPlantilla] = useState('')
   const [menuParcero, setMenuParcero] = useState(false)
   const [guardandoParcero, setGuardandoParcero] = useState(false)
   const [miUsuarioId, setMiUsuarioId] = useState(null)
@@ -944,6 +946,12 @@ export default function WhatsAppCRM() {
     setEnviando(false)
   }
 
+  // Si se le mandó una plantilla: 'contestaron' si el cliente escribió después, si no 'sin_respuesta'
+  function estadoPlantilla(c) {
+    if (!c.ultima_plantilla_at) return null
+    return c.ultimo_entrante_at && Date.parse(c.ultimo_entrante_at) > Date.parse(c.ultima_plantilla_at) ? 'contestaron' : 'sin_respuesta'
+  }
+
   function parceroDe(id) {
     return parceros.find(p => p.id === id)
   }
@@ -1027,7 +1035,7 @@ export default function WhatsAppCRM() {
   }
 
   // Al buscar o cambiar de filtro, la lista vuelve a empezar desde arriba
-  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion, filtroParcero, fechaDesde, fechaHasta])
+  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion, filtroParcero, filtroPlantilla, fechaDesde, fechaHasta])
 
   // El buscador mira todas las conversaciones; un teléfono se busca solo por sus dígitos,
   // así encuentra "+55 81 9..." escrito con espacios, guiones o el signo +.
@@ -1045,6 +1053,7 @@ export default function WhatsAppCRM() {
       return true
     })
     .filter(c => !filtroParcero || parceroPorWhatsapp[c.whatsapp] === filtroParcero)
+    .filter(c => !filtroPlantilla || estadoPlantilla(c) === filtroPlantilla || (filtroPlantilla === 'todas' && estadoPlantilla(c)))
     .filter(c => {
       if (!fechaDesde && !fechaHasta) return true
       // Día del último mensaje que mandó el contacto, en hora de Brasil
@@ -1138,6 +1147,20 @@ export default function WhatsAppCRM() {
                 {u.nombre} ({conversaciones.filter(c => c.asignado_a === u.id).length})
               </option>
             ))}
+          </select>
+          <select
+            value={filtroPlantilla}
+            onChange={e => setFiltroPlantilla(e.target.value)}
+            aria-label="Filtrar por plantilla de Meta"
+            title="Chats reabiertos con una plantilla de Meta (ventana de 24 hs cerrada)"
+            className={`w-full mt-2 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky ${
+              filtroPlantilla ? 'bg-hero-sky text-zinc-950 font-medium' : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'
+            }`}
+          >
+            <option value="">Filtrar por plantilla...</option>
+            <option value="todas">Con plantilla ({conversaciones.filter(c => estadoPlantilla(c)).length})</option>
+            <option value="contestaron">Contestaron ({conversaciones.filter(c => estadoPlantilla(c) === 'contestaron').length})</option>
+            <option value="sin_respuesta">No contestaron ({conversaciones.filter(c => estadoPlantilla(c) === 'sin_respuesta').length})</option>
           </select>
           {parceros.length > 0 && (
             <select

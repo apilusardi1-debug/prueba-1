@@ -59,6 +59,13 @@ function claveDia(ts) {
   const d = new Date(ts)
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
+// Fecha (AAAA-MM-DD) de un instante en hora de Brasil, para comparar con los filtros de fecha
+function diaBrasil(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-CA', { timeZone: 'America/Recife' })
+}
+
 function etiquetaDia(ts) {
   if (!ts) return ''
   const d = new Date(ts)
@@ -136,6 +143,9 @@ export default function WhatsAppCRM() {
   const [tiempoReproduccion, setTiempoReproduccion] = useState(0)
   const [esperandoDesde, setEsperandoDesde] = useState({}) // conversacion_id -> desde cuándo espera respuesta
   const [busqueda, setBusqueda] = useState('')
+  // Contactos nuevos entre dos fechas (AAAA-MM-DD, hora de Brasil): filtra por el primer mensaje
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
   const [cantidadVisible, setCantidadVisible] = useState(TANDA_LISTA)
   const [loading, setLoading] = useState(true)
   const [sincronizando, setSincronizando] = useState(false)
@@ -389,8 +399,8 @@ export default function WhatsAppCRM() {
       if (data) setMensajes(data)
     })
 
-    conversacionesApi.marcarLeida(seleccionada.id)
-    setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, no_leidos: 0 } : c))
+    // Abrir el chat NO lo saca de "nuevo" (pedido de Cristian, 2026-10-17): sigue marcado para
+    // todo el equipo hasta que alguien responda o lo marque como atendido (ver sacarMarcaNueva).
 
     if (!supabase) return
     const channel = supabase
@@ -573,6 +583,7 @@ export default function WhatsAppCRM() {
     setSeleccionada(prev => (prev && prev.id === seleccionada.id ? { ...prev, ...cambios } : prev))
     setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, ...cambios } : c))
     limpiarEspera(seleccionada.id)
+    sacarMarcaNueva(seleccionada.id)
   }
 
   async function deshacerAtendida() {
@@ -812,6 +823,8 @@ export default function WhatsAppCRM() {
 
     limpiarEspera(seleccionada.id)
 
+    sacarMarcaNueva(seleccionada.id)
+
     descartarAudio() // limpia el adjunto y, si venía de grabar, también la revisión
     setTexto('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
@@ -861,6 +874,7 @@ export default function WhatsAppCRM() {
       avisar(await textoErrorEnvio(error))
     } else {
       limpiarEspera(seleccionada.id)
+      sacarMarcaNueva(seleccionada.id)
     }
 
     setEnviando(false)
@@ -921,6 +935,13 @@ export default function WhatsAppCRM() {
     return `/admin/paquetes/generador?${q.toString()}`
   }
 
+  // Una persona respondió (o marcó la conversación como atendida): deja de contar como nueva
+  // para todo el equipo. Lo que se manda desde el celular lo resuelve webhook-whatsapp.
+  function sacarMarcaNueva(convId) {
+    conversacionesApi.marcarLeida(convId)
+    setConversaciones(prev => prev.map(c => c.id === convId ? { ...c, no_leidos: 0 } : c))
+  }
+
   function limpiarEspera(convId) {
     setEsperandoDesde(prev => {
       if (!prev[convId]) return prev
@@ -938,7 +959,7 @@ export default function WhatsAppCRM() {
   }
 
   // Al buscar o cambiar de filtro, la lista vuelve a empezar desde arriba
-  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion])
+  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion, fechaDesde, fechaHasta])
 
   // El buscador mira todas las conversaciones; un teléfono se busca solo por sus dígitos,
   // así encuentra "+55 81 9..." escrito con espacios, guiones o el signo +.
@@ -953,6 +974,15 @@ export default function WhatsAppCRM() {
       if (filtroAsignacion === 'sin_asignar') return !c.asignado_a
       if (filtroAsignacion === 'mias') return c.asignado_a === miUsuarioId
       if (filtroAsignacion.startsWith('u:')) return c.asignado_a === filtroAsignacion.slice(2)
+      return true
+    })
+    .filter(c => {
+      if (!fechaDesde && !fechaHasta) return true
+      // Día en que el contacto escribió por primera vez, en hora de Brasil
+      const dia = diaBrasil(c.primer_mensaje_at || c.created_at)
+      if (!dia) return false
+      if (fechaDesde && dia < fechaDesde) return false
+      if (fechaHasta && dia > fechaHasta) return false
       return true
     })
   // Con el historial importado de Kommo hay miles de conversaciones: se dibujan de a
@@ -1007,6 +1037,27 @@ export default function WhatsAppCRM() {
               </button>
             ))}
           </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="text-[11px] text-gray-500 dark:text-zinc-400 shrink-0">Nuevos del</span>
+            <input type="date" aria-label="Contactos nuevos desde" value={fechaDesde} max={fechaHasta || undefined}
+              onChange={e => setFechaDesde(e.target.value)}
+              className="min-w-0 flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 rounded-lg px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky [color-scheme:light] dark:[color-scheme:dark]" />
+            <span className="text-[11px] text-gray-500 dark:text-zinc-400 shrink-0">al</span>
+            <input type="date" aria-label="Contactos nuevos hasta" value={fechaHasta} min={fechaDesde || undefined}
+              onChange={e => setFechaHasta(e.target.value)}
+              className="min-w-0 flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 rounded-lg px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky [color-scheme:light] dark:[color-scheme:dark]" />
+            {(fechaDesde || fechaHasta) && (
+              <button onClick={() => { setFechaDesde(''); setFechaHasta('') }} title="Quitar el filtro de fechas"
+                className="shrink-0 text-[11px] font-medium text-gray-500 dark:text-zinc-400 hover:text-gray-800 dark:hover:text-zinc-200">
+                Quitar
+              </button>
+            )}
+          </div>
+          {(fechaDesde || fechaHasta) && (
+            <p className="text-[11px] text-gray-500 dark:text-zinc-400 mt-1">
+              {convsFiltradas.length} {convsFiltradas.length === 1 ? 'contacto nuevo' : 'contactos nuevos'} en esas fechas (primer mensaje)
+            </p>
+          )}
           <select
             value={filtroAsignacion.startsWith('u:') ? filtroAsignacion.slice(2) : ''}
             onChange={e => elegirFiltro(e.target.value ? `u:${e.target.value}` : 'todas')}
@@ -1390,7 +1441,7 @@ export default function WhatsAppCRM() {
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                 Meta solo permite responder con texto libre dentro de las 24 horas. Cuando el contacto vuelva a escribir se habilita de nuevo; para retomarlo antes hace falta una plantilla aprobada. También se le puede escribir desde el celular de la agencia o WhatsApp Web (gratis, aparece acá igual).
               </p>
-              <PanelPlantillas conversacion={seleccionada} usuarioId={miUsuarioId} />
+              <PanelPlantillas conversacion={seleccionada} usuarioId={miUsuarioId} onEnviado={() => sacarMarcaNueva(seleccionada.id)} />
             </div>
           ) : (
           <>
@@ -1496,7 +1547,7 @@ export default function WhatsAppCRM() {
             <>
             {/* En el celular el campo de texto ya viene justo de ancho — este botón
                 se saca ahí porque escribir "/" en el mensaje hace lo mismo. */}
-            <BotonFormulario conversacion={seleccionada} usuarioId={miUsuarioId} />
+            <BotonFormulario conversacion={seleccionada} usuarioId={miUsuarioId} onEnviado={() => sacarMarcaNueva(seleccionada.id)} />
             <div className="relative shrink-0 hidden sm:block" ref={menuRespuestasRef}>
               <button
                 onClick={alternarMenuRespuestas}

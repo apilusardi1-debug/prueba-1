@@ -24,7 +24,7 @@ async function detalleError(error) {
   }
 }
 
-export function BotonFormulario({ conversacion, usuarioId }) {
+export function BotonFormulario({ conversacion, usuarioId, onEnviado }) {
   const [abierto, setAbierto] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const ref = useRef(null)
@@ -50,6 +50,7 @@ export function BotonFormulario({ conversacion, usuarioId }) {
       return
     }
     setAbierto(false)
+    onEnviado?.()
     avisar('Formulario enviado. Cuando lo complete, las respuestas aparecen en el chat.')
   }
 
@@ -84,7 +85,7 @@ export function BotonFormulario({ conversacion, usuarioId }) {
   )
 }
 
-export function PanelPlantillas({ conversacion, usuarioId }) {
+export function PanelPlantillas({ conversacion, usuarioId, onEnviado }) {
   const [plantillas, setPlantillas] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [elegida, setElegida] = useState(null)
@@ -129,6 +130,7 @@ export function PanelPlantillas({ conversacion, usuarioId }) {
       return
     }
     setElegida(null)
+    onEnviado?.()
     avisar('Plantilla enviada. Cuando el contacto responda, se puede seguir con texto libre.')
   }
 

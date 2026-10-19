@@ -450,10 +450,21 @@ export const actividadApi = {
 }
 
 // ── Notas clientes ─────────────────────────────────────────────────────────────
+// Las notas cuelgan del lead, del cliente o de los dos (las del chat del CRM y las de la
+// ficha única). El autor es el nombre del usuario conectado.
 export const notasClienteApi = {
   getByCliente: (clienteId) =>
     supabase?.from('notas_clientes').select('*').eq('cliente_id', clienteId).order('created_at', { ascending: false }),
-  create: (data) => supabase?.from('notas_clientes').insert(data).select().single(),
+  getByPersona: (leadId, clienteId) => {
+    const o = [leadId && `lead_id.eq.${leadId}`, clienteId && `cliente_id.eq.${clienteId}`].filter(Boolean).join(',')
+    if (!o || !supabase) return Promise.resolve({ data: [], error: null })
+    return supabase.from('notas_clientes').select('*').or(o).order('created_at', { ascending: false })
+  },
+  create: (data) => {
+    let autor = 'Admin'
+    try { autor = JSON.parse(localStorage.getItem('admin_session') || '{}').nombre || autor } catch (_) { /* sin sesión */ }
+    return supabase?.from('notas_clientes').insert({ autor, ...data }).select().single()
+  },
   delete: (id) => supabase?.from('notas_clientes').delete().eq('id', id),
 }
 

@@ -176,7 +176,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
       lead ? anfitrionaApi.getHospedajes() : null,
       reservasClienteApi.getByPersona(lead?.id, cliente?.id, cliente?.whatsapp || lead?.whatsapp),
       cliente ? pagosApi.getByCliente(cliente.id) : null,
-      cliente ? notasClienteApi.getByCliente(cliente.id) : null,
+      notasClienteApi.getByPersona(lead?.id, cliente?.id),
       whatsapp ? propuestasApi.getByWhatsapp(whatsapp) : null,
       viajesPaquetesApi.getByPersona(lead?.id, cliente?.id),
     ]).then(([rec, hos, res, pag, not, pro, via]) => {
@@ -412,23 +412,13 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
     setModalReserva(false)
   }
 
-  // ── Notas: las de la ficha de cliente; sin ficha de cliente, en las notas del lead ──
+  // ── Notas: sueltas, del lead y/o del cliente (las mismas que se escriben en el chat del CRM) ──
   async function agregarNota() {
     const texto = nuevaNota.trim()
-    if (!texto) return
-    if (cliente) {
-      const { data, error } = await notasClienteApi.create({ cliente_id: cliente.id, contenido: texto, autor: 'Admin' })
-      if (error) return avisar('No se pudo guardar la nota: ' + error.message)
-      if (data) { setNotas(prev => [data, ...prev]); setNuevaNota('') }
-      return
-    }
-    if (lead) {
-      const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-      const notasLead = [`${fecha}: ${texto}`, lead.notas].filter(Boolean).join('\n\n')
-      const { data, error } = await leadsApi.update(lead.id, { notas: notasLead })
-      if (error) return avisar('No se pudo guardar la nota: ' + error.message)
-      if (data) { actualizarLead(data); setNuevaNota('') }
-    }
+    if (!texto || (!lead && !cliente)) return
+    const { data, error } = await notasClienteApi.create({ lead_id: lead?.id || null, cliente_id: cliente?.id || null, contenido: texto })
+    if (error) return avisar('No se pudo guardar la nota: ' + error.message)
+    if (data) { setNotas(prev => [data, ...prev]); setNuevaNota('') }
   }
   async function borrarNota(id) {
     if (!await confirmar('¿Borrar esta nota?')) return
@@ -822,7 +812,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
                       <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-white/[0.03]">
                         <div className="min-w-0">
                           <p className="whitespace-pre-line break-words text-sm text-gray-800 dark:text-zinc-200">{n.contenido}</p>
-                          <p className="mt-1 text-[11px] text-gray-400 dark:text-zinc-600">{n.autor && <span className="font-medium">{n.autor} · </span>}{fmtFecha(n.created_at)}</p>
+                          <p className="mt-1 text-[11px] text-gray-400 dark:text-zinc-600">{n.autor && <span className="font-medium">{n.autor} · </span>}{new Date(n.created_at).toLocaleString('es-AR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <button onClick={() => borrarNota(n.id)} aria-label="Borrar nota" className="shrink-0 text-sm text-gray-300 transition-colors hover:text-red-400 dark:text-zinc-700 dark:hover:text-red-400">×</button>
                       </div>

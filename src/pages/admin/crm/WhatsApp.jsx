@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
+import NotasRapidas from '../../../components/crm/NotasRapidas.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
@@ -1756,6 +1757,7 @@ export default function WhatsAppCRM() {
             >✕</button>
           </div>
           <div className="p-5 space-y-5">
+            {!cargandoCliente && <NotasRapidas leadId={leadVinculado?.id} clienteId={clienteVinculado?.id} />}
             <DatosDeLaConversacion datos={datosViaje} />
             <div className="flex flex-col gap-2">
               <button

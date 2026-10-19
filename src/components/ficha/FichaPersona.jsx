@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   leadsApi, clientesApi, recordatoriosApi, usuariosAdminApi, anfitrionaApi, saldosApi,
-  reservasClienteApi, reservasApi, pagosApi, notasClienteApi, propuestasApi, viajesPaquetesApi,
+  reservasClienteApi, reservasApi, pagosApi, notasClienteApi, parcerosApi, propuestasApi, viajesPaquetesApi,
 } from '../../lib/supabase.js'
 import { useEtapas, etapaDe, embudoDeEtapa, nombreEmbudo, estiloFondoEtapa, NOTAS_TAREA_ANFITRIONA, hoyISO, claveVisible } from '../../lib/embudo.js'
 import { etiquetaInteres } from '../../../supabase/functions/_shared/interes.ts'
@@ -119,6 +119,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
   const [viajes, setViajes] = useState([])
   const [pagos, setPagos] = useState([])
   const [notas, setNotas] = useState([])
+  const [parceros, setParceros] = useState([])
   const [propuestas, setPropuestas] = useState([])
 
   const [editando, setEditando] = useState(false)
@@ -167,6 +168,8 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
   }, [leadInicial?.id, clienteInicial?.id])
 
   // Todo lo de la persona, una vez que se sabe quién es
+  useEffect(() => { parcerosApi.getAll().then(({ data }) => setParceros(data || [])) }, [])
+
   useEffect(() => {
     if (vinculando) return
     let cancelado = false
@@ -519,6 +522,10 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
                   </dd>
                   <dt className="text-gray-400 dark:text-zinc-500">Origen</dt>
                   <dd className="text-gray-800 dark:text-zinc-200">{lead.origen || '—'}</dd>
+                  {lead.parcero_id && parceros.some(p => p.id === lead.parcero_id) && (<>
+                    <dt className="text-gray-400 dark:text-zinc-500">Parcero</dt>
+                    <dd className="text-gray-800 dark:text-zinc-200">{parceros.find(p => p.id === lead.parcero_id).nombre}</dd>
+                  </>)}
                   <dt className="text-gray-400 dark:text-zinc-500">Interés</dt>
                   <dd className="text-gray-800 dark:text-zinc-200">{etiquetaInteres(lead) || '—'}</dd>
                   <dt className="text-gray-400 dark:text-zinc-500">Valor</dt>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSiteConfig, CONFIG_DEFAULTS } from '../../context/SiteConfigContext.jsx'
-import { usuariosAdminApi, hashPassword, conceptosApi, botApi, embudoApi, supabase } from '../../lib/supabase.js'
+import { usuariosAdminApi, hashPassword, conceptosApi, botApi, embudoApi, parcerosApi, supabase } from '../../lib/supabase.js'
+import { avisar, confirmar } from '../../components/ui/Avisos.jsx'
 import { ROLES, ROLES_ADMINISTRABLES } from '../../lib/roles.js'
 import { useEtapas, CLAVES_FIJAS, TIPOS_ETAPA, EMBUDOS, etapasDelEmbudo } from '../../lib/embudo.js'
 import Ic from '../../components/admin/dashboard/Ic.jsx'
@@ -533,6 +534,140 @@ export function FiltroPaquetes({ cfg, setCfg, onGuardado }) {
   )
 }
 
+// ── Parceros: quienes recomiendan DreamTours y derivan contactos (influencers, agencias...).
+// En el chat del CRM se elige el parcero del contacto; acá se arma la lista. Inactivo = deja
+// de aparecer para elegir en el chat, pero sus leads siguen contando en el filtro.
+function TabParceros() {
+  const [parceros, setParceros] = useState([])
+  const [cantidades, setCantidades] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [nuevo, setNuevo] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editandoNombre, setEditandoNombre] = useState('')
+
+  useEffect(() => {
+    Promise.all([parcerosApi.getAll(), parcerosApi.leadsConParcero()]).then(([p, l]) => {
+      setParceros(p?.data || [])
+      const cuenta = {}
+      for (const lead of l?.data || []) cuenta[lead.parcero_id] = (cuenta[lead.parcero_id] || 0) + 1
+      setCantidades(cuenta)
+      setLoading(false)
+    })
+  }, [])
+
+  const ordenar = (lista) => [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const repetido = (nombre, id) => parceros.some(p => p.id !== id && p.nombre.trim().toLowerCase() === nombre.trim().toLowerCase())
+
+  async function agregar() {
+    const nombre = nuevo.trim()
+    if (!nombre) return
+    if (repetido(nombre)) return avisar(`Ya existe el parcero "${nombre}".`)
+    setGuardando(true)
+    const { data, error } = await parcerosApi.create({ nombre })
+    setGuardando(false)
+    if (error) return avisar('No se pudo agregar: ' + error.message)
+    if (data) setParceros(prev => ordenar([...prev, data]))
+    setNuevo('')
+  }
+
+  async function guardarEdicion(id) {
+    const nombre = editandoNombre.trim()
+    setEditandoId(null)
+    const actual = parceros.find(p => p.id === id)
+    if (!nombre || nombre === actual?.nombre) return
+    if (repetido(nombre, id)) return avisar(`Ya existe el parcero "${nombre}".`)
+    const { data, error } = await parcerosApi.update(id, { nombre })
+    if (error) return avisar('No se pudo cambiar el nombre: ' + error.message)
+    if (data) setParceros(prev => ordenar(prev.map(p => p.id === id ? data : p)))
+  }
+
+  async function toggleActivo(p) {
+    const { data } = await parcerosApi.update(p.id, { activo: !p.activo })
+    if (data) setParceros(prev => prev.map(x => x.id === p.id ? data : x))
+  }
+
+  async function eliminar(p) {
+    const n = cantidades[p.id] || 0
+    const aviso = n
+      ? `"${p.nombre}" tiene ${n} ${n === 1 ? 'lead' : 'leads'}. Si lo eliminás, esos leads quedan sin parcero. Para que no se pueda elegir más pero se sigan contando, usá "Inactivo". ¿Eliminarlo igual?`
+      : `¿Eliminar a "${p.nombre}"?`
+    if (!await confirmar(aviso)) return
+    const { error } = await parcerosApi.delete(p.id)
+    if (error) return avisar('No se pudo eliminar: ' + error.message)
+    setParceros(prev => prev.filter(x => x.id !== p.id))
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Parceros</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Quienes recomiendan DreamTours y nos derivan contactos. En el chat del CRM se elige el parcero de cada contacto y después se puede filtrar la lista por parcero.</p>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm mb-4 overflow-hidden">
+        {loading ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Cargando...</p>
+        ) : parceros.length === 0 ? (
+          <p className="p-5 text-sm text-gray-400 dark:text-zinc-600">Todavía no hay parceros cargados.</p>
+        ) : (
+          <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+            {parceros.map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                {editandoId === p.id ? (
+                  <input
+                    type="text"
+                    value={editandoNombre}
+                    autoFocus
+                    aria-label="Nombre del parcero"
+                    onChange={e => setEditandoNombre(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && guardarEdicion(p.id)}
+                    onBlur={() => guardarEdicion(p.id)}
+                    className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                ) : (
+                  <button onClick={() => { setEditandoId(p.id); setEditandoNombre(p.nombre) }} title="Cambiar el nombre" className="flex-1 text-left text-sm font-medium text-gray-800 dark:text-zinc-200 hover:text-brand-600 dark:hover:text-brand-400">
+                    {p.nombre}
+                  </button>
+                )}
+                <span className="text-xs text-gray-400 dark:text-zinc-500 shrink-0">{cantidades[p.id] || 0} {(cantidades[p.id] || 0) === 1 ? 'lead' : 'leads'}</span>
+                <button
+                  onClick={() => toggleActivo(p)}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${p.activo ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'}`}
+                >
+                  {p.activo ? 'Activo' : 'Inactivo'}
+                </button>
+                <button onClick={() => eliminar(p)} className="text-xs text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 font-medium shrink-0">
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={nuevo}
+          aria-label="Nuevo parcero"
+          onChange={e => setNuevo(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && agregar()}
+          placeholder="Nuevo parcero (Ej: Sol, Vivo Porto)"
+          className="flex-1 border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <button
+          onClick={agregar}
+          disabled={guardando || !nuevo.trim()}
+          className="bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          + Agregar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function TabAsistente() {
   const [cfg, setCfg] = useState(null)
   const [reparto, setReparto] = useState([])
@@ -543,12 +678,13 @@ function TabAsistente() {
   const [estado, setEstado] = useState(null) // 'ok' | 'error'
 
   useEffect(() => {
-    Promise.all([botApi.getConfig(), botApi.getReparto(), usuariosAdminApi.getAll()]).then(([c, r, u]) => {
+    Promise.all([botApi.getConfig(), botApi.getReparto(), usuariosAdminApi.getAll(), usuariosAdminApi.idsSinChats()]).then(([c, r, u, sinChats]) => {
       const datos = c?.data || null
       setCfg(datos)
       if (datos) setTextos({ saludo: datos.saludo, mensaje_derivacion: datos.mensaje_derivacion, mensaje_sin_asignar: datos.mensaje_sin_asignar, boton_derivacion_texto: datos.boton_derivacion_texto || '', boton_derivacion_url: datos.boton_derivacion_url || '' })
       setReparto(r?.data || [])
-      setUsuarios(u?.ok ? (u.usuarios || []).filter(x => x.activo !== false) : [])
+      // Los que no atienden chats (Abril y Cristian) no se pueden sumar al reparto
+      setUsuarios(u?.ok ? (u.usuarios || []).filter(x => x.activo !== false && !sinChats.includes(x.id)) : [])
       setLoading(false)
     })
   }, [])
@@ -988,6 +1124,7 @@ export default function SiteConfig() {
     { id: 'conceptos', label: 'Conceptos' },
     { id: 'respuestas', label: 'Respuestas rápidas' },
     { id: 'asistente', label: 'Asistente' },
+    { id: 'parceros', label: 'Parceros' },
     { id: 'embudo', label: 'Embudo' },
   ]
 
@@ -1022,6 +1159,7 @@ export default function SiteConfig() {
       {tab === 'conceptos' && <TabConceptos />}
       {tab === 'respuestas' && <RespuestasRapidasAdmin />}
       {tab === 'asistente' && <TabAsistente />}
+      {tab === 'parceros' && <TabParceros />}
       {tab === 'embudo' && <TabEmbudo />}
 
       {tab === 'sitio' && (

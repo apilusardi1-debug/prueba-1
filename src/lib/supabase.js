@@ -683,6 +683,17 @@ export const conceptosApi = {
   delete: (id) => invocarCatalogoInterno('conceptos_movimiento', 'delete', { id }),
 }
 
+// ── Parceros (quién recomendó / derivó al contacto) ─────────────────────────────
+// La lista se arma en Configuración > Parceros; cada lead guarda el suyo en leads.parcero_id.
+export const parcerosApi = {
+  getAll: () => supabase?.from('parceros').select('*').order('nombre'),
+  create: (data) => supabase?.from('parceros').insert(data).select().single(),
+  update: (id, data) => supabase?.from('parceros').update(data).eq('id', id).select().single(),
+  delete: (id) => supabase?.from('parceros').delete().eq('id', id),
+  // whatsapp + parcero de los leads que tienen uno (para filtrar la lista del CRM)
+  leadsConParcero: () => traerTodo(() => supabase.from('leads').select('id, whatsapp, parcero_id').not('parcero_id', 'is', null).order('id')),
+}
+
 // ── Respuestas rápidas (CRM WhatsApp) ────────────────────────────────────────────
 export const respuestasRapidasApi = {
   getAll: () => invocarCatalogoInterno('respuestas_rapidas', 'list'),
@@ -789,6 +800,12 @@ export async function asegurarSesionPanel() {
 export const usuariosAdminApi = {
   login: (email, password_hash) => invocarUsuariosAdmin('login', { email, password_hash }),
   getAll: () => invocarUsuariosAdmin('list'),
+  // Ids de los usuarios que no atienden chats (usuarios_admin.atiende_chats = false): no se les
+  // puede asignar una conversación ni sumarlos al reparto del asistente (lo frena la base).
+  idsSinChats: async () => {
+    const { data } = (await supabase?.rpc('usuarios_sin_chats')) || {}
+    return (data || []).map(f => (typeof f === 'string' ? f : f.usuarios_sin_chats))
+  },
   create: (data) => invocarUsuariosAdmin('create', data),
   update: (id, data) => invocarUsuariosAdmin('update', { id, data }),
   delete: (id) => invocarUsuariosAdmin('delete', { id }),

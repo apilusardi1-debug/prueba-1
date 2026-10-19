@@ -4,7 +4,7 @@ import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import NotasRapidas from '../../../components/crm/NotasRapidas.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, parcerosApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
 import { LIMITE_ADJUNTO_MB, NOMBRE_TIPO_ADJUNTO, tipoAdjunto, formatoTamano } from '../../../lib/adjuntosWhatsapp.js'
 import Recorder from 'opus-recorder'
@@ -154,6 +154,14 @@ export default function WhatsAppCRM() {
   const [etiquetando, setEtiquetando] = useState(false)
   const [menuEtiqueta, setMenuEtiqueta] = useState(false)
   const [usuarios, setUsuarios] = useState([])
+  const [idsSinChats, setIdsSinChats] = useState([]) // usuarios que no atienden chats: fuera del menú Asignar
+  // Parceros: quién recomendó al contacto. Se guarda en el lead (leads.parcero_id); acá se
+  // tiene el de cada whatsapp para el filtro de la lista y el botón del chat.
+  const [parceros, setParceros] = useState([])
+  const [parceroPorWhatsapp, setParceroPorWhatsapp] = useState({})
+  const [filtroParcero, setFiltroParcero] = useState('')
+  const [menuParcero, setMenuParcero] = useState(false)
+  const [guardandoParcero, setGuardandoParcero] = useState(false)
   const [miUsuarioId, setMiUsuarioId] = useState(null)
   const [asignando, setAsignando] = useState(false)
   const [menuAsignar, setMenuAsignar] = useState(false)
@@ -207,6 +215,7 @@ export default function WhatsAppCRM() {
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
+  const menuParceroRef = useRef(null)
   const menuAsignarRef = useRef(null)
   const menuGrupoRef = useRef(null)
   const menuRespuestasRef = useRef(null)
@@ -308,6 +317,16 @@ export default function WhatsAppCRM() {
 
   // Cargar usuarios del panel (para asignar conversaciones) y resolver "mi usuario"
   useEffect(() => {
+    parcerosApi.getAll().then(({ data }) => setParceros(data || []))
+    parcerosApi.leadsConParcero().then(({ data }) => {
+      const mapa = {}
+      for (const l of data || []) if (l.whatsapp) mapa[l.whatsapp] = l.parcero_id
+      setParceroPorWhatsapp(mapa)
+    })
+  }, [])
+
+  useEffect(() => {
+    usuariosAdminApi.idsSinChats().then(setIdsSinChats)
     usuariosAdminApi.getAll().then(({ ok, usuarios: lista }) => {
       if (!ok) return
       setUsuarios(lista || [])
@@ -459,6 +478,9 @@ export default function WhatsAppCRM() {
     function handler(e) {
       if (menuEtiquetaRef.current && !menuEtiquetaRef.current.contains(e.target)) {
         setMenuEtiqueta(false)
+      }
+      if (menuParceroRef.current && !menuParceroRef.current.contains(e.target)) {
+        setMenuParcero(false)
       }
       if (menuAsignarRef.current && !menuAsignarRef.current.contains(e.target)) {
         setMenuAsignar(false)
@@ -624,6 +646,23 @@ export default function WhatsAppCRM() {
     setSeleccionada(prev => (prev && prev.id === seleccionada.id ? { ...prev, ...cambios } : prev))
     setConversaciones(prev => prev.map(c => c.id === seleccionada.id ? { ...c, ...cambios } : c))
     cargarEspera()
+  }
+
+  // El parcero queda en el lead del contacto (lo ve también la ficha)
+  async function elegirParcero(parceroId) {
+    if (!leadVinculado || guardandoParcero) return
+    setMenuParcero(false)
+    setGuardandoParcero(true)
+    const { data, error } = await leadsApi.update(leadVinculado.id, { parcero_id: parceroId })
+    setGuardandoParcero(false)
+    if (error) return avisar('No se pudo guardar el parcero: ' + error.message)
+    if (data) setLeadVinculado(data)
+    setParceroPorWhatsapp(prev => {
+      const p = { ...prev }
+      if (parceroId) p[leadVinculado.whatsapp] = parceroId
+      else delete p[leadVinculado.whatsapp]
+      return p
+    })
   }
 
   async function asignarEtiqueta(etiquetaId) {
@@ -905,6 +944,10 @@ export default function WhatsAppCRM() {
     setEnviando(false)
   }
 
+  function parceroDe(id) {
+    return parceros.find(p => p.id === id)
+  }
+
   function usuarioPorId(id) {
     return usuarios.find(u => u.id === id) || null
   }
@@ -984,11 +1027,11 @@ export default function WhatsAppCRM() {
   }
 
   // Al buscar o cambiar de filtro, la lista vuelve a empezar desde arriba
-  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion, fechaDesde, fechaHasta])
+  useEffect(() => { setCantidadVisible(TANDA_LISTA) }, [busqueda, filtroAsignacion, filtroParcero, fechaDesde, fechaHasta])
 
   // El buscador mira todas las conversaciones; un teléfono se busca solo por sus dígitos,
   // así encuentra "+55 81 9..." escrito con espacios, guiones o el signo +.
-  const busquedaDigitos = busqueda.replace(/D/g, '')
+  const busquedaDigitos = busqueda.replace(/\D/g, '')
   const convsFiltradas = conversaciones
     .filter(c =>
       c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -1001,6 +1044,7 @@ export default function WhatsAppCRM() {
       if (filtroAsignacion.startsWith('u:')) return c.asignado_a === filtroAsignacion.slice(2)
       return true
     })
+    .filter(c => !filtroParcero || parceroPorWhatsapp[c.whatsapp] === filtroParcero)
     .filter(c => {
       if (!fechaDesde && !fechaHasta) return true
       // Día en que el contacto escribió por primera vez, en hora de Brasil
@@ -1095,6 +1139,23 @@ export default function WhatsAppCRM() {
               </option>
             ))}
           </select>
+          {parceros.length > 0 && (
+            <select
+              value={filtroParcero}
+              onChange={e => setFiltroParcero(e.target.value)}
+              aria-label="Filtrar por parcero"
+              className={`w-full mt-2 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky ${
+                filtroParcero ? 'bg-hero-sky text-zinc-950 font-medium' : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'
+              }`}
+            >
+              <option value="">Filtrar por parcero...</option>
+              {parceros.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre} ({conversaciones.filter(c => parceroPorWhatsapp[c.whatsapp] === p.id).length})
+                </option>
+              ))}
+            </select>
+          )}
           <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1.5">
             {miUsuarioId && usuarioPorId(miUsuarioId)
               ? `Mías = asignadas a ${usuarioPorId(miUsuarioId).nombre}`
@@ -1170,6 +1231,11 @@ export default function WhatsAppCRM() {
                     {conv.etiqueta && ETIQUETAS[conv.etiqueta] && (
                       <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ETIQUETAS[conv.etiqueta].color}`}>
                         {ETIQUETAS[conv.etiqueta].label}
+                      </span>
+                    )}
+                    {parceroPorWhatsapp[conv.whatsapp] && parceroDe(parceroPorWhatsapp[conv.whatsapp]) && (
+                      <span title="Parcero que lo recomendó" className="min-w-0 truncate text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                        {parceroDe(parceroPorWhatsapp[conv.whatsapp]).nombre}
                       </span>
                     )}
                   </div>
@@ -1341,7 +1407,7 @@ export default function WhatsAppCRM() {
                 </button>
                 {menuAsignar && (
                   <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-30 min-w-[160px] max-h-64 overflow-y-auto">
-                    {usuarios.filter(u => u.activo).map(u => (
+                    {usuarios.filter(u => u.activo && !idsSinChats.includes(u.id)).map(u => (
                       <button
                         key={u.id}
                         onClick={() => asignarA(u.id)}
@@ -1353,8 +1419,55 @@ export default function WhatsAppCRM() {
                         {seleccionada.asignado_a === u.id && <span className="ml-auto text-gray-400 dark:text-zinc-500">✓</span>}
                       </button>
                     ))}
-                    {usuarios.filter(u => u.activo).length === 0 && (
+                    {usuarios.filter(u => u.activo && !idsSinChats.includes(u.id)).length === 0 && (
                       <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">Sin usuarios activos</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Parcero: quién recomendó al contacto (queda en su lead) */}
+              <div className="relative" ref={menuParceroRef}>
+                <button
+                  onClick={() => setMenuParcero(v => !v)}
+                  disabled={guardandoParcero || !leadVinculado}
+                  title={leadVinculado ? 'Quién lo recomendó' : 'Este contacto todavía no tiene lead'}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                    leadVinculado?.parcero_id && parceroDe(leadVinculado.parcero_id)
+                      ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 border-transparent'
+                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  {leadVinculado?.parcero_id && parceroDe(leadVinculado.parcero_id)
+                    ? `Parcero: ${parceroDe(leadVinculado.parcero_id).nombre} ▾`
+                    : '＋ Parcero'}
+                </button>
+                {menuParcero && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 py-1 z-30 min-w-[180px] max-h-64 overflow-y-auto">
+                    {parceros.filter(p => p.activo || p.id === leadVinculado?.parcero_id).map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => elegirParcero(p.id === leadVinculado?.parcero_id ? null : p.id)}
+                        className={`w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-2 ${
+                          leadVinculado?.parcero_id === p.id ? 'font-semibold' : ''
+                        }`}
+                      >
+                        {p.nombre}
+                        {leadVinculado?.parcero_id === p.id && <span className="ml-auto text-gray-400 dark:text-zinc-500">✓</span>}
+                      </button>
+                    ))}
+                    {parceros.filter(p => p.activo).length === 0 && (
+                      <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">No hay parceros cargados. Se agregan en Configuración &gt; Parceros.</p>
+                    )}
+                    {leadVinculado?.parcero_id && (
+                      <>
+                        <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
+                        <button
+                          onClick={() => elegirParcero(null)}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                        >
+                          Quitar parcero
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -1781,7 +1894,7 @@ export default function WhatsAppCRM() {
             >✕</button>
           </div>
           <div className="p-5 space-y-5">
-            {!cargandoCliente && <NotasRapidas leadId={leadVinculado?.id} clienteId={clienteVinculado?.id} />}
+            {!cargandoCliente && <NotasRapidas key={fichaAbierta ? "con-ficha" : "sin-ficha"} leadId={leadVinculado?.id} clienteId={clienteVinculado?.id} />}
             <DatosDeLaConversacion datos={datosViaje} />
             <div className="flex flex-col gap-2">
               <button

@@ -1047,8 +1047,8 @@ export default function WhatsAppCRM() {
     .filter(c => !filtroParcero || parceroPorWhatsapp[c.whatsapp] === filtroParcero)
     .filter(c => {
       if (!fechaDesde && !fechaHasta) return true
-      // Día en que el contacto escribió por primera vez, en hora de Brasil
-      const dia = diaBrasil(c.primer_mensaje_at || c.created_at)
+      // Día del último mensaje que mandó el contacto, en hora de Brasil
+      const dia = diaBrasil(c.ultimo_entrante_at)
       if (!dia) return false
       if (fechaDesde && dia < fechaDesde) return false
       if (fechaHasta && dia > fechaHasta) return false
@@ -1107,12 +1107,12 @@ export default function WhatsAppCRM() {
             ))}
           </div>
           <div className="mt-2 flex items-center gap-1.5">
-            <span className="text-[11px] text-gray-500 dark:text-zinc-400 shrink-0">Nuevos del</span>
-            <input type="date" aria-label="Contactos nuevos desde" value={fechaDesde} max={fechaHasta || undefined}
+            <span title="Fecha del último mensaje del cliente" className="text-[11px] text-gray-500 dark:text-zinc-400 shrink-0">Fecha</span>
+            <input type="date" aria-label="Último mensaje del contacto desde" value={fechaDesde} max={fechaHasta || undefined}
               onChange={e => setFechaDesde(e.target.value)}
               className="min-w-0 flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 rounded-lg px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky [color-scheme:light] dark:[color-scheme:dark]" />
             <span className="text-[11px] text-gray-500 dark:text-zinc-400 shrink-0">al</span>
-            <input type="date" aria-label="Contactos nuevos hasta" value={fechaHasta} min={fechaDesde || undefined}
+            <input type="date" aria-label="Último mensaje del contacto hasta" value={fechaHasta} min={fechaDesde || undefined}
               onChange={e => setFechaHasta(e.target.value)}
               className="min-w-0 flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 rounded-lg px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky [color-scheme:light] dark:[color-scheme:dark]" />
             {(fechaDesde || fechaHasta) && (
@@ -1124,7 +1124,7 @@ export default function WhatsAppCRM() {
           </div>
           {(fechaDesde || fechaHasta) && (
             <p className="text-[11px] text-gray-500 dark:text-zinc-400 mt-1">
-              {convsFiltradas.length} {convsFiltradas.length === 1 ? 'contacto nuevo' : 'contactos nuevos'} en esas fechas (primer mensaje)
+              {convsFiltradas.length} {convsFiltradas.length === 1 ? 'contacto' : 'contactos'} con su último mensaje en esas fechas
             </p>
           )}
           <select

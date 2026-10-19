@@ -14,6 +14,7 @@ import { setConversacionAbierta } from '../../../lib/avisosMensajes.js'
 import Ic, { IcGrande } from '../../../components/admin/dashboard/Ic.jsx'
 import { avisar } from '../../../components/ui/Avisos.jsx'
 import { BotonFormulario, PanelPlantillas } from '../../../components/crm/EnviosEspeciales.jsx'
+import FichaPersona from '../../../components/ficha/FichaPersona.jsx'
 import { textoErrorEnvio as textoFallo } from '../../../../supabase/functions/_shared/estadoEnvio.ts'
 
 // Conversaciones que se dibujan por tanda en la lista (ver alBajarEnLista)
@@ -197,6 +198,11 @@ export default function WhatsAppCRM() {
     [mensajes],
   )
   const [searchParams, setSearchParams] = useSearchParams()
+  // "Ver ficha completa" abre la ficha encima del chat (antes llevaba al Embudo de paquetes y
+  // al cerrarla se perdía el chat). Queda en la dirección (?ficha=) para que la flecha "atrás"
+  // del navegador la cierre y deje el chat como estaba. Pedido de Cristian, 2026-10-19.
+  const fichaAbierta = searchParams.get('ficha')
+  const fichaAbiertaAca = useRef(false)
   const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -348,6 +354,8 @@ export default function WhatsAppCRM() {
       if (data) setBotGeneral(!!data.activo)
     })
   }, [])
+
+  useEffect(() => { if (!fichaAbierta) fichaAbiertaAca.current = false }, [fichaAbierta])
 
   // Auto-seleccionar conversación si viene ?phone= desde Leads
   useEffect(() => {
@@ -521,6 +529,22 @@ export default function WhatsAppCRM() {
         campo.style.height = 'auto'
         campo.style.height = Math.min(campo.scrollHeight, 120) + 'px'
       }, 0)
+    }
+  }
+
+  function abrirFicha() {
+    if (!leadVinculado) return
+    fichaAbiertaAca.current = true
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('ficha', String(leadVinculado.id)); return p })
+  }
+
+  function cerrarFicha() {
+    if (fichaAbiertaAca.current) {
+      // Se abrió desde este chat: volver un paso es lo mismo que la flecha "atrás"
+      fichaAbiertaAca.current = false
+      navigate(-1)
+    } else {
+      setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('ficha'); return p }, { replace: true })
     }
   }
 
@@ -1792,7 +1816,7 @@ export default function WhatsAppCRM() {
                 )}
                 {leadVinculado && (
                   <button
-                    onClick={() => navigate(`/admin/leads?lead=${leadVinculado.id}`)}
+                    onClick={abrirFicha}
                     className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
                   >
                     Ver ficha completa →
@@ -1811,7 +1835,7 @@ export default function WhatsAppCRM() {
                 </button>
                 {leadVinculado && (
                   <button
-                    onClick={() => navigate(`/admin/leads?lead=${leadVinculado.id}`)}
+                    onClick={abrirFicha}
                     className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium mt-2"
                   >
                     Ver ficha completa →
@@ -1865,6 +1889,14 @@ export default function WhatsAppCRM() {
             ...(datosViaje.adultos !== null ? { adultos: datosViaje.adultos } : {}),
             ...(datosViaje.menores !== null ? { menores: datosViaje.menores } : {}),
           }}
+        />
+      )}
+
+      {fichaAbierta && leadVinculado && String(leadVinculado.id) === fichaAbierta && (
+        <FichaPersona
+          lead={leadVinculado}
+          onLeadActualizado={l => setLeadVinculado(l)}
+          onCerrar={cerrarFicha}
         />
       )}
     </div>

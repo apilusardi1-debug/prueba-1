@@ -295,13 +295,15 @@ async function enviarMenu(supabase: ReturnType<typeof createClient>, convId: str
   await guardarMensajeBot(supabase, convId, phone, `${intro}\n[Opciones: Paquetes/Hospedajes / Paseos/Traslados]`, wamid)
 }
 
-// Botón con enlace del mensaje final de Paquetes (Configuración > Asistente). WhatsApp
+// Botón con enlace del mensaje final (Configuración > Asistente): Paquetes usa
+// boton_derivacion_* (Linktree) y Paseos boton_paseos_* (catálogo en PDF). WhatsApp
 // permite un solo botón de enlace por mensaje (sin plantilla) y hasta 20 caracteres.
 interface BotonEnlace { texto: string; url: string }
 // deno-lint-ignore no-explicit-any
-function botonDerivacion(cfg: any): BotonEnlace | null {
-  const texto = String(cfg?.boton_derivacion_texto || '').trim()
-  const url = String(cfg?.boton_derivacion_url || '').trim()
+function botonDerivacion(cfg: any, grupo: string): BotonEnlace | null {
+  const prefijo = grupo === 'paseos' ? 'boton_paseos' : 'boton_derivacion'
+  const texto = String(cfg?.[`${prefijo}_texto`] || '').trim()
+  const url = String(cfg?.[`${prefijo}_url`] || '').trim()
   return texto && /^https?:\/\//i.test(url) ? { texto: Array.from(texto).slice(0, 20).join(''), url } : null
 }
 
@@ -411,8 +413,8 @@ async function enviarTextoBot(supabase: Supabase, convId: string, phone: string,
 // deno-lint-ignore no-explicit-any
 async function derivarOCerrar(supabase: Supabase, cfg: any, convId: string, phone: string, grupo: string) {
   const mensaje = grupo === 'paseos' ? cfg.mensaje_derivacion_paseos : cfg.mensaje_derivacion
-  // El botón con enlace solo va en el mensaje final de Paquetes
-  const boton = grupo === 'paquetes' ? botonDerivacion(cfg) : null
+  // Cada grupo tiene su botón: Paquetes el Linktree, Paseos el catálogo en PDF
+  const boton = grupo === 'paquetes' || grupo === 'paseos' ? botonDerivacion(cfg, grupo) : null
   const derivada = await derivar(supabase, mensaje, convId, phone, grupo, boton)
   if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo, boton)
 }

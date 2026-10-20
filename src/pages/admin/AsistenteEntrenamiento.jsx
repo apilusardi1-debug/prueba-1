@@ -158,7 +158,7 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
             />
             <NodoArbol
               titulo="3. Mensaje al derivar"
-              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paseos (nunca completó ningún formulario)."
+              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paseos: el texto del catálogo con el botón "Ver catálogo" (PDF)."
               onClick={() => setNodoAbierto('derivacion_paseos')}
             />
           </Rama>
@@ -183,9 +183,11 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
               {nodoAbierto === 'saludo' && <EditorSaludo cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
               {nodoAbierto === 'filtro' && <FiltroPaquetes cfg={cfg} setCfg={setCfg} onGuardado={registrarCambio} />}
               {nodoAbierto === 'derivacion_paquetes' && (<><EditorTexto campo="mensaje_derivacion" titulo="Mensaje al derivar (Paquetes)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
-                <EditorBoton cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
+                <EditorBoton prefijo="boton_derivacion" grupo="Paquetes" cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
               </>)}
-              {nodoAbierto === 'derivacion_paseos' && <EditorTexto campo="mensaje_derivacion_paseos" titulo="Mensaje al derivar (Paseos/Traslados)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
+              {nodoAbierto === 'derivacion_paseos' && (<><EditorTexto campo="mensaje_derivacion_paseos" titulo="Mensaje al derivar (Paseos/Traslados)" ayuda="Usa {nombre} y {grupo}." cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
+                <EditorBoton prefijo="boton_paseos" grupo="Paseos/Traslados" cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />
+              </>)}
               {nodoAbierto === 'sin_asignar' && <EditorTexto campo="mensaje_sin_asignar" titulo="Mensaje cuando no hay nadie disponible" cfg={cfg} setCfg={setCfg} registrarCambio={registrarCambio} />}
             </div>
           </div>
@@ -219,21 +221,22 @@ function EditorSaludo({ cfg, setCfg, registrarCambio }) {
   )
 }
 
-// Botón con enlace del mensaje final de Paquetes (por ejemplo, al Linktree de la agencia).
-// WhatsApp permite un solo botón de enlace por mensaje y hasta 20 caracteres de texto.
-function EditorBoton({ cfg, setCfg, registrarCambio }) {
-  const [texto, setTexto] = useState(cfg.boton_derivacion_texto || '')
-  const [url, setUrl] = useState(cfg.boton_derivacion_url || '')
+// Botón con enlace del mensaje final: Paquetes (boton_derivacion, el Linktree de la agencia) y
+// Paseos (boton_paseos, el catálogo en PDF). WhatsApp permite un solo botón de enlace por
+// mensaje y hasta 20 caracteres de texto.
+function EditorBoton({ prefijo, grupo, cfg, setCfg, registrarCambio }) {
+  const [texto, setTexto] = useState(cfg[`${prefijo}_texto`] || '')
+  const [url, setUrl] = useState(cfg[`${prefijo}_url`] || '')
   const [guardando, setGuardando] = useState(false)
   const urlValida = !url.trim() || /^https?:\/\/\S+$/i.test(url.trim())
   const completo = !!texto.trim() === !!url.trim()
   async function guardar() {
     setGuardando(true)
-    const cambios = { boton_derivacion_texto: texto.trim() || null, boton_derivacion_url: url.trim() || null }
+    const cambios = { [`${prefijo}_texto`]: texto.trim() || null, [`${prefijo}_url`]: url.trim() || null }
     const { data } = await botApi.saveConfig(cambios)
     if (data) {
       setCfg(data)
-      registrarCambio('Cambió: Botón del mensaje al derivar (Paquetes)', { campo: 'boton_derivacion', antes: { texto: cfg.boton_derivacion_texto, url: cfg.boton_derivacion_url }, despues: cambios })
+      registrarCambio(`Cambió: Botón del mensaje al derivar (${grupo})`, { campo: prefijo, antes: { texto: cfg[`${prefijo}_texto`], url: cfg[`${prefijo}_url`] }, despues: cambios })
     }
     setGuardando(false)
   }

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje.jsx'
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import NotasRapidas from '../../../components/crm/NotasRapidas.jsx'
+import ArchivosCompartidos from '../../../components/crm/ArchivosCompartidos.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
 import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, parcerosApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
@@ -1918,6 +1919,7 @@ export default function WhatsAppCRM() {
           </div>
           <div className="p-5 space-y-5">
             {!cargandoCliente && <NotasRapidas key={fichaAbierta ? "con-ficha" : "sin-ficha"} leadId={leadVinculado?.id} clienteId={clienteVinculado?.id} />}
+            <ArchivosCompartidos key={seleccionada?.id} mensajes={mensajes} />
             <DatosDeLaConversacion datos={datosViaje} />
             <div className="flex flex-col gap-2">
               <button

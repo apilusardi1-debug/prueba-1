@@ -511,11 +511,12 @@ export const mensajesApi = {
 }
 
 // ── Enviar WhatsApp via Edge Function ──────────────────────────────────────────
-export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media, usuarioId }) {
+// respondeA: wa_message_id del mensaje citado con "Responder" (WhatsApp lo muestra como cita)
+export async function enviarWhatsApp({ phone, message, nombre, conversacionId, media, usuarioId, respondeA }) {
   if (!supabase) return { error: 'Sin conexión' }
   await asegurarSesionPanel()
   const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-    body: { phone, message, nombre, conversacion_id: conversacionId, media, usuario_id: usuarioId || null },
+    body: { phone, message, nombre, conversacion_id: conversacionId, media, usuario_id: usuarioId || null, responde_a: respondeA || null },
     headers: cabeceraPanel(),
   })
   return { data, error }

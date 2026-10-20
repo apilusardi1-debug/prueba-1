@@ -106,6 +106,29 @@ function EstadoMensaje({ msg }) {
   )
 }
 
+// Resumen de un mensaje citado ("Responder"): su texto o, si es un archivo sin texto, qué es
+const RESUMEN_MEDIA = { image: '📷 Foto', video: '🎥 Video', audio: '🎤 Audio', document: '📄 Documento', sticker: 'Sticker' }
+function resumenCita(msg) {
+  if (!msg) return 'Mensaje'
+  return textoVisible(msg) || (msg.tipo === 'document' && msg.media_nombre ? `📄 ${msg.media_nombre}` : RESUMEN_MEDIA[msg.tipo]) || msg.texto || 'Mensaje'
+}
+
+// Flechita "Responder" al lado de cada globo (aparece al pasar el mouse). Solo en mensajes que
+// llegaron o salieron por WhatsApp (tienen wa_message_id): los importados de Kommo no se pueden citar.
+function BotonResponder({ msg, onResponder }) {
+  if (!msg.wa_message_id || String(msg.id).startsWith('temp-')) return null
+  return (
+    <button
+      onClick={() => onResponder(msg)}
+      title="Responder"
+      aria-label="Responder"
+      className="shrink-0 rounded-full p-1.5 text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100 focus:opacity-100 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+    >
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 016 6v5" /></svg>
+    </button>
+  )
+}
+
 function formatPhone(phone) {
   if (!phone) return ''
   const d = phone.replace(/\D/g, '')
@@ -134,6 +157,7 @@ export default function WhatsAppCRM() {
   const [enviando, setEnviando] = useState(false)
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
+  const [respondiendoA, setRespondiendoA] = useState(null) // mensaje citado con "Responder"
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
   const [menuAccionesMobile, setMenuAccionesMobile] = useState(false)
   const [grabando, setGrabando] = useState(false)
@@ -425,6 +449,7 @@ export default function WhatsAppCRM() {
     if (!seleccionada) return
     setMensajes([])
     setAdjunto(null)
+    setRespondiendoA(null)
 
     mensajesApi.getByConversacion(seleccionada.id).then(({ data }) => {
       if (data) setMensajes(data)
@@ -878,6 +903,7 @@ export default function WhatsAppCRM() {
       ...datosContacto,
       message: caption,
       media: { path, tipo, mime: file.type, nombre: file.name },
+      respondeA: respondiendoA?.wa_message_id,
     })
     if (error) {
       setEnviando(false)
@@ -893,6 +919,7 @@ export default function WhatsAppCRM() {
     sacarMarcaNueva(seleccionada.id)
 
     descartarAudio() // limpia el adjunto y, si venía de grabar, también la revisión
+    setRespondiendoA(null)
     setTexto('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
     setEnviando(false)
@@ -924,8 +951,11 @@ export default function WhatsAppCRM() {
       texto: textoEnviar,
       direccion: 'saliente',
       created_at: new Date().toISOString(),
+      respuesta_a_wamid: respondiendoA?.wa_message_id || null,
     }
     setMensajes(prev => [...prev, tempMsg])
+    const citado = respondiendoA
+    setRespondiendoA(null)
 
     const { error } = await enviarWhatsApp({
       phone: seleccionada.whatsapp,
@@ -933,11 +963,13 @@ export default function WhatsAppCRM() {
       nombre: seleccionada.contacto_nombre,
       conversacionId: seleccionada.id,
       usuarioId: miUsuarioId,
+      respondeA: citado?.wa_message_id,
     })
 
     if (error) {
       setMensajes(prev => prev.filter(m => m.id !== tempId))
       setTexto(textoEnviar)
+      setRespondiendoA(citado)
       avisar(await textoErrorEnvio(error))
     } else {
       limpiarEspera(seleccionada.id)
@@ -1566,8 +1598,10 @@ export default function WhatsAppCRM() {
                 </div>
               )}
               <div
-                className={`flex ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
+                id={`msg-${msg.id}`}
+                className={`group flex items-center gap-1 ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
               >
+                {msg.direccion === 'saliente' && <BotonResponder msg={msg} onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} />}
                 <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
                   msg.direccion === 'saliente'
                     ? 'bg-hero-sky text-zinc-950 dark:bg-sky-900/80 dark:text-sky-50'
@@ -1576,6 +1610,20 @@ export default function WhatsAppCRM() {
                   {msg.origen === 'bot' && (
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:text-sky-200 mb-1">Asistente automático</p>
                   )}
+                  {msg.respuesta_a_wamid && (() => {
+                    const citado = mensajes.find(m => m.wa_message_id === msg.respuesta_a_wamid)
+                    return (
+                      <button
+                        onClick={() => citado && document.getElementById(`msg-${citado.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                        className="mb-1.5 block w-full rounded-lg border-l-4 border-violet-400 bg-black/5 px-2.5 py-1.5 text-left dark:bg-white/10"
+                      >
+                        <span className="block text-xs font-semibold text-violet-600 dark:text-violet-300">
+                          {!citado ? 'Mensaje citado' : citado.direccion === 'entrante' ? (seleccionada.contacto_nombre || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
+                        </span>
+                        <span className="line-clamp-2 block text-xs opacity-80">{citado ? resumenCita(citado) : 'No está en este chat'}</span>
+                      </button>
+                    )
+                  })()}
                   {msg.tipo && msg.tipo !== 'texto' && <MediaMensaje msg={msg} />}
                   {textoVisible(msg) && <p className={`whitespace-pre-wrap break-words ${msg.tipo && msg.tipo !== 'texto' ? 'mt-2' : ''}`}>{textoVisible(msg)}</p>}
                   {msg.direccion === 'saliente' && msg.estado_envio === 'fallido' && (
@@ -1590,6 +1638,7 @@ export default function WhatsAppCRM() {
                     )}
                   </p>
                 </div>
+                {msg.direccion !== 'saliente' && <BotonResponder msg={msg} onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} />}
               </div>
               </Fragment>
             ))}
@@ -1607,6 +1656,21 @@ export default function WhatsAppCRM() {
             </div>
           ) : (
           <>
+          {respondiendoA && (
+            <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
+              <div className="min-w-0 flex-1 rounded-lg border-l-4 border-violet-400 bg-gray-50 px-3 py-1.5 dark:bg-zinc-800">
+                <p className="text-xs font-semibold text-violet-600 dark:text-violet-300">
+                  Respondiendo a {respondiendoA.direccion === 'entrante' ? (seleccionada.contacto_nombre || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
+                </p>
+                <p className="truncate text-xs text-gray-600 dark:text-zinc-300">{resumenCita(respondiendoA)}</p>
+              </div>
+              <button
+                onClick={() => setRespondiendoA(null)}
+                aria-label="Cancelar respuesta"
+                className="text-lg text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 shrink-0"
+              >✕</button>
+            </div>
+          )}
           {adjunto && !revisandoAudio && (
             <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
               {adjuntoPreview && <img src={adjuntoPreview} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}

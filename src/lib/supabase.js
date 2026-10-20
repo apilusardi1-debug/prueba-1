@@ -522,6 +522,16 @@ export async function enviarWhatsApp({ phone, message, nombre, conversacionId, m
   return { data, error }
 }
 
+// Reacción del CRM a un mensaje (emoji vacío = sacarla)
+export async function enviarReaccionWhatsApp({ phone, mensajeWamid, emoji }) {
+  if (!supabase) return { error: 'Sin conexión' }
+  await asegurarSesionPanel()
+  return supabase.functions.invoke('send-whatsapp', {
+    body: { accion: 'reaccion', phone, responde_a: mensajeWamid, emoji },
+    headers: cabeceraPanel(),
+  })
+}
+
 // Manda a mano, desde el chat del CRM, el formulario "Datos del viaje" (el mismo que
 // manda el asistente al elegir Paquetes).
 export async function enviarFormularioWhatsApp({ phone, nombre, conversacionId, usuarioId }) {

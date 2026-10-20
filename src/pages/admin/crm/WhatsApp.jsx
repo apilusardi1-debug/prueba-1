@@ -4,8 +4,9 @@ import MediaMensaje, { textoVisible } from '../../../components/crm/MediaMensaje
 import DatosDeLaConversacion from '../../../components/crm/DatosDeLaConversacion.jsx'
 import NotasRapidas from '../../../components/crm/NotasRapidas.jsx'
 import ArchivosCompartidos from '../../../components/crm/ArchivosCompartidos.jsx'
+import SelectorEmojis, { REACCIONES } from '../../../components/crm/SelectorEmojis.jsx'
 import { extraerDatosViaje, edadesATexto } from '../../../../supabase/functions/_shared/datosViaje.ts'
-import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, parcerosApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
+import { supabase, conversacionesApi, mensajesApi, leadsApi, usuariosAdminApi, respuestasRapidasApi, parcerosApi, clientesApi, reservasClienteApi, reservasApi, propuestasApi, excursionesApi, enviarWhatsApp, enviarReaccionWhatsApp, subirAdjuntoCRM, bajarAdjuntoRespuesta, sincronizarWhatsApp, botApi } from '../../../lib/supabase.js'
 import { primerNombre, resolverCampos, hayCampoPendiente, buscarRespuestas, atajoEnCursor } from '../../../lib/respuestasRapidas.js'
 import { LIMITE_ADJUNTO_MB, NOMBRE_TIPO_ADJUNTO, tipoAdjunto, formatoTamano } from '../../../lib/adjuntosWhatsapp.js'
 import Recorder from 'opus-recorder'
@@ -113,19 +114,49 @@ function resumenCita(msg) {
   return textoVisible(msg) || (msg.tipo === 'document' && msg.media_nombre ? `📄 ${msg.media_nombre}` : RESUMEN_MEDIA[msg.tipo]) || msg.texto || 'Mensaje'
 }
 
-// Flechita "Responder" al lado de cada globo (aparece al pasar el mouse). Solo en mensajes que
-// llegaron o salieron por WhatsApp (tienen wa_message_id): los importados de Kommo no se pueden citar.
-function BotonResponder({ msg, onResponder }) {
+// Acciones al lado de cada globo (aparecen al pasar el mouse): reaccionar 😊 y responder ↩.
+// Solo en mensajes que llegaron o salieron por WhatsApp (tienen wa_message_id): los
+// importados de Kommo no se pueden citar ni reaccionar.
+function AccionesMensaje({ msg, alinearDerecha, onResponder, onReaccionar }) {
+  const [menu, setMenu] = useState(null) // null | 'rapidas' | 'todas'
+  const ref = useRef(null)
+  useEffect(() => {
+    if (menu !== 'rapidas') return
+    const afuera = e => { if (ref.current && !ref.current.contains(e.target)) setMenu(null) }
+    document.addEventListener('mousedown', afuera)
+    return () => document.removeEventListener('mousedown', afuera)
+  }, [menu])
   if (!msg.wa_message_id || String(msg.id).startsWith('temp-')) return null
+  const claseBoton = 'shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300'
+  function elegir(emoji) {
+    setMenu(null)
+    onReaccionar(msg, emoji)
+  }
   return (
-    <button
-      onClick={() => onResponder(msg)}
-      title="Responder"
-      aria-label="Responder"
-      className="shrink-0 rounded-full p-1.5 text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100 focus:opacity-100 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-    >
-      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 016 6v5" /></svg>
-    </button>
+    <div ref={ref} className={`relative flex shrink-0 items-center transition-opacity ${menu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+      <button onClick={() => setMenu(menu ? null : 'rapidas')} title="Reaccionar" aria-label="Reaccionar" className={claseBoton}>
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01" /></svg>
+      </button>
+      <button onClick={() => onResponder(msg)} title="Responder" aria-label="Responder" className={claseBoton}>
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 016 6v5" /></svg>
+      </button>
+      {menu === 'rapidas' && (
+        <div className={`absolute bottom-full z-30 mb-1 flex items-center gap-0.5 rounded-full border border-gray-200 bg-white px-1.5 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 ${alinearDerecha ? 'right-0' : 'left-0'}`}>
+          {REACCIONES.map(e => (
+            <button
+              key={e}
+              onClick={() => elegir(e)}
+              title={msg.reaccion_nuestra === e ? 'Sacar reacción' : undefined}
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-transform hover:scale-125 ${msg.reaccion_nuestra === e ? 'bg-sky-100 dark:bg-sky-900/60' : ''}`}
+            >{e}</button>
+          ))}
+          <button onClick={() => setMenu('todas')} title="Más emojis" className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-gray-500 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800">+</button>
+        </div>
+      )}
+      {menu === 'todas' && (
+        <SelectorEmojis onElegir={elegir} onCerrar={() => setMenu(null)} className={`absolute bottom-full mb-1 ${alinearDerecha ? 'right-0' : 'left-0'}`} />
+      )}
+    </div>
   )
 }
 
@@ -158,6 +189,7 @@ export default function WhatsAppCRM() {
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
   const [respondiendoA, setRespondiendoA] = useState(null) // mensaje citado con "Responder"
+  const [emojisAbierto, setEmojisAbierto] = useState(false)
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
   const [menuAccionesMobile, setMenuAccionesMobile] = useState(false)
   const [grabando, setGrabando] = useState(false)
@@ -237,6 +269,9 @@ export default function WhatsAppCRM() {
   // al cerrarla se perdía el chat). Queda en la dirección (?ficha=) para que la flecha "atrás"
   // del navegador la cierre y deje el chat como estaba. Pedido de Cristian, 2026-10-19.
   const fichaAbierta = searchParams.get('ficha')
+  // Antes del 2026-10-19 las reacciones se guardaban como un mensaje "[Mensaje de tipo reaction]"
+  // (sin decir a qué mensaje ni con qué emoji): no se muestran.
+  const mensajesChat = useMemo(() => mensajes.filter(m => m.texto !== '[Mensaje de tipo reaction]'), [mensajes])
   const fichaAbiertaAca = useRef(false)
   const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
@@ -986,6 +1021,31 @@ export default function WhatsAppCRM() {
     setEnviando(false)
   }
 
+  // Reacción a un mensaje: tocar la misma que ya está la saca (como en WhatsApp)
+  async function reaccionar(msg, emoji) {
+    if (!seleccionada) return
+    const anterior = msg.reaccion_nuestra || null
+    const nueva = anterior === emoji ? '' : emoji
+    setMensajes(prev => prev.map(m => m.id === msg.id ? { ...m, reaccion_nuestra: nueva || null } : m))
+    const { error } = await enviarReaccionWhatsApp({ phone: seleccionada.whatsapp, mensajeWamid: msg.wa_message_id, emoji: nueva })
+    if (error) {
+      setMensajes(prev => prev.map(m => m.id === msg.id ? { ...m, reaccion_nuestra: anterior } : m))
+      avisar(await textoErrorEnvio(error))
+    }
+  }
+
+  function insertarEmoji(emoji) {
+    const el = inputRef.current
+    const inicio = el ? el.selectionStart : texto.length
+    const fin = el ? el.selectionEnd : texto.length
+    setTexto(texto.slice(0, inicio) + emoji + texto.slice(fin))
+    requestAnimationFrame(() => {
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(inicio + emoji.length, inicio + emoji.length)
+    })
+  }
+
   async function enviar() {
     const textoEnviar = texto.trim()
     if ((!textoEnviar && !adjunto) || !seleccionada || enviando) return
@@ -1650,9 +1710,9 @@ export default function WhatsAppCRM() {
             {mensajes.length === 0 && (
               <p className="text-center text-sm text-gray-400 dark:text-zinc-500 py-8">No hay mensajes aún</p>
             )}
-            {mensajes.map((msg, i) => (
+            {mensajesChat.map((msg, i) => (
               <Fragment key={msg.id}>
-              {(i === 0 || claveDia(msg.created_at) !== claveDia(mensajes[i - 1].created_at)) && (
+              {(i === 0 || claveDia(msg.created_at) !== claveDia(mensajesChat[i - 1].created_at)) && (
                 <div className="sticky top-0 z-10 flex justify-center py-1">
                   <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-gray-500 shadow-sm backdrop-blur dark:bg-zinc-800/90 dark:text-zinc-300">
                     {etiquetaDia(msg.created_at)}
@@ -1663,8 +1723,8 @@ export default function WhatsAppCRM() {
                 id={`msg-${msg.id}`}
                 className={`group flex items-center gap-1 ${msg.direccion === 'saliente' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.direccion === 'saliente' && <BotonResponder msg={msg} onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} />}
-                <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
+                {msg.direccion === 'saliente' && <AccionesMensaje msg={msg} alinearDerecha onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} onReaccionar={reaccionar} />}
+                <div className={`relative max-w-xs ${msg.reaccion_cliente || msg.reaccion_nuestra ? 'mb-4' : ''} lg:max-w-md xl:max-w-lg px-4 py-2.5 shadow-sm text-sm ${
                   msg.direccion === 'saliente'
                     ? 'bg-hero-sky text-zinc-950 dark:bg-sky-900/80 dark:text-sky-50'
                     : 'bg-white dark:bg-[#525252] text-gray-900 dark:text-zinc-100'
@@ -1699,8 +1759,17 @@ export default function WhatsAppCRM() {
                       <span className="ml-1"><EstadoMensaje msg={msg} /></span>
                     )}
                   </p>
+                  {(msg.reaccion_cliente || msg.reaccion_nuestra) && (
+                    <span
+                      title={[msg.reaccion_cliente && `Cliente: ${msg.reaccion_cliente}`, msg.reaccion_nuestra && `Nosotros: ${msg.reaccion_nuestra}`].filter(Boolean).join(' · ')}
+                      className={`absolute -bottom-4 ${msg.direccion === 'saliente' ? 'right-2' : 'left-2'} flex items-center gap-0.5 rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-sm leading-none shadow-sm dark:border-zinc-700 dark:bg-zinc-800`}
+                    >
+                      {msg.reaccion_cliente}{msg.reaccion_nuestra !== msg.reaccion_cliente && msg.reaccion_nuestra}
+                      {msg.reaccion_cliente && msg.reaccion_nuestra && <span className="ml-0.5 text-[10px] text-gray-500 dark:text-zinc-400">2</span>}
+                    </span>
+                  )}
                 </div>
-                {msg.direccion !== 'saliente' && <BotonResponder msg={msg} onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} />}
+                {msg.direccion !== 'saliente' && <AccionesMensaje msg={msg} onResponder={m => { setRespondiendoA(m); inputRef.current?.focus() }} onReaccionar={reaccionar} />}
               </div>
               </Fragment>
             ))}
@@ -1918,6 +1987,18 @@ export default function WhatsAppCRM() {
               accept="image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
               onChange={elegirArchivo}
             />
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setEmojisAbierto(v => !v)}
+                disabled={enviando}
+                title="Emojis"
+                aria-label="Emojis"
+                className="w-8 h-8 sm:w-[42px] sm:h-[42px] flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="w-4 h-4"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01" /></svg>
+              </button>
+              {emojisAbierto && <SelectorEmojis onElegir={insertarEmoji} onCerrar={() => setEmojisAbierto(false)} className="absolute bottom-full left-0 mb-2" />}
+            </div>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={enviando}

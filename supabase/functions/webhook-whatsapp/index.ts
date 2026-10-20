@@ -215,6 +215,10 @@ function textoDesdeFlow(r: Record<string, any>): string {
   lineas.push(`Presupuesto: ${r.presupuesto && !isNaN(presupuestoNum) ? `${formatoMonto(presupuestoNum)} USD` : (r.presupuesto ?? '')}`)
   const noches = r.noches ? ` · ${r.noches} noches` : ''
   lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}${noches}`)
+  // Observación: campo libre y opcional al final del formulario, hasta 50 caracteres (pedido de
+  // Cristian, 2026-10-19). Si el cliente no escribió nada, la línea no aparece.
+  const observacion = String(r.observacion ?? '').trim()
+  if (observacion) lineas.push(`Observación: ${observacion}`)
   return lineas.join('\n')
 }
 

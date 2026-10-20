@@ -158,7 +158,7 @@ function ArbolAsistente({ cfg, setCfg, registrarCambio }) {
             />
             <NodoArbol
               titulo="3. Mensaje al derivar"
-              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paseos: el texto del catálogo con el botón "Ver catálogo" (PDF)."
+              descripcion="Lo que recibe el contacto cuando el asistente ya lo pasó a una persona del equipo de Paseos: el texto del catálogo con el botón «Ver catálogo» (PDF)."
               onClick={() => setNodoAbierto('derivacion_paseos')}
             />
           </Rama>

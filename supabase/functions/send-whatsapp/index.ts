@@ -58,7 +58,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla, responde_a } = await req.json()
+    // "Responder" del CRM: wa_message_id del mensaje citado (solo texto y archivos)
+    const respondeA: string | null = typeof responde_a === 'string' && responde_a.startsWith('wamid.') ? responde_a : null
     const usuarioId: string | null = typeof usuario_id === 'string' && /^[0-9a-f-]{36}$/i.test(usuario_id) ? usuario_id : null
 
     const supabase = createClient(
@@ -239,6 +241,9 @@ serve(async (req) => {
           },
         }
 
+    // deno-lint-ignore no-explicit-any
+    if (respondeA && (esMedia || esTexto)) (metaBody as any).context = { message_id: respondeA }
+
     console.log(esMedia ? `Enviando ${media.tipo} a ${phoneClean} (CRM)` : esTexto ? `Enviando texto libre a ${phoneClean} (CRM)`
       : esFlow ? `Enviando formulario a ${phoneClean} (CRM)` : esPlantillaCrm ? `Enviando plantilla "${plantilla.name}" a ${phoneClean} (CRM)`
       : `Enviando plantilla "${template}" a ${phoneClean} (operativo)`)
@@ -328,6 +333,7 @@ serve(async (req) => {
         // CADA número (ver migración 20260925110000_costos_por_pais_whatsapp.sql)
         numero: esCrm ? 'crm' : 'operativo',
         enviado_por: esCrm ? usuarioId : null,
+        ...(respondeA && (esMedia || esTexto) ? { respuesta_a_wamid: respondeA } : {}),
         ...(esMedia ? {
           tipo: media.tipo,
           media_path: media.path,

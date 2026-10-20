@@ -707,6 +707,7 @@ async function procesarEcos(supabase: Supabase, ecos: any[]) {
         cobro: 'servicio',
         numero: 'crm',
         created_at: cuando,
+        ...(eco.context?.id ? { respuesta_a_wamid: eco.context.id } : {}),
         ...(tipoMedia ? { tipo: tipoMedia, media_path: archivo?.path ?? null, media_mime: archivo?.mime ?? media?.mime_type ?? null, media_nombre: nombreArchivo } : {}),
       }, { onConflict: 'wa_message_id', ignoreDuplicates: true }).select('id')
       if (error) { console.error('webhook-whatsapp eco error:', error.message); continue }
@@ -954,9 +955,13 @@ serve(async (req) => {
       direccion: 'entrante',
       wa_message_id: message.id ?? null,
     }
+    // Si el cliente respondió citando un mensaje ("Responder" en WhatsApp), se guarda cuál.
+    // Va aparte de filaBase: el respaldo de guardarEntrante no lo lleva, así un error con
+    // esa columna nunca hace perder el mensaje.
+    const cita = message.context?.id ? { respuesta_a_wamid: message.context.id } : {}
 
     if (!tipoMedia) {
-      const fila = await guardarEntrante(supabase, filaBase)
+      const fila = await guardarEntrante(supabase, { ...filaBase, ...cita }, filaBase)
       if (!fila) return new Response('ok', { status: 200 })
       await correrBot(supabase, convId, phone, message, fila.created_at ?? null)
       return new Response('ok', { status: 200 })
@@ -973,6 +978,7 @@ serve(async (req) => {
 
     const filaMedia = await guardarEntrante(supabase, {
       ...filaBase,
+      ...cita,
       tipo: tipoMedia,
       media_path: archivo?.path ?? null,
       media_mime: archivo?.mime ?? media?.mime_type ?? null,

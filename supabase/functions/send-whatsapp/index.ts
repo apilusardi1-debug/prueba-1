@@ -58,7 +58,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla, responde_a } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla, responde_a, emoji } = await req.json()
     // "Responder" del CRM: wa_message_id del mensaje citado (solo texto y archivos)
     const respondeA: string | null = typeof responde_a === 'string' && responde_a.startsWith('wamid.') ? responde_a : null
     const usuarioId: string | null = typeof usuario_id === 'string' && /^[0-9a-f-]{36}$/i.test(usuario_id) ? usuario_id : null
@@ -119,6 +119,32 @@ serve(async (req) => {
     // Brasil: 55 + DDD + 8 dígitos de celular (que empiezan con 6 a 9) → falta el 9 de celular
     if (phoneClean.startsWith('55') && phoneClean.length === 12 && /^[6-9]/.test(phoneClean.slice(4))) {
       phoneClean = phoneClean.slice(0, 4) + '9' + phoneClean.slice(4)
+    }
+
+    // Reacción del CRM a un mensaje (accion "reaccion", con responde_a = wa_message_id del
+    // mensaje y emoji; emoji vacío = sacarla). No es un mensaje nuevo: se guarda en el
+    // mensaje reaccionado (reaccion_nuestra) y no toca la conversación.
+    if (accion === 'reaccion') {
+      if (!respondeA || typeof emoji !== 'string' || Array.from(emoji).length > 8) {
+        return new Response(JSON.stringify({ error: 'Reacción inválida' }), {
+          status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      const destino = destinoMensajesCrm(META_CRM_TOKEN, META_CRM_PHONE_NUMBER_ID)
+      const res = await fetch(destino.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...destino.headers },
+        body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: phoneClean, type: 'reaction', reaction: { message_id: respondeA, emoji } }),
+      })
+      const respuesta = await res.text()
+      if (!res.ok) {
+        console.error(`Reacción rechazada ${res.status}:`, respuesta)
+        return new Response(JSON.stringify({ error: `Meta error ${res.status}`, detail: respuesta }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
+      await supabase.from('mensajes').update({ reaccion_nuestra: emoji || null }).eq('wa_message_id', respondeA)
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', ...CORS } })
     }
 
     // Dos casos: "template" = aviso automático del número operativo (chofer/

@@ -672,6 +672,13 @@ async function procesarEcos(supabase: Supabase, ecos: any[]) {
     try {
       const phone: string | undefined = eco?.to
       if (!phone || !eco?.id) continue
+      // Reacción puesta desde el celular de la agencia: va al mensaje reaccionado, como las del CRM
+      if (eco.type === 'reaction') {
+        if (eco.reaction?.message_id) {
+          await supabase.from('mensajes').update({ reaccion_nuestra: eco.reaction.emoji || null }).eq('wa_message_id', eco.reaction.message_id)
+        }
+        continue
+      }
       const tipoMedia: string | null = TIPOS_MEDIA.includes(eco.type) ? eco.type : null
       const media = tipoMedia ? eco[tipoMedia] : null
       const nombreArchivo: string | null = media?.filename ?? null
@@ -832,6 +839,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+
+    // Reacción del cliente (👍 ❤️...) a un mensaje: no es un mensaje nuevo ni despierta al
+    // asistente; se guarda en el mensaje reaccionado. Emoji vacío = la sacó.
+    if (message.type === 'reaction') {
+      if (message.reaction?.message_id) {
+        await supabase.from('mensajes').update({ reaccion_cliente: message.reaction.emoji || null }).eq('wa_message_id', message.reaction.message_id)
+      }
+      return new Response('ok', { status: 200 })
+    }
 
     if (message.id) {
       const { data: previo } = await supabase.from('mensajes').select('id').eq('wa_message_id', message.id).limit(1)

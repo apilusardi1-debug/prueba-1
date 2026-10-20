@@ -240,6 +240,16 @@ export default function WhatsAppCRM() {
   const fichaAbiertaAca = useRef(false)
   const fileRef = useRef(null)
   const chatBottomRef = useRef(null)
+  // Scroll del chat (pedido de Cristian, 2026-10-19): al abrir una conversación va siempre al
+  // último mensaje, y sigue pegado abajo aunque terminen de cargar fotos o videos que empujan
+  // el final. Si la persona subió a leer, no se la mueve: aparece una flecha para bajar, con
+  // cuántos mensajes nuevos llegaron mientras tanto.
+  const contenedorChatRef = useRef(null)
+  const pegadoAbajo = useRef(true)
+  const irAlFinalAlCargar = useRef(true)
+  const ultimoMensajeVisto = useRef(null)
+  const [chatAbajo, setChatAbajo] = useState(true)
+  const [nuevosSinVer, setNuevosSinVer] = useState(0)
   const inputRef = useRef(null)
   const menuEtiquetaRef = useRef(null)
   const menuParceroRef = useRef(null)
@@ -496,10 +506,61 @@ export default function WhatsAppCRM() {
     return () => setConversacionAbierta(null)
   }, [seleccionada?.id])
 
-  // Scroll al último mensaje
+  function bajarAlFinal(suave = false) {
+    const el = contenedorChatRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: suave ? 'smooth' : 'auto' })
+    pegadoAbajo.current = true
+    setChatAbajo(true)
+    setNuevosSinVer(0)
+  }
+
+  function alMoverChat() {
+    const el = contenedorChatRef.current
+    if (!el) return
+    const abajo = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    pegadoAbajo.current = abajo
+    setChatAbajo(abajo)
+    if (abajo) setNuevosSinVer(0)
+  }
+
+  // Otra conversación: se abre en el último mensaje
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    irAlFinalAlCargar.current = true
+    pegadoAbajo.current = true
+    ultimoMensajeVisto.current = null
+    setChatAbajo(true)
+    setNuevosSinVer(0)
+  }, [seleccionada?.id])
+
+  // Cada vez que cambian los mensajes
+  useEffect(() => {
+    if (!mensajes.length) return
+    const ultimo = mensajes[mensajes.length - 1]
+    if (irAlFinalAlCargar.current) {
+      irAlFinalAlCargar.current = false
+      ultimoMensajeVisto.current = ultimo.id
+      bajarAlFinal()
+      return
+    }
+    if (ultimo.id === ultimoMensajeVisto.current) return
+    // Mensajes que se agregaron desde el último que se vio (normalmente uno)
+    const desde = mensajes.findIndex(m => m.id === ultimoMensajeVisto.current)
+    const agregados = desde >= 0 ? mensajes.slice(desde + 1) : [ultimo]
+    ultimoMensajeVisto.current = ultimo.id
+    // Lo que manda uno mismo (o si ya estaba abajo) baja solo; si estaba leyendo más arriba, no se lo mueve
+    if (pegadoAbajo.current || ultimo.direccion === 'saliente') bajarAlFinal(true)
+    else setNuevosSinVer(n => n + agregados.filter(m => m.direccion === 'entrante').length)
   }, [mensajes])
+
+  // Fotos, videos y audios cambian de alto al terminar de cargar: si estaba abajo, sigue abajo
+  useEffect(() => {
+    const el = contenedorChatRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const obs = new ResizeObserver(() => { if (pegadoAbajo.current) el.scrollTop = el.scrollHeight })
+    Array.from(el.children).forEach(hijo => obs.observe(hijo))
+    return () => obs.disconnect()
+  }, [seleccionada?.id, mensajes.length])
 
   // Cerrar menús de etiqueta/asignación al hacer click afuera
   useEffect(() => {
@@ -1584,7 +1645,8 @@ export default function WhatsAppCRM() {
           </div>
 
           {/* Mensajes */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+          <div className="relative flex-1 min-h-0 flex flex-col">
+          <div ref={contenedorChatRef} onScroll={alMoverChat} className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
             {mensajes.length === 0 && (
               <p className="text-center text-sm text-gray-400 dark:text-zinc-500 py-8">No hay mensajes aún</p>
             )}
@@ -1643,6 +1705,22 @@ export default function WhatsAppCRM() {
               </Fragment>
             ))}
             <div ref={chatBottomRef} />
+          </div>
+          {!chatAbajo && (
+            <button
+              onClick={() => bajarAlFinal(true)}
+              title="Ir al último mensaje"
+              aria-label="Ir al último mensaje"
+              className="absolute bottom-4 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-600 shadow-lg ring-1 ring-gray-200 transition-colors hover:bg-gray-50 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-700"
+            >
+              <Ic n="down" className="h-5 w-5" />
+              {nuevosSinVer > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-hero-sky text-zinc-950 text-[11px] font-semibold flex items-center justify-center">
+                  {nuevosSinVer}
+                </span>
+              )}
+            </button>
+          )}
           </div>
 
           {/* Input de envío */}

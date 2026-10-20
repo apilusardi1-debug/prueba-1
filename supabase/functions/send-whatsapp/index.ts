@@ -120,6 +120,15 @@ serve(async (req) => {
     if (phoneClean.startsWith('55') && phoneClean.length === 12 && /^[6-9]/.test(phoneClean.slice(4))) {
       phoneClean = phoneClean.slice(0, 4) + '9' + phoneClean.slice(4)
     }
+    // Pero si el contacto ya nos escribió, se le contesta al número exacto con el que llegó
+    // (conversaciones.whatsapp = su wa_id). En Brasil muchos wa_id NO tienen el 9 y, mandando
+    // con el 9 agregado, WhatsApp puede no reconocer la ventana de 24 hs abierta: error 131047
+    // aunque el cliente acabara de escribir (caso 558189375412, 2026-10-19).
+    if (phoneClean.startsWith('55') && phoneClean.length === 13) {
+      const sinNueve = phoneClean.slice(0, 4) + phoneClean.slice(5)
+      const { data: conv } = await supabase.from('conversaciones').select('whatsapp').eq('whatsapp', sinNueve).maybeSingle()
+      if (conv?.whatsapp) phoneClean = conv.whatsapp
+    }
 
     // Reacción del CRM a un mensaje (accion "reaccion", con responde_a = wa_message_id del
     // mensaje y emoji; emoji vacío = sacarla). No es un mensaje nuevo: se guarda en el

@@ -410,13 +410,20 @@ async function enviarTextoBot(supabase: Supabase, convId: string, phone: string,
 // Deriva a una persona del grupo; si no hay a quién, deja la conversación sin asignar. El
 // mensaje de derivación es distinto por grupo (pedido de Cristian, 2026-10-11): Paquetes ya
 // completó un formulario, Paseos/Traslados nunca pasó por uno.
+// Sin nadie en el reparto (Paquetes, desde el 2026-10-23: queda sin asignar y la toma quien
+// responde) igual sale el mensaje de derivación del grupo con su botón, no el genérico (pedido
+// de Abril). El genérico queda solo si el texto nombra a la persona ({nombre}).
 // deno-lint-ignore no-explicit-any
 async function derivarOCerrar(supabase: Supabase, cfg: any, convId: string, phone: string, grupo: string) {
   const mensaje = grupo === 'paseos' ? cfg.mensaje_derivacion_paseos : cfg.mensaje_derivacion
   // Cada grupo tiene su botón: Paquetes el Linktree, Paseos el catálogo en PDF
   const boton = grupo === 'paquetes' || grupo === 'paseos' ? botonDerivacion(cfg, grupo) : null
   const derivada = await derivar(supabase, mensaje, convId, phone, grupo, boton)
-  if (!derivada) await cerrarSinAsignar(supabase, cfg.mensaje_sin_asignar, convId, phone, grupo, boton)
+  if (derivada) return
+  const sinAsignar = mensaje && !mensaje.includes('{nombre}')
+    ? mensaje.replaceAll('{grupo}', NOMBRE_GRUPO[grupo] || '')
+    : cfg.mensaje_sin_asignar
+  await cerrarSinAsignar(supabase, sinAsignar, convId, phone, grupo, boton)
 }
 
 // Si el contacto dijo cómo se llama y WhatsApp no traía un nombre, se guarda en la conversación y en su lead.

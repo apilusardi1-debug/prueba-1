@@ -211,8 +211,10 @@ function textoDesdeFlow(r: Record<string, any>): string {
   // Presupuesto es un campo numérico libre (pedido de Cristian, 2026-10-11, antes 3 rangos
   // fijos) — el Flow solo manda el número, acá se le pone el formato (puntos de miles) y la
   // moneda, siempre en dólares.
+  // Desde el 2026-10-23 el formulario ya no lo pregunta (pedido de Cristian): la línea sale
+  // solo si vino, así siguen andando los formularios viejos que algún cliente tenga abiertos.
   const presupuestoNum = Number(r.presupuesto)
-  lineas.push(`Presupuesto: ${r.presupuesto && !isNaN(presupuestoNum) ? `${formatoMonto(presupuestoNum)} USD` : (r.presupuesto ?? '')}`)
+  if (r.presupuesto) lineas.push(`Presupuesto: ${!isNaN(presupuestoNum) ? `${formatoMonto(presupuestoNum)} USD` : r.presupuesto}`)
   const noches = r.noches ? ` · ${r.noches} noches` : ''
   lineas.push(`Fecha: ${fechaLegible(r.ida)} al ${fechaLegible(r.vuelta)}${noches}`)
   // Observación: campo libre y opcional al final del formulario, hasta 50 caracteres (pedido de
@@ -594,6 +596,14 @@ async function ejecutarBot(supabase: Supabase, convId: string, phone: string, me
   const pedidoPaquete = textosDeLaRafaga(hilo).find((t) => esPedidoWebPaquete(t))
   if (pedidoPaquete) {
     await guardarNombreDicho(supabase, conv, phone, extraerDatosViaje([pedidoPaquete]).nombre)
+    await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
+    return
+  }
+  // Respuesta del formulario "Datos del viaje": trae todo lo que el formulario pide, así que va
+  // directo a una persona de Paquetes. Sin esto el filtro preguntaría por texto lo que el
+  // formulario ya no pide (el presupuesto, que se sacó el 2026-10-23).
+  if (message?.interactive?.nfm_reply) {
+    await moverAFiltrado(supabase, phone)
     await derivarOCerrar(supabase, cfg, conv.id, phone, 'paquetes')
     return
   }

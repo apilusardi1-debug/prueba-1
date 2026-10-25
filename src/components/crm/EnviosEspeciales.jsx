@@ -59,12 +59,12 @@ export function BotonFormulario({ conversacion, usuarioId, onEnviado }) {
       <button
         onClick={() => setAbierto(v => !v)}
         title="Enviar el formulario de datos del viaje"
-        className="w-8 h-8 sm:w-[42px] sm:h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+        className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
       >
         <Ic n="list" className="w-4 h-4" />
       </button>
       {abierto && (
-        <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] p-3 space-y-2">
+        <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] p-3 space-y-2">
           <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100">Enviar formulario de viaje</p>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
             Le llega a {conversacion.contacto_nombre || conversacion.whatsapp} el formulario "Datos del viaje" (destino, pasajeros, presupuesto y fechas). Sus respuestas aparecen en este chat.

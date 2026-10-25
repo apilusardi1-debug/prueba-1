@@ -40,6 +40,16 @@ const ETIQUETAS = {
   pago:        { label: 'Pago',        color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400', dot: 'bg-purple-500', creaLead: true  },
 }
 
+// El cuadro del mensaje crece con el texto hasta casi la mitad de la pantalla (pedido de
+// Cristian, 2026-10-24); pasado eso aparece la barra lateral para subir y bajar.
+function ajustarAltoMensaje(campo) {
+  if (!campo) return
+  const maximo = Math.max(120, Math.round(window.innerHeight * 0.45))
+  campo.style.height = 'auto'
+  campo.style.height = Math.min(campo.scrollHeight, maximo) + 'px'
+  campo.style.overflowY = campo.scrollHeight > maximo ? 'auto' : 'hidden'
+}
+
 function formatTiempo(ts) {
   if (!ts) return ''
   const d = new Date(ts)
@@ -672,8 +682,7 @@ export default function WhatsAppCRM() {
       setTimeout(() => {
         campo.focus()
         campo.setSelectionRange(nuevoCursor, nuevoCursor)
-        campo.style.height = 'auto'
-        campo.style.height = Math.min(campo.scrollHeight, 120) + 'px'
+        ajustarAltoMensaje(campo)
       }, 0)
     }
   }
@@ -1017,7 +1026,7 @@ export default function WhatsAppCRM() {
     descartarAudio() // limpia el adjunto y, si venía de grabar, también la revisión
     setRespondiendoA(null)
     setTexto('')
-    if (inputRef.current) inputRef.current.style.height = 'auto'
+    if (inputRef.current) { inputRef.current.style.height = 'auto'; inputRef.current.style.overflowY = 'hidden' }
     setEnviando(false)
   }
 
@@ -1918,108 +1927,6 @@ export default function WhatsAppCRM() {
               </>
             ) : (
             <>
-            {/* En el celular el campo de texto ya viene justo de ancho — este botón
-                se saca ahí porque escribir "/" en el mensaje hace lo mismo. */}
-            <BotonFormulario conversacion={seleccionada} usuarioId={miUsuarioId} onEnviado={() => sacarMarcaNueva(seleccionada.id)} />
-            <div className="relative shrink-0 hidden sm:block" ref={menuRespuestasRef}>
-              <button
-                onClick={alternarMenuRespuestas}
-                title="Respuestas rápidas (también podés escribir / en el mensaje)"
-                className="w-9 h-9 sm:w-[42px] sm:h-[42px] flex items-center justify-center rounded-2xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
-                </svg>
-              </button>
-              {menuRespuestas && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] flex flex-col">
-                  {respuestasRapidas.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">
-                      Sin respuestas guardadas — armalas en Configuración → Respuestas rápidas.
-                    </p>
-                  ) : (
-                    <>
-                      <div className="p-2 border-b border-gray-100 dark:border-zinc-800">
-                        <input
-                          type="text"
-                          autoFocus
-                          value={busquedaRespuestas}
-                          onChange={e => setBusquedaRespuestas(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && respuestasDelMenu[0]) {
-                              e.preventDefault()
-                              insertarRespuesta(respuestasDelMenu[0])
-                            }
-                          }}
-                          placeholder="Buscar respuesta..."
-                          className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky"
-                        />
-                      </div>
-                      <div className="max-h-56 overflow-y-auto py-1">
-                        {respuestasDelMenu.length === 0 ? (
-                          <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">No hay respuestas con eso.</p>
-                        ) : (
-                          respuestasDelMenu.map(r => (
-                            <button
-                              key={r.id}
-                              onClick={() => insertarRespuesta(r)}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                            >
-                              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
-                                {r.adjunto_path && <Ic n="clip" className="mr-1 inline-block h-3 w-3 align-[-2px] text-gray-400 dark:text-zinc-500" />}
-                                {r.titulo}
-                              </p>
-                              <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto || 'Solo archivo adjunto'}</p>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              hidden
-              accept="image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-              onChange={elegirArchivo}
-            />
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setEmojisAbierto(v => !v)}
-                disabled={enviando}
-                title="Emojis"
-                aria-label="Emojis"
-                className="w-8 h-8 sm:w-[42px] sm:h-[42px] flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="w-4 h-4"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01" /></svg>
-              </button>
-              {emojisAbierto && <SelectorEmojis onElegir={insertarEmoji} onCerrar={() => setEmojisAbierto(false)} className="absolute bottom-full left-0 mb-2" />}
-            </div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={enviando}
-              title="Adjuntar foto, documento, audio o video"
-              className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-              </svg>
-            </button>
-            <button
-              onClick={iniciarGrabacion}
-              disabled={enviando}
-              title="Grabar un audio"
-              className="w-8 h-8 sm:w-[42px] sm:h-[42px] shrink-0 flex items-center justify-center rounded-2xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-              </svg>
-            </button>
             <div className="relative flex-1 min-w-0">
               {atajoAbierto && (
                 <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 flex flex-col">
@@ -2054,8 +1961,7 @@ export default function WhatsAppCRM() {
                   setCursorMensaje(e.target.selectionStart)
                   setAtajoIdx(0)
                   setAtajoCerrado(false)
-                  e.target.style.height = 'auto'
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                  ajustarAltoMensaje(e.target)
                 }}
                 onSelect={e => setCursorMensaje(e.target.selectionStart)}
                 onKeyDown={e => {
@@ -2089,25 +1995,133 @@ export default function WhatsAppCRM() {
                   }
                 }}
                 placeholder="Mensaje... (/ atajos rápidos)"
-                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-full sm:rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky resize-none overflow-hidden"
-                style={{ minHeight: '42px' }}
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-full sm:rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hero-sky resize-none barra-oscura"
+                style={{ minHeight: '42px', overflowY: 'hidden' }}
               />
             </div>
-            <button
-              onClick={enviar}
-              disabled={enviando || (!texto.trim() && !adjunto)}
-              title="Enviar"
-              className="bg-hero-sky hover:brightness-95 !text-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-9 h-9 sm:w-auto sm:h-auto sm:px-5 py-2.5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
-            >
-              {enviando ? (
-                '...'
-              ) : (
-                <>
-                  <Ic n="send" className="w-4 h-4 sm:hidden" />
-                  <span className="hidden sm:inline">Enviar</span>
-                </>
-              )}
-            </button>
+            {/* Botones a la derecha, en una fila arriba de Enviar (pedido de Cristian, 2026-10-24):
+                así el cuadro del mensaje usa todo el ancho. */}
+            <div className="shrink-0 flex flex-col items-stretch gap-1.5">
+                <div className="flex items-center justify-end gap-1">
+                {/* En el celular el campo de texto ya viene justo de ancho — este botón
+                    se saca ahí porque escribir "/" en el mensaje hace lo mismo. */}
+                <BotonFormulario conversacion={seleccionada} usuarioId={miUsuarioId} onEnviado={() => sacarMarcaNueva(seleccionada.id)} />
+                <div className="relative shrink-0 hidden sm:block" ref={menuRespuestasRef}>
+                  <button
+                    onClick={alternarMenuRespuestas}
+                    title="Respuestas rápidas (también podés escribir / en el mensaje)"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                      <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
+                    </svg>
+                  </button>
+                  {menuRespuestas && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] flex flex-col">
+                      {respuestasRapidas.length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">
+                          Sin respuestas guardadas — armalas en Configuración → Respuestas rápidas.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="p-2 border-b border-gray-100 dark:border-zinc-800">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={busquedaRespuestas}
+                              onChange={e => setBusquedaRespuestas(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && respuestasDelMenu[0]) {
+                                  e.preventDefault()
+                                  insertarRespuesta(respuestasDelMenu[0])
+                                }
+                              }}
+                              placeholder="Buscar respuesta..."
+                              className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-hero-sky"
+                            />
+                          </div>
+                          <div className="max-h-56 overflow-y-auto py-1">
+                            {respuestasDelMenu.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500">No hay respuestas con eso.</p>
+                            ) : (
+                              respuestasDelMenu.map(r => (
+                                <button
+                                  key={r.id}
+                                  onClick={() => insertarRespuesta(r)}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                                >
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                    {r.adjunto_path && <Ic n="clip" className="mr-1 inline-block h-3 w-3 align-[-2px] text-gray-400 dark:text-zinc-500" />}
+                                    {r.titulo}
+                                  </p>
+                                  <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">{r.texto || 'Solo archivo adjunto'}</p>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  hidden
+                  accept="image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  onChange={elegirArchivo}
+                />
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setEmojisAbierto(v => !v)}
+                    disabled={enviando}
+                    title="Emojis"
+                    aria-label="Emojis"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="w-4 h-4"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01" /></svg>
+                  </button>
+                  {emojisAbierto && <SelectorEmojis onElegir={insertarEmoji} onCerrar={() => setEmojisAbierto(false)} className="absolute bottom-full right-0 mb-2" />}
+                </div>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={enviando}
+                  title="Adjuntar foto, documento, audio o video"
+                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={iniciarGrabacion}
+                  disabled={enviando}
+                  title="Grabar un audio"
+                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-xl border-0 sm:border sm:border-gray-200 sm:dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 sm:hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+                  </svg>
+                </button>
+              </div>
+              <button
+                onClick={enviar}
+                disabled={enviando || (!texto.trim() && !adjunto)}
+                title="Enviar"
+                className="bg-hero-sky hover:brightness-95 !text-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-full h-9 sm:h-[42px] px-5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
+              >
+                {enviando ? (
+                  '...'
+                ) : (
+                  <>
+                    <Ic n="send" className="w-4 h-4 sm:hidden" />
+                    <span className="hidden sm:inline">Enviar</span>
+                  </>
+                )}
+              </button>
+            </div>
             </>
             )}
           </div>

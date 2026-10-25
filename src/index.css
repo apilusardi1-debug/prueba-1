@@ -131,6 +131,14 @@
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  /* Barra lateral fina y oscura (cuadro del mensaje del CRM) */
+  .barra-oscura { scrollbar-width: thin; scrollbar-color: #9ca3af transparent; }
+  .dark .barra-oscura { scrollbar-color: #52525b transparent; }
+  .barra-oscura::-webkit-scrollbar { width: 8px; }
+  .barra-oscura::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+  .barra-oscura::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 9999px; }
+  .dark .barra-oscura::-webkit-scrollbar-thumb { background: #52525b; }
+  .dark .barra-oscura::-webkit-scrollbar-thumb:hover { background: #71717a; }
 }
 
 @layer base {

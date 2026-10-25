@@ -6,7 +6,7 @@
 // (puede ser null si su email no figura entre los usuarios del panel).
 
 export function nombreDe(conv) {
-  return conv?.contacto_nombre || conv?.whatsapp || 'contacto'
+  return conv?.nombre_agendado || conv?.contacto_nombre || conv?.whatsapp || 'contacto'
 }
 
 export function recortar(texto, max = 110) {

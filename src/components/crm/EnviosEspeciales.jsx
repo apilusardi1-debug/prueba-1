@@ -67,7 +67,7 @@ export function BotonFormulario({ conversacion, usuarioId, onEnviado }) {
         <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg dark:shadow-black/40 border border-gray-100 dark:border-zinc-700 z-10 w-[280px] max-w-[calc(100vw-2rem)] p-3 space-y-2">
           <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100">Enviar formulario de viaje</p>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
-            Le llega a {conversacion.contacto_nombre || conversacion.whatsapp} el formulario "Datos del viaje" (destino, pasajeros, presupuesto y fechas). Sus respuestas aparecen en este chat.
+            Le llega a {conversacion.nombre_agendado || conversacion.contacto_nombre || conversacion.whatsapp} el formulario "Datos del viaje" (destino, pasajeros, presupuesto y fechas). Sus respuestas aparecen en este chat.
           </p>
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={() => setAbierto(false)} disabled={enviando}
@@ -109,7 +109,7 @@ export function PanelPlantillas({ conversacion, usuarioId, onEnviado }) {
   function elegir(p) {
     setElegida(p)
     // {{1}} suele ser el nombre del contacto: se completa solo, se puede cambiar
-    setValores(Array.from({ length: p.variables }, (_, i) => (i === 0 ? primerNombre(conversacion.contacto_nombre) : '')))
+    setValores(Array.from({ length: p.variables }, (_, i) => (i === 0 ? primerNombre(conversacion.nombre_agendado || conversacion.contacto_nombre) : '')))
   }
 
   const vistaPrevia = elegida ? elegida.texto.replace(/\{\{(\d+)\}\}/g, (m, n) => valores[Number(n) - 1] || m) : ''

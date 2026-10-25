@@ -50,6 +50,12 @@ function ajustarAltoMensaje(campo) {
   campo.style.overflowY = campo.scrollHeight > maximo ? 'auto' : 'hidden'
 }
 
+// Nombre que se ve en el chat: el agendado en la ficha (lo copia la base desde leads.nombre,
+// ver migración 20261024100000) y, si no hay, el del perfil de WhatsApp (pedido de Cristian, 2026-10-24).
+function nombreChat(conv) {
+  return conv?.nombre_agendado || conv?.contacto_nombre
+}
+
 function formatTiempo(ts) {
   if (!ts) return ''
   const d = new Date(ts)
@@ -390,7 +396,7 @@ export default function WhatsAppCRM() {
       return
     }
     const { data } = await clientesApi.create({
-      nombre: seleccionada.contacto_nombre || seleccionada.whatsapp,
+      nombre: nombreChat(seleccionada) || seleccionada.whatsapp,
       whatsapp: seleccionada.whatsapp,
     })
     if (data) setClienteVinculado(data)
@@ -441,7 +447,7 @@ export default function WhatsAppCRM() {
           )
           // Si cambió quien la atiende (lo reasignó el servidor porque respondió otro),
           // la conversación abierta tiene que mostrarlo sin recargar.
-          setSeleccionada(prev => (prev && prev.id === payload.new.id ? { ...prev, asignado_a: payload.new.asignado_a } : prev))
+          setSeleccionada(prev => (prev && prev.id === payload.new.id ? { ...prev, asignado_a: payload.new.asignado_a, nombre_agendado: payload.new.nombre_agendado, contacto_nombre: payload.new.contacto_nombre } : prev))
         }
       })
       .subscribe()
@@ -633,7 +639,7 @@ export default function WhatsAppCRM() {
   // Campos que se completan solos en las respuestas ({nombre} = primer nombre del
   // contacto, {agente} = quien está respondiendo)
   const camposRespuesta = {
-    nombre: primerNombre(seleccionada?.contacto_nombre),
+    nombre: primerNombre(nombreChat(seleccionada)),
     agente: primerNombre(usuarios.find(u => u.id === miUsuarioId)?.nombre),
   }
 
@@ -1165,7 +1171,7 @@ export default function WhatsAppCRM() {
   // (edades: 5,b,8 donde b es bebé)
   function urlNuevaPropuesta() {
     const q = new URLSearchParams()
-    q.set('nombre', datosViaje.nombre || seleccionada.contacto_nombre || '')
+    q.set('nombre', datosViaje.nombre || nombreChat(seleccionada) || '')
     q.set('whatsapp', seleccionada.whatsapp)
     if (clienteVinculado) q.set('cliente', clienteVinculado.id)
     if (datosViaje.adultos !== null) q.set('adultos', String(datosViaje.adultos))
@@ -1206,6 +1212,7 @@ export default function WhatsAppCRM() {
   const convsFiltradas = conversaciones
     .filter(c =>
       c.contacto_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.nombre_agendado?.toLowerCase().includes(busqueda.toLowerCase()) ||
       c.whatsapp?.includes(busqueda) ||
       (busquedaDigitos.length >= 4 && c.whatsapp?.includes(busquedaDigitos))
     )
@@ -1378,10 +1385,10 @@ export default function WhatsAppCRM() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <Avatar nombre={conv.contacto_nombre} />
+                <Avatar nombre={nombreChat(conv)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <p className="font-semibold text-sm text-gray-900 dark:text-zinc-100 truncate">{conv.contacto_nombre}</p>
+                    <p className="font-semibold text-sm text-gray-900 dark:text-zinc-100 truncate">{nombreChat(conv)}</p>
                     {alerta ? (
                       <p className={`text-xs font-semibold shrink-0 ${alerta.nivel === 'roja' ? 'text-red-600 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
                         {alerta.horas} h sin responder
@@ -1458,10 +1465,10 @@ export default function WhatsAppCRM() {
             >
               <Ic n="arrow" className="h-4 w-4 rotate-180" />
             </button>
-            <span className="sm:hidden"><Avatar nombre={seleccionada.contacto_nombre} size="sm" /></span>
-            <span className="hidden sm:inline-flex"><Avatar nombre={seleccionada.contacto_nombre} /></span>
+            <span className="sm:hidden"><Avatar nombre={nombreChat(seleccionada)} size="sm" /></span>
+            <span className="hidden sm:inline-flex"><Avatar nombre={nombreChat(seleccionada)} /></span>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-zinc-100 leading-tight">{seleccionada.contacto_nombre}</p>
+              <p className="font-semibold text-gray-900 dark:text-zinc-100 leading-tight">{nombreChat(seleccionada)}</p>
               <p className="hidden sm:block text-xs text-gray-400 dark:text-zinc-500">{formatPhone(seleccionada.whatsapp)}</p>
             </div>
             {/* En el celular estos botones (Cliente/Grupo/Asignar/Etiquetar/etc) ocupaban
@@ -1749,7 +1756,7 @@ export default function WhatsAppCRM() {
                         className="mb-1.5 block w-full rounded-lg border-l-4 border-violet-400 bg-black/5 px-2.5 py-1.5 text-left dark:bg-white/10"
                       >
                         <span className="block text-xs font-semibold text-violet-600 dark:text-violet-300">
-                          {!citado ? 'Mensaje citado' : citado.direccion === 'entrante' ? (seleccionada.contacto_nombre || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
+                          {!citado ? 'Mensaje citado' : citado.direccion === 'entrante' ? (nombreChat(seleccionada) || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
                         </span>
                         <span className="line-clamp-2 block text-xs opacity-80">{citado ? resumenCita(citado) : 'No está en este chat'}</span>
                       </button>
@@ -1816,7 +1823,7 @@ export default function WhatsAppCRM() {
             <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
               <div className="min-w-0 flex-1 rounded-lg border-l-4 border-violet-400 bg-gray-50 px-3 py-1.5 dark:bg-zinc-800">
                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-300">
-                  Respondiendo a {respondiendoA.direccion === 'entrante' ? (seleccionada.contacto_nombre || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
+                  Respondiendo a {respondiendoA.direccion === 'entrante' ? (nombreChat(seleccionada) || formatPhone(seleccionada.whatsapp)) : 'DreamsTour'}
                 </p>
                 <p className="truncate text-xs text-gray-600 dark:text-zinc-300">{resumenCita(respondiendoA)}</p>
               </div>
@@ -2258,7 +2265,7 @@ export default function WhatsAppCRM() {
           onGuardar={crearReservaDesdeChat}
           onCerrar={() => setModalReserva(false)}
           valoresIniciales={{
-            cliente_nombre: clienteVinculado?.nombre || datosViaje.nombre || seleccionada.contacto_nombre || '',
+            cliente_nombre: clienteVinculado?.nombre || datosViaje.nombre || nombreChat(seleccionada) || '',
             cliente_whatsapp: seleccionada.whatsapp || '',
             cliente_id: clienteVinculado?.id || null,
             ...(datosViaje.adultos !== null ? { adultos: datosViaje.adultos } : {}),

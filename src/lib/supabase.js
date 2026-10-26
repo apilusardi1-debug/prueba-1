@@ -868,12 +868,24 @@ export const agenciaVideosApi = {
   delete: (id) => invocarCatalogoInterno('agencia_videos', 'delete', { id }),
 }
 
+// Máximo por archivo del bucket videos-agencia (2026-10-25, pedido de Cristian: videos de hasta
+// unos 3 minutos). Tiene que coincidir con el límite del bucket y con "Upload file size limit"
+// de Storage en Supabase (migración 20261025100000_videos_agencia_150mb.sql).
+export const MAX_MB_VIDEO_AGENCIA = 150
+
 async function subirArchivoAgenciaVideo(archivo, carpeta) {
   if (!supabase) return { url: null, error: 'Sin conexión' }
+  const mb = archivo.size / 1024 / 1024
+  if (mb > MAX_MB_VIDEO_AGENCIA) {
+    return { url: null, error: `El archivo pesa ${Math.ceil(mb)} MB y el máximo es ${MAX_MB_VIDEO_AGENCIA} MB. Exportalo en 720p o usá un link de Instagram.` }
+  }
   const ext = archivo.name.split('.').pop()
   const path = `${carpeta}/${Date.now()}.${ext}`
   const { error } = await supabase.storage.from('videos-agencia').upload(path, archivo)
-  if (error) return { url: null, error: error.message }
+  if (error) {
+    const grande = /maximum allowed size|too large|413/i.test(error.message || '')
+    return { url: null, error: grande ? `El archivo es demasiado grande (máximo ${MAX_MB_VIDEO_AGENCIA} MB).` : `No se pudo subir: ${error.message}` }
+  }
   const { data } = supabase.storage.from('videos-agencia').getPublicUrl(path)
   return { url: data.publicUrl, error: null }
 }

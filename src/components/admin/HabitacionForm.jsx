@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { avisar } from '../ui/Avisos.jsx'
 import { subirImagen, subirVideoHospedaje } from '../../lib/supabase.js'
 import { IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
@@ -47,7 +48,7 @@ export default function HabitacionForm({ form, setForm, error }) {
     if (!archivo) return
     setSubiendoVideo(true)
     const { url, error } = await subirVideoHospedaje(archivo)
-    if (error) console.error('Error al subir video:', error)
+    if (error) avisar(error)
     else setForm(p => ({ ...p, video: url }))
     setSubiendoVideo(false)
   }

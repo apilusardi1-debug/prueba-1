@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { subirVideoAgencia, subirThumbnailVideoAgencia } from '../../lib/supabase.js'
+import { subirVideoAgencia, subirThumbnailVideoAgencia, MAX_MB_VIDEO_AGENCIA } from '../../lib/supabase.js'
 import { esLinkInstagram, normalizarLinkInstagram, urlEmbedInstagram } from '../../lib/instagram.js'
 
 export const EMPTY_VIDEO_AGENCIA = {
@@ -15,6 +15,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
   const [modo, setModo] = useState(form.video_url && !esLinkInstagram(form.video_url) ? 'video' : 'instagram')
   const [subiendoVideo, setSubiendoVideo] = useState(false)
   const [subiendoThumb, setSubiendoThumb] = useState(false)
+  const [errorSubida, setErrorSubida] = useState(null)
   const videoRef = useRef()
   const thumbRef = useRef()
 
@@ -22,18 +23,21 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
     const archivo = e.target.files?.[0]
     if (!archivo) return
     setSubiendoVideo(true)
+    setErrorSubida(null)
     const { url, error } = await subirVideoAgencia(archivo)
-    if (error) console.error('Error al subir video:', error)
+    if (error) setErrorSubida(error)
     else setForm(p => ({ ...p, video_url: url }))
     setSubiendoVideo(false)
+    e.target.value = '' // así se puede volver a elegir el mismo archivo
   }
 
   async function handleThumbnail(e) {
     const archivo = e.target.files?.[0]
     if (!archivo) return
     setSubiendoThumb(true)
+    setErrorSubida(null)
     const { url, error } = await subirThumbnailVideoAgencia(archivo)
-    if (error) console.error('Error al subir miniatura:', error)
+    if (error) setErrorSubida(error)
     else setForm(p => ({ ...p, thumbnail_url: url }))
     setSubiendoThumb(false)
   }
@@ -41,6 +45,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
   return (
     <div className="space-y-3 text-sm">
       {error && <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</p>}
+      {errorSubida && <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{errorSubida}</p>}
 
       <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-zinc-800">
         <button type="button" className={PESTANA(modo === 'instagram')}
@@ -83,7 +88,7 @@ export default function VideoAgenciaForm({ form, setForm, error }) {
         ) : (
           <button type="button" onClick={() => videoRef.current?.click()} disabled={subiendoVideo}
             className="w-full border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg py-6 text-gray-400 dark:text-zinc-500 text-sm hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-500 dark:hover:text-brand-400 transition-colors disabled:opacity-50">
-            {subiendoVideo ? 'Subiendo... (puede tardar según el tamaño)' : 'Subir video (máx. 50MB)'}
+            {subiendoVideo ? 'Subiendo... (puede tardar según el tamaño)' : `Subir video (máx. ${MAX_MB_VIDEO_AGENCIA} MB)`}
           </button>
         )}
       </div>

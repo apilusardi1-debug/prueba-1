@@ -204,6 +204,9 @@ export default function WhatsAppCRM() {
   const [enviando, setEnviando] = useState(false)
   const [ahora, setAhora] = useState(Date.now())
   const [adjunto, setAdjunto] = useState(null)
+  // El archivo de una respuesta rápida se baja aparte del texto: mientras tanto no se puede enviar
+  // (si no, salía solo el texto y el audio o la foto se perdían)
+  const [cargandoAdjunto, setCargandoAdjunto] = useState(false)
   const [respondiendoA, setRespondiendoA] = useState(null) // mensaje citado con "Responder"
   const [emojisAbierto, setEmojisAbierto] = useState(false)
   const [adjuntoPreview, setAdjuntoPreview] = useState(null)
@@ -662,7 +665,8 @@ export default function WhatsAppCRM() {
   // mensaje (se puede quitar o cambiar igual que uno elegido a mano)
   async function cargarAdjuntoDeRespuesta(respuesta) {
     if (!respuesta.adjunto_path) return
-    const file = await bajarAdjuntoRespuesta(respuesta)
+    setCargandoAdjunto(true)
+    const file = await bajarAdjuntoRespuesta(respuesta).finally(() => setCargandoAdjunto(false))
     if (file) setAdjunto(file)
     else avisar('No se pudo cargar el archivo de esta respuesta. Probá de nuevo o adjuntalo a mano.')
   }
@@ -1067,6 +1071,10 @@ export default function WhatsAppCRM() {
   async function enviar() {
     const textoEnviar = texto.trim()
     if ((!textoEnviar && !adjunto) || !seleccionada || enviando) return
+    if (cargandoAdjunto) {
+      avisar('Esperá a que termine de cargar el archivo de la respuesta rápida y volvé a enviar.')
+      return
+    }
 
     if (hayCampoPendiente(textoEnviar)) {
       avisar('El mensaje todavía tiene {nombre} o {agente} sin completar. Escribí el dato a mano antes de enviarlo.')
@@ -1837,6 +1845,12 @@ export default function WhatsAppCRM() {
               >✕</button>
             </div>
           )}
+          {cargandoAdjunto && (
+            <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400">
+              <span className="w-3 h-3 rounded-full border-2 border-gray-300 border-t-hero-sky animate-spin dark:border-zinc-600 dark:border-t-hero-sky" />
+              Cargando el archivo de la respuesta rápida...
+            </div>
+          )}
           {adjunto && !revisandoAudio && (
             <div className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 pt-3 flex items-center gap-3">
               {adjuntoPreview && <img src={adjuntoPreview} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
@@ -2118,7 +2132,7 @@ export default function WhatsAppCRM() {
               </div>
               <button
                 onClick={enviar}
-                disabled={enviando || (!texto.trim() && !adjunto)}
+                disabled={enviando || cargandoAdjunto || (!texto.trim() && !adjunto)}
                 title="Enviar"
                 className="bg-hero-sky hover:brightness-95 !text-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold w-full h-9 sm:h-[42px] px-5 rounded-2xl text-sm transition-colors shrink-0 flex items-center justify-center"
               >

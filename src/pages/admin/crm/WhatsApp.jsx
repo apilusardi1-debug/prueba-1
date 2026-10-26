@@ -302,6 +302,9 @@ export default function WhatsAppCRM() {
   const [chatAbajo, setChatAbajo] = useState(true)
   const [nuevosSinVer, setNuevosSinVer] = useState(0)
   const inputRef = useRef(null)
+  // El cuadro del mensaje se acomoda a su texto cada vez que cambia, también cuando lo cambia
+  // el sistema: al enviar vuelve a su tamaño chico y al fallar el envío se agranda de nuevo.
+  useEffect(() => { ajustarAltoMensaje(inputRef.current) }, [texto])
   const menuEtiquetaRef = useRef(null)
   const menuParceroRef = useRef(null)
   const menuAsignarRef = useRef(null)

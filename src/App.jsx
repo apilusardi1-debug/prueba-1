@@ -52,6 +52,7 @@ import PaquetesInfo from './pages/public/PaquetesInfo.jsx'
 const Superadmin = lazy(() => import('./pages/admin/Superadmin.jsx'))
 const OperacionesEnCurso = lazy(() => import('./pages/admin/OperacionesEnCurso.jsx'))
 const Mensajes = lazy(() => import('./pages/admin/Mensajes.jsx'))
+const ConfigAlertas = lazy(() => import('./pages/admin/ConfigAlertas.jsx'))
 
 const router = createBrowserRouter([
   // ── Área pública ──────────────────────────────────────────────
@@ -109,6 +110,7 @@ const router = createBrowserRouter([
       { path: '/admin/equipo',           element: <Equipo /> },
       { path: '/admin/configuracion',    element: <SiteConfig /> },
       { path: '/admin/entrenar-asistente', element: <AsistenteEntrenamiento /> },
+      { path: '/admin/alertas', element: <ConfigAlertas /> },
       { path: '/admin/superadmin', element: <Superadmin /> },
       { path: '/admin/operaciones/en-curso', element: <OperacionesEnCurso /> },
       { path: '/admin/mensajes', element: <Mensajes /> },

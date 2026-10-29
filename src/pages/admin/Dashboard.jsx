@@ -15,6 +15,7 @@ import {
   useMetricasCRM, Encabezado,
   TarjetaSinResponder, TarjetaTiempoRespuesta, TarjetaActividad, TarjetaGasto,
 } from '../../components/admin/dashboard/CRMCards.jsx'
+import AlertasOperaciones from '../../components/admin/dashboard/AlertasOperaciones.jsx'
 
 // Tarjeta "Costos operativos" oculta hasta que estén bien cargados los costos por reserva
 // (pedido de Cristian, 2026-10-15: con datos a medio cargar confundía). Volver a true para mostrarla.
@@ -274,6 +275,9 @@ export default function Dashboard() {
         <StatCard icon="users" label="Clientes" value={clientes.length} hint="Registrados" to="/admin/clientes" />
         {MOSTRAR_COSTOS_OPERATIVOS && <StatCard icon="gear" label="Costos operativos" value={formatPrecio(costosOperativosMes)} hint="Del mes, según chofer por reserva" to="/admin/reservas" />}
       </div>
+
+      {/* Alertas de operaciones (se configuran en Configuración > Alertas) */}
+      <AlertasOperaciones />
 
       {/* Atención al cliente: espera, tiempo de respuesta, propuestas */}
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-[1.25fr_1fr_1fr] md:gap-5">

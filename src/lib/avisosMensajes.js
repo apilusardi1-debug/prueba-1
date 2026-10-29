@@ -61,7 +61,7 @@ function notificacionesPermitidas() {
   return typeof Notification !== 'undefined' && Notification.permission === 'granted'
 }
 
-function tienePestanaEnfoque() {
+export function tienePestanaEnfoque() {
   return document.visibilityState === 'visible' && document.hasFocus()
 }
 
@@ -77,7 +77,7 @@ function detenerParpadeo() {
   document.title = parpadeo.tituloOriginal
   parpadeo = null
 }
-function parpadearTitulo(texto) {
+export function parpadearTitulo(texto) {
   detenerParpadeo()
   const tituloOriginal = document.title
   let alterna = false
@@ -105,7 +105,7 @@ export function leerEstadoAvisos() {
   return { sonido, notificaciones }
 }
 
-function mostrarNotificacion({ titulo, cuerpo, tag, alHacerClic }) {
+export function mostrarNotificacion({ titulo, cuerpo, tag, alHacerClic }) {
   if (!notificacionesPermitidas()) return
   const n = new Notification(titulo, {
     body: cuerpo,

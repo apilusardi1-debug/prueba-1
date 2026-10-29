@@ -41,6 +41,7 @@ export const SECCIONES = [
   { clave: 'equipo', nombre: 'Equipo', ruta: '/admin/equipo' },
   { clave: 'configuracion', nombre: 'Configuración', ruta: '/admin/configuracion' },
   { clave: 'entrenar_asistente', nombre: 'Entrenar al asistente', ruta: '/admin/entrenar-asistente' },
+  { clave: 'alertas', nombre: 'Alertas de operaciones (configurar)', ruta: '/admin/alertas' },
   { clave: 'superadmin', nombre: 'Superadmin', ruta: '/admin/superadmin', soloSuperadmin: true },
 ]
 

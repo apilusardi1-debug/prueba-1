@@ -6,6 +6,8 @@ import { puedeEntrenar } from '../../lib/entrenamiento.js'
 import { supabase, conversacionesApi, renovarSesionPanel, cargarPermisosSesion } from '../../lib/supabase.js'
 import { useAvisosMensajes } from '../../lib/avisosMensajes.js'
 import MenuAvisos from './MenuAvisos.jsx'
+import MenuAlertas from './MenuAlertas.jsx'
+import { AlertasProvider } from '../../lib/useAlertas.jsx'
 import AvisosCarteles from './AvisosCarteles.jsx'
 
 function useDarkMode() {
@@ -232,6 +234,7 @@ const NAV = [
       { path: '/admin/configuracion', label: 'General', icon: Icon.Config },
       { path: '/admin/equipo',      label: 'Equipo',      icon: Icon.Equipo },
       { path: '/admin/entrenar-asistente', label: 'Entrenar al asistente', icon: Icon.Entrenar, soloEmails: true },
+      { path: '/admin/alertas', label: 'Alertas', icon: Icon.Config },
       { path: '/admin/mensajes',    label: 'Mensajes',    icon: Icon.Generador },
       { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
       { path: '/admin/superadmin',  label: 'Superadmin',  icon: Icon.Superadmin },
@@ -484,7 +487,7 @@ function inicialDeSesion() {
   return (sesion.nombre || sesion.email || '?').charAt(0).toUpperCase()
 }
 
-function Header({ dark, setDark, avisos, puedeAvisos }) {
+function Header({ dark, setDark, avisos, puedeAvisos, puedeAlertas }) {
   const { toggleSidebar, toggleMobileSidebar } = useSidebar()
   const { pathname } = useLocation()
 
@@ -521,6 +524,7 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
     if (pathname.startsWith('/admin/equipo')) return 'Equipo'
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración'
     if (pathname.startsWith('/admin/entrenar-asistente')) return 'Entrenar al asistente'
+    if (pathname.startsWith('/admin/alertas')) return 'Alertas de operaciones'
     if (pathname.startsWith('/admin/superadmin')) return 'Superadmin'
     return 'Panel'
   }
@@ -539,6 +543,9 @@ function Header({ dark, setDark, avisos, puedeAvisos }) {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        {/* Alertas de operaciones (reservas sin chofer, operaciones sin cerrar...) */}
+        {puedeAlertas && <MenuAlertas />}
+
         {/* Avisos de mensajes nuevos del CRM (sonido y notificación) */}
         {puedeAvisos && <MenuAvisos avisos={avisos} />}
 
@@ -593,6 +600,8 @@ function LayoutContent() {
   // exactamente igual que siempre.
   const esWhatsApp = pathname.startsWith('/admin/crm/whatsapp')
   const puedeAvisos = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/crm/whatsapp')
+  // Alertas de operaciones: las ven todos los que tienen acceso a Agenda
+  const puedeAlertas = tieneAcceso(JSON.parse(localStorage.getItem('admin_session') || '{}').role, '/admin/agenda')
   const avisos = useAvisosMensajes({ habilitado: puedeAvisos, navigate })
   const [, setVersionPermisos] = useState(0)
   // Mientras el panel esté abierto la sesión se renueva sola (el token dura una hora). Si el
@@ -624,6 +633,7 @@ function LayoutContent() {
   }
 
   return (
+    <AlertasProvider habilitado={puedeAlertas} navigate={navigate}>
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 admin-ui transition-colors">
       <Sidebar />
       <Backdrop />
@@ -631,7 +641,7 @@ function LayoutContent() {
       <div className={`transition-all duration-300 ease-in-out ${esWhatsApp ? 'flex h-dvh flex-col overflow-hidden' : ''} ${
         isExpanded || isHovered ? 'lg:ml-[286px]' : 'lg:ml-[100px]'
       }`}>
-        <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} />
+        <Header dark={dark} setDark={setDark} avisos={avisos} puedeAvisos={puedeAvisos} puedeAlertas={puedeAlertas} />
         {/* El CRM de WhatsApp necesita la pantalla fija: el header y la lista de conversaciones
             quedan quietos, y solo se mueve la lista o los mensajes cuando se hace scroll ahí
             adentro (nunca la página entera). Por eso acá "main" no scrollea: queda del alto
@@ -643,6 +653,7 @@ function LayoutContent() {
         </main>
       </div>
     </div>
+    </AlertasProvider>
   )
 }
 

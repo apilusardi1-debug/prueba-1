@@ -342,6 +342,11 @@ export const operacionesApi = {
     const filas = avisos.map(a => ({ ...a, operacion_id: op.id }))
     return supabase?.from('operaciones_avisos').insert(filas).select()
   },
+  // Operaciones cerradas de una fecha en adelante, con el estado de cada aviso (para las alertas)
+  getDesde: (fecha) => supabase
+    ?.from('operaciones')
+    .select('id, excursion_id, fecha, guia_id, operaciones_avisos(id, destinatario, guia_id, chofer_id, leido_at, confirmado_at, created_at)')
+    .gte('fecha', fecha),
   getAvisos: (excursionId, fecha) => supabase
     ?.from('operaciones')
     .select('id, operaciones_avisos(id, destinatario, guia_id, chofer_id, leido_at, confirmado_at)')

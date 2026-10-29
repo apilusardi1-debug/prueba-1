@@ -870,8 +870,9 @@ export const agenciaVideosApi = {
 
 // Máximo por archivo del bucket videos-agencia (2026-10-25, pedido de Cristian: videos de hasta
 // unos 3 minutos). Tiene que coincidir con el límite del bucket y con "Upload file size limit"
-// de Storage en Supabase (migración 20261025100000_videos_agencia_150mb.sql).
-export const MAX_MB_VIDEO_AGENCIA = 150
+// de Storage en Supabase (migraciones 20261025100000_videos_agencia_150mb.sql y
+// 20261029100000_videos_agencia_180mb.sql; 2026-10-29: de 150 a 180 MB).
+export const MAX_MB_VIDEO_AGENCIA = 180
 
 async function subirArchivoAgenciaVideo(archivo, carpeta) {
   if (!supabase) return { url: null, error: 'Sin conexión' }

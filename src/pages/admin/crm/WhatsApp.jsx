@@ -56,6 +56,15 @@ function nombreChat(conv) {
   return conv?.nombre_agendado || conv?.contacto_nombre
 }
 
+// Orden de la lista, como WhatsApp: arriba el chat al que le escribió el cliente más recién, sin
+// excepción (también el que está abierto). Responder nosotros no lo mueve. Los que nunca escribieron
+// (importados de Kommo, solo plantilla) quedan abajo, por su último mensaje (pedido de Cristian, 2026-11-02).
+const msDe = (ts) => (ts ? Date.parse(ts) || 0 : 0)
+function porActividad(a, b) {
+  return (msDe(b.ultimo_entrante_at) - msDe(a.ultimo_entrante_at))
+    || (msDe(b.ultimo_mensaje_at) - msDe(a.ultimo_mensaje_at))
+}
+
 function formatTiempo(ts) {
   if (!ts) return ''
   const d = new Date(ts)
@@ -436,7 +445,7 @@ export default function WhatsAppCRM() {
   // Cargar conversaciones + suscripción realtime
   useEffect(() => {
     conversacionesApi.getAll().then(({ data }) => {
-      if (data) setConversaciones(data)
+      if (data) setConversaciones([...data].sort(porActividad))
       setLoading(false)
     })
 
@@ -445,11 +454,11 @@ export default function WhatsAppCRM() {
       .channel('crm-conversaciones')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setConversaciones(prev => [payload.new, ...prev])
+          setConversaciones(prev => [payload.new, ...prev].sort(porActividad))
         } else if (payload.eventType === 'UPDATE') {
           setConversaciones(prev =>
             [...prev.map(c => c.id === payload.new.id ? payload.new : c)]
-              .sort((a, b) => new Date(b.ultimo_mensaje_at) - new Date(a.ultimo_mensaje_at))
+              .sort(porActividad)
           )
           // Si cambió quien la atiende (lo reasignó el servidor porque respondió otro),
           // la conversación abierta tiene que mostrarlo sin recargar.

@@ -33,6 +33,7 @@ const opcion = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] :
 const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Recife' })
 const desde = opcion('--desde') || hoy
 const anterior = opcion('--anterior') ? JSON.parse(readFileSync(opcion('--anterior'), 'utf8')) : null
+const soloNuevas = args.includes('--solo-nuevas')
 if (!archivo) { console.error('Falta el archivo .xlsx'); process.exit(1) }
 
 // ── Equivalencias (revisadas con Abril el 2026-10-13) ────────────────────────────
@@ -42,6 +43,9 @@ const norm = (t) => String(t ?? '').trim().toLowerCase().normalize('NFD').replac
 // Paseos: texto normalizado → { paseo, catalogo (nombre en excursiones o null), sinTraslado, obs }
 const PASEOS = {
   'maragogi': { paseo: 'Maragogi', catalogo: true },
+  'maragogi desde alla': { paseo: 'Maragogi', catalogo: true, obs: 'Hospedado en Maragogi' },
+  'praia dos carneiros': { paseo: 'Praia dos Carneiros', catalogo: true },
+  'paramotor': { paseo: 'Vuelo en Paramotor', catalogo: true },
   'carneiros': { paseo: 'Praia dos Carneiros', catalogo: true },
   'carnerios': { paseo: 'Praia dos Carneiros', catalogo: true },
   'isla de santo aleixo': { paseo: 'Isla de Santo Aleixo', catalogo: true },
@@ -116,9 +120,13 @@ const monto = (v) => {
 const texto = (v) => String(v ?? '').trim()
 
 const wb = XLSX.readFile(archivo, { cellDates: true })
-const hoja = wb.Sheets['NUEVA PLANILLA']
-if (!hoja) { console.error('No está la pestaña "NUEVA PLANILLA"'); process.exit(1) }
-const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null, raw: true })
+const hoja = wb.Sheets['NUEVA PLANILLA'] || wb.Sheets['NUEVA_PLANILLA']
+if (!hoja) { console.error('No está la pestaña "NUEVA PLANILLA" (ni "NUEVA_PLANILLA")'); process.exit(1) }
+const filasCrudas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null, raw: true })
+// La versión de noviembre trae una columna en blanco después de "Fecha del paseo" (antes de
+// "Valor venta"): se detecta por el título y se saca, así el resto de las columnas queda igual
+const desfase = Math.max(0, filasCrudas[0].findIndex(t => norm(t) === 'valor venta') - 5)
+const filas = desfase ? filasCrudas.map(r => [...r.slice(0, 5), ...r.slice(5 + desfase)]) : filasCrudas
 
 const reservas = []
 filas.slice(1).forEach((f, i) => {
@@ -174,7 +182,9 @@ filas.slice(1).forEach((f, i) => {
     comision_chofer: comChofer,
     hospedaje: texto(f[10]) || null,
     notas: obs.join(' · ') || null,
-    cliente_whatsapp: texto(f[13]).replace(/\D/g, '') || null,
+    // Si la celda trae más de un teléfono (separados por / | ; ,) se guardan todos, cada uno solo con
+    // dígitos y unidos con " / " (así los entiende telefonos_contacto); antes se juntaban en un solo número
+    cliente_whatsapp: texto(f[13]).split(/[|/;,]/).map(t => t.replace(/\D/g, '')).filter(Boolean).join(' / ') || null,
     vendedor_texto: traducirVendedor(f[14]),
     revisar,
   }
@@ -231,7 +241,37 @@ const valores = aCargar.map(r => `  (${[
   r.hospedaje, r.notas, r.vendedor_texto, 'confirmada',
 ].map(sql).join(', ')})`)
 const actualizables = ['fecha_venta', 'cliente_nombre', 'cliente_whatsapp', 'personas', 'paseo', 'excursion_id', 'fecha', 'sin_traslado', 'total', 'saldo_cliente', 'sena', 'moneda', 'chofer_texto', 'comision_chofer', 'hospedaje', 'notas', 'vendedor_texto']
-const textoSql = aCargar.length ? `-- Importación de la planilla de paseos (${sello}): ${aCargar.length} reservas (${aCargar.filter(r => r.situacion === 'nueva').length} nuevas, ${aCargar.filter(r => r.situacion === 'cambió').length} con cambios).
+
+// --solo-nuevas: no actualiza nada de lo que ya está cargado, solo inserta lo que no existe.
+// "Ya existe" = misma clave de planilla, o misma fecha + cliente + paseo (cubre reservas cargadas
+// a mano desde el panel, que no tienen clave). Cada valor lleva su tipo porque va dentro de un VALUES.
+const TIPOS = ['text', 'text', 'date', 'text', 'text', 'integer', 'text', 'uuid', 'date', 'boolean', 'numeric', 'numeric', 'numeric', 'text', 'text', 'numeric', 'text', 'text', 'text', 'text']
+const COLS_INS = ['clave_planilla', 'origen', 'fecha_venta', 'cliente_nombre', 'cliente_whatsapp', 'personas', 'paseo', 'excursion_id', 'fecha', 'sin_traslado', 'total', 'saldo_cliente', 'sena', 'moneda', 'chofer_texto', 'comision_chofer', 'hospedaje', 'notas', 'vendedor_texto', 'estado']
+const valoresTipados = aCargar.map(r => {
+  const v = [r.clave_planilla, 'planilla', r.fecha_venta, r.cliente_nombre, r.cliente_whatsapp, r.personas, r.paseo,
+    r.paseo_catalogo ? `(select id from excursiones where nombre = ${sql(r.paseo_catalogo)} limit 1)` : null,
+    r.fecha, r.sin_traslado, r.total, r.saldo_cliente, r.sena, r.moneda, r.chofer_texto, r.comision_chofer,
+    r.hospedaje, r.notas, r.vendedor_texto, 'confirmada']
+  return `  (${v.map((x, i) => i === 7 ? (x ?? 'null::uuid') : `${sql(x)}::${TIPOS[i]}`).join(', ')})`
+})
+const textoSqlSoloNuevas = aCargar.length ? `-- Importación de la planilla de paseos (${sello}): hasta ${aCargar.length} reservas, SOLO LAS QUE NO EXISTEN.
+-- Generado por scripts/importar-planilla-reservas.mjs --solo-nuevas. Pegar entero en el SQL Editor de Supabase.
+-- No modifica ninguna reserva ya cargada. Se saltea las que ya existen por clave de planilla o por
+-- fecha del paseo + cliente + paseo (así tampoco duplica las que se cargaron a mano desde el panel).
+begin;
+insert into reservas (${COLS_INS.join(', ')})
+select v.* from (values
+${valoresTipados.join(',\n')}
+) as v(${COLS_INS.join(', ')})
+where not exists (
+  select 1 from reservas x
+   where x.clave_planilla = v.clave_planilla
+      or (x.fecha = v.fecha and lower(btrim(x.cliente_nombre)) = lower(btrim(v.cliente_nombre)) and x.paseo = v.paseo)
+);
+commit;
+` : '-- No hay nada para cargar.\n'
+
+const textoSql = soloNuevas ? textoSqlSoloNuevas : aCargar.length ? `-- Importación de la planilla de paseos (${sello}): ${aCargar.length} reservas (${aCargar.filter(r => r.situacion === 'nueva').length} nuevas, ${aCargar.filter(r => r.situacion === 'cambió').length} con cambios).
 -- Generado por scripts/importar-planilla-reservas.mjs. Pegar entero en el SQL Editor de Supabase.
 -- Las que ya estaban (misma clave_planilla) se actualizan, sin tocar estado ni chofer/guía asignados en la Agenda.
 begin;
@@ -245,6 +285,61 @@ commit;
 ` : '-- No hay nada nuevo ni con cambios para cargar.\n'
 writeFileSync(join(carpeta, `importacion-${sello}.sql`), textoSql)
 writeFileSync(join(carpeta, `importacion-${sello}.json`), JSON.stringify({ fecha: sello, desde, reservas: unicas }, null, 1))
+
+// ── Clientes (solo con --clientes) ───────────────────────────────────────────
+// Segundo SQL, para correr DESPUÉS del de reservas. Crea la ficha de cliente de quien todavía no la
+// tiene y une sus reservas de la planilla. Solo con teléfono claro (un solo número, con código de
+// país y largo normal): el resto va a un CSV aparte para revisar, nunca se crea a ciegas.
+// Para saber si ya existe usa telefonos_contacto() (con y sin el 9 argentino), igual que el resto
+// del sistema; la columna whatsapp de clientes además es única, así que no puede quedar repetido.
+if (args.includes('--clientes')) {
+  const telClaro = (t) => !!t && !t.includes(' / ') && t.length >= 11 && t.length <= 13 && /^(54|55|56|57|58|51|52|34|59\d)/.test(t)
+  const porTel = new Map()
+  const dudosos = []
+  for (const r of [...unicas].sort((a, b) => a.fila_excel - b.fila_excel)) {
+    const sinNombre = !r.cliente_nombre || r.cliente_nombre === 'Sin nombre'
+    if (!telClaro(r.cliente_whatsapp) || sinNombre) {
+      dudosos.push([r.fila_excel, r.cliente_nombre, r.cliente_whatsapp || '', !r.cliente_whatsapp ? 'Sin teléfono' : sinNombre ? 'Sin nombre' : r.cliente_whatsapp.includes(' / ') ? 'Más de un teléfono en la celda' : 'Teléfono dudoso (largo o código de país)'])
+      continue
+    }
+    if (!porTel.has(r.cliente_whatsapp)) porTel.set(r.cliente_whatsapp, { nombre: r.cliente_nombre, nombres: new Set() })
+    porTel.get(r.cliente_whatsapp).nombres.add(r.cliente_nombre)
+  }
+  for (const [tel, v] of porTel) if (v.nombres.size > 1) dudosos.push(['', [...v.nombres].join(' / '), tel, 'Informativo: mismo teléfono con varios nombres; se crea con el primero'])
+  const tels = [...porTel.keys()]
+  const filasCli = tels.map(t => `  (${sql(t)}::text, ${sql(porTel.get(t).nombre)}::text)`)
+  const sqlClientes = tels.length ? `-- Clientes de la planilla de paseos (${sello}): ${tels.length} teléfonos claros. Correr DESPUÉS de importacion-${sello}.sql.
+-- 1) Crea el cliente solo si no existe ninguno con ese teléfono (con o sin el 9 argentino).
+-- 2) Une a ese cliente sus reservas de la planilla que no tenían cliente.
+-- 3) Recalcula cantidad_reservas de esos clientes.
+-- No toca clientes que ya existían (salvo recalcular su cantidad_reservas).
+begin;
+insert into clientes (nombre, whatsapp, origen, lead_id)
+select n.nombre, n.tel, 'Planilla paseos',
+       (select l.id from leads l where regexp_replace(coalesce(l.whatsapp, ''), '\\D', '', 'g') = any (telefonos_contacto(n.tel)) order by l.created_at desc limit 1)
+from (values
+${filasCli.join(',\n')}
+) as n(tel, nombre)
+where not exists (
+  select 1 from clientes c where regexp_replace(coalesce(c.whatsapp, ''), '\\D', '', 'g') = any (telefonos_contacto(n.tel))
+)
+on conflict (whatsapp) do nothing;
+
+update reservas r set cliente_id = (
+  select c.id from clientes c
+   where regexp_replace(coalesce(c.whatsapp, ''), '\\D', '', 'g') = any (telefonos_contacto(r.cliente_whatsapp))
+   order by c.created_at limit 1)
+ where r.cliente_id is null and r.origen = 'planilla'
+   and r.cliente_whatsapp in (${tels.map(sql).join(', ')});
+
+update clientes c set cantidad_reservas = (select count(*) from reservas r where r.cliente_id = c.id)
+ where c.id in (select cliente_id from reservas where origen = 'planilla' and cliente_whatsapp in (${tels.map(sql).join(', ')}) and cliente_id is not null);
+commit;
+` : '-- No hay clientes claros para crear.\n'
+  writeFileSync(join(carpeta, `clientes-${sello}.sql`), sqlClientes)
+  writeFileSync(join(carpeta, `clientes-a-revisar-${sello}.csv`), '﻿' + ['Fila Excel;Cliente;Teléfono;Motivo', ...dudosos.map(d => d.map(csvCelda).join(';'))].join('\n'))
+  console.log(JSON.stringify({ clientes_claros_para_crear_o_unir: tels.length, a_revisar_o_informativos: dudosos.length }))
+}
 
 // Resumen (sin datos de clientes): para mostrar en la conversación
 const cuenta = (fn) => { const c = {}; unicas.forEach(r => { const k = fn(r); c[k] = (c[k] || 0) + 1 }); return c }

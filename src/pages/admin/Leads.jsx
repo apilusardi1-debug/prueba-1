@@ -9,6 +9,7 @@ import AnfitrionaDatos, { faltantesHospedaje } from '../../components/leads/Anfi
 import { avisar } from '../../components/ui/Avisos.jsx'
 import { RAZONES_PERDIDA, CampoInteres, formatoReales, CampoEtiquetas, OpcionesEtapas } from '../../components/leads/CamposLead.jsx'
 import FichaPersona from '../../components/ficha/FichaPersona.jsx'
+import CalendarioAnfitrionas from '../../components/leads/CalendarioAnfitrionas.jsx'
 
 // Ficha única (lead + cliente, 2026-10-14). En false vuelve a la ficha anterior del lead.
 const FICHA_UNICA = true
@@ -502,7 +503,7 @@ export default function Leads({ embudo = 'paquetes' }) {
         </div>
 
         <div className="flex items-center gap-0.5 rounded-xl bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist" aria-label="Vista">
-          {[['kanban', 'Tablero', 'columns'], ['tabla', 'Lista', 'list']].map(([v, nombre, icono]) => (
+          {[['kanban', 'Tablero', 'columns'], ['tabla', 'Lista', 'list'], ...(embudo === 'anfitriona' ? [['calendario', 'Calendario', 'cal']] : [])].map(([v, nombre, icono]) => (
             <button
               key={v}
               role="tab"
@@ -558,6 +559,27 @@ export default function Leads({ embudo = 'paquetes' }) {
         <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-12 text-center text-sm text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
           Este embudo todavía no existe en la base de datos. Falta aplicar la migración de los embudos.
         </div>
+      )}
+
+      {vista === 'calendario' && embudo === 'anfitriona' && (
+        <CalendarioAnfitrionas
+          leads={leads.filter(l => {
+            const e = etapaDe(etapas, claveVisible(etapas, l.estado))
+            return embudoDeEtapa(e) === 'anfitriona' && e?.tipo !== 'perdida'
+          })}
+          recordatorios={recordatorios}
+          hospedajes={hospedajes}
+          usuarios={usuarios}
+          onAbrirLead={abrirLead}
+          onCompletar={completarRecordatorio}
+          onEliminar={eliminarRecordatorio}
+          onCrear={async datos => {
+            const { data, error } = await recordatoriosApi.create(datos)
+            if (error || !data) { avisar('No se pudo guardar el recordatorio: ' + (error?.message || 'error desconocido')); return false }
+            setRecordatorios(prev => [...prev, data])
+            return true
+          }}
+        />
       )}
 
       {vista === 'kanban' && (

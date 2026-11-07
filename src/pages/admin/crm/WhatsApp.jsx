@@ -56,13 +56,14 @@ function nombreChat(conv) {
   return conv?.nombre_agendado || conv?.contacto_nombre
 }
 
-// Orden de la lista, como WhatsApp: arriba el chat al que le escribió el cliente más recién, sin
-// excepción (también el que está abierto). Responder nosotros no lo mueve. Los que nunca escribieron
-// (importados de Kommo, solo plantilla) quedan abajo, por su último mensaje (pedido de Cristian, 2026-11-02).
+// Orden de la lista, como WhatsApp: arriba el chat con el mensaje más reciente, sea del cliente, de
+// una persona del equipo, del asistente o una plantilla, sin excepción (también el que está abierto).
+// Pedido de Cristian, 2026-11-02 (por el cliente) y corregido 2026-11-07: también tiene que subir
+// cuando responde el equipo.
 const msDe = (ts) => (ts ? Date.parse(ts) || 0 : 0)
 function porActividad(a, b) {
-  return (msDe(b.ultimo_entrante_at) - msDe(a.ultimo_entrante_at))
-    || (msDe(b.ultimo_mensaje_at) - msDe(a.ultimo_mensaje_at))
+  return (msDe(b.ultimo_mensaje_at) - msDe(a.ultimo_mensaje_at))
+    || (msDe(b.ultimo_entrante_at) - msDe(a.ultimo_entrante_at))
 }
 
 function formatTiempo(ts) {

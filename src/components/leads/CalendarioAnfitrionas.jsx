@@ -86,13 +86,14 @@ export default function CalendarioAnfitrionas({ leads, recordatorios, hospedajes
     const orden = { tarea: 0, recordatorio: 1, evento: 2 }
     const mapa = {}
     for (const it of items) {
+      if (it.fecha < hoy) continue // el calendario muestra solo desde hoy en adelante (pedido de Cristian, 2026-11-07)
       const tono = tonoDeLead(it.lead)
       if (filtro !== 'todas' && tono.clave !== filtro) continue
       ;(mapa[it.fecha] ||= []).push({ ...it, tono })
     }
     for (const f of Object.keys(mapa)) mapa[f].sort((a, b) => orden[a.tipo] - orden[b.tipo] || a.lead.nombre.localeCompare(b.lead.nombre))
     return mapa
-  }, [recordatorios, leads, hospedajes, leadPorId, tonoDeLead, filtro])
+  }, [recordatorios, leads, hospedajes, leadPorId, tonoDeLead, filtro, hoy])
 
   // Grilla del mes (empieza en lunes)
   const celdas = useMemo(() => {
@@ -110,7 +111,6 @@ export default function CalendarioAnfitrionas({ leads, recordatorios, hospedajes
   const irHoy = () => { setMes({ y: Number(hoy.slice(0, 4)), m: Number(hoy.slice(5, 7)) - 1 }); setDia(hoy) }
 
   const delDia = porFecha[dia] || []
-  const vencidas = Object.entries(porFecha).reduce((n, [f, l]) => n + (f < hoy ? l.filter(i => i.tipo !== 'evento').length : 0), 0)
 
   async function crear(e) {
     e.preventDefault()
@@ -157,7 +157,6 @@ export default function CalendarioAnfitrionas({ leads, recordatorios, hospedajes
             </button>
           ))}
         </div>
-        {vencidas > 0 && <p className="ml-auto text-xs font-semibold text-red-600 dark:text-red-400">{vencidas} {vencidas === 1 ? 'tarea vencida' : 'tareas vencidas'}</p>}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">

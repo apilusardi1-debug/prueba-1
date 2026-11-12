@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { hospedajesApi, habitacionesApi, propietariosApi } from '../../lib/supabase.js'
-import { TIPOS, ORIGENES } from '../../components/admin/HospedajeForm.jsx'
+import { TIPOS, TIPOS_LABEL, ORIGENES } from '../../components/admin/HospedajeForm.jsx'
 import { IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 async function loadImgDataUrl(url) {
@@ -72,7 +72,7 @@ async function generarPDF(hoteles) {
     doc.setTextColor(71, 85, 105)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.5)
-    doc.text((h.tipo || 'HOSPEDAJE').toUpperCase(), margen + 3, y + 5)
+    doc.text((TIPOS_LABEL[h.tipo] || h.tipo || 'HOSPEDAJE').toUpperCase(), margen + 3, y + 5)
     y += 12
 
     doc.setTextColor(15, 23, 42)
@@ -160,7 +160,7 @@ async function generarPDF(hoteles) {
 
 // ── Componentes UI ───────────────────────────────────────────────────────────
 
-function DropdownFiltro({ label, opciones, seleccionados, onChange }) {
+function DropdownFiltro({ label, opciones, seleccionados, onChange, etiquetas = {} }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -212,7 +212,7 @@ function DropdownFiltro({ label, opciones, seleccionados, onChange }) {
                   </svg>
                 )}
               </span>
-              {op}
+              {etiquetas[op] || op}
             </button>
           ))}
         </div>
@@ -359,7 +359,7 @@ export default function Hospedajes() {
             className="pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
           />
         </div>
-        <DropdownFiltro label="Categoría" opciones={TIPOS} seleccionados={seleccion.categorias} onChange={val => setFiltro('categorias', val)} />
+        <DropdownFiltro label="Categoría" opciones={TIPOS} etiquetas={TIPOS_LABEL} seleccionados={seleccion.categorias} onChange={val => setFiltro('categorias', val)} />
         <DropdownFiltro label="Ubicación" opciones={ubicacionesDisponibles} seleccionados={seleccion.ubicaciones} onChange={val => setFiltro('ubicaciones', val)} />
         <DropdownFiltro label="Origen" opciones={ORIGENES} seleccionados={seleccion.origenes} onChange={val => setFiltro('origenes', val)} />
         {hayFiltros && (
@@ -400,7 +400,7 @@ export default function Hospedajes() {
                     <div className="w-full h-full bg-gray-100 dark:bg-zinc-800" />
                   )}
                   <span className="absolute top-3 left-3 bg-white/90 dark:bg-zinc-900/90 text-gray-700 dark:text-zinc-200 text-[11px] font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
-                    {h.tipo}
+                    {TIPOS_LABEL[h.tipo] || h.tipo}
                   </span>
                   <span className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     estaSeleccionado ? 'bg-brand-500 border-brand-500' : 'bg-white/80 border-gray-300'
@@ -534,7 +534,7 @@ function ModalDetalleHospedaje({ hospedaje: h, onCerrar }) {
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide bg-gray-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
-              {h.tipo}
+              {TIPOS_LABEL[h.tipo] || h.tipo}
             </span>
             <button onClick={onCerrar} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 text-lg flex-shrink-0 transition-colors">×</button>
           </div>

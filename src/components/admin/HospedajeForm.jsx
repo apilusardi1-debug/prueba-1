@@ -3,7 +3,13 @@ import { avisar } from '../ui/Avisos.jsx'
 import { subirImagen, subirVideoHospedaje, hospedajesApi } from '../../lib/supabase.js'
 import { IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
-export const TIPOS = ['Hotel', 'Posada', 'Departamento']
+// Valor guardado en la base -> texto que se muestra en el panel. Se guarda "Pousada" (no
+// "Posada") porque es lo que escriben los importadores de Niara/La Playa y lo que el sitio
+// público traduce a "Posada" en español (tipos: { Pousada: 'Posada' }). Si el valor del select
+// no coincide con una opción, el navegador muestra la primera ("Hotel") y al guardar la
+// pisa sin avisar -- por eso también va "Resort".
+export const TIPOS = ['Hotel', 'Pousada', 'Resort', 'Departamento']
+export const TIPOS_LABEL = { Pousada: 'Posada' }
 export const ORIGENES = ['Niara', 'La Playa', 'Dueño directo']
 
 export const EMPTY_HOSPEDAJE = {
@@ -142,7 +148,7 @@ export default function HospedajeForm({ form, setForm, error }) {
           <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Tipo</label>
           <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
             className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-            {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+            {TIPOS.map(t => <option key={t} value={t}>{TIPOS_LABEL[t] || t}</option>)}
           </select>
         </div>
       </div>

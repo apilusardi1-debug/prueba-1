@@ -40,6 +40,7 @@ const Hospedajes = lazy(() => import('./pages/admin/Hospedajes.jsx'))
 const Videos = lazy(() => import('./pages/admin/Videos.jsx'))
 const NuevoHospedaje = lazy(() => import('./pages/admin/hospedajes/NuevoHospedaje.jsx'))
 const EditarHospedaje = lazy(() => import('./pages/admin/hospedajes/EditarHospedaje.jsx'))
+const ImportarHospedajes = lazy(() => import('./pages/admin/hospedajes/ImportarHospedajes.jsx'))
 const WhatsAppCRM = lazy(() => import('./pages/admin/crm/WhatsApp.jsx'))
 const Finanzas = lazy(() => import('./pages/admin/Finanzas.jsx'))
 const ClientesPaquetes = lazy(() => import('./pages/admin/paquetes/ClientesPaquetes.jsx'))
@@ -101,6 +102,7 @@ const router = createBrowserRouter([
       { path: '/admin/hospedajes',         element: <Hospedajes /> },
       { path: '/admin/hospedajes/nuevo',   element: <NuevoHospedaje /> },
       { path: '/admin/hospedajes/:id/editar', element: <EditarHospedaje /> },
+      { path: '/admin/hospedajes/importar', element: <ImportarHospedajes /> },
       { path: '/admin/videos',            element: <Videos /> },
       { path: '/admin/paquetes/clientes',  element: <ClientesPaquetes /> },
       { path: '/admin/paquetes/planilla',  element: <PlanillaViajes /> },

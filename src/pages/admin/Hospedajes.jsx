@@ -241,12 +241,35 @@ function OrigenTag({ origen }) {
   )
 }
 
+// Los filtros y la búsqueda se recuerdan mientras la pestaña esté abierta (sessionStorage),
+// así al volver de editar o crear un hospedaje el listado queda como estaba (pedido de
+// Abril). "Limpiar filtros" los borra.
+const CLAVE_FILTROS = 'admin_hospedajes_filtros'
+const SELECCION_VACIA = { categorias: [], ubicaciones: [], origenes: [] }
+
+function leerFiltrosGuardados() {
+  try {
+    const g = JSON.parse(sessionStorage.getItem(CLAVE_FILTROS) || 'null')
+    if (!g) return null
+    return {
+      busqueda: typeof g.busqueda === 'string' ? g.busqueda : '',
+      seleccion: {
+        categorias: Array.isArray(g.seleccion?.categorias) ? g.seleccion.categorias : [],
+        ubicaciones: Array.isArray(g.seleccion?.ubicaciones) ? g.seleccion.ubicaciones : [],
+        origenes: Array.isArray(g.seleccion?.origenes) ? g.seleccion.origenes : [],
+      },
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function Hospedajes() {
   const navigate = useNavigate()
   const [hospedajes, setHospedajes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [busqueda, setBusqueda] = useState('')
-  const [seleccion, setSeleccion] = useState({ categorias: [], ubicaciones: [], origenes: [] })
+  const [busqueda, setBusqueda] = useState(() => leerFiltrosGuardados()?.busqueda ?? '')
+  const [seleccion, setSeleccion] = useState(() => leerFiltrosGuardados()?.seleccion ?? SELECCION_VACIA)
   const [seleccionados, setSeleccionados] = useState([])
   const [generando, setGenerando] = useState(false)
 
@@ -254,6 +277,10 @@ export default function Hospedajes() {
   const [verDetalle, setVerDetalle] = useState(null)
 
   useEffect(() => { cargar() }, [])
+
+  useEffect(() => {
+    try { sessionStorage.setItem(CLAVE_FILTROS, JSON.stringify({ busqueda, seleccion })) } catch {}
+  }, [busqueda, seleccion])
 
   async function cargar() {
     setLoading(true)
@@ -272,7 +299,7 @@ export default function Hospedajes() {
 
   function resetFiltros() {
     setBusqueda('')
-    setSeleccion({ categorias: [], ubicaciones: [], origenes: [] })
+    setSeleccion(SELECCION_VACIA)
   }
 
   function toggleSeleccion(id) {

@@ -86,7 +86,6 @@ function faltantesDeVuelos(f) {
   const faltan = []
   if (!f.fecha_vuelo_ida) faltan.push('fecha del vuelo de ida')
   if (!f.fecha_vuelo_vuelta) faltan.push('fecha del vuelo de vuelta')
-  if (!f.vuelo_interno) faltan.push('vuelo interno (o NO HAY)')
   if (f.vuelo_interno === 'recife_noronha') {
     if (!f.fecha_vuelo_interno_ida) faltan.push('fecha de ida del vuelo interno')
     if (!f.fecha_vuelo_interno_vuelta) faltan.push('fecha de vuelta del vuelo interno')
@@ -98,7 +97,7 @@ function vuelosDe(lead) {
   return {
     fecha_vuelo_ida: lead?.fecha_vuelo_ida || '',
     fecha_vuelo_vuelta: lead?.fecha_vuelo_vuelta || '',
-    vuelo_interno: lead?.vuelo_interno || '',
+    vuelo_interno: lead?.vuelo_interno === 'recife_noronha' ? 'recife_noronha' : '',
     fecha_vuelo_interno_ida: lead?.fecha_vuelo_interno_ida || '',
     fecha_vuelo_interno_vuelta: lead?.fecha_vuelo_interno_vuelta || '',
   }
@@ -349,7 +348,7 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
     const { error } = await leadsApi.update(lead.id, {
       fecha_vuelo_ida: vuelos.fecha_vuelo_ida || null,
       fecha_vuelo_vuelta: vuelos.fecha_vuelo_vuelta || null,
-      vuelo_interno: vuelos.vuelo_interno || null,
+      vuelo_interno: interno ? 'recife_noronha' : null,
       fecha_vuelo_interno_ida: interno ? vuelos.fecha_vuelo_interno_ida || null : null,
       fecha_vuelo_interno_vuelta: interno ? vuelos.fecha_vuelo_interno_vuelta || null : null,
     })
@@ -680,28 +679,30 @@ export default function FichaPersona({ lead: leadInicial = null, cliente: client
                           <input id="ficha-vuelo-vuelta" type="date" value={vuelos.fecha_vuelo_vuelta} onChange={e => setVuelos(p => ({ ...p, fecha_vuelo_vuelta: e.target.value }))} className={CAMPO} />
                         </div>
                       </div>
-                      <div>
-                        <label htmlFor="ficha-vuelo-interno" className={`${ETIQUETA} mb-1 block normal-case tracking-normal`}>Vuelo interno</label>
-                        <select id="ficha-vuelo-interno" value={vuelos.vuelo_interno} onChange={e => setVuelos(p => ({ ...p, vuelo_interno: e.target.value }))} className={CAMPO}>
-                          <option value="">Elegí una opción</option>
-                          <option value="recife_noronha">Recife – Fernando de Noronha</option>
-                          <option value="no_hay">NO HAY</option>
-                        </select>
-                      </div>
-                      {vuelos.vuelo_interno === 'recife_noronha' && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label htmlFor="ficha-interno-ida" className={`${ETIQUETA} mb-1 block normal-case tracking-normal`}>Ida del vuelo interno</label>
-                            <input id="ficha-interno-ida" type="date" value={vuelos.fecha_vuelo_interno_ida} onChange={e => setVuelos(p => ({ ...p, fecha_vuelo_interno_ida: e.target.value }))} className={CAMPO} />
+                      {vuelos.vuelo_interno === 'recife_noronha' ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className={`${ETIQUETA} normal-case tracking-normal`}>Vuelo interno: Recife – Fernando de Noronha</p>
+                            <button type="button" onClick={() => setVuelos(p => ({ ...p, vuelo_interno: '', fecha_vuelo_interno_ida: '', fecha_vuelo_interno_vuelta: '' }))} className={BOTON_CLARO}>Quitar vuelo interno</button>
                           </div>
-                          <div>
-                            <label htmlFor="ficha-interno-vuelta" className={`${ETIQUETA} mb-1 block normal-case tracking-normal`}>Vuelta del vuelo interno</label>
-                            <input id="ficha-interno-vuelta" type="date" value={vuelos.fecha_vuelo_interno_vuelta} onChange={e => setVuelos(p => ({ ...p, fecha_vuelo_interno_vuelta: e.target.value }))} className={CAMPO} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="ficha-interno-ida" className={`${ETIQUETA} mb-1 block normal-case tracking-normal`}>Ida del vuelo interno</label>
+                              <input id="ficha-interno-ida" type="date" value={vuelos.fecha_vuelo_interno_ida} onChange={e => setVuelos(p => ({ ...p, fecha_vuelo_interno_ida: e.target.value }))} className={CAMPO} />
+                            </div>
+                            <div>
+                              <label htmlFor="ficha-interno-vuelta" className={`${ETIQUETA} mb-1 block normal-case tracking-normal`}>Vuelta del vuelo interno</label>
+                              <input id="ficha-interno-vuelta" type="date" value={vuelos.fecha_vuelo_interno_vuelta} onChange={e => setVuelos(p => ({ ...p, fecha_vuelo_interno_vuelta: e.target.value }))} className={CAMPO} />
+                            </div>
                           </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <button type="button" onClick={() => setVuelos(p => ({ ...p, vuelo_interno: 'recife_noronha' }))} className={BOTON_CLARO}>+ Agregar vuelo interno (Recife – Fernando de Noronha)</button>
                         </div>
                       )}
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-[11px] text-gray-400 dark:text-zinc-500">Al guardar se crean las alarmas: saldo 45 días antes del vuelo de ida y check-in 48 hs antes de cada vuelo.</p>
+                        <p className="text-[11px] text-gray-400 dark:text-zinc-500">Al guardar se crean las alarmas: saldo 45 días antes del vuelo de ida y check-in 48 hs antes de cada vuelo. La tarea de completar las fechas se cierra sola cuando están la ida y la vuelta (y las del vuelo interno, si lo agregaste).</p>
                         <button onClick={guardarVuelos} disabled={guardandoVuelos} className={`${BOTON_OSCURO} shrink-0`}>{guardandoVuelos ? 'Guardando...' : 'Guardar vuelos'}</button>
                       </div>
                     </section>

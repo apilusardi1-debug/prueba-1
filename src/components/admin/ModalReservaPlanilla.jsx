@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { claveTexto } from '../../lib/reservasPlanilla.js'
+import { ESTADO_INICIAL, opcionesEstado } from '../../lib/estadosReserva.js'
 
 // Alta y edición de una reserva con los mismos campos que la planilla de Excel del
 // equipo de paseos. Paseo, chofer y vendedor se escriben libre, pero el campo sugiere
@@ -12,7 +13,7 @@ const VACIA = {
   paseo: '', fecha: '', sin_traslado: false,
   total: '', sena: '', saldo_cliente: '', moneda: 'BRL',
   chofer_texto: '', comision_chofer: '', hospedaje: '', vendedor_texto: '',
-  notas: '', estado: 'confirmada',
+  notas: '', estado: ESTADO_INICIAL,
 }
 
 const ESTADOS = { pendiente: 'Pendiente', confirmada: 'Confirmada', completada: 'Completada', cancelada: 'Cancelada' }
@@ -29,7 +30,7 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
     ...Object.fromEntries(Object.keys(VACIA).map(k => [k, typeof VACIA[k] === 'boolean' ? !!reserva[k] : aTexto(reserva[k])])),
     paseo: reserva.paseo || reserva.excursiones?.nombre || '',
     moneda: reserva.moneda || 'BRL',
-    estado: reserva.estado || 'confirmada',
+    estado: reserva.estado || ESTADO_INICIAL,
   } : { ...VACIA, fecha_venta: hoy() })
   // El saldo se calcula solo (venta − seña) hasta que alguien lo escribe a mano
   const [saldoManual, setSaldoManual] = useState(!!reserva && reserva.saldo_cliente != null)
@@ -148,7 +149,7 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
           <label className="block">
             <span className={LABEL}>Estado</span>
             <select value={form.estado} onChange={e => set('estado', e.target.value)} className={INPUT}>
-              {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {opcionesEstado(reserva?.estado).map(k => <option key={k} value={k}>{ESTADOS[k]}</option>)}
             </select>
           </label>
         </div>

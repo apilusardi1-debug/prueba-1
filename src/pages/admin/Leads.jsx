@@ -331,7 +331,7 @@ export default function Leads({ embudo = 'paquetes' }) {
     const faltan = []
     if (!f.fecha_vuelo_ida) faltan.push('fecha del vuelo de ida')
     if (!f.fecha_vuelo_vuelta) faltan.push('fecha del vuelo de vuelta')
-    if (!f.vuelo_interno) faltan.push('vuelo interno (o NO HAY)')
+    // El vuelo interno es opcional: solo se piden sus fechas si se agregó (Recife - Noronha)
     if (f.vuelo_interno === 'recife_noronha') {
       if (!f.fecha_vuelo_interno_ida) faltan.push('fecha de ida del vuelo interno')
       if (!f.fecha_vuelo_interno_vuelta) faltan.push('fecha de vuelta del vuelo interno')

@@ -7,18 +7,15 @@ import ModalReservaPlanilla from '../../components/admin/ModalReservaPlanilla.js
 import { confirmar } from '../../components/ui/Avisos.jsx'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
 import { nombrePaseo, saldoDe, formatMonto, fechaCorta, claveTexto, distintos } from '../../lib/reservasPlanilla.js'
+import { ESTADOS_RESERVA, opcionesEstado, CLASE_OPCION, infoEstado, esPendienteVencida, hoyReservas } from '../../lib/estadosReserva.js'
 
 // Reservas de paseos y traslados, con las mismas columnas y filtros que la planilla de
 // Excel con la que trabajaba el equipo de paseos ("NUEVA PLANILLA"), para que carguen
 // acá en vez de en el Excel. La comisión de la agencia ("COMISION DREAM") se carga por
 // día, no por reserva: va aparte, en "Comisión diaria".
 
-const ESTADOS = {
-  pendiente:   { label: 'Pendiente',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' },
-  confirmada:  { label: 'Confirmada',  color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
-  completada:  { label: 'Completada',  color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
-  cancelada:   { label: 'Cancelada',   color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' },
-}
+// Una sola definición de estados para Reservas y Agenda (src/lib/estadosReserva.js)
+const ESTADOS = Object.fromEntries(Object.entries(ESTADOS_RESERVA).map(([k, v]) => [k, { label: v.label, color: `${v.bg} ${v.text} ${v.darkBg} ${v.darkText}` }]))
 
 const FILTRO = 'border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400'
 const FILTROS_VACIOS = { texto: '', paseo: '', vendedor: '', chofer: '', paseoDesde: '', paseoHasta: '', ventaDesde: '', ventaHasta: '', sinTraslado: false }
@@ -39,6 +36,7 @@ function sumaPorMoneda(lista, valor) {
 }
 
 export default function Reservas() {
+  const hoyHoy = hoyReservas()
   const [reservas, setReservas] = useState([])
   const [excursiones, setExcursiones] = useState([])
   const [choferes, setChoferes] = useState([])
@@ -313,7 +311,7 @@ export default function Reservas() {
             Marcar saldo cobrado
           </button>
           <span className="text-xs text-gray-500 dark:text-zinc-400">Cambiar estado:</span>
-          {Object.entries(ESTADOS).map(([k, v]) => (
+          {opcionesEstado().map(k => [k, ESTADOS[k]]).map(([k, v]) => (
             <button key={k} onClick={() => cambiarEstadoSeleccionadas(k)} className={`text-xs font-medium px-2.5 py-1 rounded-full hover:opacity-80 ${v.color}`}>{v.label}</button>
           ))}
           <button onClick={eliminarSeleccionadas} className="text-xs font-semibold text-red-500 hover:text-red-700 px-2 py-1">Eliminar</button>
@@ -356,10 +354,11 @@ export default function Reservas() {
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-zinc-800 text-gray-700 dark:text-zinc-300">
               {filtradas.map(r => {
-                const est = ESTADOS[r.estado] || ESTADOS.pendiente
+                const est = infoEstado(r, hoyHoy)
+                const vencida = esPendienteVencida(r, hoyHoy)
                 return (
                   <tr key={r.id} onDoubleClick={() => setEditando(r)}
-                    className={`hover:bg-gray-50 dark:hover:bg-zinc-800/50 ${seleccionadas.has(r.id) ? 'bg-brand-50 dark:bg-brand-950/20' : ''} ${r.estado === 'cancelada' ? 'opacity-50' : ''}`}>
+                    className={`hover:bg-gray-50 dark:hover:bg-zinc-800/50 ${seleccionadas.has(r.id) ? 'bg-brand-50 dark:bg-brand-950/20' : vencida ? 'bg-red-50/70 dark:bg-red-950/20' : ''} ${r.estado === 'cancelada' ? 'opacity-50' : ''}`}>
                     <td className={td}>
                       <input type="checkbox" checked={seleccionadas.has(r.id)} onChange={() => toggleSeleccion(r.id)}
                         className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-500 cursor-pointer" />
@@ -410,11 +409,23 @@ export default function Reservas() {
                         : '—'}
                     </td>
                     <td className={td}>{r.vendedor_texto || '—'}</td>
-                    <td className={td}>
-                      <select value={r.estado} onChange={e => cambiarEstado(r.id, e.target.value)}
-                        className={`text-[11px] font-medium px-2 py-1 rounded-full border-0 outline-none cursor-pointer ${est.color}`}>
-                        {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                      </select>
+                    <td className={td + ' whitespace-nowrap'}>
+                      <div className="flex items-center gap-1.5">
+                        <select value={r.estado} onChange={e => cambiarEstado(r.id, e.target.value)}
+                          className={`text-[11px] font-medium px-2 py-1 rounded-full border-0 outline-none cursor-pointer ${est.bg} ${est.text} ${est.darkBg} ${est.darkText}`}>
+                          {opcionesEstado(r.estado).map(k => <option key={k} value={k} className={CLASE_OPCION}>{ESTADOS[k].label}</option>)}
+                        </select>
+                        {vencida && (
+                          <span title="Pasó la fecha y nadie la confirmó ni la canceló"
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-600 text-white whitespace-nowrap">Vencida</span>
+                        )}
+                        {r.estado === 'pendiente' && (
+                          <button onClick={() => cambiarEstado(r.id, 'confirmada')} title="Confirmar esta reserva"
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40">
+                            Confirmar
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className={td + ' whitespace-nowrap'}>
                       <button onClick={() => setEditando(r)} className="text-brand-600 dark:text-brand-400 hover:underline font-medium mr-3">Editar</button>

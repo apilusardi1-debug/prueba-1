@@ -7,6 +7,7 @@ import { useSincronizado } from '../../lib/useSincronizado.js'
 import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { nombrePaseo, claveTexto } from '../../lib/reservasPlanilla.js'
+import { infoEstado, hoyReservas } from '../../lib/estadosReserva.js'
 import OperacionesDelDia from '../../components/admin/OperacionesDelDia.jsx'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -130,11 +131,8 @@ const TABS = [
   { key: 'cancelada',  label: 'Canceladas' },
 ]
 
-const STATUS_CONFIG = {
-  confirmada: { label: 'Confirmada', dot: 'bg-green-500',  text: 'text-green-700',  bg: 'bg-green-50',  darkText: 'dark:text-green-400',  darkBg: 'dark:bg-green-950/40' },
-  pendiente:  { label: 'En Proceso', dot: 'bg-yellow-400', text: 'text-yellow-700', bg: 'bg-yellow-50', darkText: 'dark:text-yellow-400', darkBg: 'dark:bg-yellow-950/40' },
-  cancelada:  { label: 'Cancelada',  dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',    darkText: 'dark:text-red-400',    darkBg: 'dark:bg-red-950/40' },
-}
+// Los estados (textos, colores y el rojo de "Pendiente vencida") vienen de src/lib/estadosReserva.js,
+// los mismos que usa la planilla de Reservas.
 
 function getHorario(excursion) {
   return {
@@ -323,6 +321,7 @@ export default function Agenda() {
    VISTA TABLA
 ══════════════════════════════════════════════════════════════════ */
 function VistaTabla({ reservasNorm, cargando }) {
+  const hoyEstados = hoyReservas()
   const [tabActiva, setTabActiva] = useState('todas')
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [accionesAbierta, setAccionesAbierta] = useState(null)
@@ -469,7 +468,7 @@ function VistaTabla({ reservasNorm, cargando }) {
                 <p className="text-sm">No hay reservas en esta categoría</p>
               </td></tr>
             ) : filas.map((reserva, idx) => {
-              const status = STATUS_CONFIG[reserva.estado] || STATUS_CONFIG.pendiente
+              const status = infoEstado(reserva, hoyEstados)
               const sel = seleccionados.has(reserva.id)
               return (
                 <tr key={reserva.id} className={`border-b border-gray-100 dark:border-zinc-800/60 transition-colors ${

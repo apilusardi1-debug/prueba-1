@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi, leadsApi, clientesApi } from '../../lib/supabase.js'
+import FichaPersona from '../../components/ficha/FichaPersona.jsx'
+import { avisar } from '../../components/ui/Avisos.jsx'
 import { MENSAJES_OPERACION, rellenarPlantilla } from '../../lib/mensajesDefault.js'
 import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
@@ -92,6 +94,8 @@ function normalizarReserva(r) {
     excursionCupos: r.excursiones?.cupos || 0,
     clienteNombre: r.cliente_nombre,
     clienteWhatsapp: r.cliente_whatsapp,
+    leadId: r.lead_id || null,
+    clienteId: r.cliente_id || null,
     hospedaje: r.hospedaje,
     personas: r.personas || 1,
     estado: r.estado || 'pendiente',
@@ -768,6 +772,30 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   const [enviando, setEnviando] = useState(false)
   const [resultados, setResultados] = useState(null)
   const [previewAbierto, setPreviewAbierto] = useState(null) // id del pasajero cuya vista previa está abierta
+  const [ficha, setFicha] = useState(null) // { lead } | { cliente }: la ficha del pasajero abierta encima de este modal
+
+  // El nombre del pasajero abre su ficha (igual que en Reservas): por el lead o cliente al que ya está
+  // unida la reserva y, si no está unida, por su teléfono (con o sin el 9 después del DDD).
+  async function abrirFicha(r) {
+    if (r.leadId) {
+      const { data } = await leadsApi.getById(r.leadId)
+      if (data) return setFicha({ lead: data })
+    }
+    if (r.clienteId) {
+      const { data } = await clientesApi.getById(r.clienteId)
+      if (data) return setFicha({ cliente: data })
+    }
+    const digitos = String(r.clienteWhatsapp || '').replace(/[^0-9]/g, '')
+    const variantes = !digitos ? [] : digitos.startsWith('55') && digitos.length === 12 ? [digitos, digitos.slice(0, 4) + '9' + digitos.slice(4)]
+      : digitos.startsWith('55') && digitos.length === 13 && digitos[4] === '9' ? [digitos, digitos.slice(0, 4) + digitos.slice(5)] : [digitos]
+    for (const v of variantes) {
+      const { data: lead } = (await leadsApi.getByWhatsapp(v)) || {}
+      if (lead) return setFicha({ lead })
+      const { data: cliente } = (await clientesApi.getByWhatsapp(v)) || {}
+      if (cliente) return setFicha({ cliente })
+    }
+    avisar('Este pasajero todavía no tiene ficha: no hay un lead ni un cliente con ese teléfono.')
+  }
 
   // El mismo texto que le llega al cliente por WhatsApp (misma plantilla que usa
   // cerrarOperacion), para revisarlo antes de que el token del número operativo esté
@@ -926,6 +954,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl dark:shadow-black/60 border border-transparent dark:border-zinc-800 w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -982,7 +1011,8 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                   <div key={r.id} className="px-6 py-4">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm">{r.clienteNombre}</p>
+                        <button type="button" onClick={() => abrirFicha(r)} title="Abrir la ficha del cliente"
+                          className="text-left font-semibold text-gray-900 dark:text-zinc-100 text-sm hover:underline">{r.clienteNombre}</button>
                         <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="phone" />+{r.clienteWhatsapp}</p>
                         <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="hotel" />{r.sinTraslado ? 'Sin traslado' : (r.hospedaje || '—')}</p>
                       </div>
@@ -1085,5 +1115,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         )}
       </div>
     </div>
+    {ficha && <FichaPersona {...ficha} onCerrar={() => setFicha(null)} />}
+    </>
   )
 }

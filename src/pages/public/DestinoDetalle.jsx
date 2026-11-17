@@ -411,7 +411,7 @@ export default function DestinoDetalle() {
   if (!destino) {
     return (
       <div className="bg-surface min-h-screen pt-32 px-margin-mobile text-center">
-        <p className="text-5xl mb-4">📍</p>
+        <span aria-hidden="true" className="material-symbols-outlined text-5xl text-on-surface-variant mb-4 block">location_off</span>
         <p className="font-display-hero uppercase text-hero-navy text-2xl mb-4">{tx.noEncontrado}</p>
         <Link to="/destinos" className="font-label-lg text-label-lg uppercase text-hero-navy underline">{tx.volver}</Link>
       </div>
@@ -437,7 +437,6 @@ export default function DestinoDetalle() {
             ← {t('nav_destinations')}
           </Link>
           <div className="flex items-center gap-3 mb-3">
-            {destino.icono && <span className="text-3xl md:text-4xl leading-none">{destino.icono}</span>}
             <span className="font-label-lg text-label-sm uppercase text-hero-cream/80 tracking-wide">{destino.estado} · {tx.brasil}</span>
           </div>
           <h1 className="font-display-hero uppercase text-hero-yellow leading-none mb-5"
@@ -512,7 +511,7 @@ export default function DestinoDetalle() {
             {/* Sin contenido comercial ni editorial todavía */}
             {!hayContenido && !destino.contenido && (
               <div className="text-center py-16">
-                <p className="text-5xl mb-4">🏖️</p>
+                <span aria-hidden="true" className="material-symbols-outlined text-5xl text-on-surface-variant mb-4 block">beach_access</span>
                 <p className="font-display-hero uppercase text-hero-navy text-2xl mb-3">{tx.pronto(destino.nombre)}</p>
                 <p className="font-body-md text-body-md text-on-surface-variant mb-8 max-w-md mx-auto">
                   {tx.prontoTexto}

@@ -167,7 +167,7 @@
   100% { transform: translateX(-50%); }
 }
 .destinos-track {
-  animation: scroll-destinos 22s linear infinite;
+  animation: scroll-destinos 27.5s linear infinite; /* 5,5 s por destino (5 destinos) */
 }
 .destinos-track:hover {
   animation-play-state: paused;

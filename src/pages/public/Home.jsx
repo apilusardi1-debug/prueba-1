@@ -41,8 +41,9 @@ const RESENAS = [
 const DESTINOS_HOME = [
   { id: 'porto',   nombre: 'Porto de Galinhas',   imagen: '/porto-de-galinhas.jpeg' },
   { id: 'maragogi',nombre: 'Maragogi',             imagen: '/Maragogi.jpeg' },
-  { id: 'noronha', nombre: 'Fernando de Noronha',  imagen: '/fernando-de-noronha.jpeg' },
   { id: 'maceio',  nombre: 'Maceió',               imagen: '/Maceio.jpeg' },
+  { id: 'pipa',    nombre: 'Pipa',                 imagen: '/Pipa.jpeg' },
+  { id: 'noronha', nombre: 'Fernando de Noronha',  imagen: '/fernando-de-noronha.jpeg' },
 ]
 
 // Los 3 paseos más conocidos van primero en el carrusel, en este orden — pedido

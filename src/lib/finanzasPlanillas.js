@@ -6,10 +6,13 @@
 //  - Cada moneda va por separado, sin convertir.
 import { saldoDe } from './reservasPlanilla.js'
 
-// Fecha de inicio de Finanzas (acordada el 23/11/2026). Los paseos anteriores se dan por cobrados y por
-// pagados (se llevaron en las planillas contables): no cuentan como "por cobrar" ni "por pagar".
-// Los de esa fecha en adelante con saldo pendiente son el saldo de apertura real. No toca ningún dato.
-export const FINANZAS_INICIO = '2026-12-01'
+// Fecha de inicio de Finanzas. Los paseos anteriores se dan por cobrados y por pagados (se llevaron en
+// las planillas contables): no cuentan como "por cobrar" ni "por pagar". Los de esa fecha en adelante con
+// saldo pendiente son el saldo de apertura real. No toca ningún dato.
+// PRUEBA: del 23 al 30/11/2026 arranca en 2026-11-23 para poder comprobar todo con datos reales.
+// El 30/11 se borran los movimientos de la prueba y esta fecha vuelve a '2026-12-01' (inicio oficial).
+export const FINANZAS_INICIO = '2026-11-23'
+export const FINANZAS_INICIO_OFICIAL = '2026-12-01'
 const desdeInicio = (fecha) => !!fecha && fecha >= FINANZAS_INICIO
 
 export const ORIGEN_COBRO_PASEO = 'cobro_paseo'

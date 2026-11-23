@@ -42,6 +42,8 @@ export const SECCIONES = [
   { clave: 'configuracion', nombre: 'Configuración', ruta: '/admin/configuracion' },
   { clave: 'entrenar_asistente', nombre: 'Entrenar al asistente', ruta: '/admin/entrenar-asistente' },
   { clave: 'alertas', nombre: 'Alertas de operaciones (configurar)', ruta: '/admin/alertas' },
+  // Quién asigna cada chat a quién: solo superadmin (pedido de Cristian, 2026-11-23); la función del servidor también lo exige
+  { clave: 'historial_asignaciones', nombre: 'Historial de asignaciones', ruta: '/admin/historial-asignaciones', soloSuperadmin: true },
   { clave: 'superadmin', nombre: 'Superadmin', ruta: '/admin/superadmin', soloSuperadmin: true },
 ]
 

@@ -497,7 +497,13 @@ export const conversacionesApi = {
   contarNoLeidas: () => supabase?.from('conversaciones').select('id', { count: 'exact', head: true }).gt('no_leidos', 0),
   marcarLeida: (id) => supabase?.from('conversaciones').update({ no_leidos: 0 }).eq('id', id),
   updateEtiqueta: (id, etiqueta) => supabase?.from('conversaciones').update({ etiqueta }).eq('id', id),
-  asignar: (id, usuarioId) => supabase?.from('conversaciones').update({ asignado_a: usuarioId }).eq('id', id),
+  // Además de asignar, deja anotado quién lo hizo y cuándo: el disparador de la base arma con eso el historial
+  // de asignaciones (pantalla Historial de asignaciones, solo superadmin)
+  asignar: (id, usuarioId) => {
+    let por = null
+    try { por = JSON.parse(localStorage.getItem('admin_session') || '{}').email || null } catch { /* sin sesión */ }
+    return supabase?.from('conversaciones').update({ asignado_a: usuarioId, asignado_por: por, asignado_por_at: new Date().toISOString() }).eq('id', id)
+  },
   // Mover a mano a otro embudo (Paquetes/Paseos): el lead se mueve aparte, ver leadsApi.updateEstado
   cambiarGrupo: (id, grupo) => supabase?.from('conversaciones').update({ grupo }).eq('id', id),
   // Pausa (true) o vuelve a prender (false) el asistente automático en esa conversación

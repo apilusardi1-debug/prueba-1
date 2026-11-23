@@ -237,6 +237,7 @@ const NAV = [
       { path: '/admin/alertas', label: 'Alertas', icon: Icon.Config },
       { path: '/admin/mensajes',    label: 'Mensajes',    icon: Icon.Generador },
       { path: '/admin/videos',      label: 'Videos',      icon: Icon.Videos },
+      { path: '/admin/historial-asignaciones', label: 'Historial de asignaciones', icon: Icon.Equipo },
       { path: '/admin/superadmin',  label: 'Superadmin',  icon: Icon.Superadmin },
     ],
   },
@@ -525,6 +526,7 @@ function Header({ dark, setDark, avisos, puedeAvisos, puedeAlertas }) {
     if (pathname.startsWith('/admin/configuracion')) return 'Configuración'
     if (pathname.startsWith('/admin/entrenar-asistente')) return 'Entrenar al asistente'
     if (pathname.startsWith('/admin/alertas')) return 'Alertas de operaciones'
+    if (pathname.startsWith('/admin/historial-asignaciones')) return 'Historial de asignaciones'
     if (pathname.startsWith('/admin/superadmin')) return 'Superadmin'
     return 'Panel'
   }

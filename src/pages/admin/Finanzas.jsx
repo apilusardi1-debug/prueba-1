@@ -449,7 +449,7 @@ export default function Finanzas() {
       {/* ── Tab: Resumen (planillas conectadas a Finanzas) ───────────────────── */}
       {tab === 'resumen' && (
         cargando ? <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div> : (
-          <ResumenFinanzas reservas={reservas} movimientos={movimientos} desde={desde} hasta={hasta}
+          <ResumenFinanzas reservas={reservas} movimientos={movimientos} costos={costos} desde={desde} hasta={hasta}
             etiquetaPeriodo={`${formatFecha(desde)} al ${formatFecha(hasta)}`} onCambio={cargarTodo} />
         )
       )}
@@ -762,16 +762,20 @@ function crearTramoHelpers(setState) {
   }
 }
 
+// Costos con un solo monto: por persona, o fijo por paseo (una moto de agua, un buggy, un cuatriciclo...)
+const esMontoSimple = (tipo) => tipo === 'por_persona' || tipo === 'por_paseo'
+
 function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, onCancelar, textoBoton }) {
   const { setTramo, agregarTramo, quitarTramo } = tramosHelpers
   const deshabilitado = guardando || !valor.concepto.trim() ||
-    (valor.tipo === 'por_persona' ? !valor.monto_por_persona : valor.tramos.every(t => !t.hasta || !t.monto))
+    (esMontoSimple(valor.tipo) ? !valor.monto_por_persona : valor.tramos.every(t => !t.hasta || !t.monto))
 
   return (
     <div>
       <div className="flex gap-2 mb-3">
         {[
           { id: 'por_persona', label: 'Por persona' },
+          { id: 'por_paseo', label: 'Fijo por paseo' },
           { id: 'chofer_tramos', label: 'Por chofer (según pasajeros)' },
           { id: 'guia_tramos', label: 'Por guía (según pasajeros)' },
         ].map(t => (
@@ -797,12 +801,12 @@ function FormularioCosto({ valor, onChange, tramosHelpers, guardando, onSubmit, 
           placeholder={valor.tipo === 'chofer_tramos' ? 'Ej: Pago chofer' : valor.tipo === 'guia_tramos' ? 'Ej: Pago guía' : 'Ej: Prenatour, Catamarán, Entrada...'}
           className="flex-1 min-w-[150px] border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
-        {valor.tipo === 'por_persona' && (
+        {esMontoSimple(valor.tipo) && (
           <input
             type="number"
             value={valor.monto_por_persona}
             onChange={e => onChange(f => ({ ...f, monto_por_persona: e.target.value }))}
-            placeholder="Monto por persona"
+            placeholder={valor.tipo === 'por_paseo' ? 'Monto por paseo' : 'Monto por persona'}
             className="w-40 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         )}
@@ -887,7 +891,7 @@ function TabCostos({ excursiones, costos, setCostos }) {
       concepto: valor.concepto,
       moneda: valor.moneda,
       tipo: valor.tipo,
-      monto_por_persona: valor.tipo === 'por_persona' ? parseFloat(valor.monto_por_persona) : null,
+      monto_por_persona: esMontoSimple(valor.tipo) ? parseFloat(valor.monto_por_persona) : null,
       tramos: (valor.tipo === 'chofer_tramos' || valor.tipo === 'guia_tramos')
         ? tramosValidos.map(t => ({ hasta: parseFloat(t.hasta), monto: parseFloat(t.monto) })).sort((a, b) => a.hasta - b.hasta)
         : null,
@@ -897,8 +901,8 @@ function TabCostos({ excursiones, costos, setCostos }) {
   async function agregarCosto() {
     if (!excSeleccionada || !formCosto.concepto.trim()) return
     const tramosValidos = formCosto.tramos.filter(t => t.hasta && t.monto)
-    if (formCosto.tipo === 'por_persona' && !formCosto.monto_por_persona) return
-    if (formCosto.tipo !== 'por_persona' && tramosValidos.length === 0) return
+    if (esMontoSimple(formCosto.tipo) && !formCosto.monto_por_persona) return
+    if (!esMontoSimple(formCosto.tipo) && tramosValidos.length === 0) return
     setGuardando(true)
     const { data } = await costosExcursionApi.create({ excursion_id: excSeleccionada, ...armarPayload(formCosto) })
     if (data) setCostos(prev => [...prev, data])
@@ -930,8 +934,8 @@ function TabCostos({ excursiones, costos, setCostos }) {
   async function guardarEdicion() {
     if (!formEdit.concepto.trim()) return
     const tramosValidos = formEdit.tramos.filter(t => t.hasta && t.monto)
-    if (formEdit.tipo === 'por_persona' && !formEdit.monto_por_persona) return
-    if (formEdit.tipo !== 'por_persona' && tramosValidos.length === 0) return
+    if (esMontoSimple(formEdit.tipo) && !formEdit.monto_por_persona) return
+    if (!esMontoSimple(formEdit.tipo) && tramosValidos.length === 0) return
     setGuardandoEdicion(true)
     const { data } = await costosExcursionApi.update(editandoId, armarPayload(formEdit))
     if (data) setCostos(prev => prev.map(c => c.id === editandoId ? data : c))
@@ -939,45 +943,166 @@ function TabCostos({ excursiones, costos, setCostos }) {
     cancelarEdicion()
   }
 
+  // ── Vista de lista: una fila por paseo, con el costo editable ahí mismo ─────────
+  const [busqueda, setBusqueda] = useState('')
+  const [inline, setInline] = useState({}) // { [excursion_id]: texto escrito }
+  const [guardandoInline, setGuardandoInline] = useState(null)
+  const [errorInline, setErrorInline] = useState('')
+  const [unidadNueva, setUnidadNueva] = useState({}) // { [excursion_id]: 'por_persona' | 'por_paseo' } para paseos sin costo todavía
+  const unidadPorDefecto = (exc) => exc.precio_unidad === 'paseo' ? 'por_paseo' : 'por_persona'
+
+  // Cambiar si el costo es por persona o fijo por paseo (el monto queda igual)
+  async function cambiarUnidad(exc, simple, tipo) {
+    if (!simple) { setUnidadNueva(prev => ({ ...prev, [exc.id]: tipo })); return }
+    if (simple.tipo === tipo) return
+    setGuardandoInline(exc.id)
+    setErrorInline('')
+    const { data, error } = (await costosExcursionApi.update(simple.id, { tipo })) || {}
+    if (error || !data) setErrorInline('No se pudo cambiar el tipo de costo de ' + exc.nombre + '.')
+    else setCostos(prev => prev.map(c => c.id === simple.id ? data : c))
+    setGuardandoInline(null)
+  }
+
+  // El costo "simple" de un paseo: una sola línea por persona o fija por paseo. Si hay varias líneas
+  // (chofer, guía, entradas...) o por tramos, se edita completo desde el lápiz.
+  function costoSimple(excId) {
+    const l = costos.filter(c => c.excursion_id === excId)
+    return l.length === 1 && esMontoSimple(l[0].tipo) ? l[0] : null
+  }
+
+  function quitarInline(id) {
+    setInline(prev => { const { [id]: _x, ...resto } = prev; return resto })
+  }
+
+  async function guardarInline(exc) {
+    const texto = inline[exc.id]
+    if (texto === undefined) return
+    const simple = costoSimple(exc.id)
+    const n = parseFloat(String(texto).replace(',', '.'))
+    quitarInline(exc.id)
+    if (String(texto).trim() === '' || Number.isNaN(n) || n < 0) return
+    if (simple && Number(simple.monto_por_persona) === n) return
+    setGuardandoInline(exc.id)
+    setErrorInline('')
+    if (simple) {
+      const { data, error } = (await costosExcursionApi.update(simple.id, { monto_por_persona: n })) || {}
+      if (error || !data) setErrorInline('No se pudo guardar el costo de ' + exc.nombre + '.')
+      else setCostos(prev => prev.map(c => c.id === simple.id ? data : c))
+    } else {
+      // Sin costos todavía: se crea la tarifa neta, por paseo o por persona según como se vende
+      const { data, error } = (await costosExcursionApi.create({
+        excursion_id: exc.id, concepto: 'Tarifa neta', moneda: 'BRL', tramos: null,
+        tipo: unidadNueva[exc.id] || unidadPorDefecto(exc), monto_por_persona: n,
+      })) || {}
+      if (error || !data) setErrorInline('No se pudo cargar el costo de ' + exc.nombre + '.')
+      else setCostos(prev => [...prev, data])
+    }
+    setGuardandoInline(null)
+  }
+
+  const unidadVenta = (exc) => exc.precio_unidad === 'paseo' ? 'por paseo' : exc.precio_unidad === 'sesión' ? 'por sesión' : 'por persona'
+  const filtradas = excursiones.filter(e => e.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+  const seleccionada = excursiones.find(e => e.id === excSeleccionada)
+  const cerrarDetalle = () => { setExcSeleccionada(null); cancelarEdicion() }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Lista excursiones */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
-        <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Paseos</p>
-        <div className="space-y-1">
-          {excursiones.map(exc => {
-            const nCostos = costos.filter(c => c.excursion_id === exc.id).length
-            return (
-              <button
-                key={exc.id}
-                onClick={() => setExcSeleccionada(exc.id)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors flex items-center justify-between ${
-                  excSeleccionada === exc.id ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <span className="truncate">{exc.nombre}</span>
-                {nCostos > 0 && (
-                  <span className="ml-2 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 px-2 py-0.5 rounded-full shrink-0">{nCostos}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <input
+          type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar paseo..."
+          className="w-full max-w-xs border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <p className="text-xs text-gray-400 dark:text-zinc-500">Cambiá el costo directamente en la lista. El lápiz muestra todo el detalle (chofer, guía, entradas...).</p>
+      </div>
+      {errorInline && <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{errorInline}</p>}
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 dark:border-zinc-800 text-left">
+              <th className="px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Paseo</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide text-right">Precio al público</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Costo</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wide text-right">Margen</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+            {filtradas.map(exc => {
+              const lineas = costos.filter(c => c.excursion_id === exc.id)
+              const simple = costoSimple(exc.id)
+              const unidadCosto = simple ? (simple.tipo === 'por_paseo' ? 'por paseo' : 'por persona') : null
+              const margen = simple && exc.precio != null && unidadCosto === unidadVenta(exc)
+                ? Number(exc.precio) - Number(simple.monto_por_persona) : null
+              return (
+                <tr key={exc.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                  <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-zinc-200">
+                    {exc.nombre}
+                    {lineas.length > 1 && <span className="ml-2 text-xs font-normal text-gray-400 dark:text-zinc-500">{lineas.length} costos</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-gray-600 dark:text-zinc-300 whitespace-nowrap">
+                    {exc.precio != null ? <>{formatMonto(exc.precio, 'BRL')} <span className="text-xs text-gray-400 dark:text-zinc-500">{unidadVenta(exc)}</span></> : '—'}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {simple || lineas.length === 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 dark:text-zinc-500">R$</span>
+                        <input
+                          type="text" inputMode="decimal" aria-label={'Costo de ' + exc.nombre}
+                          value={inline[exc.id] !== undefined ? inline[exc.id] : (simple ? String(Number(simple.monto_por_persona)) : '')}
+                          placeholder={simple ? '' : 'Cargar costo'}
+                          onChange={e => setInline(prev => ({ ...prev, [exc.id]: e.target.value }))}
+                          onBlur={() => guardarInline(exc)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') quitarInline(exc.id) }}
+                          className="w-24 border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand-400"
+                        />
+                        <select
+                          aria-label={'El costo de ' + exc.nombre + ' es por persona o por paseo'}
+                          value={simple ? simple.tipo : (unidadNueva[exc.id] || unidadPorDefecto(exc))}
+                          onChange={e => cambiarUnidad(exc, simple, e.target.value)}
+                          className="border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400"
+                        >
+                          <option value="por_persona">por persona</option>
+                          <option value="por_paseo">por paseo</option>
+                        </select>
+                        {guardandoInline === exc.id && <span className="text-xs text-gray-400 dark:text-zinc-500">guardando...</span>}
+                      </div>
+                    ) : (
+                      <button onClick={() => setExcSeleccionada(exc.id)} className="text-xs text-gray-500 dark:text-zinc-400 hover:text-brand-600 dark:hover:text-brand-400 underline decoration-dotted">
+                        Varios costos: ver detalle
+                      </button>
+                    )}
+                  </td>
+                  <td className={'px-4 py-2.5 text-right font-semibold whitespace-nowrap ' + (margen == null ? 'text-gray-300 dark:text-zinc-600' : margen < 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400')}>
+                    {margen == null ? '—' : formatMonto(margen, 'BRL')}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button onClick={() => setExcSeleccionada(exc.id)} title="Ver y editar todo el detalle" aria-label={'Editar detalle de ' + exc.nombre}
+                      className="text-gray-400 dark:text-zinc-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                      <IcoEdit />
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+            {filtradas.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-zinc-600">No hay paseos con ese nombre.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Costos de la excursión seleccionada */}
-      <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
-        {!excSeleccionada ? (
-          <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-            <IcGrande n="gear" />
-            <p className="text-sm">Seleccioná un paseo para ver sus costos</p>
-          </div>
-        ) : (
-          <>
-            <p className="font-semibold text-gray-800 dark:text-zinc-200 mb-4">
-              {excursiones.find(e => e.id === excSeleccionada)?.nombre}
-            </p>
-
+      {/* Detalle completo de un paseo (el lápiz): todos sus costos, editar, borrar y agregar */}
+      {seleccionada && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={cerrarDetalle}>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl dark:shadow-black/40 w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-zinc-200">{seleccionada.nombre}</p>
+                <p className="text-xs text-gray-400 dark:text-zinc-500">{seleccionada.precio != null ? 'Precio al público: ' + formatMonto(seleccionada.precio, 'BRL') + ' ' + unidadVenta(seleccionada) : 'Sin precio cargado'}</p>
+              </div>
+              <button onClick={cerrarDetalle} className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 text-xl">✕</button>
+            </div>
             {/* Costos existentes */}
             {costosDeExcursion.length > 0 ? (
               <div className="space-y-2 mb-5">
@@ -1002,11 +1127,11 @@ function TabCostos({ excursiones, costos, setCostos }) {
                               por {c.tipo === 'chofer_tramos' ? 'chofer' : 'guía'} — {(c.tramos || []).map(t => `hasta ${t.hasta} pax: ${formatMonto(t.monto, c.moneda)}`).join(' · ')}
                             </p>
                           ) : (
-                            <p className="text-xs text-gray-400 dark:text-zinc-600">por persona</p>
+                            <p className="text-xs text-gray-400 dark:text-zinc-600">{c.tipo === 'por_paseo' ? 'fijo por paseo' : 'por persona'}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          {c.tipo === 'por_persona' && (
+                          {esMontoSimple(c.tipo) && (
                             <span className="font-bold text-gray-700 dark:text-zinc-300">{formatMonto(c.monto_por_persona, c.moneda)}</span>
                           )}
                           <button onClick={() => iniciarEdicion(c)} className="text-gray-400 dark:text-zinc-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
@@ -1037,9 +1162,9 @@ function TabCostos({ excursiones, costos, setCostos }) {
                 textoBoton="Agregar"
               />
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

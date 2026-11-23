@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { choferesApi, guiasApi, vendedoresApi } from '../../lib/supabase.js'
+import { useState, useEffect, useMemo } from 'react'
+import { choferesApi, guiasApi, vendedoresApi, excursionesApi } from '../../lib/supabase.js'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 
 const TABS = [
@@ -8,7 +8,9 @@ const TABS = [
   { id: 'vendedores', label: 'Vendedores', icono: 'briefcase', api: vendedoresApi },
 ]
 
-const EMPTY = { nombre: '', whatsapp: '', codigo_referido: '' }
+const EMPTY = { nombre: '', whatsapp: '', codigo_referido: '', capacidad: '', notas: '' }
+const INPUT_F = 'w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400'
+const aNumero = (v) => (String(v).trim() === '' ? NaN : Number(String(v).replace(',', '.')))
 
 const LABELS = { choferes: 'chofer', guias: 'guía', vendedores: 'vendedor' }
 
@@ -23,6 +25,13 @@ export default function Equipo() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [copiadoId, setCopiadoId] = useState(null)
+  // Choferes: tarifa propia por paseo (por viaje, no por pasajero), { excursion_id: 'texto' }
+  const [paseos, setPaseos] = useState([])
+  const [tarifas, setTarifas] = useState({})
+  const [errorForm, setErrorForm] = useState('')
+  const nombrePaseo = useMemo(() => Object.fromEntries(paseos.map((p) => [p.id, p.nombre])), [paseos])
+  const resumenTarifas = (item) => Object.entries(item.tarifas || {}).filter(([id]) => nombrePaseo[id])
+    .map(([id, v]) => `${nombrePaseo[id]} R$ ${Number(v).toLocaleString('es-AR')}`).join(' · ')
 
   // El link personal (sin contraseña) donde guías y choferes ven los avisos de sus
   // operaciones: /guia/<token> o /chofer/<token>. Vendedores no tiene esto.
@@ -39,11 +48,13 @@ export default function Equipo() {
 
   async function cargarTodo() {
     setCargando(true)
-    const [rc, rg, rv] = await Promise.all([
+    const [rc, rg, rv, rp] = await Promise.all([
       choferesApi.getAll(),
       guiasApi.getAll(),
       vendedoresApi.getAll(),
+      excursionesApi.getAll(),
     ])
+    setPaseos((rp?.data || []).filter((e) => e.categoria === 'excursiones'))
     setDatos({
       choferes:   rc.data || [],
       guias:      rg.data || [],
@@ -59,25 +70,45 @@ export default function Equipo() {
 
   function abrirNuevo() {
     setForm(EMPTY)
+    setTarifas({})
+    setErrorForm('')
     setEditando(null)
     setMostrarForm(true)
   }
 
   function abrirEditar(item) {
-    setForm({ nombre: item.nombre, whatsapp: item.whatsapp, codigo_referido: item.codigo_referido || '' })
+    setForm({
+      nombre: item.nombre, whatsapp: item.whatsapp || '', codigo_referido: item.codigo_referido || '',
+      capacidad: item.capacidad != null ? String(item.capacidad) : '', notas: item.notas || '',
+    })
+    setTarifas(Object.fromEntries(Object.entries(item.tarifas || {}).map(([k, v]) => [k, String(v)])))
+    setErrorForm('')
     setEditando(item.id)
     setMostrarForm(true)
   }
 
   async function guardar() {
-    if (!form.nombre.trim() || !form.whatsapp.trim()) return
-    setGuardando(true)
-    if (editando) {
-      await tab.api.update(editando, form)
-    } else {
-      await tab.api.create(form)
+    const esChofer = tabActiva === 'choferes'
+    // El WhatsApp de un chofer puede quedar vacío y completarse después
+    if (!form.nombre.trim() || (!esChofer && !form.whatsapp.trim())) return
+    let datos = { nombre: form.nombre.trim(), whatsapp: form.whatsapp.trim() }
+    if (tabActiva === 'vendedores') datos.codigo_referido = form.codigo_referido
+    if (esChofer) {
+      const cap = aNumero(form.capacidad)
+      if (String(form.capacidad).trim() !== '' && (Number.isNaN(cap) || cap < 1)) { setErrorForm('Los pasajeros que entran tienen que ser un número.'); return }
+      const t = {}
+      for (const [id, v] of Object.entries(tarifas)) {
+        if (String(v).trim() === '') continue
+        const n = aNumero(v)
+        if (Number.isNaN(n) || n < 0) { setErrorForm(`Revisá la tarifa de ${nombrePaseo[id] || 'un paseo'}: solo números.`); return }
+        t[id] = n
+      }
+      datos = { ...datos, capacidad: String(form.capacidad).trim() === '' ? null : Math.round(cap), notas: form.notas.trim() || null, tarifas: t }
     }
+    setGuardando(true)
+    const { error } = (editando ? await tab.api.update(editando, datos) : await tab.api.create(datos)) || {}
     setGuardando(false)
+    if (error) { setErrorForm('No se pudo guardar: ' + error.message); return }
     setMostrarForm(false)
     cargarTab()
   }
@@ -190,16 +221,24 @@ export default function Equipo() {
             <tbody>
               {filtrados.map((item) => (
                 <tr key={item.id} className="border-b border-gray-50 dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100"><IcTxt n={tab.icono} />{item.nombre}</td>
+                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-zinc-100">
+                    <IcTxt n={tab.icono} />{item.nombre}
+                    {tabActiva === 'choferes' && (item.capacidad || resumenTarifas(item)) && (
+                      <p className="text-xs font-normal text-gray-500 dark:text-zinc-400 mt-0.5">{[item.capacidad ? `${item.capacidad} pasajeros` : null, resumenTarifas(item)].filter(Boolean).join(' · ')}</p>
+                    )}
+                    {tabActiva === 'choferes' && item.notas && <p className="text-xs font-normal italic text-gray-400 dark:text-zinc-500 mt-0.5">{item.notas}</p>}
+                  </td>
                   <td className="px-5 py-3">
-                    <a
-                      href={`https://wa.me/${item.whatsapp}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium inline-flex items-center gap-1"
-                    >
-                      <IcTxt n="chat" />{item.whatsapp}
-                    </a>
+                    {item.whatsapp ? (
+                      <a
+                        href={`https://wa.me/${item.whatsapp.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium inline-flex items-center gap-1"
+                      >
+                        <IcTxt n="chat" />{item.whatsapp}
+                      </a>
+                    ) : <span className="text-xs text-amber-600 dark:text-amber-400">Falta el WhatsApp</span>}
                   </td>
                   {tabActiva === 'vendedores' && (
                     <td className="px-5 py-3">
@@ -237,14 +276,16 @@ export default function Equipo() {
                           <IcTxt n="clip" />{copiadoId === item.id ? 'Copiado' : 'Copiar link'}
                         </button>
                       )}
-                      <a
-                        href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        WhatsApp
-                      </a>
+                      {item.whatsapp && (
+                        <a
+                          href={`https://wa.me/${item.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          WhatsApp
+                        </a>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -259,14 +300,23 @@ export default function Equipo() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-zinc-100"><IcTxt n={tab.icono} />{item.nombre}</p>
-                  <a
-                    href={`https://wa.me/${item.whatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium mt-0.5 inline-flex items-center gap-1"
-                  >
-                    <IcTxt n="chat" />{item.whatsapp}
-                  </a>
+                  {item.whatsapp ? (
+                    <a
+                      href={`https://wa.me/${item.whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium mt-0.5 inline-flex items-center gap-1"
+                    >
+                      <IcTxt n="chat" />{item.whatsapp}
+                    </a>
+                  ) : <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Falta el WhatsApp</p>}
+                  {tabActiva === 'choferes' && (item.auto_modelo || item.capacidad) && (
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{[item.auto_modelo, item.capacidad ? `${item.capacidad} pasajeros` : null].filter(Boolean).join(' · ')}</p>
+                  )}
+                  {tabActiva === 'choferes' && resumenTarifas(item) && (
+                    <p className="text-xs text-gray-600 dark:text-zinc-300 mt-1">{resumenTarifas(item)}</p>
+                  )}
+                  {tabActiva === 'choferes' && item.notas && <p className="text-xs italic text-gray-400 dark:text-zinc-500 mt-1">{item.notas}</p>}
                   {tabActiva === 'vendedores' && item.codigo_referido && (
                     <div className="mt-1.5 inline-flex items-center gap-1.5 bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-800 rounded-lg px-2.5 py-1">
                       <span className="text-xs text-gray-400 dark:text-zinc-500">Código:</span>
@@ -301,14 +351,16 @@ export default function Equipo() {
                       <IcTxt n="clip" />{copiadoId === item.id ? 'Copiado' : 'Copiar link'}
                     </button>
                   )}
-                  <a
-                    href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    Abrir WhatsApp
-                  </a>
+                  {item.whatsapp && (
+                    <a
+                      href={`https://wa.me/${item.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${item.nombre} 👋`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Abrir WhatsApp
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -349,6 +401,38 @@ export default function Equipo() {
                 />
                 <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Con código de país, sin +, sin espacios. Ej: 5491112345678</p>
               </div>
+              {tabActiva === 'choferes' && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Pasajeros que entran en su auto</label>
+                    <input type="text" inputMode="numeric" value={form.capacidad} onChange={(e) => setForm({ ...form, capacidad: e.target.value })} className={INPUT_F} placeholder="Ej: 6" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Tarifa por viaje (R$)</label>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">Lo que se le paga por cada viaje de ese paseo, sin importar cuántos pasajeros lleve. Si no tiene tarifa para un paseo, se usa el costo general del paseo.</p>
+                    <div className="space-y-2">
+                      {Object.keys(tarifas).map((id) => (
+                        <div key={id} className="flex items-center gap-2">
+                          <span className="flex-1 text-sm text-gray-700 dark:text-zinc-300 truncate">{nombrePaseo[id] || 'Paseo'}</span>
+                          <input type="text" inputMode="decimal" value={tarifas[id]} onChange={(e) => setTarifas({ ...tarifas, [id]: e.target.value })}
+                            className={INPUT_F + ' !w-28 text-right'} aria-label={`Tarifa para ${nombrePaseo[id] || 'el paseo'}`} />
+                          <button type="button" onClick={() => setTarifas(({ [id]: _quitado, ...resto }) => resto)} className="text-gray-300 hover:text-red-400 text-sm" title="Quitar">✕</button>
+                        </div>
+                      ))}
+                      {paseos.filter((p) => !(p.id in tarifas)).length > 0 && (
+                        <select value="" onChange={(e) => e.target.value && setTarifas({ ...tarifas, [e.target.value]: '' })} className={INPUT_F}>
+                          <option value="">+ Agregar tarifa de otro paseo...</option>
+                          {paseos.filter((p) => !(p.id in tarifas)).map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">Notas</label>
+                    <textarea rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} className={INPUT_F} placeholder="Ej: trabaja solo los fines de semana" />
+                  </div>
+                </>
+              )}
               {tabActiva === 'vendedores' && (
                 <div>
                   <label className="text-sm font-medium text-gray-700 dark:text-zinc-300 block mb-1">
@@ -366,6 +450,7 @@ export default function Equipo() {
                 </div>
               )}
             </div>
+            {errorForm && <p className="mt-4 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{errorForm}</p>}
             <button
               onClick={guardar}
               disabled={guardando}

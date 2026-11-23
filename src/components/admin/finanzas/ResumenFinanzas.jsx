@@ -36,14 +36,14 @@ function Seccion({ titulo, nota, children, vacio }) {
   )
 }
 
-export default function ResumenFinanzas({ reservas, movimientos, desde, hasta, etiquetaPeriodo, onCambio }) {
+export default function ResumenFinanzas({ reservas, movimientos, costos = [], desde, hasta, etiquetaPeriodo, onCambio }) {
   const [confirmando, setConfirmando] = useState(null) // clave de la fila de chofer a liquidar
   const [liquidando, setLiquidando] = useState(false)
   const [error, setError] = useState('')
   const hoyStr = hoy()
 
   const ventas = useMemo(() => resumenVentas(reservas, movimientos, desde, hasta), [reservas, movimientos, desde, hasta])
-  const margen = useMemo(() => margenPorPaseo(reservas, desde, hasta, nombrePaseo), [reservas, desde, hasta])
+  const margen = useMemo(() => margenPorPaseo(reservas, desde, hasta, nombrePaseo, costos), [reservas, desde, hasta, costos])
   const margenTot = useMemo(() => totalesMargen(margen), [margen])
   const vendedores = useMemo(() => comisionesVendedor(reservas, desde, hasta), [reservas, desde, hasta])
   const choferes = useMemo(() => comisionesChofer(reservas, desde, hasta), [reservas, desde, hasta])

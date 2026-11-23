@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi, enviarPlantillaWhatsApp, leadsApi, clientesApi } from '../../lib/supabase.js'
 import FichaPersona from '../../components/ficha/FichaPersona.jsx'
+import { calcularCostoOperativo } from '../../lib/costosOperativos.js'
 import { avisar } from '../../components/ui/Avisos.jsx'
 import { MENSAJES_OPERACION, rellenarPlantilla } from '../../lib/mensajesDefault.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
@@ -17,31 +18,6 @@ const DIAS_CAL = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 function formatPrecio(n) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
-}
-
-function calcularCostoOperativo(excursionId, pax, costosCatalogo, conChofer, conGuia) {
-  const costosExc = costosCatalogo.filter(c => c.excursion_id === excursionId && c.activo !== false)
-  let total = 0
-  let moneda = 'BRL'
-  const detalle = []
-  for (const c of costosExc) {
-    moneda = c.moneda || moneda
-    if (c.tipo === 'chofer_tramos' || c.tipo === 'guia_tramos') {
-      if (c.tipo === 'chofer_tramos' && !conChofer) continue
-      if (c.tipo === 'guia_tramos' && !conGuia) continue
-      const tramos = [...(c.tramos || [])].sort((a, b) => a.hasta - b.hasta)
-      const tramo = tramos.find(t => pax <= t.hasta) || tramos[tramos.length - 1]
-      if (tramo) {
-        total += tramo.monto
-        detalle.push({ concepto: c.concepto, monto: tramo.monto, nota: `hasta ${tramo.hasta} pax` })
-      }
-    } else {
-      const monto = (c.monto_por_persona || 0) * pax
-      total += monto
-      detalle.push({ concepto: c.concepto, monto, nota: `${formatPrecio(c.monto_por_persona)} x ${pax}` })
-    }
-  }
-  return { total, moneda, detalle }
 }
 
 function formatFechaLarga(fechaStr) {
@@ -294,7 +270,8 @@ export default function Agenda() {
     if (!reserva) return
     const choferId = 'chofer_id' in cambios ? cambios.chofer_id : reserva.chofer_id
     const guiaId = 'guia_id' in cambios ? cambios.guia_id : reserva.guia_id
-    const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursionId, reserva.personas || 1, costos, !!choferId, !!guiaId)
+    const chofer = choferId ? choferes.find((c) => c.id === choferId) : null
+    const { total, moneda, detalle } = calcularCostoOperativo(reserva.excursionId, reserva.personas || 1, costos, !!choferId, !!guiaId, chofer)
     await reservasApi.updateCostoOperativo(reservaId, { costo_operativo: total, costo_operativo_moneda: moneda, costo_operativo_detalle: detalle })
   }
 

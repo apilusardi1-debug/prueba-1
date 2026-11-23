@@ -5,6 +5,7 @@
 //    el comprobante por WhatsApp. Ahí nace el ingreso (cobro_paseo) y baja el saldo de la reserva.
 //  - Cada moneda va por separado, sin convertir.
 import { saldoDe } from './reservasPlanilla.js'
+import { calcularCostoOperativo } from './costosOperativos.js'
 
 // Fecha de inicio de Finanzas. Los paseos anteriores se dan por cobrados y por pagados (se llevaron en
 // las planillas contables): no cuentan como "por cobrar" ni "por pagar". Los de esa fecha en adelante con
@@ -29,19 +30,24 @@ function sumar(mapa, mon, valor) {
   mapa[mon] = (mapa[mon] || 0) + valor
 }
 
-// Lo que cuesta operar una reserva: el costo operativo calculado al asignar chofer y guía (según lo
-// cargado en Costos operativos) y, si todavía no se calculó, la comisión del chofer de la planilla.
+// Lo que cuesta operar una reserva: el costo operativo ya calculado al asignar chofer y guía; si todavía no
+// se calculó, se calcula con lo cargado en Costos operativos del paseo (por persona, fijo por paseo, chofer y
+// guía si hay); y si el paseo no tiene costos cargados, la comisión del chofer de la planilla.
 // Devuelve { monto, moneda }.
-export function costoDe(r) {
+export function costoDe(r, costos = []) {
   if (r.costo_operativo != null && Number(r.costo_operativo) > 0) {
     return { monto: Number(r.costo_operativo), moneda: r.costo_operativo_moneda || 'BRL' }
+  }
+  if (r.excursion_id && costos.length) {
+    const c = calcularCostoOperativo(r.excursion_id, num(r.personas) || 1, costos, !!(r.chofer_id || r.chofer_texto), !!r.guia_id)
+    if (c.total > 0) return { monto: c.total, moneda: c.moneda }
   }
   return { monto: num(r.comision_chofer), moneda: moneda(r) }
 }
 
 // Margen por paseo y moneda, con las reservas confirmadas o completadas cuyo paseo cae en el período.
 // Margen = venta − seña (comisión del vendedor) − costo de operar.
-export function margenPorPaseo(reservas, desde, hasta, nombrePaseo) {
+export function margenPorPaseo(reservas, desde, hasta, nombrePaseo, costos = []) {
   const filas = new Map()
   for (const r of reservas) {
     if (!realizable(r) || !enRango(r.fecha, desde, hasta)) continue
@@ -52,7 +58,7 @@ export function margenPorPaseo(reservas, desde, hasta, nombrePaseo) {
     f.pax += num(r.personas)
     f.ventas += num(r.total)
     f.sena += num(r.sena)
-    const c = costoDe(r)
+    const c = costoDe(r, costos)
     if (c.moneda === mon) f.costo += c.monto
     else if (c.monto > 0) f.costoOtraMoneda += 1
     filas.set(clave, f)

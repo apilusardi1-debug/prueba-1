@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi } from '../../lib/supabase.js'
+import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, choferesApi, guiasApi, vendedoresApi, conceptosApi, reservasApi } from '../../lib/supabase.js'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
+import ResumenFinanzas from '../../components/admin/finanzas/ResumenFinanzas.jsx'
+import { saldoDe } from '../../lib/reservasPlanilla.js'
+import { ORIGEN_COBRO_PASEO, ORIGEN_LIQ_CHOFER, resumenVentas, comisionesChofer } from '../../lib/finanzasPlanillas.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
@@ -24,6 +27,11 @@ function rangoFechas(periodo) {
   if (periodo === 'mes') {
     const d = new Date(); d.setDate(1)
     return { desde: d.toISOString().split('T')[0], hasta: hoyStr }
+  }
+  if (periodo === 'mes_pasado') {
+    const ahora = new Date()
+    const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { desde: f(new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1)), hasta: f(new Date(ahora.getFullYear(), ahora.getMonth(), 0)) }
   }
   return { desde: hoyStr, hasta: hoyStr }
 }
@@ -55,6 +63,8 @@ const CATEGORIAS_EGRESO = [
 // movimientos ya cargados, no para elegir categoría al crear uno nuevo.
 const CATEGORIAS = [
   { id: 'reserva', label: 'Reserva', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  // Los crea el sistema al registrar el cobro de un saldo (Reservas); no se elige a mano
+  { id: 'saldo_paseo', label: 'Saldo de paseo', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' },
   ...CATEGORIAS_INGRESO,
   ...CATEGORIAS_EGRESO,
 ]
@@ -105,7 +115,8 @@ const IcoEdit = () => (
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Finanzas() {
-  const [tab, setTab] = useState('movimientos')
+  const [tab, setTab] = useState('resumen')
+  const [reservas, setReservas] = useState([])
   const [periodo, setPeriodo] = useState('mes')
   const [movimientos, setMovimientos] = useState([])
   const [excursiones, setExcursiones] = useState([])
@@ -131,7 +142,7 @@ export default function Finanzas() {
 
   async function cargarTodo() {
     setCargando(true)
-    const [rm, re, rc, rcl, rch, rg, rv, rco] = await Promise.all([
+    const [rm, re, rc, rcl, rch, rg, rv, rco, rr] = await Promise.all([
       movimientosApi.getAll(),
       excursionesApi.getAll(),
       costosExcursionApi.getAll(),
@@ -140,7 +151,9 @@ export default function Finanzas() {
       guiasApi.getAll(),
       vendedoresApi.getAll(),
       conceptosApi.getAll(),
+      reservasApi.getAll(),
     ])
+    setReservas(rr?.data || [])
     setMovimientos(rm.data || [])
     setExcursiones(re.data || [])
     setCostos(rc.data || [])
@@ -193,25 +206,38 @@ export default function Finanzas() {
     return list.sort((a, b) => b.fecha.localeCompare(a.fecha))
   }, [movimientosFiltradosPeriodo, filtroTipo, filtroCategoria])
 
-  const totalIngresos = useMemo(() =>
-    movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso' && m.moneda === 'BRL')
-      .reduce((s, m) => s + Number(m.monto), 0),
-    [movimientosFiltradosPeriodo]
-  )
-  const totalEgresos = useMemo(() =>
-    movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso' && m.moneda === 'BRL')
-      .reduce((s, m) => s + Number(m.monto), 0),
-    [movimientosFiltradosPeriodo]
-  )
-  const balance = totalIngresos - totalEgresos
+  // Totales por moneda (sin convertir); los anulados no cuentan. Siempre aparece BRL, y las otras
+  // monedas solo si hubo movimientos.
+  const totalesMoneda = useMemo(() => {
+    const t = { BRL: { ingreso: 0, egreso: 0, ni: 0, ne: 0 } }
+    movimientosFiltradosPeriodo.forEach(m => {
+      if (m.estado === 'anulado') return
+      const x = t[m.moneda] || (t[m.moneda] = { ingreso: 0, egreso: 0, ni: 0, ne: 0 })
+      x[m.tipo] += Number(m.monto)
+      if (m.tipo === 'ingreso') x.ni += 1; else x.ne += 1
+    })
+    return t
+  }, [movimientosFiltradosPeriodo])
+  // Lo que viene de las planillas: saldos por cobrar de las ventas del período y comisiones de chofer por pagar
+  const porCobrarPeriodo = useMemo(() => resumenVentas(reservas, movimientos, desde, hasta).porCobrar, [reservas, movimientos, desde, hasta])
+  const porPagarPeriodo = useMemo(() => {
+    const t = {}
+    for (const f of comisionesChofer(reservas, desde, hasta)) t[f.moneda] = (t[f.moneda] || 0) + f.porPagar
+    return t
+  }, [reservas, desde, hasta])
+  const monedasCaja = [...new Set([...Object.keys(totalesMoneda), ...Object.keys(porCobrarPeriodo), ...Object.keys(porPagarPeriodo)])].sort()
+  const dato = (mapa, m) => (mapa[m] || 0)
+  const cajaDe = (m) => totalesMoneda[m] || { ingreso: 0, egreso: 0 }
+  const hayBalanceNegativo = monedasCaja.some(m => cajaDe(m).ingreso - cajaDe(m).egreso < 0)
 
-  // Desglose por categoría
+  // Desglose por categoría (cada moneda por separado)
   const porCategoria = useMemo(() => {
     const map = {}
     movimientosFiltradosPeriodo.forEach(m => {
-      if (m.moneda !== 'BRL') return
-      if (!map[m.categoria]) map[m.categoria] = { ingreso: 0, egreso: 0 }
-      map[m.categoria][m.tipo] += Number(m.monto)
+      if (m.estado === 'anulado') return
+      if (!map[m.categoria]) map[m.categoria] = {}
+      const x = map[m.categoria][m.moneda] || (map[m.categoria][m.moneda] = { ingreso: 0, egreso: 0 })
+      x[m.tipo] += Number(m.monto)
     })
     return map
   }, [movimientosFiltradosPeriodo])
@@ -241,8 +267,27 @@ export default function Finanzas() {
   }
 
   async function eliminarMovimiento(id) {
+    const m = movimientos.find(x => x.id === id)
+    // Deshacer un cobro de saldo: vuelve a sumarse a la reserva lo que se había descontado
+    if (m && m.origen === ORIGEN_COBRO_PASEO && m.tipo === 'ingreso' && m.reserva_id) {
+      const r = reservas.find(x => x.id === m.reserva_id)
+      if (r) {
+        const nuevo = Math.round((saldoDe(r) + Number(m.monto)) * 100) / 100
+        const { error } = (await reservasApi.update(r.id, { saldo_cliente: nuevo })) || {}
+        if (error) { setEliminandoId(null); window.alert('No se pudo devolver el saldo a la reserva, así que el cobro no se borró. Probá de nuevo.'); return }
+        setReservas(prev => prev.map(x => x.id === r.id ? { ...x, saldo_cliente: nuevo } : x))
+      }
+    }
+    // Deshacer una liquidación de chofer: sus paseos vuelven a quedar por pagar
+    if (m && m.origen === ORIGEN_LIQ_CHOFER) {
+      const ligadas = reservas.filter(x => x.comision_chofer_liq_id === m.id)
+      const res = await Promise.all(ligadas.map(x => reservasApi.update(x.id, { comision_chofer_pagada_at: null, comision_chofer_liq_id: null })))
+      if (res.some(x => x?.error)) { setEliminandoId(null); window.alert('No se pudieron volver a poner por pagar las comisiones, así que el pago no se borró. Probá de nuevo.'); return }
+      const ids = new Set(ligadas.map(x => x.id))
+      setReservas(prev => prev.map(x => ids.has(x.id) ? { ...x, comision_chofer_pagada_at: null, comision_chofer_liq_id: null } : x))
+    }
     await movimientosApi.delete(id)
-    setMovimientos(prev => prev.filter(m => m.id !== id))
+    setMovimientos(prev => prev.filter(x => x.id !== id))
     setEliminandoId(null)
   }
 
@@ -288,7 +333,7 @@ export default function Finanzas() {
         </div>
         <div className="flex gap-2 items-center">
           <div className="flex bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-1 gap-1">
-            {['hoy', 'semana', 'mes'].map(p => (
+            {['hoy', 'semana', 'mes', 'mes_pasado'].map(p => (
               <button
                 key={p}
                 onClick={() => setPeriodo(p)}
@@ -296,7 +341,7 @@ export default function Finanzas() {
                   periodo === p ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-zinc-500 hover:text-gray-800 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800'
                 }`}
               >
-                {p === 'hoy' ? 'Hoy' : p === 'semana' ? 'Semana' : 'Mes'}
+                {p === 'hoy' ? 'Hoy' : p === 'semana' ? 'Semana' : p === 'mes' ? 'Mes' : 'Mes pasado'}
               </button>
             ))}
           </div>
@@ -316,8 +361,13 @@ export default function Finanzas() {
             <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-950/40 flex items-center justify-center text-green-600 dark:text-green-400"><IcoIngreso /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Ingresos</span>
           </div>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(totalIngresos, 'BRL')}</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso').length} movimientos</p>
+          {monedasCaja.map(m => (
+            <div key={m}>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(cajaDe(m).ingreso, m)}</p>
+              {dato(porCobrarPeriodo, m) > 0 && <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Por cobrar de las ventas del período: {formatMonto(dato(porCobrarPeriodo, m), m)}</p>}
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Cobrado en caja · {movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso' && m.estado !== 'anulado').length} movimientos</p>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
@@ -325,24 +375,38 @@ export default function Finanzas() {
             <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center text-red-500 dark:text-red-400"><IcoEgreso /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Egresos</span>
           </div>
-          <p className="text-2xl font-bold text-red-500 dark:text-red-400">{formatMonto(totalEgresos, 'BRL')}</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">{movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso').length} movimientos</p>
+          {monedasCaja.map(m => (
+            <div key={m}>
+              <p className="text-2xl font-bold text-red-500 dark:text-red-400">{formatMonto(cajaDe(m).egreso, m)}</p>
+              {dato(porPagarPeriodo, m) > 0 && <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Comisiones de chofer por pagar: {formatMonto(dato(porPagarPeriodo, m), m)}</p>}
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Pagado en caja · {movimientosFiltradosPeriodo.filter(m => m.tipo === 'egreso' && m.estado !== 'anulado').length} movimientos</p>
         </div>
 
-        <div className={`rounded-2xl border shadow-sm p-5 ${balance >= 0 ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-100 dark:border-brand-900' : 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900'}`}>
+        <div className={`rounded-2xl border shadow-sm p-5 ${!hayBalanceNegativo ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-100 dark:border-brand-900' : 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900'}`}>
           <div className="flex items-center gap-3 mb-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400' : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'}`}><IcoBalance /></div>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${!hayBalanceNegativo ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400' : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'}`}><IcoBalance /></div>
             <span className="text-sm font-medium text-gray-500 dark:text-zinc-500">Balance neto</span>
           </div>
-          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-brand-700 dark:text-brand-400' : 'text-red-600 dark:text-red-400'}`}>{formatMonto(balance, 'BRL')}</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Solo movimientos en BRL</p>
+          {monedasCaja.map(m => {
+            const b = cajaDe(m).ingreso - cajaDe(m).egreso
+            const proy = b + dato(porCobrarPeriodo, m) - dato(porPagarPeriodo, m)
+            return (
+              <div key={m}>
+                <p className={`text-2xl font-bold ${b >= 0 ? 'text-brand-700 dark:text-brand-400' : 'text-red-600 dark:text-red-400'}`}>{formatMonto(b, m)}</p>
+                {(dato(porCobrarPeriodo, m) > 0 || dato(porPagarPeriodo, m) > 0) && <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Proyectado (con lo por cobrar y por pagar): {formatMonto(proy, m)}</p>}
+              </div>
+            )
+          })}
+          <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Cada moneda por separado</p>
         </div>
       </div>
 
       {/* Desglose rápido */}
       {Object.keys(porCategoria).length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Desglose por categoría (BRL)</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Desglose por categoría</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {CATEGORIAS.map(cat => {
               const d = porCategoria[cat.id]
@@ -350,8 +414,12 @@ export default function Finanzas() {
               return (
                 <div key={cat.id} className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-3">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.color}`}>{cat.label}</span>
-                  {d.ingreso > 0 && <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 font-medium">+{formatMonto(d.ingreso, 'USD')}</p>}
-                  {d.egreso > 0 && <p className="text-xs text-red-500 dark:text-red-400 font-medium">-{formatMonto(d.egreso, 'USD')}</p>}
+                  {Object.entries(d).map(([mon, x]) => (
+                    <div key={mon} className="mt-1.5">
+                      {x.ingreso > 0 && <p className="text-xs text-green-600 dark:text-green-400 font-medium">+{formatMonto(x.ingreso, mon)}</p>}
+                      {x.egreso > 0 && <p className="text-xs text-red-500 dark:text-red-400 font-medium">-{formatMonto(x.egreso, mon)}</p>}
+                    </div>
+                  ))}
                 </div>
               )
             })}
@@ -362,6 +430,7 @@ export default function Finanzas() {
       {/* Tabs */}
       <div className="flex gap-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-1.5 w-fit">
         {[
+          { id: 'resumen', label: 'Resumen' },
           { id: 'movimientos', label: 'Movimientos' },
           { id: 'costos', label: 'Costos operativos' },
         ].map(t => (
@@ -376,6 +445,14 @@ export default function Finanzas() {
           </button>
         ))}
       </div>
+
+      {/* ── Tab: Resumen (planillas conectadas a Finanzas) ───────────────────── */}
+      {tab === 'resumen' && (
+        cargando ? <div className="text-center py-12 text-gray-400 dark:text-zinc-600">Cargando...</div> : (
+          <ResumenFinanzas reservas={reservas} movimientos={movimientos} desde={desde} hasta={hasta}
+            etiquetaPeriodo={`${formatFecha(desde)} al ${formatFecha(hasta)}`} onCambio={cargarTodo} />
+        )
+      )}
 
       {/* ── Tab: Movimientos ─────────────────────────────────────────────────── */}
       {tab === 'movimientos' && (

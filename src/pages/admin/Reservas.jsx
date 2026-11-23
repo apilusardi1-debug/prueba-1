@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { reservasApi, excursionesApi, choferesApi, comisionesAgenciaApi, leadsApi, clientesApi } from '../../lib/supabase.js'
+import { reservasApi, excursionesApi, choferesApi, comisionesAgenciaApi, leadsApi, clientesApi, movimientosApi } from '../../lib/supabase.js'
 import FichaPersona from '../../components/ficha/FichaPersona.jsx'
 import { rutaChatCrm } from '../../lib/chatCrm.js'
 import ModalReservaPlanilla from '../../components/admin/ModalReservaPlanilla.jsx'
+import ModalCobro from '../../components/admin/ModalCobro.jsx'
+import { ORIGEN_COBRO_PASEO } from '../../lib/finanzasPlanillas.js'
 import { confirmar } from '../../components/ui/Avisos.jsx'
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
 import { nombrePaseo, saldoDe, formatMonto, fechaCorta, claveTexto, distintos } from '../../lib/reservasPlanilla.js'
@@ -49,6 +51,7 @@ export default function Reservas() {
   const [verComisiones, setVerComisiones] = useState(false)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
   const [editandoSaldo, setEditandoSaldo] = useState(null) // { id, valor }
+  const [cobrando, setCobrando] = useState(null) // lista de reservas cuyo saldo se está cobrando
   const [ficha, setFicha] = useState(null) // { lead } | { cliente }
   const navigate = useNavigate()
 
@@ -176,10 +179,50 @@ export default function Reservas() {
     setEditandoSaldo(null)
   }
 
-  async function cobrarSeleccionadas() {
-    const ids = [...seleccionadas].filter(id => saldoDe(reservas.find(r => r.id === id)) > 0)
+  // "Cobrado": abre el registro del cobro (quién cobró, cómo, cuánto). Cada cobro queda como ingreso
+  // en Finanzas y baja el saldo de la reserva; el número ya no desaparece sin dejar rastro.
+  function cobrarSeleccionadas() {
+    const lista = [...seleccionadas].map(id => reservas.find(r => r.id === id)).filter(r => r && saldoDe(r) > 0)
+    if (lista.length) setCobrando(lista)
+  }
+
+  async function registrarCobro({ fecha, metodo, nota, lineas, cobrador }) {
+    let usuario = null
+    try { const s = JSON.parse(localStorage.getItem('admin_session') || '{}'); usuario = s.nombre || s.email || null } catch { /* sin sesión */ }
+    const hechos = []
+    for (const { reserva: r, monto } of lineas) {
+      const { data, error } = (await movimientosApi.create({
+        fecha, tipo: 'ingreso', categoria: 'saldo_paseo',
+        concepto: `Saldo ${nombrePaseo(r)} - ${r.cliente_nombre}`,
+        monto, moneda: r.moneda || 'BRL', persona_nombre: cobrador, cliente_id: r.cliente_id || null,
+        cliente_nombre: r.cliente_nombre, metodo, estado: 'confirmado', notas: nota,
+        registrado_por: usuario, reserva_id: r.id, origen: ORIGEN_COBRO_PASEO, cobrador,
+      })) || {}
+      if (error || !data) {
+        // No se deja nada a medias: se deshace lo ya registrado en esta tanda (todavía no se tocó ningún saldo)
+        for (const h of hechos) await movimientosApi.delete(h.mov.id)
+        return `No se pudo registrar el cobro de ${r.cliente_nombre}: ${error?.message || 'sin respuesta'}. Si dice que falta una columna, hay que correr primero el SQL de Finanzas.`
+      }
+      hechos.push({ r, monto, mov: data })
+    }
+    const fallidas = []
+    for (const h of hechos) {
+      const nuevo = Math.max(Math.round((saldoDe(h.r) - h.monto) * 100) / 100, 0)
+      const { error } = (await reservasApi.update(h.r.id, { saldo_cliente: nuevo })) || {}
+      if (error) {
+        await movimientosApi.delete(h.mov.id)
+        fallidas.push(h.r)
+      } else {
+        setReservas(prev => prev.map(x => x.id === h.r.id ? { ...x, saldo_cliente: nuevo } : x))
+      }
+    }
     setSeleccionadas(new Set())
-    if (ids.length) await guardarSaldo(ids, 0)
+    if (fallidas.length) {
+      setCobrando(fallidas)
+      return `No se pudo bajar el saldo de ${fallidas.map(r => r.cliente_nombre).join(', ')}; ese cobro no se registró. Probá de nuevo.`
+    }
+    setCobrando(null)
+    return null
   }
 
   function toggleSeleccion(id) {
@@ -390,7 +433,7 @@ export default function Reservas() {
                             {formatMonto(saldoDe(r), r.moneda)}
                           </button>
                           {saldoDe(r) > 0 && (
-                            <button onClick={() => guardarSaldo([r.id], 0)} title="El cliente pagó el saldo"
+                            <button onClick={() => setCobrando([r])} title="Registrar el cobro del saldo"
                               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40">
                               Cobrado
                             </button>
@@ -447,6 +490,10 @@ export default function Reservas() {
           onGuardar={guardarReserva}
           onCerrar={() => setEditando(null)}
         />
+      )}
+
+      {cobrando && (
+        <ModalCobro key={cobrando.map(r => r.id).join(',')} reservas={cobrando} onConfirmar={registrarCobro} onCerrar={() => setCobrando(null)} />
       )}
 
       {ficha && (

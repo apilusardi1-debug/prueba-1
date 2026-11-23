@@ -3,7 +3,7 @@ import { movimientosApi, costosExcursionApi, excursionesApi, clientesApi, chofer
 import { IcGrande } from '../../components/admin/dashboard/Ic.jsx'
 import ResumenFinanzas from '../../components/admin/finanzas/ResumenFinanzas.jsx'
 import { saldoDe } from '../../lib/reservasPlanilla.js'
-import { ORIGEN_COBRO_PASEO, ORIGEN_LIQ_CHOFER, resumenVentas, comisionesChofer } from '../../lib/finanzasPlanillas.js'
+import { ORIGEN_COBRO_PASEO, ORIGEN_LIQ_CHOFER, FINANZAS_INICIO, resumenVentas, comisionesChofer } from '../../lib/finanzasPlanillas.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function hoy() { return new Date().toISOString().split('T')[0] }
@@ -192,7 +192,10 @@ export default function Finanzas() {
   }
 
   // ── Filtrado y balance ──────────────────────────────────────────────────────
-  const { desde, hasta } = rangoFechas(periodo)
+  // Finanzas cuenta desde su fecha de inicio: lo anterior no se muestra aunque el período lo incluya
+  const rango = rangoFechas(periodo)
+  const desde = rango.desde < FINANZAS_INICIO ? FINANZAS_INICIO : rango.desde
+  const hasta = rango.hasta
 
   const movimientosFiltradosPeriodo = useMemo(() =>
     movimientos.filter(m => m.fecha >= desde && m.fecha <= hasta),
@@ -364,7 +367,7 @@ export default function Finanzas() {
           {monedasCaja.map(m => (
             <div key={m}>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatMonto(cajaDe(m).ingreso, m)}</p>
-              {dato(porCobrarPeriodo, m) > 0 && <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Por cobrar de las ventas del período: {formatMonto(dato(porCobrarPeriodo, m), m)}</p>}
+              {dato(porCobrarPeriodo, m) > 0 && <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Por cobrar de los paseos desde el inicio: {formatMonto(dato(porCobrarPeriodo, m), m)}</p>}
             </div>
           ))}
           <p className="text-xs text-gray-400 dark:text-zinc-600 mt-1">Cobrado en caja · {movimientosFiltradosPeriodo.filter(m => m.tipo === 'ingreso' && m.estado !== 'anulado').length} movimientos</p>

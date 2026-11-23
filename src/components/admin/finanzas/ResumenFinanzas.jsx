@@ -99,10 +99,15 @@ export default function ResumenFinanzas({ reservas, movimientos, costos = [], de
               <Dato etiqueta="Ventas del período" valor={formatMonto(ventas.ventas[m] || 0, m)} ayuda="Total vendido en reservas no canceladas, por fecha de venta" />
               <Dato etiqueta="Seña (vendedores)" valor={formatMonto(ventas.sena[m] || 0, m)} ayuda="La cobra el vendedor y es su comisión: no entra a la caja" />
               <Dato etiqueta="Saldo cobrado en caja" valor={formatMonto(ventas.cobrado[m] || 0, m)} clase="text-green-600 dark:text-green-400" ayuda="Cobros de saldo ya registrados en el período" />
-              <Dato etiqueta="Por cobrar" valor={formatMonto(ventas.porCobrar[m] || 0, m)} clase="text-red-500 dark:text-red-400" ayuda="Saldo pendiente de las ventas del período" />
+              <Dato etiqueta="Por cobrar" valor={formatMonto(ventas.porCobrar[m] || 0, m)} clase="text-red-500 dark:text-red-400" ayuda="Saldo pendiente de todos los paseos desde el inicio de Finanzas, sin importar cuándo se vendieron" />
               <Dato etiqueta="Margen de paseos" valor={mg ? formatMonto(mg.margen, m) : formatMonto(0, m)}
                 clase={mg && mg.margen < 0 ? 'text-red-500 dark:text-red-400' : 'text-brand-700 dark:text-brand-400'}
                 ayuda="Venta − seña − costo de operar, de los paseos confirmados o completados del período" />
+              {mg && mg.sinCosto > 0 && (
+                <p className="col-span-2 md:col-span-5 text-xs text-amber-600 dark:text-amber-400">
+                  {mg.sinCosto} reserva{mg.sinCosto === 1 ? '' : 's'} sin costo cargado: su margen está sin descontar el costo y puede ser mayor que el real.
+                </p>
+              )}
             </div>
           </div>
         )
@@ -134,6 +139,7 @@ export default function ResumenFinanzas({ reservas, movimientos, costos = [], de
               <tr key={f.paseo + f.moneda}>
                 <td className={TD + ' font-medium text-gray-800 dark:text-zinc-200'}>
                   {f.paseo}
+                  {f.sinCosto > 0 && <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400" title="Reservas de este paseo sin costo cargado">{f.sinCosto} sin costo</span>}
                   {f.costoOtraMoneda > 0 && <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400" title="El costo está en otra moneda y no se sumó">{f.costoOtraMoneda} con costo en otra moneda</span>}
                 </td>
                 <td className={TD + ' text-right'}>{f.reservas}</td>

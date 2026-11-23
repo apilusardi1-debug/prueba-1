@@ -53,12 +53,13 @@ export function margenPorPaseo(reservas, desde, hasta, nombrePaseo, costos = [])
     if (!realizable(r) || !enRango(r.fecha, desde, hasta)) continue
     const mon = moneda(r)
     const clave = `${nombrePaseo(r)}||${mon}`
-    const f = filas.get(clave) || { paseo: nombrePaseo(r), moneda: mon, reservas: 0, pax: 0, ventas: 0, sena: 0, costo: 0, costoOtraMoneda: 0 }
+    const f = filas.get(clave) || { paseo: nombrePaseo(r), moneda: mon, reservas: 0, pax: 0, ventas: 0, sena: 0, costo: 0, costoOtraMoneda: 0, sinCosto: 0 }
     f.reservas += 1
     f.pax += num(r.personas)
     f.ventas += num(r.total)
     f.sena += num(r.sena)
     const c = costoDe(r, costos)
+    if (!(c.monto > 0)) f.sinCosto += 1
     if (c.moneda === mon) f.costo += c.monto
     else if (c.monto > 0) f.costoOtraMoneda += 1
     filas.set(clave, f)
@@ -72,8 +73,8 @@ export function margenPorPaseo(reservas, desde, hasta, nombrePaseo, costos = [])
 export function totalesMargen(filas) {
   const t = {}
   for (const f of filas) {
-    const x = t[f.moneda] || { ventas: 0, sena: 0, costo: 0, margen: 0 }
-    x.ventas += f.ventas; x.sena += f.sena; x.costo += f.costo; x.margen += f.margen
+    const x = t[f.moneda] || { ventas: 0, sena: 0, costo: 0, margen: 0, sinCosto: 0 }
+    x.ventas += f.ventas; x.sena += f.sena; x.costo += f.costo; x.margen += f.margen; x.sinCosto += f.sinCosto
     t[f.moneda] = x
   }
   return t
@@ -89,8 +90,13 @@ export function resumenVentas(reservas, movimientos, desde, hasta) {
     const mon = moneda(x)
     sumar(r.ventas, mon, num(x.total))
     sumar(r.sena, mon, num(x.sena))
+  }
+  // Por cobrar: todo saldo pendiente de paseos desde el inicio, sin importar cuándo se vendió (es plata
+  // que el guía va a cobrar en esos paseos)
+  for (const x of reservas) {
+    if (!vigente(x) || !desdeInicio(x.fecha)) continue
     const s = saldoDe(x)
-    if (s > 0 && desdeInicio(x.fecha)) sumar(r.porCobrar, mon, s)
+    if (s > 0) sumar(r.porCobrar, moneda(x), s)
   }
   for (const m of movimientos) {
     if (m.tipo !== 'ingreso' || m.estado === 'anulado' || m.origen !== ORIGEN_COBRO_PASEO) continue

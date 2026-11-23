@@ -58,7 +58,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla, responde_a, emoji } = await req.json()
+    const { phone, template, params, message, nombre, conversacion_id, media, accion, filename, usuario_id, plantilla, responde_a, emoji, aviso_operacion } = await req.json()
     // "Responder" del CRM: wa_message_id del mensaje citado (solo texto y archivos)
     const respondeA: string | null = typeof responde_a === 'string' && responde_a.startsWith('wamid.') ? responde_a : null
     const usuarioId: string | null = typeof usuario_id === 'string' && /^[0-9a-f-]{36}$/i.test(usuario_id) ? usuario_id : null
@@ -385,6 +385,28 @@ serve(async (req) => {
         .update({ bot_estado: 'humano' })
         .eq('id', convId)
         .or('bot_estado.is.null,bot_estado.eq.esperando,bot_estado.eq.filtrando')
+    }
+
+    // Aviso al cliente al cerrar una operación (Agenda, 2026-10-29): si el cliente responde, el chat
+    // tiene que estar con quien lleva Paseos (el reparto del asistente, grupo 'paseos'), aunque ya
+    // tuviera otro responsable, y el asistente automático no interviene ('derivado'). Si no hay nadie
+    // en el reparto el mensaje ya salió y el chat queda como estaba. Solo con plantilla del CRM.
+    if (aviso_operacion === true && esPlantillaCrm && convId) {
+      try {
+        const { data: reparto } = await supabase.from('bot_reparto').select('usuario_id, ultima_asignacion').eq('grupo', 'paseos')
+        const ids = (reparto || []).map((m) => m.usuario_id)
+        const { data: usuarios } = ids.length ? await supabase.from('usuarios_admin').select('id, activo').in('id', ids) : { data: [] }
+        const elegido = (reparto || [])
+          .filter((m) => (usuarios || []).some((u) => u.id === m.usuario_id && u.activo !== false))
+          .sort((a, b) => (a.ultima_asignacion ? Date.parse(a.ultima_asignacion) : 0) - (b.ultima_asignacion ? Date.parse(b.ultima_asignacion) : 0))[0]
+        if (elegido) {
+          await supabase.from('conversaciones').update({ asignado_a: elegido.usuario_id, grupo: 'paseos', bot_estado: 'derivado' }).eq('id', convId)
+        } else {
+          console.error('aviso_operacion: no hay nadie en el reparto de Paseos, el chat no se asignó')
+        }
+      } catch (err) {
+        console.error('aviso_operacion: no se pudo asignar el chat:', err)
+      }
     }
 
     // Si la conversación la tiene asignada alguien que no respondió al último

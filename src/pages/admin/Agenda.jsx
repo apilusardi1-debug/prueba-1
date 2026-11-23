@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi, leadsApi, clientesApi } from '../../lib/supabase.js'
+import { choferesApi, guiasApi, reservasApi, excursionesApi, costosExcursionApi, operacionesApi, usuariosAdminApi, enviarPlantillaWhatsApp, leadsApi, clientesApi } from '../../lib/supabase.js'
 import FichaPersona from '../../components/ficha/FichaPersona.jsx'
 import { avisar } from '../../components/ui/Avisos.jsx'
 import { MENSAJES_OPERACION, rellenarPlantilla } from '../../lib/mensajesDefault.js'
-import { sendWhatsAppTemplate } from '../../lib/ultramsg.js'
 import { useSincronizado } from '../../lib/useSincronizado.js'
-import { renderTemplate } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
+import { renderTemplate, TEMPLATE_BODIES, PLANTILLA_AVISO_EXCURSION } from '../../../supabase/functions/_shared/plantillasWhatsapp.ts'
 import Ic, { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
 import { nombrePaseo, claveTexto } from '../../lib/reservasPlanilla.js'
+import { horaDeReserva, tipoHorario } from '../../lib/horarios.js'
 import { infoEstado, hoyReservas } from '../../lib/estadosReserva.js'
 import OperacionesDelDia from '../../components/admin/OperacionesDelDia.jsx'
 
@@ -81,10 +81,19 @@ function formatFechaHora(isoStr) {
   })
 }
 
-function normalizarReserva(r) {
+// `catalogo`: los paseos por id. La lectura de reservas no trae la hora de salida ni el archivo
+// de opcionales del paseo; sin esto los avisos salían siempre con las 8:00 AM de fábrica.
+function normalizarReserva(r, catalogo = {}) {
+  const paseo = catalogo[r.excursion_id] || {}
   return {
     id: r.id,
     excursionId: r.excursion_id,
+    excursionHoraSalida: paseo.hora_salida || null,
+    excursionHoraRegreso: paseo.hora_regreso || null,
+    // Horario del paseo (fijo / variable / catamarán) y la hora propia de esta reserva (2026-11-02)
+    excursionHorarioTipo: paseo.horario_tipo || null,
+    horaRecogida: r.hora_recogida || null,
+    excursionOpcionalesImagen: paseo.opcionales_imagen || null,
     // Traslados y paseos fuera del catálogo no tienen excursion_id, solo el texto del
     // paseo: se agrupan por ese texto (grupoId) para que no queden todos juntos.
     grupoId: r.excursion_id || `paseo:${claveTexto(nombrePaseo(r))}`,
@@ -115,7 +124,11 @@ function buildSalidas(reservasNorm) {
     if (!map[key]) {
       map[key] = {
         fecha: r.fecha,
-        excursion: { id: r.grupoId, excursionId: r.excursionId, nombre: r.excursionNombre, cupos: r.excursionCupos, categoria: r.excursionCategoria },
+        excursion: {
+          id: r.grupoId, excursionId: r.excursionId, nombre: r.excursionNombre, cupos: r.excursionCupos, categoria: r.excursionCategoria,
+          hora_salida: r.excursionHoraSalida, hora_regreso: r.excursionHoraRegreso, opcionales_imagen: r.excursionOpcionalesImagen,
+          horario_tipo: r.excursionHorarioTipo,
+        },
         reservas: [],
       }
     }
@@ -144,6 +157,59 @@ function getHorario(excursion) {
     regreso: excursion?.hora_regreso || '6:00 PM',
   }
 }
+
+// Horario de recogida (2026-11-02): cada reserva puede tener su hora (traslados, paseos variables);
+// si no, vale la fija del paseo. Los traslados y paseos fuera del catálogo no tienen hora fija.
+function paseoParaHorario(excursion) {
+  return excursion?.excursionId ? { horario_tipo: excursion.horario_tipo, hora_salida: excursion.hora_salida } : null
+}
+function horaDePasajero(r, excursion) {
+  return horaDeReserva({ hora_recogida: r.horaRecogida }, paseoParaHorario(excursion))
+}
+const esHorarioFijo = (excursion) => tipoHorario(paseoParaHorario(excursion)) === 'fijo'
+
+// Aviso al cliente al cerrar la operación (2026-10-29): sale por el número del CRM con la
+// plantilla aviso_excursion_cliente. Estos helpers arman sus datos.
+
+// Hora en 24 hs: '8:00 AM' -> '08:00', '2:30 PM' -> '14:30'; si ya viene en 24 hs queda igual
+function hora24(txt) {
+  const m = String(txt || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (!m) return ''
+  let h = parseInt(m[1], 10)
+  const ap = (m[3] || '').toUpperCase()
+  if (ap === 'PM' && h < 12) h += 12
+  if (ap === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${m[2]}`
+}
+
+// WhatsApp del guía como va en el mensaje: con + y código de país, así el cliente lo toca y le
+// abre el chat con el guía. Devuelve '' si el número no sirve.
+function telefonoInternacional(num) {
+  const d = String(num || '').replace(/\D/g, '')
+  if (d.length < 10) return ''
+  if (d.startsWith('55') && d.length === 13) return `+55 ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`
+  if (d.startsWith('55') && d.length === 12) return `+55 ${d.slice(2, 4)} ${d.slice(4, 8)}-${d.slice(8)}`
+  return `+${d}`
+}
+
+// Meta no acepta saltos de línea ni espacios repetidos dentro de un dato de plantilla
+const unaLinea = (txt) => String(txt || '').replace(/\s+/g, ' ').trim()
+
+// Mañana en Brasil (YYYY-MM-DD): el aviso al cliente dice "mañana", así que solo sale ese día
+function mananaBrasil() {
+  const hoyBr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Recife' })
+  const d = new Date(`${hoyBr}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+// El error de una Edge Function trae el motivo en el cuerpo de la respuesta
+async function textoError(error) {
+  const detalle = await error?.context?.json?.().catch(() => null)
+  return detalle?.error || error?.message || 'No se pudo enviar'
+}
+
+const SITIO = import.meta.env.VITE_SITIO_URL || 'https://prueba-1-rose.vercel.app'
 
 const AVATAR_COLORS = ['bg-blue-500','bg-purple-500','bg-emerald-500','bg-orange-400','bg-pink-500','bg-teal-500','bg-indigo-500','bg-rose-500']
 
@@ -192,12 +258,15 @@ export default function Agenda() {
       guiasApi.getAll(),
       reservasApi.getAll(),
       costosExcursionApi.getAll(),
-    ]).then(([ch, gu, res, co]) => {
+      excursionesApi.getAll(),
+    ]).then(([ch, gu, res, co, ex]) => {
       if (!ch.error) setChoferes((ch.data || []).filter((c) => c.activo))
       if (!gu.error) setGuias(gu.data || [])
       if (!co.error) setCostos(co.data || [])
       if (!res.error) {
-        const norm = (res.data || []).map(normalizarReserva)
+        // Si el catálogo no se pudo leer, los avisos usan los valores de siempre
+        const catalogo = Object.fromEntries((ex?.data || []).map((p) => [p.id, p]))
+        const norm = (res.data || []).map((r) => normalizarReserva(r, catalogo))
         setReservasNorm(norm)
         const initAsig = {}
         const initGuia = {}
@@ -686,7 +755,7 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                   <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-gray-900 dark:text-zinc-100 text-sm">{salida.excursion.nombre}</h4>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="clock" />{horario.partida} — Regreso estimado {horario.regreso}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5"><IcTxt n="clock" />{esHorarioFijo(salida.excursion) ? `${horario.partida} — Regreso estimado ${horario.regreso}` : 'Horario según cada reserva'}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 rounded-full px-2.5 py-1">
@@ -710,7 +779,10 @@ function VistaCalendario({ reservasNorm, choferes, guias, asignaciones, guiaAsig
                           </div>
                           <div className="flex-1 min-w-0 max-w-[45%]">
                             <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">{r.clienteNombre}</p>
-                            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5 truncate">{horario.partida} · Regreso {horario.regreso} · {r.personas} pax</p>
+                            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5 truncate">
+                              {horaDePasajero(r, salida.excursion) || <span className="font-medium text-amber-600 dark:text-amber-400">Sin horario</span>}
+                              {esHorarioFijo(salida.excursion) ? ` · Regreso ${horario.regreso}` : ''} · {r.personas} pax
+                            </p>
                           </div>
                           <p className="text-xs text-gray-400 dark:text-zinc-600 flex-shrink-0 hidden sm:block">{r.hospedaje || '—'}</p>
                           <a href={`https://wa.me/${r.clienteWhatsapp}`} target="_blank" rel="noopener noreferrer"
@@ -797,20 +869,35 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
     avisar('Este pasajero todavía no tiene ficha: no hay un lead ni un cliente con ese teléfono.')
   }
 
-  // El mismo texto que le llega al cliente por WhatsApp (misma plantilla que usa
-  // cerrarOperacion), para revisarlo antes de que el token del número operativo esté
-  // arreglado — funciona incluso sin guía/chofer asignados todavía, con "A confirmar"
-  function mensajeClientePreview(r) {
+  // Datos de la plantilla aviso_excursion_cliente de un pasajero, y qué falta para poder mandarla.
+  // Los mismos que usa cerrarOperacion, así la vista previa y el envío no se desincronizan.
+  function datosAvisoCliente(r) {
     const choferR = choferes.find((c) => c.id === asignaciones[r.id])
-    const horario = getHorario(excursion)
-    const hora = new Date().getHours()
-    const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
-    const linkOpcionales = excursion.opcionales_imagen || import.meta.env.VITE_SITIO_URL
-    return renderTemplate('aviso_cliente', [
-      saludo, excursion.nombre, guiaAsignado?.nombre || 'A confirmar', choferR ? choferR.nombre : 'por confirmar',
-      choferR?.auto_modelo || 'A confirmar', choferR?.auto_patente || 'A confirmar',
-      horario.partida, horario.regreso, r.hospedaje || 'tu hospedaje', guiaAsignado?.whatsapp || 'A confirmar', linkOpcionales,
-    ])
+    const hora = horaDePasajero(r, excursion)
+    const telGuia = telefonoInternacional(guiaAsignado?.whatsapp)
+    const faltan = []
+    if (!choferR) faltan.push('chofer')
+    if (!guiaAsignado) faltan.push('guía')
+    else if (!telGuia) faltan.push('WhatsApp del guía con código de país')
+    if (!hora) faltan.push('hora de recogida')
+    if (!unaLinea(r.hospedaje)) faltan.push('hospedaje')
+    if (!r.clienteWhatsapp) faltan.push('WhatsApp del cliente')
+    // Sin archivo de opcionales, el link lleva a la página del paseo en la web
+    const link = excursion.opcionales_imagen || (excursion.excursionId ? `${SITIO}/excursiones/${excursion.excursionId}` : SITIO)
+    const params = [
+      unaLinea(r.clienteNombre).split(' ')[0], excursion.nombre, choferR?.nombre, hora, r.hospedaje, guiaAsignado?.nombre, link, telGuia,
+    ].map(unaLinea)
+    return { params, faltan }
+  }
+
+  // El mismo texto que le llega al cliente por WhatsApp. Avisa si todavía no se podría mandar.
+  function mensajeClientePreview(r) {
+    const { params, faltan } = datosAvisoCliente(r)
+    const avisos = []
+    if (fecha !== mananaBrasil()) avisos.push('Ojo: este aviso dice "mañana", así que solo se manda si el paseo es mañana.')
+    if (faltan.length) avisos.push(`Falta para poder mandarlo: ${faltan.join(', ')}.`)
+    const texto = renderTemplate('aviso_excursion_cliente', params.map((p) => p || '___'))
+    return avisos.length ? `${avisos.join('\n')}\n\n${texto}` : texto
   }
 
   async function cerrarOperacion() {
@@ -824,27 +911,18 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       const fechaFmtPt = formatFechaLargaPt(fecha)
       const fechaCorta = formatFechaCorta(fecha)
       const horario = getHorario(excursion)
-      const hora = new Date().getHours()
-      const saludo = hora >= 6 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
       // Textos de los avisos internos, editables desde Mensajes. Si no se pueden leer, se usan los de siempre.
       const { plantillas: guardadas } = (await usuariosAdminApi.plantillas()) || {}
       const plantillaDe = (clave) => guardadas?.find((p) => p.clave === clave)?.texto || MENSAJES_OPERACION[clave].texto
 
-      async function enviar(destino, phone, template, params) {
-        if (!phone) {
-          logs.push({ destino, phone: '—', ok: false, error: 'Sin número de WhatsApp guardado' })
-          return
-        }
-        const res = await sendWhatsAppTemplate(phone, template, params)
-        logs.push({ destino, phone, ok: res.ok, error: res.error })
-      }
-
       // El mensaje que el guía o el chofer le manda AL PASAJERO por su propio WhatsApp
       // (no por la API de Meta: no tiene costo). Va en español, como el resto de lo
       // que recibe el cliente; queda pre-escrito, ellos lo revisan antes de mandarlo.
       function mensajeParaPasajero(r) {
-        return `Hola ${r.clienteNombre}! Te escribo de DreamTours por la excursión a ${excursion.nombre} el ${fechaCorta}. Paso a buscarte por ${r.hospedaje || 'tu hospedaje'} a las ${horario.partida}. ¿Me pasás la ubicación del hospedaje? Cualquier consulta escribime por acá. ¡Gracias!`
+        const hora = horaDePasajero(r, excursion)
+        const cuando = hora ? `a las ${hora}` : '(te confirmo el horario por acá)'
+        return `Hola ${r.clienteNombre}! Te escribo de DreamTours por la excursión a ${excursion.nombre} el ${fechaCorta}. Paso a buscarte por ${r.hospedaje || 'tu hospedaje'} ${cuando}. ¿Me pasás la ubicación del hospedaje? Cualquier consulta escribime por acá. ¡Gracias!`
       }
       function datosPasajero(r) {
         return { nombre: r.clienteNombre, personas: r.personas, hospedaje: r.hospedaje || null, whatsapp: r.clienteWhatsapp, mensajeWa: mensajeParaPasajero(r) }
@@ -857,6 +935,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         const saldo = Math.max((r.total || 0) - (r.pagado || 0), 0)
         return [
           `*${r.clienteNombre}* — 👥 ${r.personas} pessoas`,
+          `🕒 Horário: ${horaDePasajero(r, excursion) || 'a confirmar'}`,
           `🏨 ${r.hospedaje || 'Sem hospedagem'}`,
           `📞 Contato: +${r.clienteWhatsapp}`,
           `🚗 Motorista: ${choferR ? choferR.nombre : 'Sem motorista'}${choferR?.whatsapp ? ` · 📞 +${choferR.whatsapp}` : ''}`,
@@ -866,15 +945,20 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       function bloquePasajeroChofer(r) {
         return [
           `*${r.clienteNombre}* — 👥 ${r.personas} pessoas`,
+          `🕒 Horário: ${horaDePasajero(r, excursion) || 'a confirmar'}`,
           `🏨 ${r.hospedaje || 'Sem hospedagem'}`,
           `📞 Contato: +${r.clienteWhatsapp}`,
         ].join('\n')
       }
 
+      // En un paseo de horario fijo, "salida" es esa hora. Si es variable, cada pasajero trae la suya.
+      const salidaTexto = esHorarioFijo(excursion) ? horario.partida : 'conforme cada passageiro (veja abaixo)'
+      const voltaTexto = esHorarioFijo(excursion) ? horario.regreso : 'a confirmar'
+
       // Aviso interno al GUÍA: antes salía por WhatsApp (aviso_guia), ahora queda en
       // su link personal (chat interno) — el costo por mensaje de Meta era el motivo
       const mensajeGuia = rellenarPlantilla(plantillaDe('operacion_guia'), {
-        excursion: excursion.nombre, fecha: fechaFmtPt, salida: horario.partida, volta: horario.regreso,
+        excursion: excursion.nombre, fecha: fechaFmtPt, salida: salidaTexto, volta: voltaTexto,
         pasajeros: pasajeros.map(bloquePasajeroGuia).join('\n\n'),
       })
       const avisos = [{ destinatario: 'guia', guia_id: guiaAsignado.id, mensaje: mensajeGuia, pasajeros: pasajeros.map(datosPasajero) }]
@@ -890,7 +974,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         const chofer = choferes.find((c) => c.id === cid)
         if (!chofer) continue
         const mensajeChofer = rellenarPlantilla(plantillaDe('operacion_chofer'), {
-          excursion: excursion.nombre, fecha: fechaFmtPt, salida: horario.partida,
+          excursion: excursion.nombre, fecha: fechaFmtPt, salida: salidaTexto,
           pasajeros: sus.map(bloquePasajeroChofer).join('\n\n'),
           guia: guiaAsignado.nombre, guia_whatsapp: guiaAsignado.whatsapp,
         })
@@ -909,23 +993,29 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
         }
       }
 
-      // Mensaje al CLIENTE: sigue por WhatsApp (Meta), sin cambios
-      const linkOpcionales = excursion.opcionales_imagen || import.meta.env.VITE_SITIO_URL
+      // Mensaje al CLIENTE: por el número del CRM (plantilla aviso_excursion_cliente), queda en su chat
+      // asignado a quien lleva Paseos. Solo sale el día antes del paseo y con todos los datos: si no,
+      // no se manda y se avisa qué falta (los avisos de guía y chofer ya quedaron guardados).
+      const manana = mananaBrasil()
       for (const r of pasajeros) {
-        const choferR = choferes.find((c) => c.id === asignaciones[r.id])
-        await enviar(`Cliente (${r.clienteNombre})`, r.clienteWhatsapp, 'aviso_cliente', [
-          saludo,
-          excursion.nombre,
-          guiaAsignado.nombre,
-          choferR ? choferR.nombre : 'por confirmar',
-          choferR?.auto_modelo || 'A confirmar',
-          choferR?.auto_patente || 'A confirmar',
-          horario.partida,
-          horario.regreso,
-          r.hospedaje || 'tu hospedaje',
-          guiaAsignado.whatsapp,
-          linkOpcionales,
-        ])
+        const destino = `Cliente (${r.clienteNombre})`
+        const phone = r.clienteWhatsapp || '—'
+        if (fecha !== manana) {
+          logs.push({ destino, phone, ok: false, error: 'No se mandó: el aviso dice "mañana" y este paseo no es mañana' })
+          continue
+        }
+        const { params, faltan } = datosAvisoCliente(r)
+        if (faltan.length) {
+          logs.push({ destino, phone, ok: false, error: `No se mandó: falta ${faltan.join(', ')}` })
+          continue
+        }
+        const { error } = await enviarPlantillaWhatsApp({
+          phone: r.clienteWhatsapp,
+          nombre: r.clienteNombre,
+          plantilla: { ...PLANTILLA_AVISO_EXCURSION, texto: TEMPLATE_BODIES.aviso_excursion_cliente, params },
+          avisoOperacion: true,
+        })
+        logs.push({ destino, phone, ok: !error, error: error ? await textoError(error) : null })
       }
     } catch (err) {
       logs.push({ destino: 'Error inesperado', phone: '—', ok: false, error: err.message })

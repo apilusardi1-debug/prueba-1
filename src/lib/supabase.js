@@ -557,11 +557,13 @@ export async function plantillasWhatsAppCrm() {
 
 // Manda una plantilla aprobada: la única forma de escribirle a un contacto cuando pasaron
 // más de 24 hs desde su último mensaje. `plantilla` = { name, language, category, texto, params }
-export async function enviarPlantillaWhatsApp({ phone, nombre, conversacionId, usuarioId, plantilla }) {
+// `avisoOperacion`: aviso al cliente al cerrar una operación; la función deja el chat asignado
+// a quien lleva Paseos y sin asistente automático.
+export async function enviarPlantillaWhatsApp({ phone, nombre, conversacionId, usuarioId, plantilla, avisoOperacion }) {
   if (!supabase) return { error: 'Sin conexión' }
   await asegurarSesionPanel()
   return supabase.functions.invoke('send-whatsapp', {
-    body: { phone, nombre, conversacion_id: conversacionId, usuario_id: usuarioId || null, plantilla },
+    body: { phone, nombre, conversacion_id: conversacionId, usuario_id: usuarioId || null, plantilla, ...(avisoOperacion ? { aviso_operacion: true } : {}) },
     headers: cabeceraPanel(),
   })
 }

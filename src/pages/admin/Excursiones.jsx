@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { excursionesApi, normalizarExcursion, subirImagen } from '../../lib/supabase.js'
 import { formatPrecio } from '../../data/mockData.js'
 import { IcGrande, IcTxt } from '../../components/admin/dashboard/Ic.jsx'
+import { TIPOS_HORARIO } from '../../lib/horarios.js'
 
 const EMPTY = {
   nombre: '', destino: '', categoria: 'excursiones', precio: '',
   cupos: '', duracion: '', dificultad: '', descripcion: '', imagen: '', fechas: '', incluye: '', opcionales: '',
-  hora_salida: '8:00 AM', hora_regreso: '6:00 PM', opcionales_imagen: ''
+  horario_tipo: 'variable', hora_salida: '8:00 AM', hora_regreso: '6:00 PM', opcionales_imagen: ''
 }
 
 // `categoria` es el valor crudo de la base ('excursiones', 'paquetes',
@@ -54,6 +55,7 @@ export default function Excursiones() {
       categoria: ex.categoria || 'excursiones',
       duracion: ex.duracion || '',
       dificultad: ex.dificultad || '',
+      horario_tipo: ex.horario_tipo || 'fijo',
       hora_salida: ex.hora_salida || '8:00 AM',
       hora_regreso: ex.hora_regreso || '6:00 PM',
       precio: String(ex.precio || ''),
@@ -116,6 +118,8 @@ export default function Excursiones() {
       categoria: form.categoria,
       duracion: form.duracion.trim(),
       dificultad: form.dificultad.trim(),
+      // Solo si la base ya tiene la columna (migración 20261102100000): así guardar un paseo no se rompe antes de correrla
+      ...(excursiones.some(e => 'horario_tipo' in e) ? { horario_tipo: form.horario_tipo } : {}),
       hora_salida: form.hora_salida.trim() || '8:00 AM',
       hora_regreso: form.hora_regreso.trim() || '6:00 PM',
       descripcion: form.descripcion.trim(),
@@ -283,6 +287,19 @@ export default function Excursiones() {
                 )}
               </div>
 
+              {excursiones.some(e => 'horario_tipo' in e) && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Horario de salida</label>
+                  <select
+                    value={form.horario_tipo}
+                    onChange={e => setForm(p => ({ ...p, horario_tipo: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {Object.entries(TIPOS_HORARIO).map(([clave, texto]) => <option key={clave} value={clave}>{texto}</option>)}
+                  </select>
+                </div>
+              )}
+
               {[
                 { key: 'nombre', label: 'Nombre *' },
                 { key: 'destino', label: 'Destino *' },
@@ -293,7 +310,7 @@ export default function Excursiones() {
                 { key: 'precio', label: 'Precio (R$)' },
                 { key: 'cupos', label: 'Cupos totales' },
                 { key: 'incluye', label: 'Incluye (separado por coma: Vuelo ida y vuelta, Hotel, Desayuno)' },
-              ].map(({ key, label }) => (
+              ].filter(({ key }) => key !== 'hora_salida' || form.horario_tipo === 'fijo' || !excursiones.some(e => 'horario_tipo' in e)).map(({ key, label }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">{label}</label>
                   <input

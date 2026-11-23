@@ -7,6 +7,7 @@
 // calcularAlertas es una función pura: recibe los datos y la configuración y devuelve la lista.
 import { supabase, guardarSiteConfig } from './supabase.js'
 import { claveTexto, saldoDe, formatMonto, fechaCorta } from './reservasPlanilla.js'
+import { horaDeReserva, tipoHorario } from './horarios.js'
 
 // ── Reglas y valores de fábrica ─────────────────────────────────────────────────────────────
 // campos: lo que se puede ajustar de cada regla (clave dentro de su configuración).
@@ -40,6 +41,11 @@ export const REGLAS = [
     clave: 'choque_horarios', titulo: 'Choque de horarios',
     descripcion: 'Un chofer o un guía tiene dos paseos distintos a la misma hora de salida el mismo día.',
     campos: [],
+  },
+  {
+    clave: 'sin_hora', titulo: 'Reservas sin hora de recogida',
+    descripcion: 'Un traslado o un paseo de horario variable tiene reservas a las que todavía no se les cargó la hora de recogida.',
+    campos: [{ clave: 'dias', etiqueta: 'Paseos de los próximos', unidad: 'días', min: 0, max: 30, defecto: 3 }],
   },
   {
     clave: 'datos_incompletos', titulo: 'Datos incompletos',
@@ -221,21 +227,23 @@ export function calcularAlertas({ reservas = [], operaciones = [], excursiones =
     }
   }
 
-  // 6. Choque de horarios: la misma persona en dos salidas distintas a la misma hora el mismo día
+  // 6. Choque de horarios: la misma persona en dos salidas distintas a la misma hora el mismo día.
+  // La hora es la de cada reserva (traslados y paseos variables) o, si no la tiene, la fija del paseo.
   if (cfg.choque_horarios.activa) {
     const porPersona = new Map() // `${tipo}|${id}|${fecha}|${hora}` -> salidas
-    const sumar = (tipo, id, s) => {
-      const hora = hora24(catalogo[s.excursionId]?.hora_salida)
+    const sumar = (tipo, id, s, hora) => {
       if (!id || !hora) return
       const k = `${tipo}|${id}|${s.fecha}|${hora}`
       if (!porPersona.has(k)) porPersona.set(k, new Map())
       porPersona.get(k).set(s.gid, s)
     }
     for (const s of salidas.values()) {
-      if (!s.excursionId) continue // traslados y paseos fuera del catálogo no tienen hora cargada
-      const op = opPorClave[`${s.excursionId}|${s.fecha}`]
-      for (const id of new Set(s.reservas.map((r) => r.chofer_id).filter(Boolean))) sumar('chofer', id, s)
-      for (const id of new Set([op?.guia_id, ...s.reservas.map((r) => r.guia_id)].filter(Boolean))) sumar('guia', id, s)
+      const paseo = s.excursionId ? catalogo[s.excursionId] : null
+      const op = s.excursionId ? opPorClave[`${s.excursionId}|${s.fecha}`] : null
+      for (const r of s.reservas) sumar('chofer', r.chofer_id, s, horaDeReserva(r, paseo))
+      // El guía es de toda la salida: solo cuenta si el paseo tiene una hora fija
+      const horaFija = paseo && tipoHorario(paseo) === 'fijo' ? hora24(paseo.hora_salida) : ''
+      for (const id of new Set([op?.guia_id, ...s.reservas.map((r) => r.guia_id)].filter(Boolean))) sumar('guia', id, s, horaFija)
     }
     for (const [k, grupo] of porPersona) {
       if (grupo.size < 2) continue
@@ -249,7 +257,24 @@ export function calcularAlertas({ reservas = [], operaciones = [], excursiones =
     }
   }
 
-  // 7. Datos incompletos
+  // 7. Reservas sin hora de recogida: traslados y paseos de horario variable (no los de hora fija, ni
+  // los paquetes, ni las que van "sin traslado" porque el cliente va por su cuenta)
+  if (cfg.sin_hora.activa) {
+    for (const s of salidas.values()) {
+      if (!dentroDe(s.fecha, cfg.sin_hora.dias)) continue
+      const paseo = s.excursionId ? catalogo[s.excursionId] : null
+      if (paseo?.categoria === 'paquetes') continue
+      const sin = s.reservas.filter((r) => !r.sin_traslado && !horaDeReserva(r, paseo))
+      if (!sin.length) continue
+      alertas.push({
+        id: `sin_hora:${s.gid}:${s.fecha}`, regla: 'sin_hora', gravedad: s.fecha <= manana ? 'alta' : 'media', fecha: s.fecha,
+        titulo: `${sin.length === 1 ? '1 reserva sin hora de recogida' : `${sin.length} reservas sin hora de recogida`}: ${s.nombre}`,
+        detalle: `${cuando(s.fecha, hoy)} · ${sin.map((r) => unaLinea(r.cliente_nombre).split(' ')[0] || 'cliente').join(', ')}`, ruta: '/admin/reservas',
+      })
+    }
+  }
+
+  // 8. Datos incompletos
   if (cfg.datos_incompletos.activa) {
     for (const r of vigentes) {
       if (!dentroDe(r.fecha, cfg.datos_incompletos.dias)) continue

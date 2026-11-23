@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { claveTexto } from '../../lib/reservasPlanilla.js'
+import { hora24, necesitaHoraPropia } from '../../lib/horarios.js'
 import { ESTADO_INICIAL, opcionesEstado } from '../../lib/estadosReserva.js'
 
 // Alta y edición de una reserva con los mismos campos que la planilla de Excel del
@@ -10,7 +11,7 @@ const hoy = () => new Date().toISOString().slice(0, 10)
 
 const VACIA = {
   fecha_venta: '', cliente_nombre: '', cliente_whatsapp: '', personas: 1,
-  paseo: '', fecha: '', sin_traslado: false,
+  paseo: '', fecha: '', hora_recogida: '', sin_traslado: false,
   total: '', sena: '', saldo_cliente: '', moneda: 'BRL',
   chofer_texto: '', comision_chofer: '', hospedaje: '', vendedor_texto: '',
   notas: '', estado: ESTADO_INICIAL,
@@ -69,6 +70,9 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
       paseo: exc ? exc.nombre : form.paseo.trim(),
       excursion_id: exc?.id || null,
       fecha: form.fecha,
+      // Solo se manda si hay hora (o si la reserva ya tenía una y se la sacó): así guardar no falla
+      // en una base que todavía no tiene la columna (migración 20261102100000)
+      ...((form.hora_recogida || reserva?.hora_recogida) ? { hora_recogida: form.hora_recogida || null } : {}),
       sin_traslado: form.sin_traslado,
       total: aNumero(form.total) ?? 0,
       sena: aNumero(form.sena),
@@ -89,6 +93,14 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
       setGuardando(false)
     }
   }
+
+  // Traslados y paseos de horario variable: la hora de recogida se carga acá. Si el paseo es fijo, ya
+  // sale a su hora y este campo solo sirve para una reserva que sale distinto.
+  const paseoElegido = excursiones.find(x => claveTexto(x.nombre) === claveTexto(form.paseo))
+  const horaPropia = necesitaHoraPropia(paseoElegido)
+  const ayudaHora = !form.paseo.trim() ? ''
+    : horaPropia ? 'Este paseo no tiene hora fija: cargala acá para que salga en la Agenda y en los avisos.'
+    : `Este paseo sale siempre a las ${hora24(paseoElegido?.hora_salida) || '—'}. Completala solo si esta reserva sale a otra hora.`
 
   const Campo = ({ label, k, type = 'text', lista, ...rest }) => (
     <label className="block">
@@ -115,6 +127,11 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
             {Campo({ label: 'Paseo *', k: 'paseo', lista: 'sug-paseos', placeholder: 'Ej: Maragogi, Traslado Porto → Aeropuerto Recife' })}
             {Campo({ label: 'Cantidad *', k: 'personas', type: 'number', min: 1 })}
           </div>
+          <label className="sm:col-span-2 block">
+            <span className={LABEL}>Hora de recogida</span>
+            <input type="time" value={form.hora_recogida} onChange={e => set('hora_recogida', e.target.value)} className={`${INPUT} sm:w-40`} />
+            {ayudaHora && <span className="block text-xs text-gray-400 dark:text-zinc-500 mt-1">{ayudaHora}</span>}
+          </label>
           <label className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300">
             <input type="checkbox" checked={form.sin_traslado} onChange={e => set('sin_traslado', e.target.checked)}
               className="rounded border-gray-300 dark:border-zinc-600 text-brand-600 focus:ring-brand-400" />

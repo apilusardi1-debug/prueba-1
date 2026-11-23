@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, reservasApi, excursionesApi } from '../../lib/supabase.js'
 import { hoyISO } from '../../lib/embudo.js'
+import { hora24, tipoHorario } from '../../lib/horarios.js'
 import Ic from './dashboard/Ic.jsx'
 
 const ETIQUETA = 'text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-500'
@@ -63,7 +64,10 @@ export default function OperacionesDelDia() {
         return {
           id,
           nombre: op?.excursiones?.nombre || excursion?.nombre || clientes[0]?.excursiones?.nombre || 'Actividad',
-          hora: op?.excursiones?.hora_salida || excursion?.hora_salida || '',
+          // Paseo de horario variable: la primera recogida cargada en las reservas de hoy (si no hay, queda vacío)
+          hora: tipoHorario(excursion) === 'fijo'
+            ? (op?.excursiones?.hora_salida || excursion?.hora_salida || '')
+            : (clientes.map(r => hora24(r.hora_recogida)).filter(Boolean).sort()[0] || ''),
           op,
           clientes,
           personas: clientes.reduce((s, r) => s + (r.personas || 0), 0),

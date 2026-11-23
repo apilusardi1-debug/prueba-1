@@ -900,8 +900,54 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
     return avisos.length ? `${avisos.join('\n')}\n\n${texto}` : texto
   }
 
+  // Mensaje al CLIENTE por el número del CRM (plantilla aviso_excursion_cliente): queda en su chat asignado
+  // a quien lleva Paseos. Solo sale el día antes del paseo y con todos los datos; si no, no se manda y
+  // se dice qué falta. Devuelve un resultado por pasajero (lo usan el cierre y el reenvío).
+  async function enviarAvisosClientes(lista) {
+    const manana = mananaBrasil()
+    const out = []
+    for (const r of lista) {
+      const destino = `Cliente (${r.clienteNombre})`
+      const phone = r.clienteWhatsapp || '—'
+      if (fecha !== manana) {
+        out.push({ destino, phone, reservaId: r.id, ok: false, error: 'No se mandó: el aviso dice "mañana" y este paseo no es mañana' })
+        continue
+      }
+      const { params, faltan } = datosAvisoCliente(r)
+      if (faltan.length) {
+        out.push({ destino, phone, reservaId: r.id, ok: false, error: `No se mandó: falta ${faltan.join(', ')}` })
+        continue
+      }
+      const { error } = await enviarPlantillaWhatsApp({
+        phone: r.clienteWhatsapp,
+        nombre: r.clienteNombre,
+        plantilla: { ...PLANTILLA_AVISO_EXCURSION, texto: TEMPLATE_BODIES.aviso_excursion_cliente, params },
+        avisoOperacion: true,
+      })
+      out.push({ destino, phone, reservaId: r.id, ok: !error, error: error ? await textoError(error) : null })
+    }
+    return out
+  }
+
+  // Reintenta solo con los clientes cuyo mensaje no salió en este cierre; no toca al guía ni a los choferes.
+  // Lee los datos actuales: sirve para después de completar la hora, el hospedaje o el teléfono que faltaba.
+  const [reenviando, setReenviando] = useState(false)
+  async function reenviarClientesFallidos() {
+    const ids = new Set((resultados || []).filter((x) => !x.interno && !x.ok && x.reservaId).map((x) => x.reservaId))
+    if (!operacionCerrada || reenviando || ids.size === 0) return
+    setReenviando(true)
+    try {
+      const nuevos = await enviarAvisosClientes(pasajeros.filter((r) => ids.has(r.id)))
+      setResultados((prev) => (prev || []).map((x) => nuevos.find((n) => n.reservaId === x.reservaId) || x))
+    } catch (err) {
+      avisar('No se pudo reenviar: ' + (err?.message || 'intentá de nuevo'))
+    }
+    setReenviando(false)
+  }
+
   async function cerrarOperacion() {
-    if (!listoParaCerrar || !guiaAsignado) return
+    // Una operación cerrada no se vuelve a cerrar: reenviaría los avisos a todos
+    if (operacionCerrada || !listoParaCerrar || !guiaAsignado) return
     setEnviando(true)
     setResultados(null)
     const logs = []
@@ -996,27 +1042,7 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
       // Mensaje al CLIENTE: por el número del CRM (plantilla aviso_excursion_cliente), queda en su chat
       // asignado a quien lleva Paseos. Solo sale el día antes del paseo y con todos los datos: si no,
       // no se manda y se avisa qué falta (los avisos de guía y chofer ya quedaron guardados).
-      const manana = mananaBrasil()
-      for (const r of pasajeros) {
-        const destino = `Cliente (${r.clienteNombre})`
-        const phone = r.clienteWhatsapp || '—'
-        if (fecha !== manana) {
-          logs.push({ destino, phone, ok: false, error: 'No se mandó: el aviso dice "mañana" y este paseo no es mañana' })
-          continue
-        }
-        const { params, faltan } = datosAvisoCliente(r)
-        if (faltan.length) {
-          logs.push({ destino, phone, ok: false, error: `No se mandó: falta ${faltan.join(', ')}` })
-          continue
-        }
-        const { error } = await enviarPlantillaWhatsApp({
-          phone: r.clienteWhatsapp,
-          nombre: r.clienteNombre,
-          plantilla: { ...PLANTILLA_AVISO_EXCURSION, texto: TEMPLATE_BODIES.aviso_excursion_cliente, params },
-          avisoOperacion: true,
-        })
-        logs.push({ destino, phone, ok: !error, error: error ? await textoError(error) : null })
-      }
+      logs.push(...await enviarAvisosClientes(pasajeros))
     } catch (err) {
       logs.push({ destino: 'Error inesperado', phone: '—', ok: false, error: err.message })
     }
@@ -1037,6 +1063,9 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
   }, [excursion.excursionId, fecha])
   useEffect(() => { cargarEstadoAvisos() }, [cargarEstadoAvisos])
   useSincronizado(cargarEstadoAvisos, ['operaciones_avisos'])
+  // Cerrada = ya hay avisos guardados para este paseo y fecha (se cerró ahora o antes)
+  const operacionCerrada = estadoAvisos?.length > 0 || !!resultados?.some((r) => r.interno && r.ok)
+  const resumenPor = (pred) => { const l = (resultados || []).filter(pred); return { total: l.length, ok: l.filter((x) => x.ok).length } }
 
   function nombreDestinatario(a) {
     if (a.destinatario === 'guia') return guias.find((g) => g.id === a.guia_id)?.nombre || 'Guía'
@@ -1146,9 +1175,27 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
           )}
         </div>
 
+        {!resultados && operacionCerrada && (
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800">
+            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Operación cerrada</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Los avisos al guía y a los choferes ya se enviaron (su estado está más abajo). El resultado de los mensajes a los clientes se muestra solo en el momento del cierre.</p>
+          </div>
+        )}
+
         {resultados && (
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 max-h-48 overflow-y-auto">
-            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resultado del cierre</p>
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 max-h-56 overflow-y-auto">
+            <p className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Resumen del cierre</p>
+            <div className="grid grid-cols-3 gap-2 pb-1">
+              {[
+                ['Guía', resumenPor((r) => r.destino.startsWith('Guía'))],
+                ['Choferes', resumenPor((r) => r.destino.startsWith('Chofer'))],
+                ['Clientes', resumenPor((r) => r.destino.startsWith('Cliente'))],
+              ].map(([nombre, s]) => (
+                <div key={nombre} className={`rounded-lg px-2 py-1.5 text-center text-xs font-semibold ${
+                  s.total > 0 && s.ok === s.total ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400'
+                }`}>{nombre}: {s.ok}/{s.total} enviados</div>
+              ))}
+            </div>
             {resultados.map((r, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
                 <span className={r.ok ? 'text-green-500' : 'text-red-500'}><Ic n={r.ok ? 'checkcircle' : 'xcircle'} className="h-4 w-4" /></span>
@@ -1159,6 +1206,12 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                 </div>
               </div>
             ))}
+            {resultados.some((x) => !x.interno && !x.ok && x.reservaId) && operacionCerrada && (
+              <button type="button" onClick={reenviarClientesFallidos} disabled={reenviando}
+                className="mt-1 w-full rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-semibold py-2 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50">
+                {reenviando ? 'Reenviando...' : 'Reenviar solo a los clientes que fallaron'}
+              </button>
+            )}
           </div>
         )}
 
@@ -1195,11 +1248,12 @@ function ModalPasajeros({ salida, choferes, guias, asignaciones, guiaAsignacione
                 <p className="text-orange-500 dark:text-orange-400 text-xs"><IcTxt n="alert" />Hay choferes sin WhatsApp guardado</p>
               )}
             </div>
-            <button onClick={cerrarOperacion} disabled={!listoParaCerrar || enviando}
+            <button onClick={cerrarOperacion} disabled={!listoParaCerrar || enviando || operacionCerrada || estadoAvisos === null}
               className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors ${
-                listoParaCerrar && !enviando ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
+                operacionCerrada ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 cursor-default'
+                  : listoParaCerrar && !enviando && estadoAvisos !== null ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed'
               }`}>
-              {enviando ? 'Enviando...' : 'Cerrar operación'}
+              {enviando ? 'Enviando...' : operacionCerrada ? 'Operación cerrada' : 'Cerrar operación'}
             </button>
           </div>
         )}

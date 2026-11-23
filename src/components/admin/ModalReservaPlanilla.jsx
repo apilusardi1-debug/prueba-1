@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase.js'
 import { claveTexto } from '../../lib/reservasPlanilla.js'
 import { hora24, necesitaHoraPropia } from '../../lib/horarios.js'
 import { ESTADO_INICIAL, opcionesEstado } from '../../lib/estadosReserva.js'
@@ -37,6 +38,18 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
   const [saldoManual, setSaldoManual] = useState(!!reserva && reserva.saldo_cliente != null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  // Hospedajes del catálogo para autocompletar; si el hotel no está, se escribe a mano igual
+  const [hospedajes, setHospedajes] = useState([])
+  useEffect(() => {
+    let vivo = true
+    ;(async () => {
+      try {
+        const { data } = await supabase?.from('hospedajes').select('nombre').eq('activa', true).order('nombre') || {}
+        if (vivo && data) setHospedajes([...new Set(data.map(h => (h.nombre || '').trim()).filter(Boolean))])
+      } catch { /* sin catálogo: el campo sigue siendo texto libre */ }
+    })()
+    return () => { vivo = false }
+  }, [])
 
   function set(k, v) {
     setForm(p => {
@@ -157,7 +170,7 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
 
           {Campo({ label: 'Chofer del día', k: 'chofer_texto', lista: 'sug-choferes' })}
           {Campo({ label: 'Comisión chofer', k: 'comision_chofer', inputMode: 'decimal' })}
-          {Campo({ label: 'Hospedaje', k: 'hospedaje' })}
+          {Campo({ label: 'Hospedaje', k: 'hospedaje', lista: 'sug-hospedajes', placeholder: 'Elegí uno del catálogo o escribilo' })}
           {Campo({ label: 'Vendedor', k: 'vendedor_texto', lista: 'sug-vendedores' })}
           <label className="block sm:col-span-2">
             <span className={LABEL}>Observaciones</span>
@@ -173,6 +186,7 @@ export default function ModalReservaPlanilla({ reserva, excursiones, sugerencias
 
         <datalist id="sug-paseos">{sugerencias.paseos.map(p => <option key={p} value={p} />)}</datalist>
         <datalist id="sug-choferes">{sugerencias.choferes.map(p => <option key={p} value={p} />)}</datalist>
+        <datalist id="sug-hospedajes">{hospedajes.map(n => <option key={n} value={n} />)}</datalist>
         <datalist id="sug-vendedores">{sugerencias.vendedores.map(p => <option key={p} value={p} />)}</datalist>
 
         <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800">

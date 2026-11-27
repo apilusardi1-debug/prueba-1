@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, convertirImagenABase64 } from '../../../lib/supabase.js'
+import { excursionesApi, clientesApi, propuestasApi, subirImagen, hospedajesApi, habitacionesApi, propietariosApi, extraerDatosVuelo, extraerReceta, convertirImagenABase64 } from '../../../lib/supabase.js'
 import { generarPaginaAereosGrupoPDF, agregarPaginaAereosGrupo } from '../../../lib/pdfPlantillaAereos.js'
 import { agregarPaginaHospedajes, SITIO_URL } from '../../../lib/pdfPlantillaHospedajes.js'
+import { agregarPaginaValores, armarDatosValores } from '../../../lib/pdfPaginaValores.js'
 import { IcTxt } from '../../../components/admin/dashboard/Ic.jsx'
+import ChatPropuesta from './ChatPropuesta.jsx'
 
 const NAVY = '#0d2438'
 const CREMA = '#efe9db'
@@ -16,6 +18,7 @@ const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'ju
 
 const VUELO_VACIO = {
   origen_ciudad: '', origen_codigo: '', destino_ciudad: '', destino_codigo: '',
+  vuelta_llega_codigo: '', // aeropuerto donde termina la vuelta, si es distinto del de salida (ej. sale de AEP y vuelve a EZE)
   ida_fecha: '', ida_sale: '', ida_llega: '', ida_escala_ciudad: '', ida_escala_codigo: '', ida_escala_llega: '', ida_escala_sale: '',
   vuelta_fecha: '', vuelta_sale: '', vuelta_llega: '', vuelta_escala_ciudad: '', vuelta_escala_codigo: '', vuelta_escala_llega: '', vuelta_escala_sale: '',
   banner_destino: '', banner_link: 'https://przvftnhwwistmcbkeon.supabase.co/storage/v1/object/public/imagenes/documentos/catalogo-paseos-privados.pdf', banner_imagen: '',
@@ -42,6 +45,18 @@ const EQUIPAJE_OPCIONES = [
   { clave: 'valija23', label: 'Valija 23 kg' },
 ]
 const EQUIPAJE_EXTRA_VACIO = { tipo: 'carryOn', cantidad: 1, precio: '', moneda: 'ARS', publica: false }
+// "3 adultos y 1 menor de 12 años" (una familia del grupo)
+function descripcionFamilia(f) {
+  const partes = [`${f.adultos} adulto${f.adultos > 1 ? 's' : ''}`]
+  const bebes = (f.bebes || []).filter(Boolean).length
+  const menores = (f.edades || []).length - bebes
+  const eds = (f.edades || []).filter(Boolean)
+  if (menores > 0) partes.push(`${menores} menor${menores > 1 ? 'es' : ''}${eds.length ? ` de ${eds.join(' y ')} años` : ''}`)
+  if (bebes > 0) partes.push(`${bebes} bebé${bebes > 1 ? 's' : ''}`)
+  return partes.join(' y ')
+}
+// "307" suelto no se entiende en la propuesta: se escribe "Departamento 307"
+const nombreUnidad = n => (/^\s*\d{1,4}\s*$/.test(String(n || '')) ? `Departamento ${String(n).trim()}` : n)
 const EQUIPAJE_POR_PASAJERO = ['articuloPersonal', 'mochila', 'carryOn']
 
 const SERVICIOS_HOSPEDAJE = ['Desayuno', 'Desayuno opcional', 'Media Pensión', 'Pensión Completa', 'Servicio de Limpieza']
@@ -301,7 +316,7 @@ function htmlPaginaAereos({ clienteNombre, cantidadPasajeros, vuelo }) {
             <span style="color:#072e40;font-size:33px;line-height:1;font-family:${FUENTE_TITULOS};">${fechaLarga(vuelo.vuelta_fecha)}</span>
           </div>
           <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>SALE</b> de ${escapeHtml(vuelo.destino_ciudad)} (${escapeHtml(vuelo.destino_codigo)}) <b>${escapeHtml(vuelo.vuelta_sale)} HS</b></p>
-          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
+          <p style="font-size:27px;line-height:1.25;color:#072e40;margin:0;"><b>LLEGA</b> a ${escapeHtml(vuelo.origen_ciudad)} (${escapeHtml(vuelo.vuelta_llega_codigo || vuelo.origen_codigo)}) <b>${escapeHtml(vuelo.vuelta_llega)} HS</b></p>
           <div style="display:flex;align-items:center;margin-top:14px;width:90%;margin-left:auto;"><span style="color:${NAVY};font-size:16px;line-height:1;margin-right:4px;">←</span><div style="flex:1;border-top:2px solid ${NAVY};"></div></div>
         </div>
       </div>
@@ -407,6 +422,8 @@ export default function GeneradorPropuesta() {
   // Propuesta simple: un solo destino, todo sigue como siempre. Combinada: se
   // suma la seccion Destinos, para viajes que combinan mas de una ciudad.
   const [tipoPropuesta, setTipoPropuesta] = useState('simple')
+  // Grupo: las familias (cada una con sus adultos y menores); cada hospedaje trae un valor por familia
+  const [familiasGrupo, setFamiliasGrupo] = useState([])
   const [destinos, setDestinos] = useState([{ ...DESTINO_VACIO }])
   // Se puede agregar mas de un vuelo en cualquiera de los dos tipos de
   // propuesta: en simple son opciones alternativas (igual que con hospedaje),
@@ -442,6 +459,9 @@ export default function GeneradorPropuesta() {
   const [generando, setGenerando] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(false)
+  // Chat o formulario: el chat llena este mismo formulario y usa esta misma generar()
+  const [modo, setModo] = useState('chat')
+  const [generarPendiente, setGenerarPendiente] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -534,7 +554,13 @@ export default function GeneradorPropuesta() {
       items: (hDB.amenities || []).length ? hDB.amenities : h.items,
       habitacion_id: null, habitacion_nombre: '', habitacion_imagen: '', habitaciones: [],
     } : h))
-    if (!habitacionesPorHospedaje[hDB.id]) {
+    precargarCatalogoHospedaje(hDB)
+  }
+
+  // Habitaciones y dueños internos del hospedaje (para las tarjetas del formulario) — los usa
+  // elegirHospedajeDB y también el chat al volcar sus datos.
+  function precargarCatalogoHospedaje(hDB) {
+    if (hDB.id && !habitacionesPorHospedaje[hDB.id]) {
       habitacionesApi.getByHospedaje(hDB.id).then(async ({ data }) => {
         setHabitacionesPorHospedaje(prev => ({ ...prev, [hDB.id]: data || [] }))
         const propietarios = await Promise.all(
@@ -548,6 +574,153 @@ export default function GeneradorPropuesta() {
         setPropietarioPorHospedaje(prev => ({ ...prev, [hDB.id]: data || null }))
       })
     }
+  }
+
+  // Vuelca en el formulario lo que armó el chat (ChatPropuesta). Es lo mismo que haría quien
+  // lo carga a mano: cliente, pasajeros, fechas del vuelo, traslado, vuelo y hospedajes del
+  // catálogo con sus habitaciones y precios. Propuesta simple, precios públicos por defecto.
+  const equipajeDelChat = useRef(false)
+  function aplicarDatosChat(d) {
+    const moneda = d.moneda || monedaPropuesta
+    if (d.moneda) setMonedaPropuesta(d.moneda)
+    equipajeDelChat.current = true
+    setBusqCliente(d.cliente || '')
+    setClienteSel(null)
+    setSugerencias([])
+    const combinada = d.tipo === 'combinada'
+    const uni = d.tipo === 'combinada_uni'
+    setTipoPropuesta(d.tipo === 'grupo' ? 'grupo' : combinada ? 'combinada' : uni ? 'combinada_uni' : 'simple')
+    setFamiliasGrupo(d.tipo === 'grupo' ? (d.familias || []) : [])
+    const adultos = d.adultos ?? 0
+    const menores = d.edades.length
+    setCantidadAdultos(adultos ? String(adultos) : '')
+    setCantidadMenores(menores ? String(menores) : '')
+    setEdadesMenores(d.edades.map(e => (e || '')))
+    setBebesMenores(d.bebes.map(Boolean))
+
+    const hayVuelo = !!(d.vuelo || vuelos[0]?.origen_ciudad?.trim() || vuelos[0]?.destino_ciudad?.trim())
+    setPedidoClienteOpcion(
+      hayVuelo && !d.traslado ? 'Aéreo + Hospedaje'
+        : !hayVuelo && d.traslado ? 'Traslado + Hospedaje'
+        : INCLUYE_SIMPLE_OPCIONES[0]
+    )
+    setPedidoClienteLibre('')
+
+    // Combinada: el traslado va por tramo en Destinos (origen del viaje -> cada etapa -> vuelta); el total
+    // de la receta se carga en el primer tramo y el PDF lo suma una sola vez.
+    if (combinada || uni) {
+      const origen = vuelos[0]?.destino_ciudad?.trim() || 'Recife'
+      const paradas = [origen, ...d.etapas.map(e => e.destino), origen]
+      setDestinos(paradas.slice(0, -1).map((salida, i) => ({
+        ...DESTINO_VACIO, salida, destino: paradas[i + 1],
+        ...(uni ? { incluido: true } : {}),
+        ...(i === 0 && d.traslado && !uni ? { valor_cliente_traslado: soloDigitos(d.traslado.venta), valor_agencia_traslado: soloDigitos(d.traslado.costo), valor_cliente_traslado_publica: d.traslado.publico } : {}),
+      })))
+    }
+
+    setVuelos(prev => prev.map((v, i) => {
+      if (i !== 0) return v
+      const next = { ...v }
+      // Las fechas del vuelo son las definitivas: las del chat solo se usan si no hay vuelo cargado
+      if (d.ida && !v.ida_fecha) next.ida_fecha = d.ida
+      if (d.vuelta && !v.vuelta_fecha) next.vuelta_fecha = d.vuelta
+      if (d.traslado && !combinada) {
+        // Combinada uni: los traslados se listan por tramo (Destinos) y ya van dentro de cada valor; el precio queda
+        // cargado en el vuelo (privado) para armar el total.
+        next.traslado_activo = uni ? false : (d.traslado.ida || d.traslado.vuelta)
+        next.traslado_ida = uni ? false : d.traslado.ida
+        next.traslado_vuelta = uni ? false : d.traslado.vuelta
+        next.traslado_venta = soloDigitos(d.traslado.venta)
+        next.traslado_costo_neto = soloDigitos(d.traslado.costo)
+        next.traslado_venta_publica = d.traslado.publico
+      }
+      if (d.vuelo) {
+        next.venta = soloDigitos(d.vuelo.venta)
+        next.costo_neto = soloDigitos(d.vuelo.costo)
+        next.venta_publica = d.vuelo.publico
+      }
+      // Con el chat, el carry on no se agrega solo: lo incluido es lo que dice la receta (valija despachada) + artículo personal y mochila
+      next.equipaje = { ...(next.equipaje || v.equipaje), carryOn: d.equipajeIncluido?.carryOn ? 1 : 0 }
+      if (d.equipajeIncluido?.valija23) next.equipaje = { ...(next.equipaje || v.equipaje), valija23: d.equipajeIncluido.valija23 }
+      if (d.equipaje?.length) {
+        next.equipaje = { ...next.equipaje, extras: d.equipaje.map(e => ({ tipo: e.tipo, cantidad: 1, precio: soloDigitos(e.precio), moneda, publica: true })) }
+      }
+      return next
+    }))
+
+    if (!d.hospedajes.length) return
+    const ida = vuelos[0]?.ida_fecha || d.ida
+    const vuelta = vuelos[0]?.vuelta_fecha || d.vuelta
+    const nochesViaje = calcularNoches(ida, vuelta)
+    const personas = adultos + menores
+    setHospedajes(d.hospedajes.map(spec => {
+      const hDB = spec.hDB
+      const amenities = hDB.amenities || []
+      // Combinada: cada hospedaje usa las fechas y las noches de SU etapa (su destino)
+      const normTxt = t => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+      const etapa = (combinada || uni) ? (d.etapas.find(e => normTxt(e.destino) === normTxt(spec.etapa)) || d.etapas.find(e => normTxt(e.destino) === normTxt(hDB.destino))) : null
+      const nochesH = etapa ? calcularNoches(etapa.ida, etapa.vuelta) : nochesViaje
+      const base = {
+        ...HOSPEDAJE_VACIO,
+        // Combinada: el destino es el de la etapa de la receta (Porto de Galinhas, Maragogi), así los hoteles que
+        // vienen de Niara (que escribe el destino distinto, ej. "Ipojuca") quedan en la misma hoja que el resto.
+        id: hDB.id, nombre: hDB.nombre, destino: etapa?.destino || hDB.destino || '',
+        subtitulo: [hDB.tipo, etapa?.destino || hDB.destino].filter(Boolean).join(' · '),
+        imagen: hDB.imagen || '', descripcion: hDB.descripcion || '',
+        items_titulo: amenities.length ? 'Servicios:' : HOSPEDAJE_VACIO.items_titulo,
+        items: amenities.length ? amenities : [''],
+        moneda, noches: nochesH ? String(nochesH) : '', personas: personas ? String(personas) : '',
+        ...(etapa ? { fecha_entrada: etapa.ida, fecha_salida: etapa.vuelta } : {}),
+        // Si la receta ni Niara dicen nada de la comida: desayuno opcional por persona, $12.000 en pesos o USD 8 en
+        // dólares (reglas de Cristian); en reales no hay regla definida, queda sin desayuno
+        pension: spec.pension || (moneda === 'ARS' ? 'Desayuno opcional $12.000 por persona' : moneda === 'USD' ? 'Desayuno opcional USD$ 8 por persona' : 'Sin desayuno'),
+        fijo: !!spec.fijo,
+        valores_familia: spec.valoresFamilia?.length ? spec.valoresFamilia : null,
+        limpieza_no_incluida: !!spec.limpiezaNoIncluida,
+        tipo_alojamiento: hDB.tipo || '',
+        // Descripción del hospedaje (la del catálogo, no la de una habitación puntual) y video de la plataforma
+        descripcion_pdf: hDB.descripcion || '',
+        video_depto: spec.habitaciones?.[0]?.hab?.video || spec.videoDepto || '',
+        habitacion_nombre: spec.habitacionTexto || '',
+      }
+      if (!spec.habitaciones.length) {
+        return { ...base, precio: soloDigitos(spec.venta), costo_interno: soloDigitos(spec.costo), precio_publico: spec.publico }
+      }
+      const habitaciones = spec.habitaciones.map(r => ({
+        id: r.hab.id, nombre: String(r.hab.nombre || '').replace(/\s+lateral$/i, ''), imagen: r.hab.imagen || '', video: r.hab.video || '',
+        descripcion: r.hab.descripcion || '', amenities: r.hab.amenities || [],
+        precio: soloDigitos(r.venta), costo_interno: soloDigitos(r.costo), moneda,
+        precio_publico: r.publico, cantidad: r.cantidad || 1,
+      }))
+      const primera = habitaciones[0]
+      return {
+        ...base,
+        habitaciones,
+        habitacion_id: primera.id, habitacion_nombre: primera.nombre, habitacion_imagen: primera.imagen,
+        descripcion: primera.descripcion || base.descripcion,
+        items_titulo: primera.amenities.length ? 'Servicios:' : base.items_titulo,
+        items: primera.amenities.length ? primera.amenities : base.items,
+        link_video: primera.video ? `${SITIO_URL}/hoteles/${hDB.id}?habitacion=${primera.id}&standalone=1` : '',
+      }
+    }))
+    d.hospedajes.forEach(spec => precargarCatalogoHospedaje(spec.hDB))
+  }
+
+  // Generar desde el chat: primero se vuelca todo en el formulario y, cuando esos datos ya
+  // están en pantalla, se corre la misma generar() de siempre (con los datos actualizados).
+  function generarDesdeChat(d) {
+    aplicarDatosChat(d)
+    setGenerarPendiente(true)
+  }
+  useEffect(() => {
+    if (!generarPendiente) return
+    setGenerarPendiente(false)
+    generar()
+  }, [generarPendiente])
+
+  function pasarAlFormulario(d) {
+    aplicarDatosChat(d)
+    setModo('formulario')
   }
 
   // El admin elige hasta 4 tipos de habitacion del MISMO hospedaje (foto,
@@ -720,6 +893,28 @@ export default function GeneradorPropuesta() {
   // resolución muy alta sin necesidad — es solo texto. Redimensionar acá antes
   // de mandarla acelera tanto la subida como la lectura de Gemini, que escala
   // con el tamaño/resolución de la imagen.
+  // Lee la foto de la receta (letra a mano) para el chat: más resolución que una captura
+  // impresa, y reintenta si el lector está saturado. Devuelve { receta } o { error }.
+  // Nombres de hospedajes que la receta usa seguido (aunque todavía no estén en el catálogo) + los del catálogo:
+  // la IA los usa de guía para leer bien la letra a mano.
+  const NOMBRES_FRECUENTES_RECETA = ['Porto Florencia', 'Estação do Sol', 'Recanto do Lobo', 'Chalé Maracaipe', 'Sol y Mar']
+  async function leerRecetaDesdeFoto(archivo, cotizados = []) {
+    const nombresParaReceta = [...new Set([...cotizados, ...NOMBRES_FRECUENTES_RECETA, ...hospedajesDB.map(h => h.nombre)])]
+    try {
+      const { base64, mediaType } = await archivoAImagenComprimida(archivo, 1800, 0.85)
+      let data, error
+      for (let intento = 0; intento < 4; intento++) {
+        if (intento > 0) await new Promise(r => setTimeout(r, 1000 * (intento + 1)))
+        ;({ data, error } = await extraerReceta(base64, mediaType, nombresParaReceta, cotizados))
+        if (!data?.rateLimited) break
+      }
+      if (error || data?.error || !data?.receta) return { error: data?.error || error?.message || 'No se pudo leer la receta.' }
+      return { receta: data.receta }
+    } catch (_) {
+      return { error: 'No se pudo leer la imagen.' }
+    }
+  }
+
   function archivoAImagenComprimida(archivo, maxDim = 1280, calidad = 0.8) {
     return new Promise((resolve, reject) => {
       const img = new Image()
@@ -846,7 +1041,7 @@ export default function GeneradorPropuesta() {
     if (!total) return
     setVuelos(prev => prev.map(v => ({
       ...v,
-      equipaje: { ...v.equipaje, ...Object.fromEntries(EQUIPAJE_POR_PASAJERO.map(clave => [clave, total])) },
+      equipaje: { ...v.equipaje, ...Object.fromEntries(EQUIPAJE_POR_PASAJERO.filter(c => !(equipajeDelChat.current && c === 'carryOn')).map(clave => [clave, total])) },
     })))
   }, [cantidadAdultos, cantidadMenores])
 
@@ -941,7 +1136,8 @@ export default function GeneradorPropuesta() {
   const total = tipoPropuesta === 'combinada'
     ? hospedajes.reduce((sum, h) => sum + (parseFloat(precioEfectivo(h).precio) || 0), 0)
       + vuelos.reduce((sum, v) => sum + (parseFloat(v.venta) || 0) + (parseFloat(v.traslado_venta) || 0), 0)
-    : (baseVueloTrasladoSimple + (parseFloat(precioEfectivo(hospedajes[0] || {}).precio) || 0))
+    : (baseVueloTrasladoSimple + (parseFloat(precioEfectivo(hospedajes[0] || {}).precio) || 0)
+      + (tipoPropuesta === 'combinada_uni' ? hospedajes.filter(h => h.fijo).reduce((s, h) => s + (parseFloat(precioEfectivo(h).precio) || 0), 0) : 0))
 
   // html2canvas no puede leer los píxeles de imágenes de otros dominios sin
   // CORS habilitado (ej: fotos importadas de Niara) aunque carguen bien en
@@ -1000,7 +1196,7 @@ export default function GeneradorPropuesta() {
       // aparte de los vuelos en la seccion "Transfers") — se guardaban en la
       // base pero nunca llegaban al PDF. Mismo filtro que destinos_detalle
       // mas abajo, al guardar.
-      const destinosParaPdf = tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null
+      const destinosParaPdf = (tipoPropuesta === 'combinada' || tipoPropuesta === 'combinada_uni') ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null
 
       // Aéreo + traslado — se cargan una sola vez y son los mismos para todas
       // las tarjetas de hospedaje. Se suma al precio de CADA hospedaje para
@@ -1034,7 +1230,8 @@ export default function GeneradorPropuesta() {
       // Con un solo vuelo, crearSlotVuelo le da toda la hoja (escala hasta
       // 2x), asi que no queda mas chico que la pagina completa de antes.
       let doc
-      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf })
+      const primerGrupo = await generarPaginaAereosGrupoPDF({ clienteNombre: cliente.nombre, cantidadAdultos, cantidadMenores, edadesMenores: edadesMenoresTexto, vuelos: vuelosParaPdf, destinos: destinosParaPdf, moneda: monedaPdf,
+        base: tipoPropuesta === 'combinada' && baseVueloTraslado > 0 ? { monto: baseVueloTraslado, pasajeros: (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0) } : null })
       doc = primerGrupo.doc
       if (vuelosParaPdf.length > 4) {
         const plantillaAereosBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
@@ -1054,10 +1251,18 @@ export default function GeneradorPropuesta() {
       const hospedajesValidos = hospedajes.filter(h => h.nombre.trim()).map(h => ({
         ...h,
         ...precioEfectivo(h),
-        incluye: tipoPropuesta === 'simple' ? pedidoClienteValor : '',
+        incluye: (tipoPropuesta === 'simple' || tipoPropuesta === 'combinada_uni') ? pedidoClienteValor : '',
       }))
+      // Combinada uni: el hospedaje fijo (el único de su destino) va incluido en el total de todas las demás opciones
+      const baseParaHospedajes = baseVueloTraslado + (tipoPropuesta === 'combinada_uni'
+        ? hospedajesValidos.filter(h => h.fijo).reduce((s, h) => s + (parseFloat(h.precio) || 0), 0) : 0)
       const hospedajesParaPdf = await Promise.all(
-        hospedajesValidos.map(async h => ({ ...h, imagen: await imagenParaPdf(h.imagen) }))
+        hospedajesValidos.map(async h => ({
+          ...h,
+          habitaciones: (h.habitaciones || []).map(hb => ({ ...hb, nombre: nombreUnidad(hb.nombre) })),
+          habitacion_nombre: nombreUnidad(h.habitacion_nombre),
+          imagen: await imagenParaPdf(h.imagen),
+        }))
       )
 
       // Pagina de Hospedajes: misma tecnica que Aereos — plantilla real (2 hospedajes
@@ -1092,9 +1297,38 @@ export default function GeneradorPropuesta() {
         for (const grupoDestino of gruposPorDestino) {
           for (let i = 0; i < grupoDestino.length; i += 4) {
             const grupo = grupoDestino.slice(i, i + 4)
-            await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, baseVueloTraslado, tipoPropuesta === 'combinada')
+            await agregarPaginaHospedajes(doc, plantillaHospDoc, bebasHosp, helvHosp, grupo, baseParaHospedajes, tipoPropuesta === 'combinada', {
+              pasajeros: (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0),
+              conFechas: tipoPropuesta !== 'simple' && tipoPropuesta !== 'grupo',
+              familias: tipoPropuesta === 'grupo' ? familiasGrupo.map((_, i) => `FAMILIA ${i + 1}`) : null,
+            })
           }
         }
+      }
+
+      // Última página: todos los valores juntos (base del viaje, hospedajes por destino, equipaje opcional y
+      // catálogo de paseos). Solo lleva lo público.
+      if (hospedajesParaPdf.length) {
+        const plantillaValDoc = await PDFDocument.load(await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer()))
+        const bebasVal = await doc.embedFont(await fetch('/fonts/BebasNeue-Regular.ttf').then(r => r.arrayBuffer()))
+        const helvVal = await doc.embedFont(StandardFonts.Helvetica)
+        const helvBoldVal = await doc.embedFont(StandardFonts.HelveticaBold)
+        const urlBase = import.meta.env.VITE_SUPABASE_URL
+        await agregarPaginaValores(doc, plantillaValDoc, bebasVal, helvVal, helvBoldVal, armarDatosValores({
+          tipo: tipoPropuesta,
+          grupos: gruposPorDestino,
+          hospedajes: hospedajesParaPdf,
+          baseVueloTraslado: baseParaHospedajes,
+          moneda: monedaPropuesta,
+          pasajeros: (parseInt(cantidadAdultos) || 0) + (parseInt(cantidadMenores) || 0),
+          equipajeExtras: vuelosConDatos[0]?.equipaje?.extras,
+          vuelo: vuelosConDatos[0],
+          destinos: destinosParaPdf,
+          familias: tipoPropuesta === 'grupo' ? familiasGrupo.map(descripcionFamilia) : null,
+          ida: vuelosConDatos[0]?.ida_fecha,
+          vuelta: vuelosConDatos[0]?.vuelta_fecha,
+          catalogoUrl: urlBase ? `${urlBase}/storage/v1/object/public/catalogos/catalogo-paseos-dreamtours.pdf` : null,
+        }))
       }
 
       const pdfBytes = await doc.save()
@@ -1127,8 +1361,8 @@ export default function GeneradorPropuesta() {
         // hospedaje (mismo texto para todas las opciones). El valor de cada
         // una ya viaja en hospedajes_detalle (su propio "precio") — no hace
         // falta un total aparte, son opciones alternativas con precio propio.
-        incluye_simple: tipoPropuesta === 'simple' ? pedidoClienteValor : null,
-        destinos_detalle: tipoPropuesta === 'combinada' ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
+        incluye_simple: (tipoPropuesta === 'simple' || tipoPropuesta === 'combinada_uni') ? pedidoClienteValor : null,
+        destinos_detalle: (tipoPropuesta === 'combinada' || tipoPropuesta === 'combinada_uni') ? destinos.filter(d => d.salida.trim() || d.destino.trim()) : null,
         // "vuelo" queda como el primero, para todo lo que ya lee ese campo
         // (modal de cierre, PDF de cierre) sin cambios. "vuelos" es el array
         // completo — en combinada puede haber mas de uno.
@@ -1153,6 +1387,7 @@ export default function GeneradorPropuesta() {
       setPedidoClienteOpcion(INCLUYE_SIMPLE_OPCIONES[0])
       setPedidoClienteLibre('')
       setTipoPropuesta('simple')
+      setFamiliasGrupo([])
       setDestinos([{ ...DESTINO_VACIO }])
       setVuelos([{ ...VUELO_VACIO }])
       setHospedajes([{ ...HOSPEDAJE_VACIO, items: [''] }])
@@ -1189,6 +1424,38 @@ export default function GeneradorPropuesta() {
         </div>
       </div>
 
+      <div className="flex gap-2">
+        {[['chat', 'Chat'], ['formulario', 'Formulario']].map(([clave, nombre]) => (
+          <button key={clave} type="button" onClick={() => setModo(clave)}
+            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
+              modo === clave
+                ? 'bg-brand-600 border-brand-600 text-white'
+                : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:border-brand-300'
+            }`}>
+            {nombre}
+          </button>
+        ))}
+      </div>
+
+      {modo === 'chat' && (
+        <ChatPropuesta
+          hospedajesDB={hospedajesDB}
+          moneda={monedaPropuesta}
+          vuelo={vuelos[0]}
+          leyendoVuelo={leyendoVuelo}
+          errorVuelo={errorVuelo}
+          onLeerVuelo={archivo => leerImagenVuelo(0, archivo)}
+          onLeerReceta={leerRecetaDesdeFoto}
+          onGenerar={generarDesdeChat}
+          onPasarAlFormulario={pasarAlFormulario}
+          generando={generando}
+          error={error}
+          exito={exito}
+        />
+      )}
+
+      {/* El formulario sigue montado aunque se vea el chat: comparten los mismos datos */}
+      <div className={modo === 'chat' ? 'hidden' : 'space-y-6'}>
       {/* Cliente */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Cliente</h3>
@@ -1392,6 +1659,8 @@ export default function GeneradorPropuesta() {
               <input value={v.origen_ciudad} onChange={e => setVueloCampo(idx, 'origen_ciudad', e.target.value)} placeholder="Ciudad de origen (Ej: Ezeiza)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <input value={v.origen_codigo} onChange={e => setVueloCampo(idx, 'origen_codigo', e.target.value.toUpperCase())} placeholder="Código origen (Ej: EZE)"
+                className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+              <input value={v.vuelta_llega_codigo || ''} onChange={e => setVueloCampo(idx, 'vuelta_llega_codigo', e.target.value.toUpperCase())} placeholder="La vuelta llega a otro aeropuerto (Ej: EZE)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
               <input value={v.destino_ciudad} onChange={e => setVueloCampo(idx, 'destino_ciudad', e.target.value)} placeholder="Ciudad de destino (Ej: Recife)"
                 className="w-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
@@ -1875,6 +2144,7 @@ export default function GeneradorPropuesta() {
             {generando ? 'Generando PDF...' : 'Generar y descargar PDF'}
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

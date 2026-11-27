@@ -1,4 +1,5 @@
-import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } from 'pdf-lib'
+import { rgb, PDFName, PDFArray, PDFString, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath, appendBezierCurve } from 'pdf-lib'
+import { pathRectRedondeado } from './pdfPlantillaAereos.js'
 import { embedImagenAuto } from './pdfImagen.js'
 
 const NAVY_BG = rgb(0x07 / 255, 0x2e / 255, 0x40 / 255)
@@ -33,27 +34,26 @@ function agregarLink(page, doc, { x, y, width, height }, url) {
 
 export const SITIO_URL = import.meta.env.VITE_SITIO_URL
 
-// Dibuja la imagen manteniendo su proporcion real, recortando lo que sobre para
-// llenar la caja completa (equivalente a object-fit:cover en CSS) — sin esto,
-// pdf-lib estira la imagen para que encaje exacto y queda deformada.
+// Contorno de un rectángulo con las puntas redondeadas, para recortar la foto
+function contornoRedondeado(x, y, w, h, r) {
+  const k = r * 0.5523 // aproximación de un cuarto de círculo con una curva
+  return [
+    moveTo(x + r, y), lineTo(x + w - r, y), appendBezierCurve(x + w - r + k, y, x + w, y + r - k, x + w, y + r),
+    lineTo(x + w, y + h - r), appendBezierCurve(x + w, y + h - r + k, x + w - r + k, y + h, x + w - r, y + h),
+    lineTo(x + r, y + h), appendBezierCurve(x + r - k, y + h, x, y + h - r + k, x, y + h - r),
+    lineTo(x, y + r), appendBezierCurve(x, y + r - k, x + r - k, y, x + r, y), closePath(),
+  ]
+}
+
+// Todas las fotos ocupan el mismo recuadro (pedido explícito: iguales entre sí). La foto no se deforma:
+// se agranda hasta llenar el recuadro y se recorta lo que sobra, centrada (como object-fit: cover).
 function dibujarImagenCover(page, img, { x, y, width, height }) {
   const escala = Math.max(width / img.width, height / img.height)
   const anchoDibujado = img.width * escala
   const altoDibujado = img.height * escala
-  const offsetX = x - (anchoDibujado - width) / 2
-  const offsetY = y - (altoDibujado - height) / 2
-
   page.pushOperators(pushGraphicsState())
-  page.pushOperators(
-    moveTo(x, y),
-    lineTo(x + width, y),
-    lineTo(x + width, y + height),
-    lineTo(x, y + height),
-    closePath(),
-    clip(),
-    endPath(),
-  )
-  page.drawImage(img, { x: offsetX, y: offsetY, width: anchoDibujado, height: altoDibujado })
+  page.pushOperators(...contornoRedondeado(x, y, width, height, RADIO), clip(), endPath())
+  page.drawImage(img, { x: x - (anchoDibujado - width) / 2, y: y - (altoDibujado - height) / 2, width: anchoDibujado, height: altoDibujado })
   page.pushOperators(popGraphicsState())
 }
 
@@ -86,35 +86,88 @@ const CONTENIDO_TOP = 750
 const CONTENIDO_BOTTOM = 60
 const FILAS = 4
 const ALTO_FILA = (CONTENIDO_TOP - CONTENIDO_BOTTOM) / FILAS
-const IMG_LADO = 145
-const BANDA_ALTO = 16
-const GAP_BANDA_IMG = 3
+// Tres columnas por hospedaje: foto a la izquierda, información con el precio grande al medio y los botones
+// de fotos a la derecha, centrados a la altura de la fila (pedido explícito).
+const IMG_X = 24
+const IMG_ANCHO = 200
+const IMG_ALTO = 156 // casi 4:3, el formato más común de las fotos: es el que menos recorta
+const RADIO = 8 // puntas redondeadas de fotos, precios y botones
+const CAJA_ALTO = 68 // recuadro del precio; dos botones apilados miden lo mismo
+const TEXTO_X = IMG_X + IMG_ANCHO + 14
+const BOTONES_X = 420
+const BOTONES_ANCHO = 150
+const TEXTO_ANCHO = BOTONES_X - TEXTO_X - 8
+const BOTON_SIZE = 15
+const BOTON_PADDING = 8
+const BOTON_GAP = 6
+const BOTON_TXT = rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255)
+const PRECIO_SIZE = 28
 
-function crearSlot(fila) {
-  const top = CONTENIDO_TOP - fila * ALTO_FILA
+function crearSlot(fila, filas = 4) {
+  const altoFila = (CONTENIDO_TOP - CONTENIDO_BOTTOM) / filas
+  const top = CONTENIDO_TOP - fila * altoFila
   // Sin "+8" acá: el tapado tiene que cubrir el slice completo, sin dejar hueco
   // entre filas — un hueco sin tapar dejaba asomar la foto vieja de la plantilla
-  // original (de 2 por hoja) que quedaba justo ahí debajo. El aire visual entre
-  // filas se logra dejando margen en la posicion de la banda/foto, no en el tapado.
-  const bottom = top - ALTO_FILA
+  // original (de 2 por hoja) que quedaba justo ahí debajo.
+  const bottom = top - altoFila
   const bandaY = bottom + 6
-  const imagenY = bandaY + BANDA_ALTO + GAP_BANDA_IMG
-  const textoX = 30 + IMG_LADO + 18
+  // Grilla de la fila: la foto, el recuadro del precio y los botones terminan en la misma línea, y el nombre
+  // empieza a la altura del borde de arriba de la foto
+  const fotoAbajo = bottom + (altoFila - IMG_ALTO) / 2
+  const fotoArriba = fotoAbajo + IMG_ALTO
   return {
-    nombre: { x: textoX, y: top - 15, size: 16 },
+    nombre: { x: TEXTO_X, y: fotoArriba - 12, size: 17 },
     // 9, no 12: quedaba casi del mismo tamaño que el título de al lado.
-    subtitulo: { x: textoX, y: top - 32, size: 9 },
-    infoX: textoX, infoYTop: top - 54, infoSize: 12.5, infoGap: 15,
-    itemsX: textoX, itemsSize: 11, itemsGap: 13,
-    imagen: { x: 30, y: imagenY, width: IMG_LADO, height: IMG_LADO },
-    bandaY,
-    zonaLimpiarTop: top, zonaLimpiarBottom: bottom, zonaLimpiarLeft: 20, zonaLimpiarRight: 570,
+    subtitulo: { x: TEXTO_X, y: fotoArriba - 26, size: 9 },
+    infoX: TEXTO_X, infoYTop: fotoArriba - 42, infoSize: 12.5, infoGap: 13.5,
+    itemsX: TEXTO_X, itemsSize: 11, itemsGap: 13,
+    imagen: { x: IMG_X, y: fotoAbajo, width: IMG_ANCHO, height: IMG_ALTO },
+    bandaY, top, bottom,
+    zonaLimpiarTop: top, zonaLimpiarBottom: bottom, zonaLimpiarLeft: 20, zonaLimpiarRight: 575,
   }
 }
 
-const SLOTS = [0, 1, 2, 3].map(crearSlot)
+const SLOTS = [0, 1, 2, 3].map(f => crearSlot(f, 4))
+// Con 3 hospedajes o menos por hoja cada uno tiene más alto: entra el renglón "los N pasajeros", el botón
+// del video y la descripción completa.
+const SLOTS_3 = [0, 1, 2].map(f => crearSlot(f, 3))
 
-export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, baseVueloTraslado = 0, combinada = false) {
+const DIAS_CORTOS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
+function diaCorto(iso) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${DIAS_CORTOS[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
+}
+
+// Las descripciones del catálogo vienen de cualquier parte (Niara, La Playa, copiadas a mano) y traen caracteres que
+// la fuente del PDF no puede escribir (espacios de ancho cero, emojis, comillas raras): uno solo rompería todo el PDF.
+const WIN_ANSI_EXTRA = new Set([0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0x017d, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x017e, 0x0178])
+export function limpiarParaPdf(texto) {
+  return Array.from(String(texto ?? ''))
+    .map(c => {
+      const n = c.codePointAt(0)
+      if (n === 0x00a0 || n === 0x2007 || n === 0x202f) return ' '
+      if (n === 0x200b || n === 0x200c || n === 0x200d || n === 0xfeff || n === 0x00ad) return ''
+      if ((n >= 0x20 && n <= 0x7e) || (n >= 0xa1 && n <= 0xff) || WIN_ANSI_EXTRA.has(n)) return c
+      return n < 0x20 ? ' ' : ''
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Descripción del hospedaje que cabe en `lineasMax` renglones: se corta en una palabra y termina en "…"
+function descripcionEnLineas(texto, font, size, ancho, lineasMax) {
+  const lineas = partirEnLineas(texto, font, size, ancho)
+  if (lineas.length <= lineasMax) return lineas
+  const corte = lineas.slice(0, lineasMax)
+  let ultima = corte[lineasMax - 1].replace(/[\s,.;:]+$/, '')
+  while (ultima && font.widthOfTextAtSize(ultima + '…', size) > ancho) ultima = ultima.replace(/\s*\S+$/, '')
+  corte[lineasMax - 1] = ultima + '…'
+  return corte
+}
+
+export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, grupo, baseVueloTraslado = 0, combinada = false, opciones = {}) {
   const [paginaPlantilla] = await doc.copyPages(plantillaDoc, [1])
   doc.addPage(paginaPlantilla)
 
@@ -154,36 +207,80 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
   // sobrantes nunca se dibujaban y quedaba asomando esa muestra de la plantilla
   // (nombre, descripcion y foto de un hospedaje que nadie cargo). Por eso las 4
   // filas se limpian SIEMPRE, haya o no contenido real para cada una.
-  for (const s of SLOTS) {
-    tapar(s.zonaLimpiarLeft, s.zonaLimpiarBottom, s.zonaLimpiarRight - s.zonaLimpiarLeft, s.zonaLimpiarTop - s.zonaLimpiarBottom, CREMA_BG)
-  }
+  tapar(20, CONTENIDO_BOTTOM, 555, CONTENIDO_TOP - CONTENIDO_BOTTOM, CREMA_BG)
+
+  const amplio = grupo.length <= 3
+  const slots = amplio ? SLOTS_3 : SLOTS
+  const pasajeros = opciones.pasajeros || 0
 
   for (let idx = 0; idx < grupo.length; idx++) {
     const h = grupo[idx]
-    const s = SLOTS[idx]
-    // Margen de seguridad contra el borde de la fila — solo para que el
-    // ULTIMO renglon que sí entra no quede pegado sin aire al hospedaje de
-    // abajo (no es margen para el boton de habitacion, que tiene su propio
-    // chequeo mas abajo).
-    const piso = s.zonaLimpiarBottom + 6
-
+    const s = slots[idx]
     // Nombre y subtitulo van en la columna de texto (a la derecha de la foto, que
     // ahora siempre esta a la izquierda) — sin descripcion, hay lugar de sobra para
     // 2 lineas de nombre sin invadir nada.
-    const anchoColumnaTexto = 570 - s.nombre.x
-    const lineasNombre = partirEnLineas((h.nombre || '').toUpperCase(), bebas, s.nombre.size, anchoColumnaTexto).slice(0, 2)
+    const anchoColumnaTexto = TEXTO_ANCHO
+    // Descripción del hospedaje (del catálogo): columna a la derecha de la información
+    // La descripción del hospedaje no va en la propuesta (ya está en el link de Niara)
+    const descTxt = ''
+    const DESC_X = 398
+    const anchoInfo = descTxt ? DESC_X - s.infoX - 10 : anchoColumnaTexto
+    const ajustar = (txt, size, ancho = anchoInfo, min = 6) => { let t = size; while (t > min && bebas.widthOfTextAtSize(txt, t) > ancho) t -= 0.5; return t }
+    let tamanoNombreH = s.nombre.size
+    while (tamanoNombreH > 13 && bebas.widthOfTextAtSize((h.nombre || '').toUpperCase(), tamanoNombreH) > anchoColumnaTexto) tamanoNombreH -= 0.5
+    const lineasNombre = partirEnLineas((h.nombre || '').toUpperCase(), bebas, tamanoNombreH, anchoColumnaTexto).slice(0, 2)
     lineasNombre.forEach((linea, i) => {
-      escribir(linea, s.nombre.x, s.nombre.y - i * (s.nombre.size * 0.95), s.nombre.size, NAVY_TXT, bebas)
+      escribir(linea, s.nombre.x, s.nombre.y - i * (tamanoNombreH * 0.95), tamanoNombreH, NAVY_TXT, bebas)
     })
-    const ySubtitulo = s.subtitulo.y - (lineasNombre.length - 1) * (s.nombre.size * 0.95)
+    const ySubtitulo = s.subtitulo.y - (lineasNombre.length - 1) * (tamanoNombreH * 0.95)
     let yFinEncabezado = ySubtitulo
     if (h.subtitulo) {
-      const lineasSub = partirEnLineas(h.subtitulo.toUpperCase(), helv, s.subtitulo.size, anchoColumnaTexto).slice(0, 2)
+      let tamanoSub = s.subtitulo.size
+      while (tamanoSub > 7 && helv.widthOfTextAtSize(h.subtitulo.toUpperCase(), tamanoSub) > anchoColumnaTexto) tamanoSub -= 0.25
+      const lineasSub = partirEnLineas(h.subtitulo.toUpperCase(), helv, tamanoSub, anchoColumnaTexto).slice(0, 2)
       lineasSub.forEach((linea, i) => {
-        escribir(linea, s.subtitulo.x, ySubtitulo - i * (s.subtitulo.size * 1.1), s.subtitulo.size, NAVY_TXT, helv)
+        escribir(linea, s.subtitulo.x, ySubtitulo - i * (tamanoSub * 1.1), tamanoSub, NAVY_TXT, helv)
       })
-      yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (s.subtitulo.size * 1.1)
+      yFinEncabezado = ySubtitulo - (lineasSub.length - 1) * (tamanoSub * 1.1)
     }
+
+    // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
+    // departamento (hasta 4, elegidas en el Generador) — cada una necesita su
+    // propio boton de areas internas (no uno compartido), porque cada una tiene
+    // su propia ficha/fotos en el sitio.
+    const habitacionesElegidas = h.habitaciones?.length
+      ? h.habitaciones
+      : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
+    const nombreHabitacion = hab => ((hab.nombre || 'Habitación') + (hab.cantidad > 1 ? ` x${hab.cantidad}` : '')).toUpperCase()
+
+    // Botones de fotos (internas por habitacion + externas del complejo): van
+    // abajo de la informacion, en la columna de texto al lado de la foto, en
+    // filas de izquierda a derecha. Se arman antes que la informacion para
+    // saber cuanto lugar ocupan y que los renglones no se les metan encima.
+    const botones = []
+    if (h.id) {
+      for (const hab of habitacionesElegidas) {
+        botones.push({
+          // Con una sola habitacion el nombre ya figura en la informacion; con
+          // varias, el nombre va en el boton para saber cual es cual.
+          texto: habitacionesElegidas.length > 1 ? `FOTOS ${nombreHabitacion(hab)} >` : 'VER FOTOS ÁREAS INTERNAS >',
+          url: `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`,
+        })
+      }
+      // Fotos generales del complejo (pileta, canchas, areas comunes) — SIN
+      // habitacion puntual — en modo standalone (el cliente no puede navegar a
+      // otros hospedajes desde el link del PDF).
+      botones.push({ texto: 'VER FOTOS ÁREAS EXTERNAS >', url: `${SITIO_URL}/hoteles/${h.id}?standalone=1` })
+    }
+    // Video del departamento / habitación (de la plataforma). Con los botones en columna entra también con 4 por hoja.
+    if (h.video_depto) {
+      botones.splice(botones.length - 1, 0, {
+        texto: /departamento/i.test(h.tipo_alojamiento || '') ? 'VER VIDEO DEL DEPTO. >' : 'VER VIDEO >',
+        url: h.video_depto,
+      })
+    }
+    // Piso de la información: abajo queda reservado el lugar del precio
+    const piso = s.imagen.y + 52
 
     // Precio: en Simple, cada hospedaje es una OPCIÓN alternativa, así que se
     // imprime el PAQUETE completo (aéreo + traslado + este hospedaje, vía
@@ -198,93 +295,114 @@ export async function agregarPaginaHospedajes(doc, plantillaDoc, bebas, helv, gr
     // lo duplicaría por cada hospedaje. Se imprime solo el precio de ESE
     // hospedaje, y ahí sí respeta "Pública" como el resto de los precios
     // individuales (pedido explícito).
-    let y = Math.min(s.infoYTop, yFinEncabezado - 17)
-    escribir(h.noches ? `${h.noches} NOCHES:` : 'NOCHES:', s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    if (combinada) {
-      if (h.precio && h.precio_publico !== false) {
-        escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-      }
-    } else {
-      const totalPaquete = baseVueloTraslado + (parseFloat(h.precio) || 0)
-      escribir(`${h.moneda || 'ARS'}$ ${formatearNumero(totalPaquete)}`, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap
-    }
-    if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    let y = Math.min(s.infoYTop, yFinEncabezado - 15)
+    const textoNoches = h.noches
+      ? `${h.noches} NOCHES${opciones.conFechas && h.fecha_entrada && h.fecha_salida ? ` · DEL ${diaCorto(h.fecha_entrada)} AL ${diaCorto(h.fecha_salida)}` : ':'}`
+      : 'NOCHES:'
+    escribir(textoNoches, s.infoX, y, ajustar(textoNoches, s.infoSize), NAVY_TXT, bebas); y -= s.infoGap
+    if (h.incluye && y >= piso) { escribir(h.incluye, s.infoX, y, ajustar(h.incluye, s.infoSize), NAVY_TXT, bebas); y -= s.infoGap }
     // Servicios tildados (Desayuno/Desayuno opcional/Media Pensión/Pensión
     // Completa/Servicio de Limpieza) — SIEMPRE se imprime, sin el chequeo de
     // espacio (y >= piso) que tienen las demás líneas opcionales: es
     // información que el cliente necesita ver sí o sí en cada hospedaje.
-    if (h.pension) { escribir(h.pension, s.infoX, y, s.infoSize, NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.pension) { escribir(h.pension, s.infoX, y, ajustar(h.pension, s.infoSize), NAVY_TXT, bebas); y -= s.infoGap }
+    if (h.limpieza_no_incluida && y >= piso) { escribir('LIMPIEZA NO INCLUIDA', s.infoX, y, ajustar('LIMPIEZA NO INCLUIDA', s.infoSize), NAVY_TXT, bebas); y -= s.infoGap }
 
-    // Un mismo hospedaje/complejo puede ofrecer mas de una habitacion o
-    // departamento (hasta 4, elegidas en el Generador) — cada una necesita su
-    // propio nombre Y su propio boton "VER ÁREAS INTERNAS" (no un solo boton
-    // compartido para todas), porque cada una tiene su propia ficha/fotos en
-    // el sitio. Va debajo de "incluye"/pension, en la misma columna de texto.
-    const habitacionesElegidas = h.habitaciones?.length
-      ? h.habitaciones
-      : (h.habitacion_id ? [{ id: h.habitacion_id, nombre: null }] : [])
-    if (habitacionesElegidas.length && y >= piso) {
-      // Boton mas sutil/chico (antes 8pt/15 alto) — pedido explicito.
-      const ALTO_BOTON = 11
-      const GAP_NOMBRE_BOTON = 8 // horizontal: aire entre el nombre y el boton, en la misma linea
-      const GAP_ENTRE_HABITACIONES = 20
-      const texto = 'VER ÁREAS INTERNAS >'
-      const tamanoBoton = 6.5
-      const anchoBoton = helv.widthOfTextAtSize(texto, tamanoBoton) + 8
-      // Nombre de la habitacion: misma tipografia y tamaño que "NOCHES" (antes
-      // Helvetica mas chico) — se achica desde ahi, no desde itemsSize, si no
-      // entra en el ancho que le queda libre despues de reservarle su lugar
-      // al boton al lado (misma linea, no una por renglon como antes).
-      const anchoDisponibleNombre = anchoColumnaTexto - anchoBoton - GAP_NOMBRE_BOTON
-      for (const hab of habitacionesElegidas) {
-        if (y < piso) break
-        const nombreHab = ((hab.nombre || 'Habitación') + (hab.cantidad > 1 ? ` x${hab.cantidad}` : '')).toUpperCase()
-        let tamanoNombre = s.infoSize
-        while (tamanoNombre > 6 && bebas.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoDisponibleNombre) tamanoNombre -= 0.5
-        escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, bebas)
-
-        if (h.id) {
-          const urlInternas = `${SITIO_URL}/hoteles/${h.id}?habitacion=${hab.id}&standalone=1`
-          const anchoNombreReal = bebas.widthOfTextAtSize(nombreHab, tamanoNombre)
-          const bandaInt = { x: s.itemsX + anchoNombreReal + GAP_NOMBRE_BOTON, y: y - 2, width: anchoBoton, height: ALTO_BOTON }
-          tapar(bandaInt.x, bandaInt.y, bandaInt.width, bandaInt.height, NAVY_BG)
-          escribir(texto, bandaInt.x + 4, bandaInt.y + 3, tamanoBoton, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-          agregarLink(paginaPlantilla, doc, bandaInt, urlInternas)
-        }
-        y -= GAP_ENTRE_HABITACIONES
-      }
+    // Nombre de la habitacion elegida, como un renglon mas de la informacion
+    // (misma tipografia que "NOCHES"). Solo con una: con varias, cada nombre
+    // ya va en su boton y repetirlos no entra en la fila.
+    if (habitacionesElegidas.length === 1 && y >= piso) {
+      const nombreHab = nombreHabitacion(habitacionesElegidas[0])
+      let tamanoNombre = s.infoSize
+      while (tamanoNombre > 6 && bebas.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoInfo) tamanoNombre -= 0.5
+      escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, bebas)
+      y -= s.infoGap
     }
 
-    // Foto siempre a la izquierda, con la banda clickeable "VER INFORMACIÓN Y
-    // FOTOS" pegada debajo (no encima como en la version de 2 por hoja, para que
-    // se lea "al lado de la foto" y no tape parte de la imagen).
+    // Habitación que cotizó Niara en un hotel que no está en el catálogo: solo el nombre (no hay fotos que abrir)
+    if (!habitacionesElegidas.length && h.habitacion_nombre && y >= piso) {
+      const nombreHab = String(h.habitacion_nombre).toUpperCase()
+      let tamanoNombre = s.infoSize
+      while (tamanoNombre > 6 && bebas.widthOfTextAtSize(nombreHab, tamanoNombre) > anchoInfo) tamanoNombre -= 0.5
+      escribir(nombreHab, s.itemsX, y, tamanoNombre, NAVY_TXT, bebas)
+      y -= s.infoGap
+    }
+
+    // Precio en un recuadro azul con letras blancas (mismo diseño que "La base del viaje"), debajo de la información
+    const precios = []
+    let rotulo = ''
+    let pie = ''
+    if (combinada) {
+      if (h.precio && h.precio_publico !== false) { precios.push(`${h.moneda || 'ARS'}$ ${formatearNumero(h.precio)}`); rotulo = 'SOLO HOSPEDAJE' }
+    } else if (opciones.familias?.length && h.valores_familia?.length) {
+      // Grupo: el valor total de cada familia (aéreos + hospedaje + traslados)
+      h.valores_familia.forEach((valor, i) => precios.push(`${opciones.familias[i] || 'FAMILIA ' + (i + 1)}: ${h.moneda || 'ARS'}$ ${formatearNumero(valor)}`))
+    } else if (h.fijo) {
+      // Combinada uni: este hospedaje va incluido en el total de todas las opciones del otro destino
+      precios.push('INCLUIDO EN TODAS LAS OPCIONES')
+    } else {
+      precios.push(`${h.moneda || 'ARS'}$ ${formatearNumero(baseVueloTraslado + (parseFloat(h.precio) || 0))}`)
+      rotulo = 'TOTAL DEL PAQUETE'
+    }
+    if (!combinada && rotulo && pasajeros) pie = `LOS ${pasajeros} PASAJEROS`
+    // El recuadro termina donde termina la foto; si la información ocupa mucho, se acorta un poco
+    const cajaAlto = Math.max(48, Math.min(CAJA_ALTO, y + 6 - s.imagen.y))
+    if (precios.length) {
+      const varios = precios.length > 1
+      const base = varios ? 16 : PRECIO_SIZE
+      const altoContenido = (rotulo ? 14 : 0) + precios.length * (base + 3) + (pie ? 12 : 0)
+      const k = Math.min(1, (cajaAlto - 6) / altoContenido)
+      paginaPlantilla.drawSvgPath(pathRectRedondeado(TEXTO_ANCHO, cajaAlto, RADIO), { x: s.infoX, y: s.imagen.y + cajaAlto, color: NAVY_BG })
+      const centrado = (t, yy, size) => {
+        const tam = ajustar(t, size, TEXTO_ANCHO - 12)
+        escribir(t, s.infoX + (TEXTO_ANCHO - bebas.widthOfTextAtSize(t, tam)) / 2, yy, tam, CREMA_TXT, bebas)
+      }
+      // Contenido centrado dentro del recuadro
+      let yy = s.imagen.y + cajaAlto - (cajaAlto - altoContenido * k) / 2
+      if (rotulo) { yy -= 10 * k; centrado(rotulo, yy, 11 * k); yy -= 4 * k }
+      for (const t of precios) { yy -= base * k * 0.82; centrado(t, yy, base * k); yy -= (base * 0.18 + 3) * k }
+      if (pie) { yy -= 8 * k; centrado(pie, yy, 10.5 * k) }
+    }
+
+    // Descripción del hospedaje, en la columna de la derecha (de la altura de "NOCHES" hasta los botones)
+    if (descTxt) {
+      const TAM = 8
+      const LEAD = 10
+      const yIni = Math.min(s.infoYTop, yFinEncabezado - 17)
+      const maximas = Math.max(1, Math.floor((yIni - (s.bandaY + 2)) / LEAD) + 1)
+      descripcionEnLineas(descTxt, helv, TAM, 570 - DESC_X, maximas).forEach((linea, i) => {
+        escribir(linea, DESC_X, yIni - i * LEAD, TAM, NAVY_TXT, helv)
+      })
+    }
+
+    // Botones de fotos: columna de la derecha, apilados desde la misma línea de abajo que la foto y el precio.
+    // Dos botones ocupan exactamente el alto del recuadro del precio.
+    const botonAlto = (cajaAlto - BOTON_GAP) / 2
+    botones.forEach((b, i) => {
+      const rect = { x: BOTONES_X, y: s.imagen.y + (botones.length - 1 - i) * (botonAlto + BOTON_GAP), width: BOTONES_ANCHO, height: botonAlto }
+      let size = BOTON_SIZE
+      while (size > 8 && bebas.widthOfTextAtSize(b.texto, size) + 2 * BOTON_PADDING > BOTONES_ANCHO) size -= 0.5
+      paginaPlantilla.drawSvgPath(pathRectRedondeado(rect.width, rect.height, RADIO), { x: rect.x, y: rect.y + rect.height, color: NAVY_BG })
+      // Bebas tiene la altura de mayusculas en ~0.7 del tamaño: asi queda centrado.
+      escribir(b.texto, rect.x + (rect.width - bebas.widthOfTextAtSize(b.texto, size)) / 2, rect.y + (botonAlto - size * 0.7) / 2, size, BOTON_TXT, bebas)
+      agregarLink(paginaPlantilla, doc, rect, b.url)
+    })
+
+    // Foto a la izquierda, todas del mismo tamaño
     tapar(s.imagen.x - 4, s.imagen.y - 4, s.imagen.width + 8, s.imagen.height + 8, CREMA_BG)
+    let hayFoto = false
     if (h.imagen) {
       try {
         const bytes = await fetch(h.imagen).then(r => r.arrayBuffer())
         const img = await embedImagenAuto(doc, bytes)
         dibujarImagenCover(paginaPlantilla, img, s.imagen)
+        hayFoto = true
       } catch (_) { /* si falla la imagen, seguimos sin romper el resto */ }
     }
 
-    // La foto y el boton de abajo son clickeables y llevan a las fotos
-    // generales del hospedaje/complejo (pileta, canchas, areas comunes) — SIN
-    // habitacion puntual seleccionada — en modo standalone (el cliente no
-    // puede navegar a otros hospedajes desde el link del PDF). El acceso a la
-    // habitacion/departamento puntual elegido es el boton "VER ÁREAS
-    // INTERNAS" de mas arriba, debajo de la descripcion, no este.
-    if (h.id) {
-      const urlExternas = `${SITIO_URL}/hoteles/${h.id}?standalone=1`
-      agregarLink(paginaPlantilla, doc, s.imagen, urlExternas)
-
-      const banda = { x: s.imagen.x, y: s.bandaY, width: s.imagen.width, height: BANDA_ALTO }
-      tapar(banda.x, banda.y, banda.width, banda.height, NAVY_BG)
-      const texto = 'VER FOTOS ÁREAS EXTERNAS >'
-      let tamano = 8
-      while (tamano > 5.5 && helv.widthOfTextAtSize(texto, tamano) > banda.width - 10) tamano -= 0.5
-      escribir(texto, banda.x + 5, banda.y + (BANDA_ALTO - tamano) / 2 + 1, tamano, rgb(0xc9 / 255, 0xe3 / 255, 0x4f / 255), helv)
-      agregarLink(paginaPlantilla, doc, banda, urlExternas)
-    }
+    // La foto también es clickeable y lleva a las fotos generales del complejo,
+    // igual que el boton "VER FOTOS ÁREAS EXTERNAS".
+    if (h.id && hayFoto) agregarLink(paginaPlantilla, doc, s.imagen, `${SITIO_URL}/hoteles/${h.id}?standalone=1`)
 
     // Linea separadora entre hospedajes (no despues del ultimo) — inset
     // respecto de los margenes de la hoja, negra, mismo criterio que los

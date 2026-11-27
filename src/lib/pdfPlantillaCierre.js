@@ -37,7 +37,7 @@ function textoPasajeros(adultos, menores, edades) {
     const edadesSinBebes = tokens.filter(t => !esBebe(t)).join(', ')
     const nMenoresConEdad = nMenores - nBebes
     if (nMenoresConEdad > 0) {
-      const menorTxt = `${nMenoresConEdad} ${nMenoresConEdad === 1 ? 'MENOR' : 'MENORES'}${edadesSinBebes ? ` (${edadesSinBebes})` : ''}`
+      const menorTxt = `${nMenoresConEdad} ${nMenoresConEdad === 1 ? 'MENOR' : 'MENORES'}${edadesSinBebes ? ` (${edadesSinBebes.replace(/,\s*/g, ' Y ')} AÑOS)` : ''}`
       texto = texto ? `${texto} + ${menorTxt}` : menorTxt
     }
     if (nBebes > 0) {
@@ -319,7 +319,7 @@ export async function generarPDFCierre(propuesta) {
   dibujarCajaTramo(page, bebas, {
     x: X_CAJA_VUELTA, yTop: yCaja, ancho: ANCHO_CAJA,
     codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
-    codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
+    codigoLlega: vuelo.vuelta_llega_codigo || vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
     escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
   })
   const pisoCajas = yCaja - altoCajasVuelo

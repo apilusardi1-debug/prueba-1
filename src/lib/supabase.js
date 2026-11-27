@@ -209,6 +209,8 @@ async function buscarPropietario(filtro) {
   return data?.[0] || null
 }
 export const propietariosApi = {
+  // Todos los propietarios (hospedaje o habitación -> dueño): sirve para encontrar el departamento por el nombre del dueño
+  getAll: () => invocarCatalogoInterno('hospedajes_propietarios', 'list'),
   getByHospedaje: async (hospedajeId) => ({ data: await buscarPropietario({ hospedaje_id: hospedajeId }), error: null }),
   getByHabitacion: async (habitacionId) => ({ data: await buscarPropietario({ habitacion_id: habitacionId }), error: null }),
   // No usamos .upsert(): el índice único de esta tabla es parcial (hospedaje_id
@@ -671,6 +673,25 @@ export async function extraerDatosVuelo(imagenBase64, mediaType) {
   // Gemini puede demorar bastante bajo carga), lo tratamos igual que un
   // 429 -- reintentable -- en vez de rendirnos y mostrarle al usuario el
   // mensaje generico en inglés del SDK.
+  return { data: { error: 'El lector de imágenes está saturado en este momento — esperá unos segundos y probá de nuevo.', rateLimited: true }, error }
+}
+
+// ── Leer la foto de la "receta" (hoja a mano del vendedor) con IA ───────────────
+// Mismo manejo de errores que extraerDatosVuelo: un 429/5xx se marca reintentable.
+export async function extraerReceta(imagenBase64, mediaType, nombres = [], cotizados = []) {
+  if (!supabase) return { error: 'Sin conexión' }
+  const { data, error } = await supabase.functions.invoke('leer-receta', {
+    body: { imagenBase64, mediaType, nombres, cotizados },
+    headers: cabeceraPanel(),
+    timeout: 60000,
+  })
+  if (!error) return { data, error }
+  if (error?.context?.json) {
+    try {
+      const cuerpo = await error.context.clone().json()
+      if (cuerpo?.error) return { data: { error: cuerpo.error, rateLimited: error.context.status === 429 }, error }
+    } catch (_) { /* sin cuerpo legible */ }
+  }
   return { data: { error: 'El lector de imágenes está saturado en este momento — esperá unos segundos y probá de nuevo.', rateLimited: true }, error }
 }
 

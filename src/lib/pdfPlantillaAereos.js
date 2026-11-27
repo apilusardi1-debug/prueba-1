@@ -60,6 +60,14 @@ function fechaLarga(iso) {
 // DD/MM/AAAA — usada en el encabezado de cada vuelo de la grilla compacta
 // ("VUELO 1: IDA 6/01/2026"), mas corta que fechaLarga para que entre en una
 // sola linea junto con "VUELO N:".
+const DIAS_SEMANA = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO']
+// "SÁBADO 06/03/2027" — el día de la semana sale de la fecha
+export function fechaConDia(iso) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  const dia = DIAS_SEMANA[new Date(y, m - 1, d).getDay()]
+  return `${dia} ${fechaCorta(iso)}`
+}
 export function fechaCorta(iso) {
   if (!iso) return ''
   const [y, m, d] = iso.split('-')
@@ -83,9 +91,11 @@ export const NAVY_SUAVE_CAJA = rgb(0x3a / 255, 0x55 / 255, 0x64 / 255)
 // Alto que ocupa una caja de tramo (ida o vuelta) — se calcula aparte de
 // dibujarCajaTramo porque ida y vuelta suelen dibujarse con el mismo alto
 // (el mayor de los dos) aunque solo una tenga escala, asi quedan simetricas.
-export function altoCajaTramo(hayEscala, esc = 1) {
+export function altoCajaTramo(hayEscala, esc = 1, directo = false, nota = false) {
   const sinEscala = 13 * esc + 9 * esc + 9 * esc // padding sup + fila principal + fila ciudad
-  return hayEscala ? sinEscala + 8 * esc + 9.5 * esc + 9.5 * esc : sinEscala // + escala (2 lineas, texto un poco mas grande) + gap
+  if (hayEscala) return sinEscala + 8 * esc + 9.5 * esc + 9.5 * esc + (nota ? 9.5 * esc : 0) // + escala (2 lineas, texto un poco mas grande) + gap [+ aclaración]
+  if (directo || nota) return sinEscala + 8 * esc + 9.5 * esc + (directo && nota ? 9.5 * esc : 0) // + línea "vuelo directo" y/o aclaración de llegada
+  return sinEscala
 }
 
 // Caja con borde redondeado de un tramo (ida o vuelta): codigo+hora de salida
@@ -94,7 +104,7 @@ export function altoCajaTramo(hayEscala, esc = 1) {
 // de vuelos (2+ en una hoja) y en el PDF de cierre (un unico vuelo) — antes
 // el de cierre traia un diseño viejo (pildoras amarillas de la plantilla
 // real) que no combinaba con el de la propuesta inicial.
-export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoSale, ciudadSale, horaSale, codigoLlega, ciudadLlega, horaLlega, escalaCiudad, escalaCodigo, escalaLlega, escalaSale, colorPrincipal = NAVY_TXT, colorSuave = NAVY_SUAVE_CAJA }) {
+export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoSale, ciudadSale, horaSale, codigoLlega, ciudadLlega, horaLlega, escalaCiudad, escalaCodigo, escalaLlega, escalaSale, directo = false, nota = '', colorPrincipal = NAVY_TXT, colorSuave = NAVY_SUAVE_CAJA }) {
   function escribir(texto, tx, ty, size, color) {
     page.drawText(texto, { x: tx, y: ty, size, font: bebas, color })
   }
@@ -110,7 +120,7 @@ export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoS
   }
 
   const hayEscala = escalaCiudad || escalaCodigo
-  const alto = altoCajaTramo(hayEscala, esc)
+  const alto = altoCajaTramo(hayEscala, esc, directo, !!nota)
   page.drawSvgPath(pathRectRedondeado(ancho, alto, 6 * esc), { x, y: yTop, borderColor: colorPrincipal, borderWidth: Math.max(0.75, 1 * esc) })
 
   const padX = 9 * esc
@@ -140,6 +150,15 @@ export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoS
   }
   cy -= 9 * esc
 
+  if (!hayEscala && (directo || nota)) {
+    cy -= 8 * esc
+    centrado(directo ? 'VUELO DIRECTO' : nota, x + ancho / 2, cy, 8.5 * esc, colorSuave)
+    if (directo && nota) {
+      cy -= 9.5 * esc
+      centrado(nota, x + ancho / 2, cy, 8.5 * esc, colorSuave)
+    }
+  }
+
   if (hayEscala) {
     cy -= 8 * esc
     const xCentro = x + ancho / 2
@@ -148,6 +167,10 @@ export function dibujarCajaTramo(page, bebas, { x, yTop, ancho, esc = 1, codigoS
     cy -= 9.5 * esc
     if (escalaLlega || escalaSale) {
       centrado(`${escalaLlega || '--:--'} - ${escalaSale || '--:--'}`, xCentro, cy, 8.5 * esc, colorSuave)
+    }
+    if (nota) {
+      cy -= 9.5 * esc
+      centrado(nota, xCentro, cy, 8.5 * esc, colorSuave)
     }
   }
 
@@ -202,6 +225,18 @@ export function textoEquipajeSeleccionado(equipaje) {
   return { incluidos, opcionales: extrasTexto }
 }
 
+// Si el vuelo llega a una hora menor que la de salida, llega al día siguiente: se aclara siempre
+// ("LLEGA EL MIÉRCOLES 13 DE MADRUGADA") porque el pasajero necesita saberlo para el traslado y el hotel.
+function notaLlegadaDiaSiguiente(fechaIso, sale, llega) {
+  const min = h => { const m = /^(\d{1,2}):(\d{2})/.exec(String(h || '').trim()); return m ? Number(m[1]) * 60 + Number(m[2]) : null }
+  const s = min(sale), l = min(llega)
+  if (!fechaIso || s === null || l === null || l >= s) return ''
+  const [y, m, d] = fechaIso.split('-').map(Number)
+  const sig = new Date(y, m - 1, d + 1)
+  const madrugada = l < 6 * 60 ? ' DE MADRUGADA' : ''
+  return `LLEGA EL ${DIAS_SEMANA[sig.getDay()]} ${sig.getDate()}${madrugada}`
+}
+
 // Arma el texto de pasajeros con adultos y, si hay, menores (+ edades entre
 // parentesis) — antes solo existia "cantidad de pasajeros" como si todos
 // fueran adultos. Un menor marcado "Bebé" (< 1 año) llega en `edades` como
@@ -219,7 +254,7 @@ function textoPasajeros(adultos, menores, edades) {
     const edadesSinBebes = tokens.filter(t => !esBebe(t)).join(', ')
     const nMenoresConEdad = nMenores - nBebes
     if (nMenoresConEdad > 0) {
-      const menorTxt = `${nMenoresConEdad} ${nMenoresConEdad === 1 ? 'MENOR' : 'MENORES'}${edadesSinBebes ? ` (${edadesSinBebes})` : ''}`
+      const menorTxt = `${nMenoresConEdad} ${nMenoresConEdad === 1 ? 'MENOR' : 'MENORES'}${edadesSinBebes ? ` (${edadesSinBebes.replace(/,\s*/g, ' Y ')} AÑOS)` : ''}`
       texto = texto ? `${texto} + ${menorTxt}` : menorTxt
     }
     if (nBebes > 0) {
@@ -352,7 +387,10 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
   const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
   const nEquipaje = equipajeSeleccionado.length
   const nEquipajeTotal = 1 + nEquipaje // titulo "EQUIPAJE INCLUIDO:" (ahora dinamico) + items
-  const nVuelo = 3 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0) // titulo + sale + llega [+ escala]
+  const notaIda = notaLlegadaDiaSiguiente(vuelo.ida_fecha, vuelo.ida_sale, vuelo.ida_llega)
+  const notaVuelta = notaLlegadaDiaSiguiente(vuelo.vuelta_fecha, vuelo.vuelta_sale, vuelo.vuelta_llega)
+  const hayNota = !!(notaIda || notaVuelta)
+  const nVuelo = 3 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0) + (hayNota ? 1 : 0) // titulo + sale + llega [+ escala] [+ aclaración]
   const hayTraslados = vuelo.traslado_ida || vuelo.traslado_vuelta
   const nTraslados = hayTraslados ? 3 : 0
   // Transfers de una propuesta combinada (traslados por tramo, cargados aparte
@@ -433,7 +471,12 @@ async function dibujarPaginaAereos(doc, page, bebas, { clienteNombre, cantidadAd
     if (hayEscalaIda) reemplazarLineaTamano({ x: 61.19, y: yEscala, anchoMax: 292, alto: 24, texto: textoIdaEscala, size: tamanoEscala, color: NAVY_TXT, bg: CREMA_BG })
     if (hayEscalaVuelta) reemplazarLineaTamano({ x: 381.70, y: yEscala, anchoMax: 180, alto: 24, texto: textoVueltaEscala, size: tamanoEscala, color: NAVY_TXT, bg: CREMA_BG })
   }
-  const lineasVuelo = 2 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0)
+  if (hayNota) {
+    const yNota = yLlega - GAP_LINEA * (hayEscalaIda || hayEscalaVuelta ? 2 : 1)
+    if (notaIda) escribir(notaIda, 61.19, yNota, medirTamanoAjustado(notaIda, 292, 18), NAVY_TXT)
+    if (notaVuelta) escribir(notaVuelta, 381.70, yNota, medirTamanoAjustado(notaVuelta, 180, 18), NAVY_TXT)
+  }
+  const lineasVuelo = 2 + (hayEscalaIda || hayEscalaVuelta ? 1 : 0) + (hayNota ? 1 : 0)
   const finVuelo = yVuelo - lineasVuelo * GAP_LINEA
 
   // 3) Traslados — ahora al final, icono auto reubicado.
@@ -610,8 +653,12 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, iconos =
 
   if (hayVuelo) {
     const tamanoTitulo = 13 * esc
-    const textoTituloIda = `VUELO ${numero}: IDA ${fechaCorta(vuelo.ida_fecha)}`
-    escribir(textoTituloIda, COL_IZQ_X, y, tamanoTitulo, NAVY_TXT)
+    // Aerolínea (si se leyó de la captura) y día de la semana de cada fecha
+    const aerolinea = String(vuelo.aerolinea || '').trim().toUpperCase()
+    const textoTituloIda = `VUELO ${numero}${aerolinea ? ` · ${aerolinea}` : ''}: IDA ${fechaConDia(vuelo.ida_fecha)}`
+    let tamanoIda = tamanoTitulo
+    while (tamanoIda > 7 * esc && bebas.widthOfTextAtSize(textoTituloIda, tamanoIda) > ANCHO_COL_VUELO - 4) tamanoIda -= 0.5
+    escribir(textoTituloIda, COL_IZQ_X, y, tamanoIda, NAVY_TXT)
 
     // Valor de venta del vuelo — pildora navy con texto blanco (mismo trazo que
     // el resto de los carteles de la app), alineada al borde derecho de la
@@ -623,12 +670,12 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, iconos =
     // VUELTA se achica lo mínimo necesario para dejarle SIEMPRE un hueco fijo
     // a la píldora al lado, así el precio nunca desaparece por falta de
     // espacio — sí puede pasar que quede mas chico en fechas largas.
-    const textoTituloVuelta = `VUELTA ${fechaCorta(vuelo.vuelta_fecha)}`
+    const textoTituloVuelta = `VUELTA ${fechaConDia(vuelo.vuelta_fecha)}`
     // El precio del vuelo se ve si está tildado "Pública" — sin importar si
     // la propuesta es simple o combinada (antes simple lo ocultaba siempre).
     const mostrarPrecioVuelo = vuelo.venta && vuelo.venta_publica !== false
     const anchoMinPrecio = 62 * esc
-    let tamanoTituloVuelta = tamanoTitulo
+    let tamanoTituloVuelta = tamanoIda // ida y vuelta con el mismo tamaño de letra
     if (mostrarPrecioVuelo) {
       while (tamanoTituloVuelta > 7 * esc && bebas.widthOfTextAtSize(textoTituloVuelta, tamanoTituloVuelta) > ANCHO_COL_VUELO - anchoMinPrecio - 8 * esc) {
         tamanoTituloVuelta -= 0.5
@@ -660,18 +707,26 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, iconos =
     // cierre, mismo diseño en los dos lugares).
     const hayEscalaIda = vuelo.ida_escala_ciudad || vuelo.ida_escala_codigo
     const hayEscalaVuelta = vuelo.vuelta_escala_ciudad || vuelo.vuelta_escala_codigo
-    const altoCajas = Math.max(altoCajaTramo(hayEscalaIda, esc), altoCajaTramo(hayEscalaVuelta, esc))
+    // "Vuelo directo" solo cuando se conoce la aerolínea (vuelo leído de una captura): así no se agranda
+    // la tarjeta de los vuelos cargados a mano ni de las hojas con 4 vuelos.
+    const mostrarDirecto = !!String(vuelo.aerolinea || '').trim() && slot.escala >= 1.2
+    const directoIda = mostrarDirecto && !hayEscalaIda
+    const directoVuelta = mostrarDirecto && !hayEscalaVuelta
+    // Aclaración de llegada: si llega a una hora menor que la de salida, llega al día siguiente
+    const notaIda = notaLlegadaDiaSiguiente(vuelo.ida_fecha, vuelo.ida_sale, vuelo.ida_llega)
+    const notaVuelta = notaLlegadaDiaSiguiente(vuelo.vuelta_fecha, vuelo.vuelta_sale, vuelo.vuelta_llega)
+    const altoCajas = Math.max(altoCajaTramo(hayEscalaIda, esc, directoIda, !!notaIda), altoCajaTramo(hayEscalaVuelta, esc, directoVuelta, !!notaVuelta))
 
     dibujarCajaTramo(page, bebas, {
-      x: COL_IZQ_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
+      x: COL_IZQ_X, yTop: y, ancho: ANCHO_COL_VUELO, esc, directo: directoIda, nota: notaIda,
       codigoSale: vuelo.origen_codigo, ciudadSale: vuelo.origen_ciudad, horaSale: vuelo.ida_sale,
       codigoLlega: vuelo.destino_codigo, ciudadLlega: vuelo.destino_ciudad, horaLlega: vuelo.ida_llega,
       escalaCiudad: vuelo.ida_escala_ciudad, escalaCodigo: vuelo.ida_escala_codigo, escalaLlega: vuelo.ida_escala_llega, escalaSale: vuelo.ida_escala_sale,
     })
     dibujarCajaTramo(page, bebas, {
-      x: COL_DER_X, yTop: y, ancho: ANCHO_COL_VUELO, esc,
+      x: COL_DER_X, yTop: y, ancho: ANCHO_COL_VUELO, esc, directo: directoVuelta, nota: notaVuelta,
       codigoSale: vuelo.destino_codigo, ciudadSale: vuelo.destino_ciudad, horaSale: vuelo.vuelta_sale,
-      codigoLlega: vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
+      codigoLlega: vuelo.vuelta_llega_codigo || vuelo.origen_codigo, ciudadLlega: vuelo.origen_ciudad, horaLlega: vuelo.vuelta_llega,
       escalaCiudad: vuelo.vuelta_escala_ciudad, escalaCodigo: vuelo.vuelta_escala_codigo, escalaLlega: vuelo.vuelta_escala_llega, escalaSale: vuelo.vuelta_escala_sale,
     })
     y -= altoCajas + 10 * esc
@@ -779,7 +834,7 @@ function dibujarVueloCompacto(page, bebas, slot, vuelo, numero, moneda, iconos =
   page.drawLine({ start: { x: 30, y: slot.bottom + 8 }, end: { x: 565, y: slot.bottom + 8 }, thickness: 0.5, color: rgb(0.85, 0.83, 0.78) })
 }
 
-async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo, destinos, moneda }) {
+async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo, destinos, moneda, base = null }) {
   function escribir(texto, x, y, size, color) {
     page.drawText(texto, { x, y, size, font: bebas, color })
   }
@@ -794,6 +849,10 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   // tarjeta con borde redondeado + ícono (el mismo auto vectorial que ya usa
   // "Traslados incluidos" por vuelo), alto variable según cuántos tramos haya.
   const destinosValidos = (destinos || []).filter(d => d.salida?.trim() || d.destino?.trim())
+  // Combinada con base del viaje: un solo cuadro de traslados (los tramos) y un solo valor (aéreos + traslados).
+  // No se muestran aparte el precio del vuelo ni el cuadro de traslados de cada vuelo, que repetían la información.
+  const conBase = !!(base && destinosValidos.length)
+  const vuelosDibujo = conBase ? grupo.map(v => ({ ...v, venta_publica: false, traslado_ida: false, traslado_vuelta: false })) : grupo
   const TIT_TRASLADOS_SIZE = 15
   const LINEA_TRASLADOS_SIZE = 11.5
   const GAP_LINEA_TRASLADOS = 15
@@ -845,7 +904,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
   escribir(textoCotiz, 31.38, 720, sizeCotiz, CREMA_TXT)
   // 2) Convierte a crema la franja que se le saca al azul — esta si de borde
   //    a borde, porque ahi (por debajo de donde vive el logo) es solo fondo.
-  page.drawRectangle({ x: -5, y: 665, width: PAGINA_ANCHO + 10, height: LIMITE_NUEVO - 665, color: CREMA_BG })
+  page.drawRectangle({ x: -5, y: 663, width: PAGINA_ANCHO + 10, height: LIMITE_NUEVO - 663, color: CREMA_BG }) // 2pt de más: tapa la rayita en la unión
 
   // "AÉREOS:" (con su icono de avion, fijos en la plantilla) sube la misma
   // distancia que se le achico al azul, para no dejar un hueco vacio entre
@@ -903,7 +962,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
   const totalEnHoja = Math.min(grupo.length, FILAS_VUELO)
   for (let i = 0; i < totalEnHoja; i++) {
-    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), grupo[i], i + 1, moneda, iconos)
+    dibujarVueloCompacto(page, bebas, crearSlotVuelo(i, totalEnHoja, zonaBottomEfectivo), vuelosDibujo[i], i + 1, moneda, iconos)
   }
 
   // Lista de transfers, en la franja reservada arriba del banner.
@@ -918,7 +977,20 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
     const textoX = iconoX + iconoLado + 14
     let yLinea = yTop - PAD_TRASLADOS_TOP - TIT_TRASLADOS_SIZE * 0.78
-    const textoTitTraslados = 'TRASLADOS PRIVADOS:'
+    // Combinada uni: los traslados ya están dentro del valor de cada opción, no llevan precio propio
+    const trasladosIncluidos = conBase || destinosValidos.some(d => d.incluido)
+    if (conBase) {
+      const ancho = 170
+      const alto = altoTarjetaTraslados - 16
+      const x = COL_IZQ_X + boxAncho - ancho - 8
+      page.drawSvgPath(pathRectRedondeado(ancho, alto, 6), { x, y: yTop - 8, color: NAVY_BG })
+      const centro = (t, yy, size) => escribir(t, x + (ancho - bebas.widthOfTextAtSize(t, size)) / 2, yy, size, CREMA_TXT)
+      const medio = yTop - 8 - alto / 2
+      centro('LA BASE DEL VIAJE', medio + 20, 12)
+      centro(`${moneda || 'ARS'}$ ${formatearNumero(base.monto)}`, medio - 9, 26)
+      centro(`AÉREOS + TRASLADOS${base.pasajeros ? ` · LOS ${base.pasajeros} PASAJEROS` : ''}`, medio - 25, 9.5)
+    }
+    const textoTitTraslados = trasladosIncluidos ? 'TRASLADOS PRIVADOS INCLUIDOS:' : 'TRASLADOS PRIVADOS:'
     escribir(textoTitTraslados, textoX, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)
     // Precio: suma de "Valor de venta" de todos los tramos (Destinos), no uno
     // por tramo — pedido explicito ("TRASLADOS: $X" como un solo total). Este
@@ -926,7 +998,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
     // que ahora arranca destildado por default) — mismo criterio que el resto
     // de los totales de la propuesta, que son públicos siempre.
     const totalTraslados = destinosValidos.reduce((suma, d) => suma + (parseFloat(d.valor_cliente_traslado) || 0), 0)
-    if (totalTraslados > 0) {
+    if (totalTraslados > 0 && !trasladosIncluidos) {
       const anchoTitTraslados = bebas.widthOfTextAtSize(textoTitTraslados + '  ', TIT_TRASLADOS_SIZE)
       escribir(`${moneda || 'ARS'}$ ${formatearNumero(totalTraslados)}`, textoX + anchoTitTraslados, yLinea, TIT_TRASLADOS_SIZE, NAVY_TXT)
     }
@@ -950,7 +1022,7 @@ async function dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, canti
 
 // Primer grupo (hasta 4 vuelos) de una propuesta con 2 o mas vuelos: arma el
 // documento entero, igual que generarPaginaAereosPDF pero con la grilla.
-export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, destinos, moneda }) {
+export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, vuelos, destinos, moneda, base }) {
   const plantillaBytes = await fetch('/plantilla-aereos.pdf').then(r => r.arrayBuffer())
   const doc = await PDFDocument.load(plantillaBytes)
   doc.registerFontkit(fontkit)
@@ -963,7 +1035,7 @@ export async function generarPaginaAereosGrupoPDF({ clienteNombre, cantidadAdult
   // Los transfers (destinos) son un dato de la propuesta entera, no de esta
   // hoja en particular — van solo en la primera (esta), no se repiten si hay
   // mas de 4 vuelos y se agregan paginas siguientes con agregarPaginaAereosGrupo.
-  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), destinos, moneda })
+  await dibujarPaginaAereosGrupo(page, bebas, doc, { clienteNombre, cantidadAdultos, cantidadMenores, edadesMenores, grupo: vuelos.slice(0, FILAS_VUELO), destinos, moneda, base })
 
   return { doc, bebas }
 }

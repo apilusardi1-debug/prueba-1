@@ -20,10 +20,11 @@ const CORS = {
 }
 
 const CAMPOS = [
+  'aerolinea',
   'origen_ciudad', 'origen_codigo', 'destino_ciudad', 'destino_codigo',
   'ida_fecha', 'ida_sale', 'ida_llega',
   'ida_escala_ciudad', 'ida_escala_codigo', 'ida_escala_llega', 'ida_escala_sale',
-  'vuelta_fecha', 'vuelta_sale', 'vuelta_llega',
+  'vuelta_fecha', 'vuelta_sale', 'vuelta_llega', 'vuelta_llega_codigo',
   'vuelta_escala_ciudad', 'vuelta_escala_codigo', 'vuelta_escala_llega', 'vuelta_escala_sale',
 ]
 
@@ -77,6 +78,7 @@ function construirPrompt(): string {
 
 Sea cual sea el formato, extraé estos datos:
 
+- aerolinea: nombre comercial de la aerolínea que opera el vuelo, en su escritura habitual (ej: "JetSMART", "Gol", "LATAM", "Aerolíneas Argentinas", "Azul", "Flybondi"). Se ve en el logo, en el nombre o en el código de vuelo (JA = JetSMART, G3 = Gol, LA = LATAM, AR = Aerolíneas Argentinas, AD = Azul, FO = Flybondi). Si no se puede determinar, dejalo vacío "".
 - origen_ciudad: nombre de la ciudad de origen del vuelo de ida (solo el nombre de la ciudad, sin el código de aeropuerto). Si el formato solo trae el código IATA (ej: boarding pass), inferí el nombre de la ciudad a partir del código.
 - origen_codigo: código IATA del aeropuerto de origen, 3 letras mayúsculas (ej: EZE)
 - destino_ciudad: nombre de la ciudad de destino (destino final del viaje de ida, no el de una escala en el medio)
@@ -91,6 +93,7 @@ Sea cual sea el formato, extraé estos datos:
 - vuelta_fecha: fecha del vuelo de vuelta en formato YYYY-MM-DD
 - vuelta_sale: hora de salida del primer tramo de vuelta
 - vuelta_llega: hora de llegada al destino final de vuelta (después de la escala, si la hay)
+- vuelta_llega_codigo: código IATA del aeropuerto donde TERMINA la vuelta, tal como figura en la imagen. Puede ser distinto del de salida de la ida (ej: la ida sale de AEP y la vuelta llega a EZE). Si no se ve, dejalo vacío.
 - vuelta_escala_ciudad, vuelta_escala_codigo, vuelta_escala_llega, vuelta_escala_sale: igual que los de ida pero para el vuelo de vuelta
 
 Si un vuelo (ida o vuelta) tiene más de una escala, usá solo la primera. Si la imagen es un viaje solo de ida (sin vuelta), dejá todos los campos de vuelta como string vacío "". Si algún dato puntual no se puede leer con certeza en la imagen, dejá ese campo como string vacío "" en vez de inventar un valor. Si el año de la fecha no aparece en la imagen, asumí el año de hoy (o el que viene, si esa fecha ya pasó este año).`
